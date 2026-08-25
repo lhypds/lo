@@ -79,12 +79,6 @@
     "unavailable": "Could not reach the events service",
     "loading": "Looking for what is on"
   },
-  "holidays": {
-    "title": "Holidays",
-    "empty": "No public holidays on the calendar here",
-    "unavailable": "Could not reach the calendar service",
-    "loading": "Reading the calendar"
-  },
   "map": {
     "title": "Map",
     "noToken": "Add VITE_MAPBOX_TOKEN to .env to display the map.",

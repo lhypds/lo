@@ -33,7 +33,6 @@ export const getMe = () => request("/api/me");
 export const getLocal = (coords) => request(`/api/local?${geoQuery(coords)}`);
 export const getNearby = (coords) => request(`/api/nearby?${geoQuery(coords)}`);
 export const getEvents = (coords) => request(`/api/events?${geoQuery(coords)}`);
-export const getHolidays = (coords) => request(`/api/holidays?${geoQuery(coords)}`);
 
 export const getMarks = (limit) => request(limit ? `/api/marks?limit=${limit}` : "/api/marks");
 export const createMark = (mark) =>

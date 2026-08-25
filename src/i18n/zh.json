@@ -79,12 +79,6 @@
     "unavailable": "无法连接活动服务",
     "loading": "正在查找活动"
   },
-  "holidays": {
-    "title": "假日",
-    "empty": "此地日历上暂无公共假日",
-    "unavailable": "无法连接日历服务",
-    "loading": "正在读取日历"
-  },
   "map": {
     "title": "地图",
     "noToken": "请在 .env 中设置 VITE_MAPBOX_TOKEN 以显示地图。",

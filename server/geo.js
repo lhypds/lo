@@ -2,12 +2,11 @@
 // over a pair of coordinates and nothing else, so the server turns them into a
 // place name, a clock, a sky and a list of what is happening nearby.
 //
-// All five upstreams are key-free public APIs:
+// All four upstreams are key-free public APIs:
 // - BigDataCloud   — reverse geocoding      https://www.bigdatacloud.com
 // - Open-Meteo     — weather and timezone   https://open-meteo.com
 // - Google News    — local news (RSS)       https://news.google.com/rss
 // - Wikipedia      — nearby places          https://www.mediawiki.org/wiki/API
-// - Nager.Date     — public holidays        https://date.nager.at
 //
 // Requests are coarse-keyed and cached: a phone reporting a position every few
 // seconds keeps hitting the same cache entry rather than the same upstream.
@@ -107,9 +106,6 @@ export function lookupPlace(latitude, longitude, lang = "en") {
       region: region === name ? "" : region,
       country: firstString(data.countryName),
       countryCode: firstString(data.countryCode),
-      // ISO-3166-2, e.g. "JP-26" — the same form Nager.Date files its regional
-      // holidays under, which is what makes the two comparable
-      subdivisionCode: firstString(data.principalSubdivisionCode),
     };
   });
 }
@@ -323,68 +319,9 @@ export function lookupNearby(latitude, longitude, lang = "en") {
   });
 }
 
-/* --------------------------------------------------------------- holidays -- */
-
-// The calendar half of "what is happening here": days with real dates, known
-// months ahead. Answered separately from the events feed because it comes back
-// in a fraction of the time and should not wait on a newswire search.
-const HOLIDAY_HOST = "https://date.nager.at/api/v3";
-const HOLIDAY_TTL_MS = 12 * 60 * 60 * 1000;
-const EVENTS_TTL_MS = 30 * 60 * 1000;
-// Nothing found is worth asking again about soon; a full answer keeps.
-const EVENTS_EMPTY_TTL_MS = 5 * 60 * 1000;
-const MAX_HOLIDAYS = 5;
-const MAX_EVENT_ITEMS = 12;
-
-// Nager answers per country, so every city in one shares a cache entry and the
-// regional filtering happens per caller instead.
-function fetchHolidays(countryCode) {
-  if (!/^[A-Za-z]{2}$/.test(countryCode ?? "")) return Promise.resolve([]);
-  const country = countryCode.toUpperCase();
-  return cached(`holidays:${country}`, HOLIDAY_TTL_MS, () =>
-    getJson(`${HOLIDAY_HOST}/NextPublicHolidays/${country}`),
-  );
-}
-
-// A holiday with counties is only a holiday in those counties — Reformationstag
-// is a day off in Thüringen and a working Friday in Bavaria. Where the fix has
-// no subdivision to compare against, only the nationwide ones are safe to claim.
-function holidaysHere(list, subdivisionCode) {
-  return (Array.isArray(list) ? list : [])
-    .filter((holiday) => holiday.global || (holiday.counties ?? []).includes(subdivisionCode))
-    .slice(0, MAX_HOLIDAYS)
-    .map((holiday) => ({
-      kind: "holiday",
-      // A plain calendar date, deliberately not a timestamp: the day is the day
-      // wherever the reader happens to be standing.
-      date: holiday.date,
-      // The day's own name first — 敬老の日 is what the posters in the street
-      // say, and the English gloss only helps someone who cannot read it.
-      title: firstString(holiday.localName, holiday.name),
-      subtitle: holiday.name && holiday.name !== holiday.localName ? holiday.name : "",
-    }));
-}
-
-export function lookupHolidays(latitude, longitude, lang = "en") {
-  const language = PLACE_LANGUAGE[lang] ?? "en";
-  const key = `holidays-here:${language}:${gridKey(latitude, longitude, PLACE_GRID)}`;
-  // Nothing found is worth asking about again soon — a country Nager has no
-  // answer for should not be re-asked on every page load either.
-  const ttl = (value) => (value.upcoming.length === 0 ? EVENTS_EMPTY_TTL_MS : HOLIDAY_TTL_MS);
-
-  return cached(key, ttl, async () => {
-    const place = await lookupPlace(latitude, longitude, language).catch(() => null);
-    const upcoming = await fetchHolidays(place?.countryCode)
-      .then((list) => holidaysHere(list, place?.subdivisionCode))
-      .catch(() => []);
-    return { place, upcoming };
-  });
-}
-
 /* ----------------------------------------------------------------- events -- */
 
-// The other half: what the newswire says is on this week, which has the detail
-// the calendar does not.
+// What the newswire says is on this week.
 //
 // One word per language the app speaks, ORed together, because the event worth
 // knowing about is written up in the language of the place and not necessarily
@@ -394,6 +331,10 @@ const EVENT_TERMS = "(イベント OR events OR 活动 OR 祭)";
 // An event is stale the moment it is over, so the listing only looks back a
 // fortnight — long enough to catch a run that is still going.
 const EVENT_WINDOW = "when:14d";
+const EVENTS_TTL_MS = 30 * 60 * 1000;
+// Nothing found is worth asking again about soon; a full answer keeps.
+const EVENTS_EMPTY_TTL_MS = 5 * 60 * 1000;
+const MAX_EVENT_ITEMS = 12;
 
 // City level, not ward level: a ward has its own news, but its events get
 // written up under the name of the city they are in.

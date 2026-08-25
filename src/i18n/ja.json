@@ -79,12 +79,6 @@
     "unavailable": "イベント情報に接続できません",
     "loading": "イベントを探しています"
   },
-  "holidays": {
-    "title": "祝日",
-    "empty": "この地域の祝日は見つかりません",
-    "unavailable": "カレンダー情報に接続できません",
-    "loading": "カレンダーを読み込み中"
-  },
   "map": {
     "title": "地図",
     "noToken": "地図を表示するには .env に VITE_MAPBOX_TOKEN を設定してください。",

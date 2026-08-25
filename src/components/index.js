@@ -5,7 +5,6 @@ export { default as ClockCard } from "./ClockCard/index.js";
 export { default as EventsCard } from "./EventsCard/index.js";
 export { default as Header } from "./Header/index.js";
 export { default as HereStrip } from "./HereStrip/index.js";
-export { default as HolidaysCard } from "./HolidaysCard/index.js";
 export { default as HomePage } from "./HomePage/index.js";
 export { default as LanguageSwitcher } from "./LanguageSwitcher/index.js";
 export { default as Loading } from "./Loading/index.js";

@@ -6,7 +6,6 @@ import ClockCard from "../ClockCard/index.js";
 import EventsCard from "../EventsCard/index.js";
 import Header from "../Header/index.js";
 import HereStrip from "../HereStrip/index.js";
-import HolidaysCard from "../HolidaysCard/index.js";
 import LocationGate from "../LocationGate/index.js";
 import MarkButton from "../MarkButton/index.js";
 import NearbyCard from "../NearbyCard/index.js";
@@ -74,9 +73,6 @@ export default function HomePage() {
             onUnmarked={(mark) => setMarks((current) => current.filter((item) => item.id !== mark.id))}
           />
           <NearbyCard />
-          {/* Holidays above events, the order the two read in when they shared
-              one card: what is coming, then what is on. */}
-          <HolidaysCard />
           <EventsCard />
         </div>
       </main>
