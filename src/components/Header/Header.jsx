@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ActionButton, Link, useNavigate } from "../../ui/index.js";
+import { MARK_PIN_EYE, MARK_PIN_PATH } from "../../utils/icons.js";
 import { useAuth } from "../AuthProvider/index.js";
 import { useHere } from "../LocationProvider/index.js";
 import LanguageSwitcher from "../LanguageSwitcher/index.js";
@@ -48,11 +49,18 @@ export default function Header({ back = false, backTo = "/" }) {
             </svg>
           </ActionButton>
         )}
+        {/* A letter rather than a drawing, because the thing it opens is drawn
+            as a letter: the squares on the map say p, and so does this. */}
+        {user && (
+          <ActionButton tooltip={t("header.posts")} onClick={() => navigate("/posts")}>
+            <span>p</span>
+          </ActionButton>
+        )}
         {user && (
           <ActionButton tooltip={t("header.marks")} onClick={() => navigate("/marks")}>
             <svg viewBox="0 0 24 24">
-              <path d="M12 21s-7-5.6-7-11a7 7 0 0 1 14 0c0 5.4-7 11-7 11z" />
-              <circle cx="12" cy="10" r="2.5" />
+              <path d={MARK_PIN_PATH} />
+              <circle {...MARK_PIN_EYE} />
             </svg>
           </ActionButton>
         )}

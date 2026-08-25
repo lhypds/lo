@@ -28,6 +28,17 @@
   stroke-linejoin: round;
 }
 
+/* A letter in place of an icon. Sized and weighted to sit at the same optical
+   density as the 14px hairline drawings beside it rather than at the same
+   height — a capital at 14px would shout next to them. */
+.glyph {
+  display: block;
+  font-family: var(--display);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+}
+
 .actionButton[data-tooltip]::after {
   content: attr(data-tooltip);
   position: absolute;

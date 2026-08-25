@@ -181,3 +181,15 @@ export async function resumeLocation() {
 export function isFresh() {
   return state.coords ? Date.now() - state.at < FRESH_MS : false;
 }
+
+// Two decimals is about a kilometre. The fix itself is a new object on every
+// reading of the sensor, which would make an effect keyed on it run every
+// minute; keyed on this, it runs when the answer would actually be different —
+// walking down the street does not change the weather, the place name, or which
+// posts are near enough to be worth drawing.
+const COORD_PRECISION = 2;
+
+export function coordKey(coords) {
+  if (!coords) return "";
+  return `${coords.latitude.toFixed(COORD_PRECISION)},${coords.longitude.toFixed(COORD_PRECISION)}`;
+}

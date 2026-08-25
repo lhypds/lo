@@ -12,11 +12,24 @@
 
 /* Tall enough to be looked at, capped so a portrait photo does not push the
    rest of the post off a phone screen — the sheet scrolls, but a reader should
-   not have to scroll to find out there were words under the picture */
+   not have to scroll to find out there were words under the picture.
+
+   Both dimensions have to be said, and both have to be auto. The stored width
+   and height ride along on the tag so the sheet holds the picture's shape while
+   it is still on the wire, but they are presentational hints for the CSS width
+   and height as well: overriding only the width left the box standing at the
+   photo's full pixel height, which a landscape photo then sat in the middle of
+   with a band of grey mat above and below it. Left to auto, the box is the
+   picture, and the caps below are what scale it. */
 .image {
-  width: 100%;
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
   max-height: 46vh;
-  object-fit: contain;
+  /* A portrait photo comes back narrower than the sheet; the mat it leaves is
+     even on both sides rather than all down one */
+  margin-inline: auto;
 }
 
 .text {

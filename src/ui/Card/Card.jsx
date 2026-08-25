@@ -13,11 +13,12 @@ export default function Card({
   wide = false,
   flush = false,
   openHead = false,
+  quietHead = false,
   className,
   children,
 }) {
   const classes = [styles.card, square ? styles.square : "", wide ? styles.wide : "", className];
-  const head = [styles.head, openHead ? styles.openHead : ""];
+  const head = [styles.head, openHead ? styles.openHead : "", quietHead ? styles.quietHead : ""];
   return (
     <section className={classes.filter(Boolean).join(" ")}>
       <header className={head.filter(Boolean).join(" ")}>

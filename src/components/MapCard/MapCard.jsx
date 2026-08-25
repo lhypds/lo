@@ -11,12 +11,20 @@ import {
   formatUsername,
   relativeTime,
 } from "../../utils/format.js";
+import { MARK_PIN_EYE, MARK_PIN_PATH, MARK_PIN_TIP_Y } from "../../utils/icons.js";
 import { useAuth } from "../AuthProvider/index.js";
 import { useHere } from "../LocationProvider/index.js";
 import styles from "./map.module.css";
 
 const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
-const STYLE_URL = "mapbox://styles/mapbox/standard";
+// Light rather than Standard on every map lo draws. Standard spends its ink on
+// things none of these are big enough to say: extruded buildings, terrain
+// shading, a lit 3D scene. Light is the flat grey-and-white basemap underneath
+// all that — roads and names, nothing else — which is both what a 300px tile
+// has room for and what the rest of the app looks like. The pins are the only
+// thing on any of these maps worth looking at twice, and a quiet ground is what
+// leaves them somewhere to stand.
+const STYLE_URL = "mapbox://styles/mapbox/light-v11";
 const DEFAULT_ZOOM = 15;
 
 const LANG_MAP = { en: "en", ja: "ja", zh: "zh-Hans" };
@@ -33,32 +41,42 @@ function mapLanguage(uiLanguage) {
   return LANG_MAP[uiLanguage] ?? "auto";
 }
 
-const ACCURACY_SOURCE = "lo-accuracy";
-const ACCURACY_FILL = "lo-accuracy-fill";
-const ACCURACY_LINE = "lo-accuracy-line";
-
 const ROUTE_SOURCE = "lo-route";
 const ROUTE_CASING = "lo-route-casing";
 const ROUTE_LINE = "lo-route-line";
 
-// The accuracy halo as a real polygon rather than a styled circle: a circle
-// layer is sized in screen pixels, which would keep the halo the same size as
-// the map zooms out of the radius it is supposed to describe.
-function accuracyPolygon(latitude, longitude, radiusMeters, steps = 64) {
-  const metersPerDegreeLat = 110574;
-  const metersPerDegreeLon = 111320 * Math.cos((latitude * Math.PI) / 180);
-  const ring = [];
-  for (let index = 0; index <= steps; index += 1) {
-    const angle = (index / steps) * 2 * Math.PI;
-    ring.push([
-      longitude + (radiusMeters * Math.cos(angle)) / Math.max(metersPerDegreeLon, 1e-6),
-      latitude + (radiusMeters * Math.sin(angle)) / metersPerDegreeLat,
-    ]);
-  }
-  return { type: "Feature", properties: {}, geometry: { type: "Polygon", coordinates: [ring] } };
+const EMPTY_GEOJSON = { type: "FeatureCollection", features: [] };
+
+// Near enough anywhere, and the halo is drawn from the accuracy the device
+// reports, which is a rough number to begin with.
+const METERS_PER_DEGREE_LAT = 110574;
+
+// However sure the device is about the fix, as a marker rather than as a fill
+// layer on the canvas: the canvas is under every marker, so a layer put the
+// halo behind whichever pin happened to be standing on the same ground. Up here
+// it draws over them, and being nothing but a wash is what keeps them readable
+// underneath it.
+//
+// What that costs is the size: a marker is sized in pixels, so the map has to
+// be asked how many of them a metre is worth whenever the scale changes, where
+// a fill layer got that for free.
+function haloElement() {
+  const halo = document.createElement("div");
+  halo.className = styles.halo;
+  return halo;
 }
 
-const EMPTY_GEOJSON = { type: "FeatureCollection", features: [] };
+// Asked of the projection rather than worked out from the zoom, so it stays
+// right whatever the map is doing with its own scale.
+function haloDiameter(map, latitude, longitude, meters) {
+  const centre = map.project([longitude, latitude]);
+  const edge = map.project([longitude, latitude + meters / METERS_PER_DEGREE_LAT]);
+  return Math.abs(centre.y - edge.y) * 2;
+}
+
+// Markers are built by hand rather than rendered, and an <svg> made with
+// createElement is an unknown HTML element that draws nothing.
+const SVG_NS = "http://www.w3.org/2000/svg";
 
 // One dot per person, with the name hanging under it. The wrapper is exactly
 // the size of the dot so the marker's own centring puts the dot on the
@@ -80,10 +98,38 @@ function personElement(username, self = false) {
 // ordered by anything the map can show, so a rank on the pin invites a reading
 // of the map that isn't there. What the pin has to say is "a mark is here", and
 // the name is a tap away in the popup.
+//
+// It says it with the drawing the rest of the app marks a spot with — the
+// button on the dashboard, the link in the top bar — where a post, which has no
+// drawing of its own anywhere, keeps its letter.
+// The same pin the button on the dashboard is drawn with, and the same one in
+// the top bar — one shape for "a mark", wherever it turns up. It stands on its
+// own here with no box behind it: the square it used to sit in was a second
+// shape competing with the one that means something.
+//
+// What the map adds is where the point goes. The grid runs to 24 and the point
+// is at 21, so a marker anchored by the bottom of its box would hang the pin
+// three units above the spot it is reporting. The box is cropped to the point
+// instead — plus the half of the stroke the round join puts outside it, which is
+// the lowest ink there is. Cropping rather than offsetting is what keeps the
+// alignment true at whatever size the CSS asks for.
+const STROKE_UNITS = 1.2;
+const MARK_VIEWBOX = `0 0 24 ${MARK_PIN_TIP_Y + STROKE_UNITS / 2}`;
+
 function markElement() {
   const pin = document.createElement("div");
-  pin.className = styles.markDot;
-  pin.textContent = "m";
+  pin.className = styles.markPin;
+  const glyph = document.createElementNS(SVG_NS, "svg");
+  glyph.setAttribute("viewBox", MARK_VIEWBOX);
+  glyph.setAttribute("aria-hidden", "true");
+  const body = document.createElementNS(SVG_NS, "path");
+  body.setAttribute("d", MARK_PIN_PATH);
+  // Filled white rather than left hollow like the button's copy: on a button the
+  // pin sits on a known background, on a map it has to carry its own.
+  const eye = document.createElementNS(SVG_NS, "circle");
+  for (const [name, value] of Object.entries(MARK_PIN_EYE)) eye.setAttribute(name, value);
+  glyph.append(body, eye);
+  pin.append(glyph);
   return pin;
 }
 
@@ -344,23 +390,24 @@ export default function MapCard({
     });
   }, [posts]);
 
-  // A history map opens on the whole history: one fit over every saved spot, so
-  // marks left in another city are on screen without anyone having to go and
-  // look for them. It happens once, on the first list that has anything in it —
-  // after that the view belongs to the reader, and following the fix is off for
-  // the same reason a deliberate pan turns it off.
+  // A list map opens on the whole list: one fit over every pin it was given, so
+  // a mark left in another city — or a post two suburbs over — is on screen
+  // without anyone having to go and look for it. It happens once, on the first
+  // list that has anything in it; after that the view belongs to the reader, and
+  // following the fix is off for the same reason a deliberate pan turns it off.
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !fitMarks || fittedRef.current || marks.length === 0) return;
+    const pins = [...marks, ...posts];
+    if (!map || !fitMarks || fittedRef.current || pins.length === 0) return;
     fittedRef.current = true;
     followRef.current = false;
     const bounds = new mapboxgl.LngLatBounds();
-    marks.forEach((mark) => bounds.extend([mark.longitude, mark.latitude]));
+    pins.forEach((pin) => bounds.extend([pin.longitude, pin.latitude]));
     if (coords) bounds.extend([coords.longitude, coords.latitude]);
-    // Capped, or a lone mark would be fitted to a rooftop; the padding keeps the
-    // outermost pins clear of the edges of the card.
+    // Capped, or a lone pin would be fitted to a rooftop; the padding keeps the
+    // outermost ones clear of the edges of the card.
     map.fitBounds(bounds, { padding: 48, maxZoom: DEFAULT_ZOOM, duration: 0 });
-  }, [fitMarks, marks, coords]);
+  }, [fitMarks, marks, posts, coords]);
 
   // The line to a spot the reader asked for directions to, and the frame that
   // makes it a route rather than a stripe running off two edges of the tile.
@@ -491,6 +538,7 @@ export default function MapCard({
       square={!expanded}
       wide={expanded}
       flush
+      quietHead
       className={expanded ? `map-full ${styles.cardExpanded}` : undefined}
     >
       {body}

@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
 import { useAuth } from "../AuthProvider/index.js";
 import {
+  coordKey,
   disableLocation,
   enableLocation,
   getLocationState,
@@ -13,19 +14,11 @@ import {
 
 const LocationContext = createContext(null);
 
-// Ask the server again only once the fix has actually moved. Two decimals is
-// about a kilometre — walking down the street does not change the weather.
-const COORD_PRECISION = 2;
 const WEATHER_REFRESH_MS = 10 * 60 * 1000;
 // Once there is a fix the sensor is read again every minute, and the new one is
 // traded for everyone else's on the same beat — a map of where people are is
 // only worth as much as the age of the oldest dot on it.
 const PRESENCE_REFRESH_MS = 60 * 1000;
-
-function coordKey(coords) {
-  if (!coords) return "";
-  return `${coords.latitude.toFixed(COORD_PRECISION)},${coords.longitude.toFixed(COORD_PRECISION)}`;
-}
 
 export function LocationProvider({ children }) {
   const { i18n } = useTranslation();

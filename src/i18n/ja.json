@@ -9,6 +9,7 @@
   "header": {
     "backHome": "ホームに戻る",
     "back": "戻る",
+    "posts": "posts",
     "marks": "記録",
     "account": "アカウント",
     "refresh": "現在地を更新"
@@ -126,10 +127,11 @@
   },
   "post": {
     "hint": "長押しで投稿",
-    "title": "新しい Post",
-    "preview": "Post",
+    "title": "新しい post",
+    "preview": "post",
     "placeholder": "ここで何が起きていますか？",
     "addPhoto": "画像を追加",
+    "dropPhoto": "ここに画像をドロップ",
     "removePhoto": "削除",
     "compressing": "圧縮中",
     "uploading": "アップロード中",
@@ -144,8 +146,13 @@
     "when": "日時",
     "delete": "削除",
     "deleting": "削除中",
-    "deleteTitle": "Post を削除",
-    "deleteConfirm": "この Post を削除しますか？この操作は取り消せません。"
+    "deleteTitle": "post を削除",
+    "deleteConfirm": "この post を削除しますか？この操作は取り消せません。"
+  },
+  "posts": {
+    "title": "posts",
+    "subtitle": "近くの post",
+    "empty": "近くにまだ post はありません"
   },
   "route": {
     "walking": "徒歩",

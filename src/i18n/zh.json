@@ -9,6 +9,7 @@
   "header": {
     "backHome": "返回首页",
     "back": "返回",
+    "posts": "posts",
     "marks": "记录",
     "account": "账号",
     "refresh": "更新定位"
@@ -125,11 +126,12 @@
     "navigate": "路线"
   },
   "post": {
-    "hint": "长按发布",
-    "title": "新建 Post",
-    "preview": "Post",
-    "placeholder": "这里发生了什么？",
+    "hint": "长按发布 post",
+    "title": "新建 post",
+    "preview": "post",
+    "placeholder": "这里有什么新鲜事？",
     "addPhoto": "添加图片",
+    "dropPhoto": "把图片拖到这里",
     "removePhoto": "移除",
     "compressing": "压缩中",
     "uploading": "上传中",
@@ -144,8 +146,13 @@
     "when": "时间",
     "delete": "删除",
     "deleting": "删除中",
-    "deleteTitle": "删除 Post",
-    "deleteConfirm": "删除这条 Post？此操作无法撤销。"
+    "deleteTitle": "删除 post",
+    "deleteConfirm": "删除这条 post？此操作无法撤销。"
+  },
+  "posts": {
+    "title": "posts",
+    "subtitle": "附近的 post",
+    "empty": "附近还没有 post"
   },
   "route": {
     "walking": "步行",

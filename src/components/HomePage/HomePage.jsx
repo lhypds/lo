@@ -2,7 +2,7 @@ import { Suspense, lazy, useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
 import { Modal, showToast } from "../../ui/index.js";
-import { getLocationState } from "../../utils/location.js";
+import { coordKey, getLocationState } from "../../utils/location.js";
 import ClockCard from "../ClockCard/index.js";
 import EventsCard from "../EventsCard/index.js";
 import Header from "../Header/index.js";
@@ -21,20 +21,13 @@ import { useHere } from "../LocationProvider/index.js";
 // position worth drawing.
 const MapCard = lazy(() => import("../MapCard/MapCard.jsx"));
 
-// Two decimals is about a kilometre, the same grain the location provider asks
-// the server questions on: posts are fetched for the ground around the reader,
-// and walking down the street does not change which ground that is.
-function coordKey(coords) {
-  if (!coords) return "";
-  return `${coords.latitude.toFixed(2)},${coords.longitude.toFixed(2)}`;
-}
-
 export default function HomePage() {
   const { t } = useTranslation();
   const { coords, place, refresh } = useHere();
   // Held here, not in the map: expanding it hides the rest of the dashboard.
   const [mapExpanded, setMapExpanded] = useState(false);
   const [posts, setPosts] = useState([]);
+  const [marks, setMarks] = useState([]);
   // The fix the hold was made on, which is also what says the sheet is open —
   // a post belongs to the spot its writer was standing on when they started it,
   // not to wherever they have drifted by the time they press Post.
@@ -57,6 +50,17 @@ export default function HomePage() {
     if (!key) return;
     loadPosts();
   }, [key, loadPosts]);
+
+  // Marks are yours and are the same list wherever you are standing, so unlike
+  // posts they are asked for once rather than again on every move. The button
+  // below keeps this in step from there — a spot marked on this page should
+  // appear on the map on this page, not on the next reload.
+  useEffect(() => {
+    api
+      .getMarks()
+      .then((data) => setMarks(data.marks))
+      .catch(() => {});
+  }, []);
 
   // A hold is also a request for a current position, the same way a tap on the
   // same button is: the post is pinned to the freshest fix the device can give.
@@ -112,18 +116,23 @@ export default function HomePage() {
           <ClockCard />
           <WeatherCard />
           <Suspense fallback={<div className="card-placeholder" />}>
-            {/* No saved marks on this one: the dashboard map answers where you
-                are now, and where you have been is the marks page's question.
-                Posts are neither — they are what is here, left by whoever came
-                past, so this is the map they belong on. */}
+            {/* Everything that is here: the posts whoever came past left, the
+                spots you kept, and you standing among them. The marks page
+                answers a different question — where have I been, in order —
+                which is why that one carries a list and this one does not. */}
             <MapCard
               posts={posts}
+              marks={marks}
               expanded={mapExpanded}
               onToggleExpanded={() => setMapExpanded((value) => !value)}
               onSelectPost={setPreviewing}
             />
           </Suspense>
-          <MarkButton onLongPress={compose} />
+          <MarkButton
+            onLongPress={compose}
+            onMarked={(mark) => setMarks((current) => [mark, ...current])}
+            onUnmarked={(mark) => setMarks((current) => current.filter((item) => item.id !== mark.id))}
+          />
           <NearbyCard />
           <EventsCard />
           <TrendsCard />

@@ -1,4 +1,13 @@
-import { AccountPage, AuthPage, HomePage, Loading, MarksPage, PrivateRoute, useAuth } from "./components/index.js";
+import {
+  AccountPage,
+  AuthPage,
+  HomePage,
+  Loading,
+  MarksPage,
+  PostsPage,
+  PrivateRoute,
+  useAuth,
+} from "./components/index.js";
 import { Navigate, useLocation } from "./ui/index.js";
 
 export default function App() {
@@ -9,6 +18,7 @@ export default function App() {
   if (pathname === "/login") return <AuthPage />;
   if (pathname === "/") return <PrivateRoute><HomePage /></PrivateRoute>;
   if (pathname === "/marks") return <PrivateRoute><MarksPage /></PrivateRoute>;
+  if (pathname === "/posts") return <PrivateRoute><PostsPage /></PrivateRoute>;
   if (pathname === "/account") return <PrivateRoute><AccountPage /></PrivateRoute>;
   return <Navigate to="/" replace />;
 }

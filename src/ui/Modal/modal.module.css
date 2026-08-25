@@ -25,6 +25,14 @@
   touch-action: auto;
 }
 
+/* For a sheet that is worked in rather than read: the post composer, where the
+   words and the photo under them both have something to do with the extra room.
+   Kept here rather than passed in as a class, so it is the later of the two
+   rules on the box and wins the cap without depending on stylesheet order. */
+.wide {
+  max-width: 560px;
+}
+
 .header {
   display: flex;
   align-items: center;

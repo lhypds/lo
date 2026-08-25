@@ -9,6 +9,7 @@
   "header": {
     "backHome": "Back to home",
     "back": "Back",
+    "posts": "posts",
     "marks": "Marks",
     "account": "Account",
     "refresh": "Update location"
@@ -127,9 +128,10 @@
   "post": {
     "hint": "Hold to post",
     "title": "New post",
-    "preview": "Post",
+    "preview": "post",
     "placeholder": "What is here?",
     "addPhoto": "Add a photo",
+    "dropPhoto": "Drop the photo here",
     "removePhoto": "Remove",
     "compressing": "Compressing",
     "uploading": "Uploading",
@@ -146,6 +148,11 @@
     "deleting": "Deleting",
     "deleteTitle": "Delete post",
     "deleteConfirm": "Delete this post? This cannot be undone."
+  },
+  "posts": {
+    "title": "posts",
+    "subtitle": "what is around you",
+    "empty": "No posts around here yet"
   },
   "route": {
     "walking": "Walk",

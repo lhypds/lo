@@ -1,7 +1,23 @@
 .form {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+/* Over the whole sheet while a photo is being carried across it, since the
+   whole sheet is what accepts it. Dashed because nothing has landed yet. */
+.dropHint {
+  position: absolute;
+  inset: -8px;
+  z-index: 1;
+  margin: 0;
+  display: grid;
+  place-items: center;
+  border: 1px dashed var(--ink);
+  background: rgb(255 255 255 / 0.9);
+  font-size: 12px;
+  pointer-events: none;
 }
 
 /* Where the post is being left, above what it says — a post is about a spot,
@@ -15,19 +31,16 @@
   overflow-wrap: anywhere;
 }
 
+/* Only what the sheet asks of the house textarea that the house textarea does
+   not already say: it opens taller, because this one is for writing in, and it
+   sets its type down to the size of the labels on the two buttons under it. The
+   sheet is a note being scribbled, not a document — and at 12px the whole of a
+   500-character post is on screen at once, which is the length it is being
+   written against. It is read back larger than it is written; the preview is
+   where the words are given room. */
 .text {
-  width: 100%;
   min-height: 96px;
-  padding: 10px 12px;
-  border: 1px solid var(--ink);
-  border-radius: 0;
-  outline: 0;
-  background: var(--paper);
-  color: inherit;
-  font-family: var(--sans);
-  font-size: 15px;
-  line-height: 1.5;
-  resize: vertical;
+  font-size: 12px;
 }
 
 .file {
@@ -35,9 +48,12 @@
 }
 
 /* Squared off and the full width of the sheet, so choosing a photo is the same
-   shape of gesture as everything else in the app rather than a browser widget */
+   shape of gesture as everything else in the app rather than a browser widget.
+   The same 30px slab as the button in the footer: they are the two things this
+   sheet asks the reader to press, and a difference in height between them would
+   read as a difference in weight neither of them has. */
 .photo {
-  height: 38px;
+  height: 30px;
   border: 1px solid var(--ink);
   border-radius: 0;
   background: var(--paper);
@@ -53,11 +69,16 @@
 }
 
 /* Capped rather than sized: the sheet is for the words, and a portrait photo
-   given its head would push the Post button off the bottom of the screen */
+   given its head would push the Post button off the bottom of the screen. Auto
+   on both dimensions so the box is the picture and nothing else — see the same
+   rule in the preview, where the photo is read at the other end. */
 .image {
-  width: 100%;
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
   max-height: 200px;
-  object-fit: contain;
+  margin-inline: auto;
 }
 
 .remove {
@@ -87,8 +108,14 @@
   font-size: 10px;
 }
 
+/* Smaller than the app's standing button, which is sized for a screen where it
+   is the only thing to press — a login, a delete. Here it closes a sheet the
+   reader has already been working in, and stash sets the size of that gesture:
+   a 30px slab with the label at 12px. */
 .footer button {
   width: 96px;
+  height: 30px;
+  font-size: 12px;
 }
 
 @media (hover: hover) {

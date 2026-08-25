@@ -48,6 +48,13 @@
   border-bottom: 0;
 }
 
+/* For a tile whose content is a picture rather than type. Against the map, full
+   ink under the title reads as a second frame drawn inside the card's own; the
+   hairline grey still parts the title from the canvas without doing that. */
+.quietHead {
+  border-bottom-color: var(--line);
+}
+
 .title {
   margin: 0;
   font-family: var(--display);

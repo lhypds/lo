@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import styles from "./modal.module.css";
 
-const Modal = ({ isOpen, onClose, title, children, closeOnOverlay = false, className }) => {
+const Modal = ({ isOpen, onClose, title, children, closeOnOverlay = false, wide = false, className }) => {
   // Prevent touchmove on background
   // allow scroll on textarea/input/select but prevent on the rest of the background
   useEffect(() => {
@@ -44,7 +44,7 @@ const Modal = ({ isOpen, onClose, title, children, closeOnOverlay = false, class
 
   return (
     <div className={styles.overlay} onClick={handleOverlayClick}>
-      <div className={[styles.modal, className].filter(Boolean).join(" ")}>
+      <div className={[styles.modal, wide ? styles.wide : "", className].filter(Boolean).join(" ")}>
         <div className={styles.header}>
           {title && <span className={styles.title}>{title}</span>}
           <button className={styles.closeButton} onClick={onClose} disabled={!onClose} aria-label="Close">

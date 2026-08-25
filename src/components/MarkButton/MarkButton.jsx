@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
 import { showToast } from "../../ui/index.js";
+import { MARK_PIN_EYE, MARK_PIN_PATH } from "../../utils/icons.js";
 import { getLocationState } from "../../utils/location.js";
 import { useHere } from "../LocationProvider/index.js";
 import styles from "./mark.module.css";
@@ -191,10 +192,21 @@ export default function MarkButton({ onMarked, onUnmarked, onLongPress }) {
         aria-busy={saving}
       >
         <svg viewBox="0 0 24 24" className={styles.glyph} aria-hidden="true">
-          <path d="M12 21s-7-5.6-7-11a7 7 0 0 1 14 0c0 5.4-7 11-7 11z" />
-          <circle cx="12" cy="10" r="2.5" />
+          <path d={MARK_PIN_PATH} />
+          <circle {...MARK_PIN_EYE} />
         </svg>
-        <span className={styles.label}>{saving ? t("mark.saving") : t("mark.button")}</span>
+        {/* A hold has no affordance of its own, so the tile says so — directly
+            under the label it belongs to, and inside the button rather than
+            over its bottom edge. It keeps its space while a message is showing
+            instead of unmounting, or the glyph above would hop as it went. */}
+        <span className={styles.copy}>
+          <span className={styles.label}>{saving ? t("mark.saving") : t("mark.button")}</span>
+          {onLongPress && (
+            <span className={message ? `${styles.hint} ${styles.hintHidden}` : styles.hint}>
+              {t("post.hint")}
+            </span>
+          )}
+        </span>
       </button>
       <p className={styles.message} aria-live="polite">
         {saved ? (
@@ -209,10 +221,6 @@ export default function MarkButton({ onMarked, onUnmarked, onLongPress }) {
           message
         )}
       </p>
-      {/* A hold has no affordance of its own, so the tile says so — in the slot
-          the message will take over the moment there is one to show. Outside
-          the live region above: it is standing information, not news. */}
-      {onLongPress && !message && <span className={styles.hint}>{t("post.hint")}</span>}
     </div>
   );
 }

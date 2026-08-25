@@ -21,8 +21,10 @@ export default function PostPreview({ post, from, onClose, onDelete }) {
   const mine = Boolean(post && user && post.username === user.username);
   const away = post && from ? formatDistance(distanceMeters(from, post)) : "";
 
+  // `wide` is the width the composer takes: a post is read at the size it was
+  // written at, and the photo is the biggest thing in either sheet.
   return (
-    <Modal isOpen={Boolean(post)} title={t("post.preview")} onClose={onClose} closeOnOverlay>
+    <Modal isOpen={Boolean(post)} title={t("post.preview")} onClose={onClose} closeOnOverlay wide>
       {post && (
         <div className={styles.body}>
           {post.image && (
