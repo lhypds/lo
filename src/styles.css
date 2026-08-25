@@ -314,8 +314,10 @@ a {
 /* Expanded, the map is the page: the strip and the other tiles are hidden and
    the grid hands its whole height to the one card left, so the map fills the
    window under the topbar instead of floating above a blank half-screen */
+/* The same gutter the expanded map keeps on its sides, so the panel sits inside
+   an even frame instead of hanging off the bottom edge of the window */
 .home-main-map {
-  padding-bottom: 0;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom));
 }
 
 .home-main-map > :not(.card-grid) {

@@ -1,14 +1,16 @@
-/* Expanded, the map breaks out of the 600px reading column to the full width of
-   the window — seeing more ground is the entire point of expanding it. The
-   negative margins are half the difference between the grid area and the
-   window, so the panel lands flush on both edges without ever overflowing into
-   a horizontal scroll. Its height comes from the grid row, which the page hands
-   the whole viewport once everything else is hidden. */
+/* Expanded, the map breaks out of the 600px reading column to the width of the
+   window — seeing more ground is the entire point of expanding it — but stops a
+   gutter short of the edge, the same gutter the page keeps everywhere else, so
+   it still reads as a card rather than as the window itself. The negative
+   margins are half the difference between the grid area and the window, which
+   is what lands it there without ever overflowing into a horizontal scroll. Its
+   height comes from the grid row, which the page hands the whole viewport once
+   everything else is hidden. */
 .cardExpanded {
-  width: 100vw;
+  --gutter: 12px;
+  width: calc(100vw - 2 * var(--gutter));
   height: 100%;
-  margin-inline: calc(50% - 50vw);
-  border-inline: 0;
+  margin-inline: calc(50% - 50vw + var(--gutter));
 }
 
 .actions {
