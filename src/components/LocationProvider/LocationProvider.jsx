@@ -28,7 +28,10 @@ export function LocationProvider({ children }) {
   const [localError, setLocalError] = useState(null);
   const [loadingLocal, setLoadingLocal] = useState(false);
   const [people, setPeople] = useState([]);
+  const [posts, setPosts] = useState([]);
+  const [postsError, setPostsError] = useState(null);
   const requestRef = useRef(0);
+  const postsRequestRef = useRef(0);
 
   // A grant the browser already remembers means no gate screen at all: the app
   // opens straight onto the dashboard with a fix on its way.
@@ -92,6 +95,36 @@ export function LocationProvider({ children }) {
     }
   }, []);
 
+  // Posts belong to the ground rather than to the reader, which makes them a
+  // reading of the fix like the place name and the weather are — so they are
+  // held here rather than on the two pages that draw them. That is also what
+  // lets the refresh in the top bar reach them: the button is in the header, and
+  // the header has no idea which page is under it.
+  //
+  // With no fix there is still an answer worth having, so this asks either way;
+  // the server falls back to the newest posts anywhere.
+  const loadPosts = useCallback(async (coords) => {
+    const ticket = ++postsRequestRef.current;
+    try {
+      const data = await api.getPosts(coords);
+      // A slower earlier request must not overwrite a newer answer — two
+      // triggers reach this, the fix moving and the reader asking.
+      if (ticket !== postsRequestRef.current) return;
+      setPosts(data.posts ?? []);
+      setPostsError(null);
+    } catch (error) {
+      if (ticket !== postsRequestRef.current) return;
+      // Kept rather than swallowed: a page that says "nothing around here" when
+      // the request actually failed is telling the reader something untrue.
+      setPostsError(error);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!username) return;
+    loadPosts(getLocationState().coords);
+  }, [key, username, loadPosts]);
+
   // One turn of the loop: read the sensor again, then trade. Skipped while the
   // tab is in the background — a hidden map is not worth waking the GPS for,
   // and the server drops a position that stops arriving soon enough anyway.
@@ -125,22 +158,38 @@ export function LocationProvider({ children }) {
     const result = await refreshLocation();
     const coords = getLocationState().coords;
     if (coords) await load(coords);
-    // Asking for a fresh fix by hand is also asking for a fresh map
+    // Asking for a fresh fix by hand is asking for a fresh map with it: who else
+    // is out there, and what has been left on the ground since. Neither is
+    // waited on — the button is done once the fix is in, and the pins arrive
+    // when they arrive.
     syncPeople(coords);
+    loadPosts(coords);
     return result;
-  }, [load, syncPeople]);
+  }, [load, syncPeople, loadPosts]);
+
+  // A post the reader just wrote or just deleted, into the list without a round
+  // trip: they are looking at the spot it is about.
+  const addPost = useCallback((post) => setPosts((current) => [post, ...current]), []);
+  const dropPost = useCallback(
+    (postId) => setPosts((current) => current.filter((post) => post.id !== postId)),
+    [],
+  );
 
   const value = {
     ...position,
     place: local?.place ?? null,
     weather: local?.weather ?? null,
     people,
+    posts,
+    postsError,
     localError,
     loadingLocal,
     enable: enableLocation,
     disable: disableLocation,
     refresh,
     reloadLocal: () => load(getLocationState().coords),
+    addPost,
+    dropPost,
   };
 
   return <LocationContext.Provider value={value}>{children}</LocationContext.Provider>;

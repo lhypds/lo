@@ -60,10 +60,19 @@ const METERS_PER_DEGREE_LAT = 110574;
 // What that costs is the size: a marker is sized in pixels, so the map has to
 // be asked how many of them a metre is worth whenever the scale changes, where
 // a fill layer got that for free.
+// The circle hangs off a wrapper with no size at all, and it is the wrapper that
+// is the marker. Mapbox writes `pointer-events: auto` straight onto the element
+// it was handed, inline, where no class can outrank it — so the halo, which is
+// the widest thing on the map, swallowed every press meant for the pins beneath
+// it. A wrapper with no box catches nothing, and the circle inside it is left
+// deaf by the stylesheet.
 function haloElement() {
-  const halo = document.createElement("div");
-  halo.className = styles.halo;
-  return halo;
+  const wrapper = document.createElement("div");
+  wrapper.className = styles.halo;
+  const disc = document.createElement("div");
+  disc.className = styles.haloDisc;
+  wrapper.append(disc);
+  return wrapper;
 }
 
 // Asked of the projection rather than worked out from the zoom, so it stays
@@ -99,13 +108,11 @@ function personElement(username, self = false) {
 // of the map that isn't there. What the pin has to say is "a mark is here", and
 // the name is a tap away in the popup.
 //
-// It says it with the drawing the rest of the app marks a spot with — the
-// button on the dashboard, the link in the top bar — where a post, which has no
-// drawing of its own anywhere, keeps its letter.
-// The same pin the button on the dashboard is drawn with, and the same one in
-// the top bar — one shape for "a mark", wherever it turns up. It stands on its
-// own here with no box behind it: the square it used to sit in was a second
-// shape competing with the one that means something.
+// It says it with the drawing the rest of the app marks a spot with — the button
+// on the dashboard, the link in the top bar, all three from one path — where a
+// post, which has no drawing of its own anywhere, keeps its letter. It stands on
+// its own with no box behind it: the square it used to sit in was a second shape
+// competing with the one that means something.
 //
 // What the map adds is where the point goes. The grid runs to 24 and the point
 // is at 21, so a marker anchored by the bottom of its box would hang the pin
@@ -183,6 +190,7 @@ export default function MapCard({
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const hereMarkerRef = useRef(null);
+  const haloMarkerRef = useRef(null);
   const peopleMarkersRef = useRef([]);
   const markMarkersRef = useRef([]);
   const postMarkersRef = useRef([]);
@@ -235,25 +243,9 @@ export default function MapCard({
 
     map.on("style.load", () => {
       map.setLanguage(mapLanguage(i18n.language));
-      if (!map.getSource(ACCURACY_SOURCE)) {
-        map.addSource(ACCURACY_SOURCE, { type: "geojson", data: EMPTY_GEOJSON });
-        map.addLayer({
-          id: ACCURACY_FILL,
-          type: "fill",
-          source: ACCURACY_SOURCE,
-          paint: { "fill-color": "#000000", "fill-opacity": 0.06 },
-        });
-        map.addLayer({
-          id: ACCURACY_LINE,
-          type: "line",
-          source: ACCURACY_SOURCE,
-          paint: { "line-color": "#000000", "line-width": 1, "line-opacity": 0.35 },
-        });
-      }
-      // Added after the halo so the route draws over it, and in two passes so
-      // the line keeps its edges over dark ground as well as light: the white
-      // casing underneath is what a single black stroke has no way of getting
-      // over a park, a river, or satellite imagery.
+      // In two passes so the line keeps its edges over dark ground as well as
+      // light: the white casing underneath is what a single black stroke has no
+      // way of getting over a park, a river, or satellite imagery.
       if (!map.getSource(ROUTE_SOURCE)) {
         map.addSource(ROUTE_SOURCE, { type: "geojson", data: EMPTY_GEOJSON });
         map.addLayer({
@@ -277,6 +269,7 @@ export default function MapCard({
       map.remove();
       mapRef.current = null;
       hereMarkerRef.current = null;
+      haloMarkerRef.current = null;
       peopleMarkersRef.current = [];
       markMarkersRef.current = [];
       postMarkersRef.current = [];
@@ -296,7 +289,7 @@ export default function MapCard({
   // "you are here" is only useful if the others say who they are too.
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !coords) return;
+    if (!map || !coords) return undefined;
     const name = user?.username ?? "";
     const position = [coords.longitude, coords.latitude];
     if (!hereMarkerRef.current) {
@@ -308,21 +301,38 @@ export default function MapCard({
       hereMarkerRef.current.getElement().lastElementChild.textContent = formatUsername(name);
     }
 
-    const applyAccuracy = () => {
-      const source = map.getSource(ACCURACY_SOURCE);
-      if (!source) return;
-      source.setData(
-        Number.isFinite(coords.accuracy) && coords.accuracy > 0
-          ? accuracyPolygon(coords.latitude, coords.longitude, coords.accuracy)
-          : EMPTY_GEOJSON,
-      );
+    // No accuracy, no halo: a circle of made-up size is a claim about the fix
+    // that the fix itself is not making.
+    const spread = Number.isFinite(coords.accuracy) && coords.accuracy > 0 ? coords.accuracy : 0;
+    if (!spread) {
+      haloMarkerRef.current?.remove();
+      haloMarkerRef.current = null;
+    } else if (!haloMarkerRef.current) {
+      haloMarkerRef.current = new mapboxgl.Marker({ element: haloElement() })
+        .setLngLat(position)
+        .addTo(map);
+    } else {
+      haloMarkerRef.current.setLngLat(position);
+    }
+
+    // On every frame of a zoom rather than at the end of one: the halo is sized
+    // in pixels, and a circle that only caught up when the gesture finished
+    // would swell with the map and then snap back.
+    const size = () => {
+      const disc = haloMarkerRef.current?.getElement().firstElementChild;
+      if (!disc) return;
+      const diameter = `${haloDiameter(map, coords.latitude, coords.longitude, spread)}px`;
+      disc.style.width = diameter;
+      disc.style.height = diameter;
     };
-    if (map.isStyleLoaded()) applyAccuracy();
-    else map.once("style.load", applyAccuracy);
+    if (spread) size();
+    map.on("zoom", size);
 
     if (followRef.current) {
       map.easeTo({ center: position, zoom: Math.max(map.getZoom(), DEFAULT_ZOOM), duration: 600 });
     }
+
+    return () => map.off("zoom", size);
   }, [coords, user]);
 
   // Everyone else, redrawn wholesale on each round of the minute loop. The list

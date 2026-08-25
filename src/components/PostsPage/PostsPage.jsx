@@ -1,8 +1,7 @@
-import { Suspense, lazy, useCallback, useEffect, useState } from "react";
+import { Suspense, lazy, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
 import { Modal } from "../../ui/index.js";
-import { coordKey, getLocationState } from "../../utils/location.js";
 import { useAuth } from "../AuthProvider/index.js";
 import Header from "../Header/index.js";
 import PostItem from "../PostItem/index.js";
@@ -19,29 +18,16 @@ const MapCard = lazy(() => import("../MapCard/MapCard.jsx"));
 // same rows, and the list underneath is the half of it you can read.
 export default function PostsPage() {
   const { t } = useTranslation();
-  const { coords } = useHere();
+  // The list itself belongs to the provider: it is asked for again when the
+  // ground changes and when the refresh in the top bar is pressed, neither of
+  // which this page is in a position to notice.
+  const { coords, posts, postsError, dropPost } = useHere();
   const { user } = useAuth();
-  const [posts, setPosts] = useState([]);
   const [focus, setFocus] = useState(null);
   const [previewing, setPreviewing] = useState(null);
   const [deleting, setDeleting] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-
-  const load = useCallback(() => {
-    // Read from the store rather than closed over: this runs again when the fix
-    // has moved, and the coords in that render are the ones just superseded.
-    api
-      .getPosts(getLocationState().coords)
-      .then((data) => setPosts(data.posts))
-      .catch((requestError) => setError(requestError.message));
-  }, []);
-
-  // Asked again when the ground changes, not when the sensor twitches. With no
-  // fix at all the key is empty and this runs once, which is the right number of
-  // times to ask for the newest posts anywhere.
-  const key = coordKey(coords);
-  useEffect(load, [key, load]);
 
   async function confirmDelete() {
     if (busy) return;
@@ -49,7 +35,7 @@ export default function PostsPage() {
     setError("");
     try {
       await api.deletePost(deleting.id);
-      setPosts((current) => current.filter((post) => post.id !== deleting.id));
+      dropPost(deleting.id);
       setDeleting(null);
     } catch (requestError) {
       setError(requestError.message);
@@ -94,7 +80,10 @@ export default function PostsPage() {
             ))}
           </ul>
         )}
-        {error && <p className="list-error">{error}</p>}
+        {/* A failed fetch and a failed delete both land here. Without the first
+            of them the page would answer a broken request with "nothing around
+            here", which is a different thing entirely. */}
+        {(error || postsError) && <p className="list-error">{error || postsError.message}</p>}
       </main>
 
       <PostPreview

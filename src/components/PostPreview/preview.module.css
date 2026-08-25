@@ -1,7 +1,7 @@
 .body {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 10px;
 }
 
 .frame {
@@ -35,40 +35,55 @@
 .text {
   margin: 0;
   font-size: 14px;
-  line-height: 1.6;
+  line-height: 1.5;
   /* Line breaks are part of what was written; anything else here was typed as
      one long word and has to be allowed to break */
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 
-.meta {
-  margin: 0;
+/* The facts on the left, the one action on the right, both sitting on the same
+   baseline: the rule above them is what separates the post from what is being
+   said about it, and it is the only rule the sheet needs now that the three
+   labelled rows are two lines. */
+.footer {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 8px;
   border-top: 1px solid var(--ink);
 }
 
-.meta div {
-  display: grid;
-  grid-template-columns: 62px 1fr;
-  gap: 12px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--line);
-  font-size: 12px;
-}
-
-.meta dt {
-  color: var(--muted);
-}
-
-.meta dd {
+.meta {
   min-width: 0;
-  margin: 0;
-  overflow-wrap: anywhere;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
-.away {
-  margin-left: 8px;
+.line {
   color: var(--muted);
   font-family: var(--mono);
   font-size: 10px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.delete {
+  flex: 0 0 auto;
+  height: 24px;
+  padding: 0 10px;
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 12px;
+}
+
+@media (hover: hover) {
+  .delete:hover {
+    background: var(--ink);
+    color: var(--paper);
+  }
 }

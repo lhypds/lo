@@ -232,28 +232,61 @@
   color: #fff;
 }
 
+/* However sure the device is about the fix: a wash and a hairline, sized in
+   pixels by the map (see MapCard.jsx) and centred on the coordinate by the
+   marker itself. It draws over the pins rather than under them — where a fill
+   layer on the canvas had it — and it is see-through in both its parts so what
+   it covers stays legible. Never pressed, and wide enough to cover a good part
+   of the tile, so it takes no pointer either. */
+/* No box of its own: Mapbox marks its markers up as clickable with an inline
+   pointer-events, which a class cannot argue with — so the marker is this empty
+   wrapper and the circle below is a child, out of reach of that. */
+.halo {
+  width: 0;
+  height: 0;
+}
+
+/* Centred on the wrapper's corner, which is the coordinate itself, and sized in
+   pixels from the map (see MapCard.jsx). Deaf to the pointer: it covers a good
+   part of the tile, and everything under it is still to be pressed. */
+.haloDisc {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border: 1px solid rgb(0 0 0 / 0.18);
+  background: rgb(0 0 0 / 0.05);
+  pointer-events: none;
+}
+
 /* What sits over what. Markers are absolutely positioned siblings that Mapbox
    gives no z-index of its own, so without this they stack in the order they
    happened to be added — and the reader's own position, which is the one thing
    on the map that is about them, ends up under whichever pin was drawn last.
    The order runs by how alive a thing is: ground that was left here, then the
-   people standing on it, then you. The popup clears all of them, or opening one
-   would put it behind the pin it belongs to. */
+   doubt about where the reader is standing, then the people standing on it,
+   then the reader. The popup clears all of them, or opening one would put it
+   behind the pin it belongs to. */
 .postDot,
 .markPin {
   z-index: 1;
 }
 
-.person {
+.halo {
   z-index: 2;
 }
 
-.personSelf {
+.person {
   z-index: 3;
 }
 
-.wrapper :global(.mapboxgl-popup) {
+.personSelf {
   z-index: 4;
+}
+
+.wrapper :global(.mapboxgl-popup) {
+  z-index: 5;
 }
 
 /* Mapbox's own chrome, squared off to match everything around it */

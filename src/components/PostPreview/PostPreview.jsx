@@ -44,31 +44,31 @@ export default function PostPreview({ post, from, onClose, onDelete }) {
 
           {post.body && <p className={styles.text}>{post.body}</p>}
 
-          <dl className={styles.meta}>
-            <div>
-              <dt>{t("post.by")}</dt>
-              <dd>{formatUsername(post.username)}</dd>
-            </div>
-            <div>
-              <dt>{t("post.where")}</dt>
-              <dd>
-                {post.place || formatCoords(post.latitude, post.longitude)}
-                {away && <span className={styles.away}>{t("marks.distance", { distance: away })}</span>}
-              </dd>
-            </div>
-            <div>
-              <dt>{t("post.when")}</dt>
-              <dd>
+          {/* Who, where and when as two lines of mono rather than as a labelled
+              table of three rows — the same three facts the row in the list
+              carries, in the same shape, and a third of the height. Nothing here
+              needs a label: an @name is a name and a timestamp is a time. */}
+          <div className={styles.footer}>
+            <span className={styles.meta}>
+              <span className={styles.line}>
+                {[formatUsername(post.username), post.place || formatCoords(post.latitude, post.longitude)]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </span>
+              <span className={styles.line}>
                 <time dateTime={post.time}>{formatDateTime(post.time, i18n.language)}</time>
-              </dd>
-            </div>
-          </dl>
-
-          {mine && (
-            <button type="button" className="outline-button" onClick={() => onDelete(post)}>
-              {t("post.delete")}
-            </button>
-          )}
+                {away && ` · ${t("marks.distance", { distance: away })}`}
+              </span>
+            </span>
+            {/* Bottom right, and only as wide as the word: a full-width bar
+                across the foot of the sheet reads as the thing to press on the
+                way out, which is the last thing deleting should look like. */}
+            {mine && (
+              <button type="button" className={styles.delete} onClick={() => onDelete(post)}>
+                {t("post.delete")}
+              </button>
+            )}
+          </div>
         </div>
       )}
     </Modal>

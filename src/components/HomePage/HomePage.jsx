@@ -1,8 +1,8 @@
-import { Suspense, lazy, useCallback, useEffect, useState } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
 import { Modal, showToast } from "../../ui/index.js";
-import { coordKey, getLocationState } from "../../utils/location.js";
+import { getLocationState } from "../../utils/location.js";
 import ClockCard from "../ClockCard/index.js";
 import EventsCard from "../EventsCard/index.js";
 import Header from "../Header/index.js";
@@ -23,10 +23,12 @@ const MapCard = lazy(() => import("../MapCard/MapCard.jsx"));
 
 export default function HomePage() {
   const { t } = useTranslation();
-  const { coords, place, refresh } = useHere();
+  // Posts come from the provider rather than from here: they are a reading of
+  // the fix, like the place name is, and the refresh in the top bar has to be
+  // able to reach them without knowing which page it is sitting on.
+  const { coords, place, refresh, posts, addPost, dropPost } = useHere();
   // Held here, not in the map: expanding it hides the rest of the dashboard.
   const [mapExpanded, setMapExpanded] = useState(false);
-  const [posts, setPosts] = useState([]);
   const [marks, setMarks] = useState([]);
   // The fix the hold was made on, which is also what says the sheet is open —
   // a post belongs to the spot its writer was standing on when they started it,
@@ -35,21 +37,6 @@ export default function HomePage() {
   const [previewing, setPreviewing] = useState(null);
   const [deleting, setDeleting] = useState(null);
   const [busy, setBusy] = useState(false);
-
-  const loadPosts = useCallback(() => {
-    api
-      .getPosts(getLocationState().coords)
-      .then((data) => setPosts(data.posts))
-      // A map short of a few pins is still a map; there is nothing here the
-      // reader could do about it either.
-      .catch(() => {});
-  }, []);
-
-  const key = coordKey(coords);
-  useEffect(() => {
-    if (!key) return;
-    loadPosts();
-  }, [key, loadPosts]);
 
   // Marks are yours and are the same list wherever you are standing, so unlike
   // posts they are asked for once rather than again on every move. The button
@@ -79,7 +66,7 @@ export default function HomePage() {
     setComposing(null);
     // Straight onto the map rather than through a refetch: the writer is
     // looking at the spot they just posted about.
-    setPosts((current) => [post, ...current]);
+    addPost(post);
     showToast(t("post.posted"), 1800);
   }
 
@@ -88,7 +75,7 @@ export default function HomePage() {
     setBusy(true);
     try {
       await api.deletePost(deleting.id);
-      setPosts((current) => current.filter((post) => post.id !== deleting.id));
+      dropPost(deleting.id);
       setDeleting(null);
     } catch (error) {
       showToast(error.message);
