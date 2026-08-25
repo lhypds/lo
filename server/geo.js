@@ -499,6 +499,18 @@ const WARN_TTL_MS = 5 * 60 * 1000;
 // too big for one and comes in four. 道央 leads: Sapporo and a third of the
 // prefecture's people are in it, so most fixes match on the first page fetched.
 const HOKKAIDO_PAGES = ["1b", "1a", "1c", "1d"];
+const WARN_REGIONS = [
+  { name: "北海道", prefectures: [1], pages: HOKKAIDO_PAGES },
+  { name: "東北", prefectures: [2, 3, 5, 4, 6, 7] },
+  { name: "関東", prefectures: [9, 8, 10, 11, 19, 13, 14, 12] },
+  { name: "信越", prefectures: [15, 20] },
+  { name: "北陸", prefectures: [17, 16, 18] },
+  { name: "東海", prefectures: [21, 22, 24, 23] },
+  { name: "近畿", prefectures: [27, 28, 26, 25, 29, 30] },
+  { name: "中国", prefectures: [32, 31, 34, 33, 35] },
+  { name: "四国", prefectures: [38, 37, 39, 36] },
+  { name: "九州・沖縄", prefectures: [41, 40, 42, 44, 43, 45, 47, 46] },
+];
 
 // Yahoo files the bands in four lists — emgWarningList, urgentWarningList,
 // warningList, advisoryList, in that order, which is the order the four capture
@@ -556,6 +568,18 @@ function warnPages(subdivisionCode) {
   return prefecture >= 2 && prefecture <= 47 ? [String(prefecture)] : [];
 }
 
+function warnRegion(subdivisionCode) {
+  const match = /^JP-(\d{2})$/.exec(firstString(subdivisionCode).toUpperCase());
+  if (!match) return null;
+  const prefecture = Number(match[1]);
+  const region = WARN_REGIONS.find((candidate) => candidate.prefectures.includes(prefecture));
+  if (!region) return null;
+  return {
+    name: region.name,
+    pages: region.pages ?? region.prefectures.map(String),
+  };
+}
+
 // Yahoo names a municipality the way the country files it, which is sometimes the
 // city whole (京都市, 札幌市) and sometimes the ward inside it (広島市中区, 渋谷区).
 // The geocoder hands those back in two pieces, so the pair is tried first and
@@ -593,13 +617,54 @@ function prefectureSummary(areas) {
   for (const area of areas) {
     for (const item of area.items) {
       const key = `${item.severity}:${item.name}`;
-      counts.set(key, { ...item, areas: (counts.get(key)?.areas ?? 0) + 1 });
+      const current = counts.get(key);
+      counts.set(key, {
+        ...item,
+        areas: (current?.areas ?? 0) + 1,
+        areaNames: [...(current?.areaNames ?? []), area.name],
+      });
     }
   }
   return [...counts.values()].sort(
     (a, b) =>
       WARN_SEVERITIES.indexOf(a.severity) - WARN_SEVERITIES.indexOf(b.severity) || b.areas - a.areas,
   );
+}
+
+function prefectureWarningResult(searched, prefecture) {
+  const areas = searched.flatMap((entry) => entry.areas);
+  const items = prefectureSummary(areas);
+  return {
+    covered: true,
+    scope: "prefecture",
+    area: prefecture,
+    prefecture,
+    issuedAt: areas.find((area) => area.issuedAt)?.issuedAt ?? null,
+    url: `${WARN_HOST}/${searched[0].page}/`,
+    areaCount: areas.length,
+    items,
+  };
+}
+
+async function regionWarningResult(region, searched) {
+  const byPage = new Map(searched.map((entry) => [entry.page, entry.areas]));
+  for (const page of region.pages) {
+    if (byPage.has(page)) continue;
+    const areas = await fetchWarnPage(page).catch(() => null);
+    if (areas) byPage.set(page, areas);
+  }
+  const regionSearched = region.pages.map((page) => ({ page, areas: byPage.get(page) })).filter((entry) => entry.areas);
+  const areas = regionSearched.flatMap((entry) => entry.areas);
+  const items = prefectureSummary(areas);
+  return {
+    covered: true,
+    scope: "region",
+    area: region.name,
+    issuedAt: areas.find((area) => area.issuedAt)?.issuedAt ?? null,
+    url: `${WARN_HOST}/`,
+    areaCount: areas.length,
+    items,
+  };
 }
 
 export function lookupWarnings(latitude, longitude) {
@@ -612,7 +677,8 @@ export function lookupWarnings(latitude, longitude) {
     if (pages.length === 0) return { covered: false, items: [] };
 
     const names = municipalityNames(place);
-    const prefecture = firstString(place.region, place.name);
+    const prefecture = firstString(place?.region, place?.name);
+    const region = warnRegion(place?.subdivisionCode);
     const searched = [];
 
     for (const page of pages) {
@@ -621,6 +687,7 @@ export function lookupWarnings(latitude, longitude) {
       searched.push({ page, areas });
       const area = matchArea(areas, names);
       if (!area) continue;
+      if (area.items.length === 0 && region) return regionWarningResult(region, searched);
       return {
         covered: true,
         scope: "municipality",
@@ -640,16 +707,6 @@ export function lookupWarnings(latitude, longitude) {
     // "all clear", which is the one wrong answer a warnings card can give.
     if (searched.length === 0) throw new Error("typhoon.yahoo.co.jp returned no warnings");
 
-    const areas = searched.flatMap((entry) => entry.areas);
-    return {
-      covered: true,
-      scope: "prefecture",
-      area: prefecture,
-      prefecture,
-      issuedAt: areas.find((area) => area.issuedAt)?.issuedAt ?? null,
-      url: `${WARN_HOST}/${searched[0].page}/`,
-      areaCount: areas.length,
-      items: prefectureSummary(areas),
-    };
+    return prefectureWarningResult(searched, prefecture);
   });
 }

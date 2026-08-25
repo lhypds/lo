@@ -70,30 +70,48 @@ export default function Warnings() {
   } else {
     body = (
       <ul className={styles.list}>
-        {items.map((item) => {
+        {items.map((item, index) => {
           const kindKey = warningKindKey(item.name);
+          const itemKey = `${item.severity}:${item.name}:${index}`;
+          const areaNames = item.areaNames?.length ? item.areaNames : [result.area].filter(Boolean);
+          const areaPreview = areaNames.slice(0, 8).join("、");
+          const remainingAreas = areaNames.length - 8;
           return (
             <li
-              key={`${item.severity}:${item.name}`}
+              key={itemKey}
               className={item.severity === "emergency" ? styles.gravest : undefined}
             >
-              {/* Filled for anything at warning strength, hollow for an
-                  advisory: the word beside it is the claim, this is only what
-                  the eye catches first. */}
-              <span
-                className={item.severity === "advisory" ? styles.markHollow : styles.mark}
-                aria-hidden="true"
-              />
-              <span className={styles.kind}>{kindKey ? t(kindKey) : item.name}</span>
-              {/* A prefecture-wide answer, because the fix could not be pinned to
-                  one of its municipalities — so each row says how much of the
-                  prefecture it actually covers rather than implying all of it. */}
-              {item.areas != null && (
-                <span className={styles.areas}>
-                  {item.areas}/{result.areaCount}
-                </span>
-              )}
-              <span className={styles.severity}>{t(`warnings.severity.${item.severity}`)}</span>
+              <div
+                className={styles.row}
+              >
+                {/* Filled for anything at warning strength, hollow for an
+                    advisory: the word beside it is the claim, this is only what
+                    the eye catches first. */}
+                <span
+                  className={item.severity === "advisory" ? styles.markHollow : styles.mark}
+                  aria-hidden="true"
+                />
+                <span className={styles.kind}>{kindKey ? t(kindKey) : item.name}</span>
+                {/* A wider answer, because the fix had no local warning — so each
+                    row says how much of that wider area it actually covers. */}
+                {item.areas != null && (
+                  <span className={styles.areas}>
+                    {item.areas}/{result.areaCount}
+                  </span>
+                )}
+                <span className={styles.severity}>{t(`warnings.severity.${item.severity}`)}</span>
+              </div>
+              <div className={styles.detail}>
+                {areaPreview && (
+                  <p>
+                    {areaPreview}
+                    {remainingAreas > 0 ? ` +${remainingAreas}` : ""}
+                  </p>
+                )}
+                <a href={result.url} target="_blank" rel="noreferrer noopener">
+                  {t("warnings.source")}
+                </a>
+              </div>
             </li>
           );
         })}

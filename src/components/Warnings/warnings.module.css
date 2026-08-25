@@ -23,14 +23,21 @@
 }
 
 .list li {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 7px 10px;
+  display: block;
 }
 
 .list li + li {
   border-top: 1px solid var(--line);
+}
+
+.row {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  color: inherit;
+  text-align: left;
 }
 
 /* 特別警報 is the top of the scale and the one the whole card exists for: the row
@@ -78,7 +85,8 @@
 }
 
 .gravest .areas,
-.gravest .severity {
+.gravest .severity,
+.gravest .detail {
   color: var(--paper);
 }
 
@@ -89,6 +97,22 @@
   color: var(--muted);
   font-family: var(--mono);
   font-size: 10px;
+}
+
+.detail {
+  padding: 0 10px 8px 25px;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.detail p {
+  margin: 0 0 3px;
+}
+
+.detail a {
+  color: inherit;
+  font-family: var(--mono);
 }
 
 /* Nothing in force, still checking, or unreachable — all three are one quiet
