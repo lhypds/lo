@@ -15,7 +15,7 @@ function coordKey(coords) {
 
 export default function NearbyCard() {
   const { t, i18n } = useTranslation();
-  const { coords } = useHere();
+  const { coords, reloadToken } = useHere();
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -43,9 +43,10 @@ export default function NearbyCard() {
         if (ticket === requestRef.current) setLoading(false);
       });
     // The fix jitters constantly; the rounded key and the language are the only
-    // things that make this a different question.
+    // things that make this a different question — and the token, which is the
+    // reader saying they want the answer again regardless.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, language]);
+  }, [key, language, reloadToken]);
 
   const items = result?.items ?? [];
   // GDELT answers with articles; when it has nothing for this corner of the map

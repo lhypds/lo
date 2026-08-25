@@ -12,7 +12,7 @@
     "posts": "posts",
     "marks": "Marks",
     "account": "Account",
-    "refresh": "Update location"
+    "refresh": "Refresh"
   },
   "auth": {
     "tagline": "Where you are, right now.",
@@ -142,6 +142,9 @@
     "saving": "Saving",
     "saved": "Marked",
     "undo": "Undo",
+    "edit": "Edit",
+    "or": "or",
+    "nameTitle": "Name this spot",
     "removed": "Removed",
     "needsLocation": "Turn on location first",
     "namePlaceholder": "Name this spot (optional)",
@@ -188,6 +191,12 @@
     "title": "posts",
     "subtitle": "what is around you",
     "empty": "No posts around here yet"
+  },
+  "search": {
+    "marks": "Search your marks",
+    "posts": "Search these posts",
+    "clear": "Clear search",
+    "empty": "Nothing matches “{{query}}”"
   },
   "time": {
     "justNow": "just now"

@@ -14,7 +14,7 @@ function coordKey(coords) {
 
 export default function TrendsCard() {
   const { t, i18n } = useTranslation();
-  const { coords } = useHere();
+  const { coords, reloadToken } = useHere();
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -42,7 +42,7 @@ export default function TrendsCard() {
         if (ticket === requestRef.current) setLoading(false);
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, language]);
+  }, [key, language, reloadToken]);
 
   // Google rounds search volume down to a floor — 200+, 20000+ — so the number
   // is an order of magnitude and is shown as one, with the + it arrived with.

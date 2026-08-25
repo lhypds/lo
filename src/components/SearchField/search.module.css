@@ -1,0 +1,73 @@
+/* Black, like every other box in the app that is there to be used: the field is
+   drawn in the ink the rows are written in, not in the grey they are divided by.
+   It is also the line under the heading now — the heading has none of its own,
+   and two rules that close to each other were one too many. */
+.field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  margin: 8px 0 2px;
+  padding: 0 8px;
+  border: 1px solid var(--ink);
+  background: var(--paper);
+}
+
+/* Focus is drawn on the box, not on the input inside it: the whole strip is the
+   field as far as the reader is concerned, and the app takes the browser's own
+   ring off everything. An inset line rather than a wider border, so the edge
+   thickens where it stands instead of nudging the row below it. */
+.field:focus-within {
+  box-shadow: inset 0 0 0 1px var(--ink);
+}
+
+.glyph {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+
+.input {
+  min-width: 0;
+  flex: 1;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 12px;
+  /* Same as the rows, so what is typed and what it is being matched against are
+     the same size of type */
+  line-height: 1.4;
+}
+
+.input::placeholder {
+  color: var(--muted);
+}
+
+/* The cross this field draws is the cross this field draws — WebKit hangs its
+   own off a search input, in a grey nothing else here uses. */
+.input::-webkit-search-cancel-button,
+.input::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.clear {
+  flex: none;
+  padding: 0 2px;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1;
+}
+
+@media (hover: hover) {
+  .clear:hover {
+    color: var(--ink);
+  }
+}

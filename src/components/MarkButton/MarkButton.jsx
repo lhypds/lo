@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
 import { showToast } from "../../ui/index.js";
 import { MARK_PIN_EYE, MARK_PIN_PATH } from "../../utils/icons.js";
-import { getLocationState } from "../../utils/location.js";
+import { getLocationState, refreshLocation } from "../../utils/location.js";
 import { useHere } from "../LocationProvider/index.js";
+import MarkModal from "../MarkModal/index.js";
 import styles from "./mark.module.css";
 
 const MESSAGE_MS = 6000;
@@ -22,12 +24,16 @@ const LONG_PRESS_SLOP = 10;
 // a post, with words and a photo, left on the map for everyone. Both start from
 // the same gesture on the same square because they are the same question
 // answered at two lengths.
-export default function MarkButton({ onMarked, onUnmarked, onLongPress }) {
+export default function MarkButton({ onMarked, onUnmarked, onRenamed, onLongPress }) {
   const { t } = useTranslation();
-  const { coords, refresh } = useHere();
+  const { coords } = useHere();
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(null);
   const [message, setMessage] = useState("");
+  // The name sheet, open on the mark that was just made. A spot is marked in one
+  // tap and named afterwards if it turns out to be worth a name — this is the
+  // door to that, at the one moment the writer still knows which spot it was.
+  const [editing, setEditing] = useState(false);
   const timerRef = useRef(null);
   const holdRef = useRef(null);
   const originRef = useRef(null);
@@ -117,10 +123,11 @@ export default function MarkButton({ onMarked, onUnmarked, onLongPress }) {
     setMessage("");
     setSaved(null);
     // A tap is also a request for a current position: the mark is stamped with
-    // the freshest fix the device can give, not one from ten minutes ago. That
-    // fix has to be read back from the store — `coords` here is the one this
-    // render closed over, which is exactly the position just superseded.
-    await refresh().catch(() => {});
+    // the freshest fix the device can give, not the one the loop happened to
+    // read twenty seconds ago. That fix has to be read back from the store —
+    // `coords` here is the one this render closed over, which is exactly the
+    // position just superseded.
+    await refreshLocation().catch(() => {});
     // Waiting on the device is the long half of a save and nothing has been
     // sent yet, so a press taken back in this window leaves nothing behind.
     if (runRef.current !== run) return;
@@ -170,8 +177,31 @@ export default function MarkButton({ onMarked, onUnmarked, onLongPress }) {
     }
   }
 
-  // The message is a sibling of the button rather than a child: undo is itself
-  // a button, and one cannot sit inside another.
+  // The row under the button clears itself after a few seconds, and it is the
+  // only way back to the sheet — so the clock stops while the sheet is open and
+  // starts again when it closes, rather than pulling the row out from under a
+  // name still being typed.
+  function openEdit() {
+    if (!saved) return;
+    window.clearTimeout(timerRef.current);
+    setEditing(true);
+  }
+
+  function closeEdit() {
+    setEditing(false);
+    if (saved) scheduleClear();
+  }
+
+  async function rename(label) {
+    const { mark: renamed } = await api.renameMark(saved.id, label);
+    setSaved(renamed);
+    onRenamed?.(renamed);
+    setEditing(false);
+    scheduleClear();
+  }
+
+  // The message is a sibling of the button rather than a child: edit and undo
+  // are themselves buttons, and one cannot sit inside another.
   return (
     <div className={styles.tile}>
       <button
@@ -212,7 +242,11 @@ export default function MarkButton({ onMarked, onUnmarked, onLongPress }) {
         {saved ? (
           <>
             {message} (
-            <button type="button" className={styles.undo} onClick={undo}>
+            <button type="button" className={styles.action} onClick={openEdit}>
+              {t("mark.edit")}
+            </button>{" "}
+            {t("mark.or")}{" "}
+            <button type="button" className={styles.action} onClick={undo}>
               {t("mark.undo")}
             </button>
             )
@@ -221,6 +255,21 @@ export default function MarkButton({ onMarked, onUnmarked, onLongPress }) {
           message
         )}
       </p>
+
+      {/* Out to the body, because the tile is a query container: containment
+          makes it the containing block for anything fixed inside it, and the
+          sheet would be laid out across this square instead of the window. */}
+      {createPortal(
+        <MarkModal
+          isOpen={editing}
+          title={t("mark.nameTitle")}
+          submitLabel={t("common.save")}
+          initialValue={saved?.label ?? ""}
+          onClose={closeEdit}
+          onSubmit={rename}
+        />,
+        document.body,
+      )}
     </div>
   );
 }

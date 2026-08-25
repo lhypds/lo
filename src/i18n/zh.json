@@ -12,7 +12,7 @@
     "posts": "posts",
     "marks": "记录",
     "account": "账号",
-    "refresh": "更新定位"
+    "refresh": "刷新"
   },
   "auth": {
     "tagline": "此刻，你在哪里。",
@@ -142,6 +142,9 @@
     "saving": "保存中",
     "saved": "已记录",
     "undo": "撤销",
+    "edit": "编辑",
+    "or": "或",
+    "nameTitle": "为这个位置命名",
     "removed": "已删除",
     "needsLocation": "请先开启定位",
     "namePlaceholder": "为这个位置命名（可选）",
@@ -188,6 +191,12 @@
     "title": "posts",
     "subtitle": "附近的 post",
     "empty": "附近还没有 post"
+  },
+  "search": {
+    "marks": "搜索你的记录",
+    "posts": "搜索这些 post",
+    "clear": "清除搜索",
+    "empty": "没有匹配“{{query}}”的结果"
   },
   "time": {
     "justNow": "刚刚"

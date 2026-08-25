@@ -12,7 +12,7 @@
     "posts": "posts",
     "marks": "記録",
     "account": "アカウント",
-    "refresh": "現在地を更新"
+    "refresh": "更新"
   },
   "auth": {
     "tagline": "いま、あなたのいる場所。",
@@ -142,6 +142,9 @@
     "saving": "保存中",
     "saved": "記録しました",
     "undo": "取り消す",
+    "edit": "編集",
+    "or": "または",
+    "nameTitle": "この場所に名前をつける",
     "removed": "削除しました",
     "needsLocation": "先に位置情報をオンにしてください",
     "namePlaceholder": "この場所に名前をつける（任意）",
@@ -188,6 +191,12 @@
     "title": "posts",
     "subtitle": "近くの post",
     "empty": "近くにまだ post はありません"
+  },
+  "search": {
+    "marks": "記録を検索",
+    "posts": "この post を検索",
+    "clear": "検索をクリア",
+    "empty": "「{{query}}」に一致するものはありません"
   },
   "time": {
     "justNow": "たった今"

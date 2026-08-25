@@ -9,18 +9,22 @@ import LanguageSwitcher from "../LanguageSwitcher/index.js";
 export default function Header({ back = false, backTo = "/" }) {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const { status, coords, refresh } = useHere();
+  const { coords, refresh } = useHere();
   const navigate = useNavigate();
   const [refreshing, setRefreshing] = useState(false);
 
+  // Everything on the page, asked again. Not the position — that keeps itself
+  // current on its own beat, and a button that only re-read the sensor would be
+  // the one thing on the dashboard the reader never needs to press.
   async function handleRefresh() {
     if (refreshing) return;
     setRefreshing(true);
-    await refresh();
-    setRefreshing(false);
+    try {
+      await refresh();
+    } finally {
+      setRefreshing(false);
+    }
   }
-
-  const locating = refreshing || status === "locating";
 
   return (
     <header className="topbar">
@@ -42,8 +46,8 @@ export default function Header({ back = false, backTo = "/" }) {
       </span>
       <span className="topbar-action-slot topbar-action-slot-right">
         {coords && (
-          <ActionButton tooltip={t("header.refresh")} onClick={handleRefresh} disabled={locating}>
-            <svg viewBox="0 0 24 24" className={locating ? "spinning" : undefined}>
+          <ActionButton tooltip={t("header.refresh")} onClick={handleRefresh} disabled={refreshing}>
+            <svg viewBox="0 0 24 24" className={refreshing ? "spinning" : undefined}>
               <path d="M21 12a9 9 0 1 1-2.64-6.36" />
               <path d="M21 3v6h-6" />
             </svg>

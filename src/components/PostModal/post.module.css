@@ -37,9 +37,15 @@
    sheet is a note being scribbled, not a document — and at 12px the whole of a
    500-character post is on screen at once, which is the length it is being
    written against. It is read back larger than it is written; the preview is
-   where the words are given room. */
-.text {
+   where the words are given room.
+
+   The inset is pulled in with it: the house field's 10/12 is sized for type a
+   size up, and at 12px it reads as a margin around the words rather than as the
+   edge of the field. Written under .form so it outranks the house rule whatever
+   order the two sheets land in. */
+.form .text {
   min-height: 96px;
+  padding: 6px 8px;
   font-size: 12px;
 }
 

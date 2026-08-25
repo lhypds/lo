@@ -96,7 +96,10 @@
   pointer-events: none;
 }
 
-.undo {
+/* Naming the spot and taking it back: the two things there are to say about a
+   mark in the seconds after it is made, drawn as words in the row rather than
+   as buttons — the tile has one button on it, and this is its footnote. */
+.action {
   padding: 0;
   border: none;
   background: none;

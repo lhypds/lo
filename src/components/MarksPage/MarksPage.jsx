@@ -1,10 +1,13 @@
-import { Suspense, lazy, useCallback, useEffect, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
 import { Modal } from "../../ui/index.js";
+import { formatCoords } from "../../utils/format.js";
+import { filterBy } from "../../utils/search.js";
 import Header from "../Header/index.js";
 import MarkItem from "../MarkItem/index.js";
 import MarkModal from "../MarkModal/index.js";
+import SearchField from "../SearchField/index.js";
 import { useHere } from "../LocationProvider/index.js";
 
 // For the same reason the home page loads it lazily: mapbox-gl is by far the
@@ -17,8 +20,9 @@ const MapCard = lazy(() => import("../MapCard/MapCard.jsx"));
 // the other half of that same question.
 export default function MarksPage() {
   const { t } = useTranslation();
-  const { coords } = useHere();
+  const { coords, reloadToken } = useHere();
   const [marks, setMarks] = useState([]);
+  const [query, setQuery] = useState("");
   const [focus, setFocus] = useState(null);
   const [renaming, setRenaming] = useState(null);
   const [deleting, setDeleting] = useState(null);
@@ -32,7 +36,9 @@ export default function MarksPage() {
       .catch((requestError) => setError(requestError.message));
   }, []);
 
-  useEffect(load, [load]);
+  // Again on the refresh in the top bar: the list is yours and can have grown on
+  // another device since this page was opened.
+  useEffect(load, [load, reloadToken]);
 
   async function rename(label) {
     const { mark } = await api.renameMark(renaming.id, label);
@@ -57,12 +63,30 @@ export default function MarksPage() {
 
   const deletingName = deleting?.label || deleting?.place || t("marks.unnamed");
 
+  // What each row shows is what it is searched by, the coordinates included: an
+  // unnamed spot has nothing else written on it, and they are what the row is
+  // wearing until somebody gives it a name.
+  const shown = useMemo(
+    () =>
+      filterBy(marks, query, (mark) => [
+        mark.label,
+        mark.place,
+        formatCoords(mark.latitude, mark.longitude),
+      ]),
+    [marks, query],
+  );
+
   return (
     <div className="page-shell marks-page">
       <Header back />
       <div className="marks-map">
         <Suspense fallback={<div className="marks-map-placeholder" />}>
-          <MapCard fitMarks marks={marks} focus={focus} />
+          {/* The map narrows with the list: they are two halves of one answer,
+              and a search that left every pin standing would be showing spots
+              the list has just said are not the ones. The fit happens once, on
+              the first list that had anything in it, so typing thins the pins
+              out where they stand rather than throwing the view about. */}
+          <MapCard fitMarks marks={shown} focus={focus} />
         </Suspense>
       </div>
       <main className="marks-list">
@@ -71,13 +95,21 @@ export default function MarksPage() {
             <h1>{t("marks.title")}</h1>
             <p className="section-subtitle">{t("marks.subtitle")}</p>
           </div>
-          <span>{marks.length}</span>
+          {/* Both numbers while a search is running: how many answered it, out
+              of how many there are to answer it. */}
+          <span>{query.trim() ? `${shown.length}/${marks.length}` : marks.length}</span>
         </div>
+        {/* Nothing to search until there is something to search through */}
+        {marks.length > 0 && (
+          <SearchField value={query} onChange={setQuery} placeholder={t("search.marks")} />
+        )}
         {marks.length === 0 ? (
           <p className="empty-state">{t("marks.empty")}</p>
+        ) : shown.length === 0 ? (
+          <p className="empty-state">{t("search.empty", { query: query.trim() })}</p>
         ) : (
           <ul className="mark-list">
-            {marks.map((mark) => (
+            {shown.map((mark) => (
               <MarkItem
                 key={mark.id}
                 mark={mark}

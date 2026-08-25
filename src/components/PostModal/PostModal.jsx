@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
 import { Modal, TextArea } from "../../ui/index.js";
 import { formatCoords } from "../../utils/format.js";
-import { compressToWebp, uploadImage } from "../../utils/image.js";
+import { compressToWebp, preload, uploadImage } from "../../utils/image.js";
 import styles from "./post.module.css";
 
 const BODY_MAX = 500;
@@ -77,6 +77,11 @@ export default function PostModal({ isOpen, coords, place, onClose, onCreated })
       const { blob, width, height } = await compressToWebp(file);
       setStage("uploading");
       const uploaded = await uploadImage(blob);
+      // The button goes on saying Uploading until the picture can be painted,
+      // not merely until the bytes have landed. Swapping it for the frame the
+      // moment the server answers puts an empty bordered line on the sheet for
+      // however long the fetch back takes, and the sheet jumps when it fills.
+      await preload(uploaded.url);
       setImage({ name: uploaded.name, url: uploaded.url, width, height });
     } catch (uploadError) {
       setError(uploadError.message || t("post.uploadFailed"));
@@ -203,7 +208,11 @@ export default function PostModal({ isOpen, coords, place, onClose, onCreated })
             {/* The picture is the post's own content, and the stored name is a
                 digest — there is nothing to read out that the post does not
                 already say. */}
-            <img className={styles.image} src={image.url} alt="" />
+            {/* Sized from the compressed photo's own dimensions, as in the
+                preview: the frame then holds the picture's box from the first
+                frame it exists, so nothing collapses to a line if the bytes
+                have to be fetched again. */}
+            <img className={styles.image} src={image.url} alt="" width={image.width} height={image.height} />
             <button type="button" className={styles.remove} onClick={() => setImage(null)} disabled={busy}>
               {t("post.removePhoto")}
             </button>

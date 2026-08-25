@@ -14,7 +14,7 @@ function coordKey(coords) {
 
 export default function EventsCard() {
   const { t, i18n } = useTranslation();
-  const { coords } = useHere();
+  const { coords, reloadToken } = useHere();
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -42,9 +42,10 @@ export default function EventsCard() {
         if (ticket === requestRef.current) setLoading(false);
       });
     // Same reasoning as the news card: the fix jitters, the rounded key and the
-    // language are the only things that make this a different question.
+    // language are the only things that make this a different question — and the
+    // token, which is the reader asking for it again anyway.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, language]);
+  }, [key, language, reloadToken]);
 
   const items = result?.items ?? [];
 

@@ -178,10 +178,6 @@ a {
   font-size: 15px;
 }
 
-.mark-field input {
-  height: 38px;
-}
-
 .joined-field button {
   width: 90px;
   border: 1px solid var(--ink);
@@ -189,6 +185,22 @@ a {
   color: var(--paper);
   font-size: 13px;
   font-weight: 700;
+}
+
+/* Naming a spot is not signing in. The rule above is sized for the login
+   screen, where the field is the only thing on the page and is meant to be;
+   here it is one row inside a sheet over the map, and at that size it shouts.
+   The post sheet already settled what a sheet's scale is — a 30px slab with
+   its type at 12px, on both the thing pressed and the thing typed in — and two
+   sheets asking for a line of text should not do it in two different voices. */
+.mark-field input {
+  height: 30px;
+  font-size: 12px;
+}
+
+.mark-field button {
+  width: 96px;
+  font-size: 12px;
 }
 
 .form-message {
@@ -488,12 +500,14 @@ a {
   }
 }
 
+/* No rule of its own: the search field under it is a black box the full width of
+   the list, and a line directly above that box was a second edge saying the same
+   thing. The padding stays — it is the gap to whatever comes next. */
 .section-heading {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   padding-bottom: 14px;
-  border-bottom: 1px solid var(--ink);
 }
 
 .section-heading h1 {

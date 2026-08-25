@@ -1,11 +1,14 @@
-import { Suspense, lazy, useState } from "react";
+import { Suspense, lazy, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
 import { Modal } from "../../ui/index.js";
+import { formatUsername } from "../../utils/format.js";
+import { filterBy } from "../../utils/search.js";
 import { useAuth } from "../AuthProvider/index.js";
 import Header from "../Header/index.js";
 import PostItem from "../PostItem/index.js";
 import PostPreview from "../PostPreview/index.js";
+import SearchField from "../SearchField/index.js";
 import { useHere } from "../LocationProvider/index.js";
 
 // For the same reason the other two pages load it lazily: mapbox-gl is by far
@@ -23,6 +26,7 @@ export default function PostsPage() {
   // which this page is in a position to notice.
   const { coords, posts, postsError, dropPost } = useHere();
   const { user } = useAuth();
+  const [query, setQuery] = useState("");
   const [focus, setFocus] = useState(null);
   const [previewing, setPreviewing] = useState(null);
   const [deleting, setDeleting] = useState(null);
@@ -44,12 +48,22 @@ export default function PostsPage() {
     }
   }
 
+  // The words, where they were left, and who left them — the three things a
+  // row says, and the three a post is remembered by. The name is folded in as
+  // it is written on the row, @ and all, so searching for @someone finds them
+  // the way they were read.
+  const shown = useMemo(
+    () => filterBy(posts, query, (post) => [post.body, post.place, formatUsername(post.username)]),
+    [posts, query],
+  );
+
   return (
     <div className="page-shell posts-page">
       <Header back />
       <div className="posts-map">
         <Suspense fallback={<div className="posts-map-placeholder" />}>
-          <MapCard fitMarks posts={posts} focus={focus} onSelectPost={setPreviewing} />
+          {/* Filtered with the list, for the reason the marks map is */}
+          <MapCard fitMarks posts={shown} focus={focus} onSelectPost={setPreviewing} />
         </Suspense>
       </div>
       <main className="posts-list">
@@ -58,13 +72,18 @@ export default function PostsPage() {
             <h1>{t("posts.title")}</h1>
             <p className="section-subtitle">{t("posts.subtitle")}</p>
           </div>
-          <span>{posts.length}</span>
+          <span>{query.trim() ? `${shown.length}/${posts.length}` : posts.length}</span>
         </div>
+        {posts.length > 0 && (
+          <SearchField value={query} onChange={setQuery} placeholder={t("search.posts")} />
+        )}
         {posts.length === 0 ? (
           <p className="empty-state">{t("posts.empty")}</p>
+        ) : shown.length === 0 ? (
+          <p className="empty-state">{t("search.empty", { query: query.trim() })}</p>
         ) : (
           <ul className="post-list">
-            {posts.map((post) => (
+            {shown.map((post) => (
               <PostItem
                 key={post.id}
                 post={post}

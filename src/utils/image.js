@@ -73,6 +73,29 @@ export async function compressToWebp(file, { quality = 0.82, maxSize = 1600 } = 
   }
 }
 
+// Holds until the browser has the picture at that URL ready to paint, so an
+// <img> pointed at it afterwards arrives with the photo already in it rather
+// than as an empty box that fills in a moment later. A URL that will not load
+// resolves too: this is only ever the wait before showing something, and a
+// picture that cannot be shown is the <img>'s problem to wear, not a failure of
+// the upload that has already gone through.
+export async function preload(url) {
+  const element = new Image();
+  element.src = url;
+  try {
+    // decode() waits for the pixels, not just the bytes — the difference is a
+    // frame of blank on a large photo.
+    if (typeof element.decode === "function") return await element.decode();
+  } catch {
+    // falls through: complete is already true either way
+  }
+  if (element.complete) return;
+  await new Promise((resolve) => {
+    element.onload = resolve;
+    element.onerror = resolve;
+  });
+}
+
 // Sends the bytes as they are; the server names the file after their digest and
 // hands back { name, url, bytes, type }.
 export async function uploadImage(blob) {

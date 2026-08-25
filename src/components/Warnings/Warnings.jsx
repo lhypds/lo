@@ -21,7 +21,7 @@ function coordKey(coords) {
 
 export default function Warnings() {
   const { t, i18n } = useTranslation();
-  const { coords } = useHere();
+  const { coords, reloadToken } = useHere();
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -49,9 +49,10 @@ export default function Warnings() {
       });
     // Alone among the cards this one does not ask again when the language
     // changes: Yahoo answers in Japanese either way, and every word the card can
-    // translate it translates here.
+    // translate it translates here. The token it does follow — of everything on
+    // the dashboard this is the one worth pressing refresh for.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]);
+  }, [key, reloadToken]);
 
   // Somewhere Yahoo has nothing to say about — the card is not a card here.
   // Kept until the first answer arrives so the tile does not appear and vanish.

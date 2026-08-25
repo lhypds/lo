@@ -2,7 +2,7 @@ import { Suspense, lazy, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
 import { Modal, showToast } from "../../ui/index.js";
-import { getLocationState } from "../../utils/location.js";
+import { getLocationState, refreshLocation } from "../../utils/location.js";
 import ClockCard from "../ClockCard/index.js";
 import EventsCard from "../EventsCard/index.js";
 import Header from "../Header/index.js";
@@ -27,7 +27,7 @@ export default function HomePage() {
   // Posts come from the provider rather than from here: they are a reading of
   // the fix, like the place name is, and the refresh in the top bar has to be
   // able to reach them without knowing which page it is sitting on.
-  const { coords, place, refresh, posts, addPost, dropPost, supports } = useHere();
+  const { coords, place, posts, addPost, dropPost, supports, reloadToken } = useHere();
   // Held here, not in the map: expanding it hides the rest of the dashboard.
   const [mapExpanded, setMapExpanded] = useState(false);
   const [marks, setMarks] = useState([]);
@@ -40,15 +40,16 @@ export default function HomePage() {
   const [busy, setBusy] = useState(false);
 
   // Marks are yours and are the same list wherever you are standing, so unlike
-  // posts they are asked for once rather than again on every move. The button
-  // below keeps this in step from there — a spot marked on this page should
-  // appear on the map on this page, not on the next reload.
+  // posts they are not asked for again on every move — only on the refresh in
+  // the top bar, which is where a list changed on another device comes in. The
+  // button below keeps this in step in between: a spot marked on this page
+  // should appear on the map on this page, not on the next reload.
   useEffect(() => {
     api
       .getMarks()
       .then((data) => setMarks(data.marks))
       .catch(() => {});
-  }, []);
+  }, [reloadToken]);
 
   // A hold is also a request for a current position, the same way a tap on the
   // same button is: the post is pinned to the freshest fix the device can give.
@@ -59,7 +60,7 @@ export default function HomePage() {
       showToast(t("mark.needsLocation"));
       return;
     }
-    await refresh().catch(() => {});
+    await refreshLocation().catch(() => {});
     setComposing(getLocationState().coords ?? coords);
   }
 
@@ -131,6 +132,9 @@ export default function HomePage() {
             onLongPress={compose}
             onMarked={(mark) => setMarks((current) => [mark, ...current])}
             onUnmarked={(mark) => setMarks((current) => current.filter((item) => item.id !== mark.id))}
+            onRenamed={(mark) =>
+              setMarks((current) => current.map((item) => (item.id === mark.id ? mark : item)))
+            }
           />
           {/* Under the map rather than over it: a warning is about the ground
               the map is drawing, and it reads as a caption on that ground once
