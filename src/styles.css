@@ -415,6 +415,15 @@ a {
   margin: 0 auto;
   padding: 16px 12px calc(20px + env(safe-area-inset-bottom));
   overflow-y: auto;
+  /* Naming one axis makes the other one auto, not visible — so a list that has
+     nothing to show sideways would still take a sideways drag, and the tooltips
+     hanging off the buttons on the right of every row give it just enough width
+     to move. The rows are a column of type; there is nothing out there to reach.
+     touch-action says the same thing to the finger, which is what stops the
+     drag from being read as a swipe at all; pinch-zoom is left alone, since
+     making the type bigger is nobody's mistake. */
+  overflow-x: hidden;
+  touch-action: pan-y pinch-zoom;
   /* The list is the only scroller on the page; without this, running off its
      end hands the gesture to the document and bounces the whole split */
   overscroll-behavior: contain;
@@ -583,15 +592,6 @@ a {
   white-space: nowrap;
 }
 
-/* The routed leg, in full ink under the muted coordinates: the distance beside
-   it is how far the spot is as the crow flies and is always there, this is the
-   answer to something that was actually asked for. */
-.mark-route {
-  color: var(--ink);
-  font-family: var(--mono);
-  font-size: 10px;
-}
-
 /* Distance over actions rather than beside them: three buttons and a figure in
    one line leave the name almost nothing on a narrow phone */
 .mark-side {
@@ -605,13 +605,6 @@ a {
 .mark-actions {
   display: flex;
   gap: 6px;
-}
-
-/* Inverted while its line is the one on the map, so the row says which spot the
-   route on the map belongs to */
-.mark-actions button[aria-pressed="true"] {
-  background: var(--ink);
-  color: var(--paper);
 }
 
 /* --------------------------------------------------------------- posts -- */

@@ -1,9 +1,14 @@
 /* The list has no natural end, so it takes the tile it was given — four squares
-   of it — and scrolls inside rather than setting a height of its own */
+   of it — and scrolls inside rather than setting a height of its own.
+
+   Scroll chaining is left on (the default) deliberately: this tile is a small
+   window inside a page that scrolls, and containing the gesture strands a
+   thumb that has already run the list to its top or bottom — the swipe dies on
+   a panel with nowhere left to go instead of carrying on down the page. Once
+   the list is at an end the gesture belongs to the document. */
 .scroll {
   height: 100%;
   overflow-y: auto;
-  overscroll-behavior: contain;
 }
 
 .list {

@@ -9,9 +9,16 @@
 // - Google News    — local news (RSS)        https://news.google.com/rss
 // - Google Trends  — trending searches (RSS) https://trends.google.com/trending
 // - Wikipedia      — nearby places           https://www.mediawiki.org/wiki/API
+// - Yahoo! 天気・災害 — Japanese weather warnings https://typhoon.yahoo.co.jp
 //
 // Requests are coarse-keyed and cached: a phone reporting a position every few
 // seconds keeps hitting the same cache entry rather than the same upstream.
+//
+// None of the Google ones cover the whole world, and countries.js is where that
+// is written down — so a feed this file would only be told "no" about is never
+// asked for at all.
+
+import { newsEdition, supports } from "./countries.js";
 
 const USER_AGENT = "Mozilla/5.0 (compatible; lo/0.1; location dashboard)";
 const UPSTREAM_TIMEOUT_MS = 8000;
@@ -187,13 +194,18 @@ function readerLocale(lang, countryCode) {
   return `hl=${hl}&gl=${gl}&ceid=${gl}:${ceid}`;
 }
 
-// The place's own edition, whatever language that turns out to be. Naming a
-// country and no language is what asks for it — and it is the only form that
-// reliably has a section for somewhere like Kyoto, which the English edition of
-// Google News does not carry at all. Local news in the local language beats
-// worldwide chatter that merely mentions the city's name.
+// The place's own edition, whatever language that turns out to be — the only
+// form that reliably has a section for somewhere like Kyoto, which the English
+// edition of Google News does not carry at all. Local news in the local language
+// beats worldwide chatter that merely mentions the city's name.
+//
+// Null where the country has no edition of its own, which is most of them.
+// gl=ER is not refused, it is answered with the American edition, so asking
+// anyway would repeat the reader's attempt above under a local-looking name and
+// spend a round trip doing it.
 function nativeLocale(countryCode) {
-  return `gl=${countryFor(countryCode)}`;
+  const edition = newsEdition(countryCode);
+  return edition ? `hl=${edition.hl}&gl=${edition.gl}&ceid=${edition.ceid}` : null;
 }
 
 const XML_ENTITIES = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
@@ -220,6 +232,22 @@ function stripSourceSuffix(title, source) {
   return title.endsWith(suffix) ? title.slice(0, -suffix.length).trim() : title;
 }
 
+// A section Google will not serve is refused as a feed containing one item that
+// says so — "This feed is not available." — under a link back to its own front
+// page rather than to an article. It arrives as a 200 with an <item> in it, so
+// without this the attempt below counts as an answer, the chain stops on it, and
+// the news card shows Google's apology as though it were the local headlines.
+// The wording is in the reader's language and the link is not, which is what
+// makes the link the thing to test.
+function isArticle(url) {
+  try {
+    const { hostname, pathname } = new URL(url);
+    return !(hostname === "news.google.com" && pathname === "/");
+  } catch {
+    return false;
+  }
+}
+
 async function fetchNewsFeed(url) {
   const xml = await getText(url, "application/rss+xml, application/xml");
   return [...xml.matchAll(/<item>([\s\S]*?)<\/item>/g)]
@@ -236,7 +264,7 @@ async function fetchNewsFeed(url) {
         time: Number.isNaN(published) ? null : new Date(published).toISOString(),
       };
     })
-    .filter((item) => item.title && item.url);
+    .filter((item) => item.title && item.url && isArticle(item.url));
 }
 
 // The place's own news section, which is what "local news" actually means here:
@@ -300,7 +328,7 @@ export function lookupNearby(latitude, longitude, lang = "en") {
     }
     const attempts = [
       ...names.map((name) => geoSectionUrl(name, reader)),
-      ...names.map((name) => geoSectionUrl(name, native)),
+      ...(native ? names.map((name) => geoSectionUrl(name, native)) : []),
       // Nowhere with a section of its own — ask for the name as a search term.
       ...(place?.name ? [searchUrl(place.name, reader)] : []),
     ];
@@ -380,12 +408,17 @@ const MAX_TRENDS = 20;
 // Google answers for a country or one of its subregions and rejects anything
 // else outright with a 400 — it never quietly serves somewhere else's list, so
 // unlike the WOEID table this replaced, asking for the narrow code first and
-// falling back to the country is safe to do blind. No table to maintain.
+// falling back to the country is safe to do blind.
 //
-// Whole countries are simply absent: geo=CN is a 400 at every level, and the
-// card is left saying it has nothing rather than showing the world's.
+// Which countries it covers at all is not blind, though: half of them it does
+// not, and countries.js has the list. A country that is not on it has no covered
+// subregions either, so the whole climb down is skipped rather than paid for in
+// 400s — geo=CN is a rejection at every level, and the card says it has nothing
+// rather than showing the world's.
 function trendScopes(place) {
   const country = firstString(place?.countryCode).toUpperCase();
+  if (!supports("trends", country)) return [];
+
   const subdivision = firstString(place?.subdivisionCode).toUpperCase();
   const scopes = [];
 
@@ -443,5 +476,180 @@ export function lookupTrends(latitude, longitude, lang = "en") {
       if (items.length > 0) return { ...where, items: items.slice(0, MAX_TRENDS) };
     }
     return { items: [] };
+  });
+}
+
+/* --------------------------------------------------------------- warnings -- */
+
+// What Yahoo! 防災速報 pushes when the weather turns: 特別警報, 警報, 注意報, per
+// municipality. The app publishes no feed of its own, but the page its weather
+// alerts are read off — Yahoo! 天気・災害's 警報・注意報 — hands over a whole
+// prefecture, municipality by municipality, in one attribute of one element, so
+// a fix costs one request rather than a walk down the country's 1,700 pages.
+//
+// Japan only — countries.js is where that is written down, beside the two feeds
+// that stop at other borders. The answer says so outright rather than letting
+// silence read as all clear.
+const WARN_HOST = "https://typhoon.yahoo.co.jp/weather/jp/warn";
+// A warning minutes old is still the warning; an hour old it may have been
+// lifted, which is why this is the shortest TTL in the file.
+const WARN_TTL_MS = 5 * 60 * 1000;
+
+// One page per prefecture, keyed by its JIS number — except Hokkaido, which is
+// too big for one and comes in four. 道央 leads: Sapporo and a third of the
+// prefecture's people are in it, so most fixes match on the first page fetched.
+const HOKKAIDO_PAGES = ["1b", "1a", "1c", "1d"];
+
+// Yahoo files the bands in four lists — emgWarningList, urgentWarningList,
+// warningList, advisoryList, in that order, which is the order the four capture
+// groups of AREA_RE come out in. Worst first, everywhere below.
+const WARN_SEVERITIES = ["emergency", "urgent", "warning", "advisory"];
+
+const BALLOON_RE = /id="warnArea_balloon_value"[^>]*?\svalue="([^"]*)"/;
+// The payload is a Java object graph printed by toString, which reads worse than
+// it parses: no nesting inside a municipality's four lists, and every field of
+// interest is a bare word up against a comma.
+const AREA_RE =
+  /WarnPointData\(code=(\d+), name=([^,]*), firstAreaCode=[^,]*, emgWarningList=\[([^\]]*)\], urgentWarningList=\[([^\]]*)\], warningList=\[([^\]]*)\], advisoryList=\[([^\]]*)\]\)/g;
+const KIND_RE = /WarnKind\(code=[^,]*, name=([^,)]+)/g;
+
+function parseWarnPage(html) {
+  const balloon = BALLOON_RE.exec(html);
+  if (!balloon) return null;
+  const payload = decodeXml(balloon[1]);
+
+  const areas = [];
+  // One block per 一次細分区域 — 南部, 北部, 伊豆諸島北部 — each with a bulletin
+  // time of its own, so the time travels with the municipalities it was issued
+  // for rather than being claimed for the page as a whole.
+  for (const block of payload.split("FirstArea(").slice(1)) {
+    const issuedAt = /refTime=([^,)]+)/.exec(block)?.[1] ?? null;
+    for (const area of block.matchAll(AREA_RE)) {
+      const items = [];
+      WARN_SEVERITIES.forEach((severity, index) => {
+        for (const kind of area[3 + index].matchAll(KIND_RE)) {
+          items.push({ severity, name: kind[1].trim() });
+        }
+      });
+      areas.push({ code: area[1], name: area[2].trim(), issuedAt, items });
+    }
+  }
+  return areas.length > 0 ? areas : null;
+}
+
+function fetchWarnPage(page) {
+  return cached(`warn-page:${page}`, WARN_TTL_MS, async () => {
+    const areas = parseWarnPage(await getText(`${WARN_HOST}/${page}/`, "text/html"));
+    // A page that parsed to nothing is a page whose markup has moved. Throwing
+    // rather than caching the emptiness is what lets the next reader find out —
+    // and stops "we cannot read it" from being served as "nothing is happening".
+    if (!areas) throw new Error("typhoon.yahoo.co.jp returned no warning table");
+    return areas;
+  });
+}
+
+function warnPages(subdivisionCode) {
+  const match = /^JP-(\d{2})$/.exec(firstString(subdivisionCode).toUpperCase());
+  if (!match) return [];
+  const prefecture = Number(match[1]);
+  if (prefecture === 1) return HOKKAIDO_PAGES;
+  return prefecture >= 2 && prefecture <= 47 ? [String(prefecture)] : [];
+}
+
+// Yahoo names a municipality the way the country files it, which is sometimes the
+// city whole (京都市, 札幌市) and sometimes the ward inside it (広島市中区, 渋谷区).
+// The geocoder hands those back in two pieces, so the pair is tried first and
+// each half after it — one of the three is the row, whichever way it is filed.
+function municipalityNames(place) {
+  const city = firstString(place?.name);
+  const ward = firstString(place?.locality);
+  const names = [];
+  for (const name of [city && ward && city !== ward ? city + ward : "", city, ward]) {
+    if (name && !names.includes(name)) names.push(name);
+  }
+  return names;
+}
+
+function matchArea(areas, names) {
+  for (const name of names) {
+    const exact = areas.find((area) => area.name === name);
+    if (exact) return exact;
+  }
+  // A city the geocoder gave no ward for, listed ward by ward: any one of them
+  // beats answering for the prefecture, since a warning that stops at a ward
+  // boundary is rarer than one that covers the city.
+  for (const name of names) {
+    const inside = areas.find((area) => area.name.startsWith(name));
+    if (inside) return inside;
+  }
+  return null;
+}
+
+// Nothing matched: the geocoder and Yahoo disagree about what this place is
+// called. The prefecture is still an answer, and an honest one as long as each
+// warning says how much of the prefecture it covers.
+function prefectureSummary(areas) {
+  const counts = new Map();
+  for (const area of areas) {
+    for (const item of area.items) {
+      const key = `${item.severity}:${item.name}`;
+      counts.set(key, { ...item, areas: (counts.get(key)?.areas ?? 0) + 1 });
+    }
+  }
+  return [...counts.values()].sort(
+    (a, b) =>
+      WARN_SEVERITIES.indexOf(a.severity) - WARN_SEVERITIES.indexOf(b.severity) || b.areas - a.areas,
+  );
+}
+
+export function lookupWarnings(latitude, longitude) {
+  return cached(`warnings:${gridKey(latitude, longitude, PLACE_GRID)}`, WARN_TTL_MS, async () => {
+    // Asked for in Japanese whatever the reader speaks, because the names are
+    // about to be matched against a Japanese page. The reader's own language
+    // goes back on by the card, which knows the four severities by name.
+    const place = await lookupPlace(latitude, longitude, "ja").catch(() => null);
+    const pages = warnPages(supports("warnings", place?.countryCode) ? place.subdivisionCode : "");
+    if (pages.length === 0) return { covered: false, items: [] };
+
+    const names = municipalityNames(place);
+    const prefecture = firstString(place.region, place.name);
+    const searched = [];
+
+    for (const page of pages) {
+      const areas = await fetchWarnPage(page).catch(() => null);
+      if (!areas) continue;
+      searched.push({ page, areas });
+      const area = matchArea(areas, names);
+      if (!area) continue;
+      return {
+        covered: true,
+        scope: "municipality",
+        area: area.name,
+        prefecture,
+        issuedAt: area.issuedAt,
+        // The municipality's own page, which is the reading behind the row: the
+        // JIS code Yahoo puts on a warning is the town code with two digits of
+        // detail after it, and the page is filed under the town — as a number,
+        // so Hokkaido's leading zero has to go (0110000 → 1100, not 01100).
+        url: `${WARN_HOST}/${page}/${Number(area.code.slice(0, 5))}/`,
+        items: area.items,
+      };
+    }
+
+    // Every page for this prefecture is unreadable — say nothing rather than
+    // "all clear", which is the one wrong answer a warnings card can give.
+    if (searched.length === 0) throw new Error("typhoon.yahoo.co.jp returned no warnings");
+
+    const areas = searched.flatMap((entry) => entry.areas);
+    return {
+      covered: true,
+      scope: "prefecture",
+      area: prefecture,
+      prefecture,
+      issuedAt: areas.find((area) => area.issuedAt)?.issuedAt ?? null,
+      url: `${WARN_HOST}/${searched[0].page}/`,
+      areaCount: areas.length,
+      items: prefectureSummary(areas),
+    };
   });
 }

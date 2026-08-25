@@ -20,6 +20,12 @@ const WEATHER_REFRESH_MS = 10 * 60 * 1000;
 // only worth as much as the age of the oldest dot on it.
 const PRESENCE_REFRESH_MS = 60 * 1000;
 
+// Which cards a country can feed is the server's answer to give — the list lives
+// in server/countries.js and arrives with the place name. This is only what the
+// page assumes while that first request is in the air: the cards no country has
+// ever been without. Anything that stops at a border waits to be named.
+const WORLDWIDE_COMPONENTS = ["clock", "weather", "map", "nearby", "events"];
+
 export function LocationProvider({ children }) {
   const { i18n } = useTranslation();
   const { user } = useAuth();
@@ -175,10 +181,18 @@ export function LocationProvider({ children }) {
     [],
   );
 
+  // The dashboard is not the same dashboard everywhere: Japan has warnings and
+  // nowhere else does, half the world's countries have no trending list to show.
+  // Every card that reads this asks the same way, so a component that turns out
+  // to stop at a border is a line in the server's table and nothing here.
+  const components = local?.components ?? WORLDWIDE_COMPONENTS;
+
   const value = {
     ...position,
     place: local?.place ?? null,
     weather: local?.weather ?? null,
+    components,
+    supports: (component) => components.includes(component),
     people,
     posts,
     postsError,

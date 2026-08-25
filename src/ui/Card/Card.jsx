@@ -10,6 +10,7 @@ export default function Card({
   meta,
   action,
   square = false,
+  half = false,
   wide = false,
   flush = false,
   openHead = false,
@@ -17,7 +18,13 @@ export default function Card({
   className,
   children,
 }) {
-  const classes = [styles.card, square ? styles.square : "", wide ? styles.wide : "", className];
+  const classes = [
+    styles.card,
+    square ? styles.square : "",
+    half ? styles.half : "",
+    wide ? styles.wide : "",
+    className,
+  ];
   const head = [styles.head, openHead ? styles.openHead : "", quietHead ? styles.quietHead : ""];
   return (
     <section className={classes.filter(Boolean).join(" ")}>

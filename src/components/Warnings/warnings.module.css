@@ -1,0 +1,129 @@
+/* Two tiles across and one tall, like the trends panel under it — the rows are
+   three words each, so the height a news panel needs would be mostly air */
+.inner {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+}
+
+/* A column so the one-line states can take the middle of the tile with a margin
+   of auto, while the list itself stays at the top where it belongs */
+.scroll {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+}
+
+.list li + li {
+  border-top: 1px solid var(--line);
+}
+
+/* 特別警報 is the top of the scale and the one the whole card exists for: the row
+   it is on inverts, which is the loudest thing a page with no colour can do */
+.gravest {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+/* Filled at warning strength, hollow for an advisory. It carries no information
+   the severity beside it does not — it is there to be caught at a glance, before
+   any of the words are read. */
+.mark,
+.markHollow {
+  flex: none;
+  width: 7px;
+  height: 7px;
+}
+
+.mark {
+  background: currentColor;
+}
+
+.markHollow {
+  border: 1px solid var(--muted);
+}
+
+.kind {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+/* How much of the prefecture the warning covers, on the rows that are answering
+   for a prefecture rather than for one municipality */
+.areas {
+  flex: none;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.gravest .areas,
+.gravest .severity {
+  color: var(--paper);
+}
+
+/* The claim itself, in words: 警報 and 注意報 are different things and no amount
+   of shading says which is which */
+.severity {
+  flex: none;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+}
+
+/* Nothing in force, still checking, or unreachable — all three are one quiet
+   line, because the card is at its most useful when it has nothing to say */
+.note {
+  margin: auto;
+  padding: 14px 10px;
+  color: var(--muted);
+  text-align: center;
+  font-size: 11px;
+}
+
+/* Where it came from, pinned to the bottom edge: also the way through to the
+   bulletin, which has the detail three words cannot carry */
+.source {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  flex: none;
+  padding: 7px 10px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  text-decoration: none;
+}
+
+.source time {
+  flex: none;
+}
+
+@media (hover: hover) {
+  .source:hover {
+    background: var(--ink);
+    color: var(--paper);
+  }
+}

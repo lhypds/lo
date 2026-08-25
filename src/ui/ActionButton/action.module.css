@@ -10,6 +10,9 @@
   background: var(--paper);
   color: var(--ink);
   font: inherit;
+  /* For the ones that are anchors rather than buttons: everything else about
+     them is the same, and an underline under an icon is not */
+  text-decoration: none;
   cursor: pointer;
 }
 

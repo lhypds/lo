@@ -23,4 +23,5 @@ export { default as PostPreview } from "./PostPreview/index.js";
 export { default as PostsPage } from "./PostsPage/index.js";
 export { default as PrivateRoute } from "./PrivateRoute/index.js";
 export { default as TrendsCard } from "./TrendsCard/index.js";
+export { default as Warnings } from "./Warnings/index.js";
 export { default as WeatherCard } from "./WeatherCard/index.js";

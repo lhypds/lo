@@ -84,6 +84,44 @@
     "unavailable": "无法连接活动服务",
     "loading": "正在查找活动"
   },
+  "warnings": {
+    "title": "预警",
+    "empty": "此地暂无预警",
+    "unavailable": "无法连接 Yahoo! 天気・災害",
+    "loading": "正在读取预警",
+    "issued": "{{time}}发布",
+    "source": "Yahoo! 天気・災害",
+    "severity": {
+      "emergency": "特别警报",
+      "urgent": "危险警报",
+      "warning": "警报",
+      "advisory": "注意报"
+    },
+    "kind": {
+      "rain": "暴雨",
+      "flood": "洪水",
+      "storm": "暴风",
+      "blizzard": "暴风雪",
+      "heavySnow": "大雪",
+      "waves": "大浪",
+      "surge": "风暴潮",
+      "gale": "大风",
+      "galeSnow": "风雪",
+      "thunder": "雷电",
+      "snowmelt": "融雪",
+      "fog": "浓雾",
+      "dry": "干燥",
+      "avalanche": "雪崩",
+      "lowTemperature": "低温",
+      "frost": "霜冻",
+      "icing": "结冰",
+      "snowAccretion": "积雪",
+      "landslide": "泥石流",
+      "tornado": "龙卷风",
+      "recordRain": "短时强降雨",
+      "heat": "中暑"
+    }
+  },
   "trends": {
     "title": "趋势",
     "empty": "此地暂无搜索趋势",
@@ -123,7 +161,7 @@
     "renameTitle": "重命名记录",
     "distance": "距离 {{distance}}",
     "showOnMap": "在地图上显示",
-    "navigate": "路线"
+    "navigate": "导航"
   },
   "post": {
     "hint": "长按发布 post",
@@ -150,13 +188,6 @@
     "title": "posts",
     "subtitle": "附近的 post",
     "empty": "附近还没有 post"
-  },
-  "route": {
-    "walking": "步行",
-    "driving": "驾车",
-    "finding": "规划路线中",
-    "clear": "清除路线",
-    "unavailable": "无法规划到该位置的路线"
   },
   "time": {
     "justNow": "刚刚"

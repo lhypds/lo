@@ -36,6 +36,10 @@ export const getLocal = (coords) => request(`/api/local?${geoQuery(coords)}`);
 export const getNearby = (coords) => request(`/api/nearby?${geoQuery(coords)}`);
 export const getEvents = (coords) => request(`/api/events?${geoQuery(coords)}`);
 export const getTrends = (coords) => request(`/api/trends?${geoQuery(coords)}`);
+// The one reading that does not take the interface language: Yahoo answers in
+// Japanese, and the words the card can translate it translates itself.
+export const getWarnings = ({ latitude, longitude }) =>
+  request(`/api/warnings?lat=${latitude}&lon=${longitude}`);
 
 // Publishing a fix answers with everyone else's, so the map's minute costs one
 // request; the plain GET is for a reader who has no fix of their own to trade.

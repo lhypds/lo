@@ -18,7 +18,15 @@ import {
   renameMark,
   savePosition,
 } from "./db.js";
-import { lookupEvents, lookupNearby, lookupPlace, lookupTrends, lookupWeather } from "./geo.js";
+import { COMPONENTS, componentsFor, countryList } from "./countries.js";
+import {
+  lookupEvents,
+  lookupNearby,
+  lookupPlace,
+  lookupTrends,
+  lookupWarnings,
+  lookupWeather,
+} from "./geo.js";
 import { MAX_IMAGE_BYTES, imageFile, isStoredName, storeImage } from "./images.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -190,6 +198,10 @@ app.get("/api/me", requireSession, (req, res) => {
 
 // Place, timezone and sky in one answer: the clock and the weather card are two
 // readings of the same moment, and asking twice would let them disagree.
+//
+// The list of components rides along, because it is a third reading of the same
+// thing — which country the fix landed in decides what the page is even able to
+// show, and the page should not have to ask a second time to find that out.
 app.get("/api/local", async (req, res, next) => {
   const coords = parseCoords(req.query);
   if (!coords) return res.status(400).json({ error: "坐标无效" });
@@ -201,9 +213,13 @@ app.get("/api/local", async (req, res, next) => {
     ]);
     // Either half can be missing without making the other worthless — the map
     // still knows where it is when the weather service is down.
+    const located = place.status === "fulfilled" ? place.value : null;
     res.json({
-      place: place.status === "fulfilled" ? place.value : null,
+      place: located,
       weather: weather.status === "fulfilled" ? weather.value : null,
+      // With no place there is no country, and componentsFor answers for nowhere
+      // in particular: everything worldwide, nothing that stops at a border.
+      components: componentsFor(located?.countryCode),
       failed: [
         place.status === "rejected" ? "place" : null,
         weather.status === "rejected" ? "weather" : null,
@@ -212,6 +228,13 @@ app.get("/api/local", async (req, res, next) => {
   } catch (error) {
     next(error);
   }
+});
+
+// The country list itself, which is what every components list above is read
+// out of: every country lo can find itself standing in, and the dashboard it
+// would be able to build there.
+app.get("/api/countries", (req, res) => {
+  res.json({ components: COMPONENTS, countries: countryList(requestedLang(req)) });
 });
 
 app.get("/api/nearby", async (req, res, next) => {
@@ -243,6 +266,19 @@ app.get("/api/trends", async (req, res, next) => {
     res.json(await lookupTrends(coords.latitude, coords.longitude, requestedLang(req)));
   } catch (error) {
     if (error.name === "TimeoutError") return res.status(504).json({ error: "获取趋势超时" });
+    next(error);
+  }
+});
+
+// No lang: the warnings come off a Japanese page in Japanese, and the card puts
+// the reader's own words back on what it can name.
+app.get("/api/warnings", async (req, res, next) => {
+  const coords = parseCoords(req.query);
+  if (!coords) return res.status(400).json({ error: "坐标无效" });
+  try {
+    res.json(await lookupWarnings(coords.latitude, coords.longitude));
+  } catch (error) {
+    if (error.name === "TimeoutError") return res.status(504).json({ error: "获取警报信息超时" });
     next(error);
   }
 });

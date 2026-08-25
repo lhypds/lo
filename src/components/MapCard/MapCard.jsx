@@ -3,14 +3,7 @@ import { useTranslation } from "react-i18next";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { ActionButton, Card } from "../../ui/index.js";
-import {
-  formatCoords,
-  formatDateTime,
-  formatDistance,
-  formatDuration,
-  formatUsername,
-  relativeTime,
-} from "../../utils/format.js";
+import { formatCoords, formatDateTime, formatUsername, relativeTime } from "../../utils/format.js";
 import { MARK_PIN_EYE, MARK_PIN_PATH, MARK_PIN_TIP_Y } from "../../utils/icons.js";
 import { useAuth } from "../AuthProvider/index.js";
 import { useHere } from "../LocationProvider/index.js";
@@ -40,12 +33,6 @@ function mapLanguage(uiLanguage) {
   }
   return LANG_MAP[uiLanguage] ?? "auto";
 }
-
-const ROUTE_SOURCE = "lo-route";
-const ROUTE_CASING = "lo-route-casing";
-const ROUTE_LINE = "lo-route-line";
-
-const EMPTY_GEOJSON = { type: "FeatureCollection", features: [] };
 
 // Near enough anywhere, and the halo is drawn from the accuracy the device
 // reports, which is a rough number to begin with.
@@ -177,11 +164,9 @@ export default function MapCard({
   marks = [],
   posts = [],
   focus = null,
-  route = null,
   fitMarks = false,
   expanded = false,
   onToggleExpanded,
-  onClearRoute,
   onSelectPost,
 }) {
   const { t, i18n } = useTranslation();
@@ -241,29 +226,7 @@ export default function MapCard({
       if (event.originalEvent) releaseFollow();
     });
 
-    map.on("style.load", () => {
-      map.setLanguage(mapLanguage(i18n.language));
-      // In two passes so the line keeps its edges over dark ground as well as
-      // light: the white casing underneath is what a single black stroke has no
-      // way of getting over a park, a river, or satellite imagery.
-      if (!map.getSource(ROUTE_SOURCE)) {
-        map.addSource(ROUTE_SOURCE, { type: "geojson", data: EMPTY_GEOJSON });
-        map.addLayer({
-          id: ROUTE_CASING,
-          type: "line",
-          source: ROUTE_SOURCE,
-          layout: { "line-cap": "round", "line-join": "round" },
-          paint: { "line-color": "#ffffff", "line-width": 7, "line-opacity": 0.9 },
-        });
-        map.addLayer({
-          id: ROUTE_LINE,
-          type: "line",
-          source: ROUTE_SOURCE,
-          layout: { "line-cap": "round", "line-join": "round" },
-          paint: { "line-color": "#000000", "line-width": 3 },
-        });
-      }
-    });
+    map.on("style.load", () => map.setLanguage(mapLanguage(i18n.language)));
 
     return () => {
       map.remove();
@@ -419,30 +382,6 @@ export default function MapCard({
     map.fitBounds(bounds, { padding: 48, maxZoom: DEFAULT_ZOOM, duration: 0 });
   }, [fitMarks, marks, posts, coords]);
 
-  // The line to a spot the reader asked for directions to, and the frame that
-  // makes it a route rather than a stripe running off two edges of the tile.
-  // Asking for one is asking to see all of it, so this outranks following the
-  // fix for the same reason a deliberate pan does.
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
-    const geometry = route?.geometry;
-    const apply = () => {
-      map
-        .getSource(ROUTE_SOURCE)
-        ?.setData(geometry ? { type: "Feature", properties: {}, geometry } : EMPTY_GEOJSON);
-    };
-    if (map.isStyleLoaded()) apply();
-    else map.once("style.load", apply);
-    if (!geometry) return;
-    followRef.current = false;
-    const bounds = geometry.coordinates.reduce(
-      (box, position) => box.extend(position),
-      new mapboxgl.LngLatBounds(),
-    );
-    map.fitBounds(bounds, { padding: 56, maxZoom: DEFAULT_ZOOM, duration: 700 });
-  }, [route]);
-
   // Arriving from the marks list with one spot in mind.
   useEffect(() => {
     const map = mapRef.current;
@@ -473,32 +412,6 @@ export default function MapCard({
   const body = live ? (
     <div className={styles.wrapper}>
       <div ref={containerRef} className={styles.container} />
-      {/* Where the line goes and what it costs, on the map because that is
-          where the line is — the list underneath is scrolled away half the time
-          the route is being looked at. */}
-      {route && (
-        <div className={styles.route}>
-          <span className={styles.routeCopy}>
-            <span className={styles.routeLabel}>{route.label}</span>
-            <span className={styles.routeMeta}>
-              {`${t(`route.${route.profile}`)} · ${formatDistance(route.distance)} · ${formatDuration(route.duration)}`}
-            </span>
-          </span>
-          {onClearRoute && (
-            <button
-              type="button"
-              className={styles.routeClose}
-              aria-label={t("route.clear")}
-              onClick={onClearRoute}
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M6 6l12 12" />
-                <path d="M18 6L6 18" />
-              </svg>
-            </button>
-          )}
-        </div>
-      )}
     </div>
   ) : (
     <p className={styles.noToken}>{TOKEN ? t("map.unavailable") : t("map.noToken")}</p>

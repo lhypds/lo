@@ -84,6 +84,44 @@
     "unavailable": "イベント情報に接続できません",
     "loading": "イベントを探しています"
   },
+  "warnings": {
+    "title": "警報・注意報",
+    "empty": "発表なし",
+    "unavailable": "Yahoo!天気・災害に接続できません",
+    "loading": "警報を確認中",
+    "issued": "{{time}}発表",
+    "source": "Yahoo!天気・災害",
+    "severity": {
+      "emergency": "特別警報",
+      "urgent": "危険警報",
+      "warning": "警報",
+      "advisory": "注意報"
+    },
+    "kind": {
+      "rain": "大雨",
+      "flood": "洪水",
+      "storm": "暴風",
+      "blizzard": "暴風雪",
+      "heavySnow": "大雪",
+      "waves": "波浪",
+      "surge": "高潮",
+      "gale": "強風",
+      "galeSnow": "風雪",
+      "thunder": "雷",
+      "snowmelt": "融雪",
+      "fog": "濃霧",
+      "dry": "乾燥",
+      "avalanche": "なだれ",
+      "lowTemperature": "低温",
+      "frost": "霜",
+      "icing": "着氷",
+      "snowAccretion": "着雪",
+      "landslide": "土砂災害",
+      "tornado": "竜巻",
+      "recordRain": "記録的短時間大雨",
+      "heat": "熱中症"
+    }
+  },
   "trends": {
     "title": "トレンド",
     "empty": "この地域の検索トレンドは今ありません",
@@ -123,7 +161,7 @@
     "renameTitle": "記録の名前を変更",
     "distance": "{{distance}} 先",
     "showOnMap": "地図で表示",
-    "navigate": "ルート"
+    "navigate": "経路案内"
   },
   "post": {
     "hint": "長押しで投稿",
@@ -150,13 +188,6 @@
     "title": "posts",
     "subtitle": "近くの post",
     "empty": "近くにまだ post はありません"
-  },
-  "route": {
-    "walking": "徒歩",
-    "driving": "車",
-    "finding": "ルートを検索中",
-    "clear": "ルートを消す",
-    "unavailable": "その場所へのルートが見つかりません"
   },
   "time": {
     "justNow": "たった今"

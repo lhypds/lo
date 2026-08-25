@@ -21,6 +21,15 @@
    as tall as two tiles plus the gap between them, so the card covers exactly
    four of them — the largest tile the grid has, on the same module as the rest */
 
+/* `wide half` is that panel cut down the middle: two tiles across, one tile
+   tall. The ratio is 2:1 rather than the (2 tiles + gap) : 1 tile the grid would
+   give exactly, which leaves it 5px taller than the squares beside it — near
+   enough that the row still reads as one module, and it holds at every width
+   without the card having to know what the gap is. */
+.half {
+  aspect-ratio: 2 / 1;
+}
+
 /* Past the width of two of those panels the dashboard grid is four columns
    instead of two (see .card-grid in styles.css, same breakpoint), so covering
    four squares means half the grid rather than all of it. `wide` on its own
@@ -29,6 +38,11 @@
   .wide.square {
     grid-column: span 2;
     grid-row: span 2;
+  }
+
+  .wide.half {
+    grid-column: span 2;
+    grid-row: span 1;
   }
 }
 

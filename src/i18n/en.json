@@ -84,6 +84,44 @@
     "unavailable": "Could not reach the events service",
     "loading": "Looking for what is on"
   },
+  "warnings": {
+    "title": "Warnings",
+    "empty": "Nothing in force here",
+    "unavailable": "Could not reach Yahoo! 天気・災害",
+    "loading": "Reading the warnings",
+    "issued": "issued {{time}}",
+    "source": "Yahoo! 天気・災害",
+    "severity": {
+      "emergency": "Emergency warning",
+      "urgent": "Danger warning",
+      "warning": "Warning",
+      "advisory": "Advisory"
+    },
+    "kind": {
+      "rain": "Heavy rain",
+      "flood": "Flood",
+      "storm": "Storm",
+      "blizzard": "Snowstorm",
+      "heavySnow": "Heavy snow",
+      "waves": "High waves",
+      "surge": "Storm surge",
+      "gale": "Gale",
+      "galeSnow": "Gale and snow",
+      "thunder": "Thunderstorm",
+      "snowmelt": "Snowmelt",
+      "fog": "Dense fog",
+      "dry": "Dry air",
+      "avalanche": "Avalanche",
+      "lowTemperature": "Low temperature",
+      "frost": "Frost",
+      "icing": "Ice accretion",
+      "snowAccretion": "Snow accretion",
+      "landslide": "Landslide",
+      "tornado": "Tornado",
+      "recordRain": "Record rainfall",
+      "heat": "Heatstroke"
+    }
+  },
   "trends": {
     "title": "Trends",
     "empty": "No search trends for here right now",
@@ -123,7 +161,7 @@
     "renameTitle": "Rename mark",
     "distance": "{{distance}} away",
     "showOnMap": "Show on map",
-    "navigate": "Route here"
+    "navigate": "Directions"
   },
   "post": {
     "hint": "Hold to post",
@@ -150,13 +188,6 @@
     "title": "posts",
     "subtitle": "what is around you",
     "empty": "No posts around here yet"
-  },
-  "route": {
-    "walking": "Walk",
-    "driving": "Drive",
-    "finding": "Finding a route",
-    "clear": "Clear route",
-    "unavailable": "No route to that spot"
   },
   "time": {
     "justNow": "just now"

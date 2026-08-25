@@ -88,7 +88,7 @@ export default function TrendsCard() {
   const where = result?.name || null;
 
   return (
-    <Card title={t("trends.title")} meta={where} wide square flush>
+    <Card title={t("trends.title")} meta={where} wide half flush>
       <div className={styles.scroll}>{body}</div>
     </Card>
   );
