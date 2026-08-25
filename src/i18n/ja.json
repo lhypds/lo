@@ -1,0 +1,144 @@
+{
+  "common": {
+    "loading": "読み込み中",
+    "cancel": "キャンセル",
+    "save": "保存",
+    "retry": "再試行",
+    "unavailable": "利用できません"
+  },
+  "header": {
+    "backHome": "ホームに戻る",
+    "back": "戻る",
+    "marks": "記録",
+    "account": "アカウント",
+    "refresh": "現在地を更新"
+  },
+  "auth": {
+    "tagline": "いま、あなたのいる場所。",
+    "username": "ユーザー名",
+    "login": "開始",
+    "usernameHint": "パスワードは不要。ユーザー名だけ。",
+    "usernameRequired": "ユーザー名を入力してください"
+  },
+  "account": {
+    "title": "アカウント",
+    "username": "ユーザー名",
+    "joined": "登録日",
+    "marks": "記録数",
+    "location": "位置情報",
+    "locationOn": "オン",
+    "locationOff": "オフ",
+    "forget": "位置情報をオフにする",
+    "logout": "ログアウト"
+  },
+  "gate": {
+    "title": "lo",
+    "body": "lo は現在地から始まります。位置情報をオンにすると、時刻・天気・周辺の出来事・地図がそろいます。",
+    "enable": "位置情報をオンにする",
+    "locating": "測位中",
+    "denied": "位置情報が拒否されました",
+    "deniedHint": "ブラウザの設定でこのサイトの位置情報を許可してから、もう一度お試しください。",
+    "unsupported": "この端末は位置情報に対応していません",
+    "error": "現在地を取得できませんでした",
+    "errorHint": "電波が届かないか時間がかかりすぎました。もう一度お試しください。"
+  },
+  "location": {
+    "title": "現在地",
+    "accuracy": "精度",
+    "stale": "最後に確認した位置",
+    "updated": "{{time}}に更新",
+    "locating": "測位中"
+  },
+  "clock": {
+    "title": "時刻",
+    "timezone": "タイムゾーン",
+    "sunrise": "日の出",
+    "sunset": "日の入り",
+    "offset": "UTC{{offset}}"
+  },
+  "weather": {
+    "title": "天気",
+    "feelsLike": "体感",
+    "humidity": "湿度",
+    "wind": "風速",
+    "high": "最高",
+    "low": "最低",
+    "unavailable": "天気を取得できません"
+  },
+  "nearby": {
+    "title": "周辺",
+    "news": "地域のニュース",
+    "places": "あなたの周り",
+    "empty": "この辺りに伝えることはありません",
+    "unavailable": "ニュースサービスに接続できません",
+    "loading": "周辺を読み込み中"
+  },
+  "map": {
+    "title": "地図",
+    "noToken": "地図を表示するには .env に VITE_MAPBOX_TOKEN を設定してください。",
+    "recenter": "現在地に戻る",
+    "you": "現在地",
+    "expand": "全画面地図",
+    "collapse": "地図を閉じる",
+    "unavailable": "地図の表示には WebGL が必要ですが、このブラウザでは利用できません。"
+  },
+  "mark": {
+    "button": "現在地を記録",
+    "saving": "保存中",
+    "saved": "記録しました",
+    "undo": "取り消す",
+    "removed": "削除しました",
+    "needsLocation": "先に位置情報をオンにしてください",
+    "namePlaceholder": "この場所に名前をつける（任意）",
+    "title": "現在地を記録",
+    "submit": "記録"
+  },
+  "marks": {
+    "title": "記録",
+    "subtitle": "残した場所",
+    "empty": "まだ記録はありません",
+    "unnamed": "名前のない場所",
+    "delete": "削除",
+    "deleting": "削除中",
+    "deleteTitle": "記録を削除",
+    "deleteConfirm": "「{{name}}」を削除しますか？この操作は取り消せません。",
+    "rename": "名前を変更",
+    "renameTitle": "記録の名前を変更",
+    "distance": "{{distance}} 先",
+    "showOnMap": "地図で表示"
+  },
+  "time": {
+    "justNow": "たった今"
+  },
+  "weatherCode": {
+    "0": "快晴",
+    "1": "ほぼ快晴",
+    "2": "一部曇り",
+    "3": "曇り",
+    "45": "霧",
+    "48": "霧氷を伴う霧",
+    "51": "弱い霧雨",
+    "53": "霧雨",
+    "55": "強い霧雨",
+    "56": "着氷性の霧雨",
+    "57": "強い着氷性の霧雨",
+    "61": "弱い雨",
+    "63": "雨",
+    "65": "強い雨",
+    "66": "着氷性の雨",
+    "67": "強い着氷性の雨",
+    "71": "弱い雪",
+    "73": "雪",
+    "75": "強い雪",
+    "77": "霧雪",
+    "80": "弱いにわか雨",
+    "81": "にわか雨",
+    "82": "激しいにわか雨",
+    "85": "弱いにわか雪",
+    "86": "強いにわか雪",
+    "95": "雷雨",
+    "96": "雹を伴う雷雨",
+    "99": "激しい雹を伴う雷雨",
+    "unknown": "不明"
+  }
+}

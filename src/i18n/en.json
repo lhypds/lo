@@ -1,0 +1,144 @@
+{
+  "common": {
+    "loading": "Loading",
+    "cancel": "Cancel",
+    "save": "Save",
+    "retry": "Retry",
+    "unavailable": "Unavailable"
+  },
+  "header": {
+    "backHome": "Back to home",
+    "back": "Back",
+    "marks": "Marks",
+    "account": "Account",
+    "refresh": "Update location"
+  },
+  "auth": {
+    "tagline": "Where you are, right now.",
+    "username": "Username",
+    "login": "Go",
+    "usernameHint": "No password — just a username.",
+    "usernameRequired": "Please enter a username"
+  },
+  "account": {
+    "title": "Account",
+    "username": "Username",
+    "joined": "Joined",
+    "marks": "Marks",
+    "location": "Location",
+    "locationOn": "On",
+    "locationOff": "Off",
+    "forget": "Turn location off",
+    "logout": "Logout"
+  },
+  "gate": {
+    "title": "lo",
+    "body": "lo starts from where you are. Turn on location and the time, the weather, what is happening nearby and the map all follow.",
+    "enable": "Turn on location",
+    "locating": "Locating",
+    "denied": "Location is blocked",
+    "deniedHint": "Allow location for this site in your browser settings, then try again.",
+    "unsupported": "This device has no location support",
+    "error": "Could not get a fix",
+    "errorHint": "No signal, or the device took too long. Try again."
+  },
+  "location": {
+    "title": "Here",
+    "accuracy": "Accuracy",
+    "stale": "Last known position",
+    "updated": "Updated {{time}}",
+    "locating": "Locating"
+  },
+  "clock": {
+    "title": "Time",
+    "timezone": "Time zone",
+    "sunrise": "Sunrise",
+    "sunset": "Sunset",
+    "offset": "UTC{{offset}}"
+  },
+  "weather": {
+    "title": "Weather",
+    "feelsLike": "Feels like",
+    "humidity": "Humidity",
+    "wind": "Wind",
+    "high": "High",
+    "low": "Low",
+    "unavailable": "Weather is unavailable right now"
+  },
+  "nearby": {
+    "title": "Nearby",
+    "news": "Local news",
+    "places": "Around you",
+    "empty": "Nothing to report around here",
+    "unavailable": "Could not reach the news service",
+    "loading": "Reading the neighbourhood"
+  },
+  "map": {
+    "title": "Map",
+    "noToken": "Add VITE_MAPBOX_TOKEN to .env to display the map.",
+    "recenter": "Back to my position",
+    "you": "You are here",
+    "expand": "Full map",
+    "collapse": "Close map",
+    "unavailable": "The map needs WebGL, which this browser will not give it."
+  },
+  "mark": {
+    "button": "Mark this spot",
+    "saving": "Saving",
+    "saved": "Marked",
+    "undo": "Undo",
+    "removed": "Removed",
+    "needsLocation": "Turn on location first",
+    "namePlaceholder": "Name this spot (optional)",
+    "title": "Mark this spot",
+    "submit": "Mark"
+  },
+  "marks": {
+    "title": "Marks",
+    "subtitle": "spots you kept",
+    "empty": "No marks yet",
+    "unnamed": "Unnamed spot",
+    "delete": "Delete",
+    "deleting": "Deleting",
+    "deleteTitle": "Delete mark",
+    "deleteConfirm": "Delete “{{name}}”? This cannot be undone.",
+    "rename": "Rename",
+    "renameTitle": "Rename mark",
+    "distance": "{{distance}} away",
+    "showOnMap": "Show on map"
+  },
+  "time": {
+    "justNow": "just now"
+  },
+  "weatherCode": {
+    "0": "Clear sky",
+    "1": "Mainly clear",
+    "2": "Partly cloudy",
+    "3": "Overcast",
+    "45": "Fog",
+    "48": "Rime fog",
+    "51": "Light drizzle",
+    "53": "Drizzle",
+    "55": "Dense drizzle",
+    "56": "Freezing drizzle",
+    "57": "Dense freezing drizzle",
+    "61": "Light rain",
+    "63": "Rain",
+    "65": "Heavy rain",
+    "66": "Freezing rain",
+    "67": "Heavy freezing rain",
+    "71": "Light snow",
+    "73": "Snow",
+    "75": "Heavy snow",
+    "77": "Snow grains",
+    "80": "Light showers",
+    "81": "Showers",
+    "82": "Violent showers",
+    "85": "Light snow showers",
+    "86": "Heavy snow showers",
+    "95": "Thunderstorm",
+    "96": "Thunderstorm with hail",
+    "99": "Severe thunderstorm with hail",
+    "unknown": "Unknown"
+  }
+}

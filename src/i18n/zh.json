@@ -1,0 +1,144 @@
+{
+  "common": {
+    "loading": "加载中",
+    "cancel": "取消",
+    "save": "保存",
+    "retry": "重试",
+    "unavailable": "暂不可用"
+  },
+  "header": {
+    "backHome": "返回首页",
+    "back": "返回",
+    "marks": "记录",
+    "account": "账号",
+    "refresh": "更新定位"
+  },
+  "auth": {
+    "tagline": "此刻，你在哪里。",
+    "username": "用户名",
+    "login": "进入",
+    "usernameHint": "无需密码，只要一个用户名。",
+    "usernameRequired": "请输入用户名"
+  },
+  "account": {
+    "title": "账号",
+    "username": "用户名",
+    "joined": "注册于",
+    "marks": "记录数",
+    "location": "定位",
+    "locationOn": "已开启",
+    "locationOff": "已关闭",
+    "forget": "关闭定位",
+    "logout": "退出登录"
+  },
+  "gate": {
+    "title": "lo",
+    "body": "lo 从你所在的位置开始。开启定位后，时间、天气、周围事件和地图都会随之而来。",
+    "enable": "开启定位",
+    "locating": "定位中",
+    "denied": "定位被拒绝",
+    "deniedHint": "请在浏览器设置中允许本站访问位置，然后重试。",
+    "unsupported": "此设备不支持定位",
+    "error": "无法获取位置",
+    "errorHint": "信号不足或耗时过长，请重试。"
+  },
+  "location": {
+    "title": "此处",
+    "accuracy": "精度",
+    "stale": "上次已知位置",
+    "updated": "更新于 {{time}}",
+    "locating": "定位中"
+  },
+  "clock": {
+    "title": "时间",
+    "timezone": "时区",
+    "sunrise": "日出",
+    "sunset": "日落",
+    "offset": "UTC{{offset}}"
+  },
+  "weather": {
+    "title": "天气",
+    "feelsLike": "体感",
+    "humidity": "湿度",
+    "wind": "风速",
+    "high": "最高",
+    "low": "最低",
+    "unavailable": "暂时无法获取天气"
+  },
+  "nearby": {
+    "title": "周围",
+    "news": "本地新闻",
+    "places": "你的周边",
+    "empty": "附近暂无可报道的内容",
+    "unavailable": "无法连接新闻服务",
+    "loading": "正在读取周边"
+  },
+  "map": {
+    "title": "地图",
+    "noToken": "请在 .env 中设置 VITE_MAPBOX_TOKEN 以显示地图。",
+    "recenter": "回到我的位置",
+    "you": "你在这里",
+    "expand": "全屏地图",
+    "collapse": "关闭地图",
+    "unavailable": "地图需要 WebGL，当前浏览器未提供。"
+  },
+  "mark": {
+    "button": "记录当前位置",
+    "saving": "保存中",
+    "saved": "已记录",
+    "undo": "撤销",
+    "removed": "已删除",
+    "needsLocation": "请先开启定位",
+    "namePlaceholder": "为这个位置命名（可选）",
+    "title": "记录当前位置",
+    "submit": "记录"
+  },
+  "marks": {
+    "title": "记录",
+    "subtitle": "你留下的位置",
+    "empty": "还没有记录",
+    "unnamed": "未命名位置",
+    "delete": "删除",
+    "deleting": "删除中",
+    "deleteTitle": "删除记录",
+    "deleteConfirm": "删除“{{name}}”？此操作无法撤销。",
+    "rename": "重命名",
+    "renameTitle": "重命名记录",
+    "distance": "距离 {{distance}}",
+    "showOnMap": "在地图上显示"
+  },
+  "time": {
+    "justNow": "刚刚"
+  },
+  "weatherCode": {
+    "0": "晴朗",
+    "1": "大部晴朗",
+    "2": "多云",
+    "3": "阴天",
+    "45": "雾",
+    "48": "雾凇",
+    "51": "小毛毛雨",
+    "53": "毛毛雨",
+    "55": "大毛毛雨",
+    "56": "冻毛毛雨",
+    "57": "强冻毛毛雨",
+    "61": "小雨",
+    "63": "中雨",
+    "65": "大雨",
+    "66": "冻雨",
+    "67": "强冻雨",
+    "71": "小雪",
+    "73": "中雪",
+    "75": "大雪",
+    "77": "米雪",
+    "80": "小阵雨",
+    "81": "阵雨",
+    "82": "强阵雨",
+    "85": "小阵雪",
+    "86": "大阵雪",
+    "95": "雷暴",
+    "96": "雷暴伴冰雹",
+    "99": "强雷暴伴冰雹",
+    "unknown": "未知"
+  }
+}

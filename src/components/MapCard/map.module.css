@@ -1,0 +1,94 @@
+.cardExpanded {
+  height: min(76vh, 720px);
+}
+
+.actions {
+  display: inline-flex;
+  gap: 5px;
+}
+
+.wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.container {
+  position: absolute;
+  inset: 0;
+}
+
+.noToken {
+  margin: 0;
+  padding: 40px 16px;
+  color: var(--muted);
+  text-align: center;
+  font-size: 12px;
+}
+
+/* The fix itself: a filled dot with a paper ring, so it reads against both the
+   road fill and the satellite imagery */
+.hereDot {
+  width: 14px;
+  height: 14px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: #000;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+}
+
+/* Saved marks are numbered newest-first, matching the order of the marks list */
+.markDot {
+  min-width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 5px;
+  border: 1px solid #000;
+  background: #fff;
+  color: #000;
+  font-family: var(--mono);
+  font-size: 10px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.markDot:hover {
+  background: #000;
+  color: #fff;
+}
+
+/* Mapbox's own chrome, squared off to match everything around it */
+.wrapper :global(.mapboxgl-ctrl-group) {
+  border-radius: 0;
+  border: 1px solid var(--ink);
+  box-shadow: none;
+}
+
+/* On the square tile the zoom buttons cover a tenth of the map for a gesture
+   the reader already has; attribution and the Mapbox logo stay, as they must */
+@container (max-width: 320px) {
+  .wrapper :global(.mapboxgl-ctrl-group) {
+    display: none;
+  }
+}
+
+.wrapper :global(.mapboxgl-ctrl-group button + button) {
+  border-top: 1px solid var(--line);
+}
+
+.wrapper :global(.mapboxgl-popup-content) {
+  padding: 6px 10px;
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  box-shadow: none;
+  font-family: var(--sans);
+  font-size: 12px;
+}
+
+.wrapper :global(.mapboxgl-popup-tip) {
+  display: none;
+}

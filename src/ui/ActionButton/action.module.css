@@ -1,0 +1,59 @@
+.actionButton {
+  position: relative;
+  width: 26px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 6px;
+  border: 1px solid var(--ink);
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+.actionButton:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
+.icon {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.actionButton[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  z-index: 999;
+  padding: 3px 8px;
+  transform: translateX(-50%);
+  border: 1px solid var(--ink);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+
+@media (hover: hover) {
+  .actionButton:not(:disabled):hover {
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  .actionButton[data-tooltip]:hover::after {
+    opacity: 1;
+  }
+}

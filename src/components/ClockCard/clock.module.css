@@ -1,0 +1,87 @@
+/* The readout rows sit on the bottom edge of the square and the clock face
+   floats in whatever is left, so the tile reads as filled at any size rather
+   than as content stacked at the top with a hole under it */
+.inner {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.top {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.face {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.time {
+  font-family: var(--display);
+  font-size: clamp(24px, 21cqi, 46px);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+.seconds {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: clamp(9px, 6cqi, 15px);
+  font-variant-numeric: tabular-nums;
+}
+
+.date {
+  margin: 6px 0 0;
+  font-size: clamp(10px, 5cqi, 13px);
+}
+
+.rows {
+  flex: 0 0 auto;
+  margin: 8px 0 0;
+  border-top: 1px solid var(--line);
+}
+
+.rows div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.rows div:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.rows dt {
+  color: var(--muted);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.rows dd {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--mono);
+  font-size: 10px;
+}
+
+/* Only on a genuinely tiny tile — a narrow phone in portrait — is there no room
+   for all three; the zone name is the one row worth keeping */
+@container (max-width: 165px) {
+  .rows div + div {
+    display: none;
+  }
+}

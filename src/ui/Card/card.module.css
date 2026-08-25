@@ -1,0 +1,75 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border: 1px solid var(--ink);
+  background: var(--paper);
+  /* Content inside measures itself against the tile, not the window — the same
+     card is 290px wide on a laptop and 175px on a phone */
+  container-type: inline-size;
+}
+
+.square {
+  aspect-ratio: 1;
+}
+
+.wide {
+  grid-column: 1 / -1;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 30px;
+  flex: 0 0 auto;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--ink);
+}
+
+.title {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.meta {
+  min-width: 0;
+  margin-left: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+}
+
+/* Anything in `action` sits hard right; a meta line before it keeps its own space */
+.head > :last-child:not(.title):not(.meta) {
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+.head > .meta + * {
+  margin-left: 8px;
+}
+
+.body {
+  flex: 1;
+  min-height: 0;
+  padding: 11px 10px;
+  /* A square tile is a fixed budget; content that will not fit is clipped
+     rather than allowed to break the grid */
+  overflow: hidden;
+}
+
+/* For content that owns its own edges — the map canvas, a scrolling list */
+.flush {
+  flex: 1;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+}

@@ -1,0 +1,75 @@
+/* The one panel on the page that is not a square, and the only one whose
+   content has no natural end — so it gets the length instead */
+.scroll {
+  max-height: min(64vh, 620px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.list li + li {
+  border-top: 1px solid var(--line);
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 9px 10px;
+  text-decoration: none;
+}
+
+.itemTitle {
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.itemMeta {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+}
+
+.source {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.itemMeta > * + *::before {
+  content: "·";
+  margin-right: 8px;
+}
+
+.empty {
+  margin: 0;
+  padding: 34px 12px;
+  color: var(--muted);
+  text-align: center;
+  font-size: 11px;
+}
+
+@media (hover: hover) {
+  .item:hover {
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  .item:hover .itemMeta {
+    color: var(--paper);
+  }
+}

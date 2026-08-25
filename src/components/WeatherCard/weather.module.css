@@ -1,0 +1,151 @@
+/* Same shape as the clock tile: readings pinned to the bottom edge, the
+   temperature floating in the space above them */
+.inner {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.top {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.now {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.glyph {
+  width: clamp(20px, 15cqi, 34px);
+  height: clamp(20px, 15cqi, 34px);
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.temp {
+  font-family: var(--display);
+  font-size: clamp(24px, 20cqi, 44px);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+.unit {
+  margin-left: 1px;
+  font-size: 0.34em;
+  font-weight: 400;
+}
+
+.condition {
+  margin: 6px 0 0;
+  font-size: clamp(10px, 5cqi, 13px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rows {
+  flex: 0 0 auto;
+  margin: 8px 0 0;
+  border-top: 1px solid var(--line);
+}
+
+.rows div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.rows div:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.rows dt {
+  color: var(--muted);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.rows dd {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.forecast {
+  flex: 0 0 auto;
+  margin: 8px 0 0;
+  padding: 8px 0 0;
+  border-top: 1px solid var(--ink);
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.forecast li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.forecastDay {
+  width: 34px;
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+}
+
+.forecastGlyph {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.forecastTemp {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* A phone-sized tile has room for now and the three readings, and no more —
+   the days ahead are the first thing to go */
+@container (max-width: 230px) {
+  .forecast {
+    display: none;
+  }
+}
+
+.empty {
+  margin: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  text-align: center;
+  font-size: 11px;
+}
