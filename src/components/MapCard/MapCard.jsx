@@ -3,7 +3,14 @@ import { useTranslation } from "react-i18next";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { ActionButton, Card } from "../../ui/index.js";
-import { formatCoords, formatUsername, relativeTime } from "../../utils/format.js";
+import {
+  formatCoords,
+  formatDateTime,
+  formatDistance,
+  formatDuration,
+  formatUsername,
+  relativeTime,
+} from "../../utils/format.js";
 import { useAuth } from "../AuthProvider/index.js";
 import { useHere } from "../LocationProvider/index.js";
 import styles from "./map.module.css";
@@ -29,6 +36,10 @@ function mapLanguage(uiLanguage) {
 const ACCURACY_SOURCE = "lo-accuracy";
 const ACCURACY_FILL = "lo-accuracy-fill";
 const ACCURACY_LINE = "lo-accuracy-line";
+
+const ROUTE_SOURCE = "lo-route";
+const ROUTE_CASING = "lo-route-casing";
+const ROUTE_LINE = "lo-route-line";
 
 // The accuracy halo as a real polygon rather than a styled circle: a circle
 // layer is sized in screen pixels, which would keep the halo the same size as
@@ -65,11 +76,42 @@ function personElement(username, self = false) {
   return wrapper;
 }
 
-function markElement(index) {
+// The same glyph on every saved spot rather than a number: the list is not
+// ordered by anything the map can show, so a rank on the pin invites a reading
+// of the map that isn't there. What the pin has to say is "a mark is here", and
+// the name is a tap away in the popup.
+function markElement() {
   const pin = document.createElement("div");
   pin.className = styles.markDot;
-  pin.textContent = String(index);
+  pin.textContent = "m";
   return pin;
+}
+
+// A post is the same square saying p — the two are the same size of thing on
+// the map, and what differs is only what opens when one is pressed.
+function postElement() {
+  const pin = document.createElement("div");
+  pin.className = styles.postDot;
+  pin.textContent = "p";
+  return pin;
+}
+
+// Built out of nodes rather than a string of HTML: the name is whatever the
+// reader typed into the rename box, and setHTML would run it.
+function markPopupElement(name, coords, iso, when) {
+  const wrapper = document.createElement("div");
+  wrapper.className = styles.markPopup;
+  const label = document.createElement("strong");
+  label.textContent = name;
+  const position = document.createElement("span");
+  position.className = styles.markPopupMeta;
+  position.textContent = coords;
+  const time = document.createElement("time");
+  time.className = styles.markPopupMeta;
+  time.dateTime = iso;
+  time.textContent = when;
+  wrapper.append(label, position, time);
+  return wrapper;
 }
 
 // `expanded` is owned by the page rather than by the map: expanding hides the
@@ -80,10 +122,14 @@ function markElement(index) {
 // and gets a history, with the list of them underneath.
 export default function MapCard({
   marks = [],
+  posts = [],
   focus = null,
+  route = null,
   fitMarks = false,
   expanded = false,
   onToggleExpanded,
+  onClearRoute,
+  onSelectPost,
 }) {
   const { t, i18n } = useTranslation();
   const { coords, people = [] } = useHere();
@@ -93,6 +139,10 @@ export default function MapCard({
   const hereMarkerRef = useRef(null);
   const peopleMarkersRef = useRef([]);
   const markMarkersRef = useRef([]);
+  const postMarkersRef = useRef([]);
+  // Read by the marker handlers, which are attached to DOM nodes the map owns
+  // and outlive the render that built them.
+  const selectPostRef = useRef(onSelectPost);
   const followRef = useRef(true);
   const fittedRef = useRef(false);
   const [broken, setBroken] = useState(false);
@@ -154,6 +204,27 @@ export default function MapCard({
           paint: { "line-color": "#000000", "line-width": 1, "line-opacity": 0.35 },
         });
       }
+      // Added after the halo so the route draws over it, and in two passes so
+      // the line keeps its edges over dark ground as well as light: the white
+      // casing underneath is what a single black stroke has no way of getting
+      // over a park, a river, or satellite imagery.
+      if (!map.getSource(ROUTE_SOURCE)) {
+        map.addSource(ROUTE_SOURCE, { type: "geojson", data: EMPTY_GEOJSON });
+        map.addLayer({
+          id: ROUTE_CASING,
+          type: "line",
+          source: ROUTE_SOURCE,
+          layout: { "line-cap": "round", "line-join": "round" },
+          paint: { "line-color": "#ffffff", "line-width": 7, "line-opacity": 0.9 },
+        });
+        map.addLayer({
+          id: ROUTE_LINE,
+          type: "line",
+          source: ROUTE_SOURCE,
+          layout: { "line-cap": "round", "line-join": "round" },
+          paint: { "line-color": "#000000", "line-width": 3 },
+        });
+      }
     });
 
     return () => {
@@ -162,6 +233,7 @@ export default function MapCard({
       hereMarkerRef.current = null;
       peopleMarkersRef.current = [];
       markMarkersRef.current = [];
+      postMarkersRef.current = [];
     };
     // Built from the first fix that exists; later ones move it instead.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -234,14 +306,43 @@ export default function MapCard({
     const map = mapRef.current;
     if (!map) return;
     markMarkersRef.current.forEach((marker) => marker.remove());
-    markMarkersRef.current = marks.map((mark, index) => {
-      const label = mark.label || mark.place || formatCoords(mark.latitude, mark.longitude);
-      return new mapboxgl.Marker({ element: markElement(marks.length - index), anchor: "bottom" })
+    markMarkersRef.current = marks.map((mark) => {
+      const name = mark.label || mark.place || t("marks.unnamed");
+      return new mapboxgl.Marker({ element: markElement(), anchor: "bottom" })
         .setLngLat([mark.longitude, mark.latitude])
-        .setPopup(new mapboxgl.Popup({ closeButton: false, offset: 16 }).setText(label))
+        .setPopup(
+          new mapboxgl.Popup({ closeButton: false, offset: 16 }).setDOMContent(
+            markPopupElement(
+              name,
+              formatCoords(mark.latitude, mark.longitude),
+              mark.time,
+              formatDateTime(mark.time, i18n.language),
+            ),
+          ),
+        )
         .addTo(map);
     });
-  }, [marks]);
+  }, [marks, t, i18n.language]);
+
+  useEffect(() => {
+    selectPostRef.current = onSelectPost;
+  }, [onSelectPost]);
+
+  // Posts, drawn the same wholesale way and for the same reason. There is no
+  // popup on these: a post is words and a photo, which is more than a bubble on
+  // a 300px tile can hold, so pressing one opens it properly instead.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    postMarkersRef.current.forEach((marker) => marker.remove());
+    postMarkersRef.current = posts.map((post) => {
+      const element = postElement();
+      element.addEventListener("click", () => selectPostRef.current?.(post));
+      return new mapboxgl.Marker({ element, anchor: "bottom" })
+        .setLngLat([post.longitude, post.latitude])
+        .addTo(map);
+    });
+  }, [posts]);
 
   // A history map opens on the whole history: one fit over every saved spot, so
   // marks left in another city are on screen without anyone having to go and
@@ -260,6 +361,30 @@ export default function MapCard({
     // outermost pins clear of the edges of the card.
     map.fitBounds(bounds, { padding: 48, maxZoom: DEFAULT_ZOOM, duration: 0 });
   }, [fitMarks, marks, coords]);
+
+  // The line to a spot the reader asked for directions to, and the frame that
+  // makes it a route rather than a stripe running off two edges of the tile.
+  // Asking for one is asking to see all of it, so this outranks following the
+  // fix for the same reason a deliberate pan does.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const geometry = route?.geometry;
+    const apply = () => {
+      map
+        .getSource(ROUTE_SOURCE)
+        ?.setData(geometry ? { type: "Feature", properties: {}, geometry } : EMPTY_GEOJSON);
+    };
+    if (map.isStyleLoaded()) apply();
+    else map.once("style.load", apply);
+    if (!geometry) return;
+    followRef.current = false;
+    const bounds = geometry.coordinates.reduce(
+      (box, position) => box.extend(position),
+      new mapboxgl.LngLatBounds(),
+    );
+    map.fitBounds(bounds, { padding: 56, maxZoom: DEFAULT_ZOOM, duration: 700 });
+  }, [route]);
 
   // Arriving from the marks list with one spot in mind.
   useEffect(() => {
@@ -291,6 +416,32 @@ export default function MapCard({
   const body = live ? (
     <div className={styles.wrapper}>
       <div ref={containerRef} className={styles.container} />
+      {/* Where the line goes and what it costs, on the map because that is
+          where the line is — the list underneath is scrolled away half the time
+          the route is being looked at. */}
+      {route && (
+        <div className={styles.route}>
+          <span className={styles.routeCopy}>
+            <span className={styles.routeLabel}>{route.label}</span>
+            <span className={styles.routeMeta}>
+              {`${t(`route.${route.profile}`)} · ${formatDistance(route.distance)} · ${formatDuration(route.duration)}`}
+            </span>
+          </span>
+          {onClearRoute && (
+            <button
+              type="button"
+              className={styles.routeClose}
+              aria-label={t("route.clear")}
+              onClick={onClearRoute}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M6 6l12 12" />
+                <path d="M18 6L6 18" />
+              </svg>
+            </button>
+          )}
+        </div>
+      )}
     </div>
   ) : (
     <p className={styles.noToken}>{TOKEN ? t("map.unavailable") : t("map.noToken")}</p>

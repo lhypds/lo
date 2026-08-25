@@ -34,6 +34,70 @@
   inset: 0;
 }
 
+/* The route's caption sits top left because that is the one corner Mapbox
+   leaves alone — the zoom buttons take the top right, the attribution the
+   bottom right. Its colours are fixed rather than themed, the same bargain the
+   dots make: it has to read against road fill and satellite imagery, and
+   neither of those knows about light and dark mode. */
+.route {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 3;
+  max-width: calc(100% - 60px);
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 6px 6px 6px 8px;
+  border: 1px solid #000;
+  background: #fff;
+  color: #000;
+}
+
+.routeCopy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.routeLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.routeMeta {
+  font-family: var(--mono);
+  font-size: 10px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.routeClose {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+}
+
+.routeClose svg {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
 .noToken {
   margin: 0;
   padding: 40px 16px;
@@ -92,14 +156,16 @@
   color: #fff;
 }
 
-/* Saved marks are numbered newest-first, matching the order of the marks list */
-.markDot {
-  min-width: 20px;
+/* Every saved mark wears the same glyph, so the pin is a fixed square. A post
+   is the same square with a p in it — they sit on the same map at the same
+   size, and the letter is the whole of the difference. */
+.markDot,
+.postDot {
+  width: 20px;
   height: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 5px;
   border: 1px solid #000;
   background: #fff;
   color: #000;
@@ -109,7 +175,8 @@
   cursor: pointer;
 }
 
-.markDot:hover {
+.markDot:hover,
+.postDot:hover {
   background: #000;
   color: #fff;
 }
@@ -182,4 +249,18 @@
 
 .wrapper :global(.mapboxgl-popup-tip) {
   display: none;
+}
+
+/* A mark's popup says what its row in the list says: which spot, where it is,
+   and when it was kept — the pin itself can only say that one is here. */
+.markPopup {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.markPopupMeta {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted);
 }

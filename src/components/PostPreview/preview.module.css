@@ -1,0 +1,61 @@
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.frame {
+  border: 1px solid var(--ink);
+  background: var(--soft);
+  line-height: 0;
+}
+
+/* Tall enough to be looked at, capped so a portrait photo does not push the
+   rest of the post off a phone screen — the sheet scrolls, but a reader should
+   not have to scroll to find out there were words under the picture */
+.image {
+  width: 100%;
+  max-height: 46vh;
+  object-fit: contain;
+}
+
+.text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  /* Line breaks are part of what was written; anything else here was typed as
+     one long word and has to be allowed to break */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.meta {
+  margin: 0;
+  border-top: 1px solid var(--ink);
+}
+
+.meta div {
+  display: grid;
+  grid-template-columns: 62px 1fr;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+}
+
+.meta dt {
+  color: var(--muted);
+}
+
+.meta dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.away {
+  margin-left: 8px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+}

@@ -121,7 +121,38 @@
     "rename": "名前を変更",
     "renameTitle": "記録の名前を変更",
     "distance": "{{distance}} 先",
-    "showOnMap": "地図で表示"
+    "showOnMap": "地図で表示",
+    "navigate": "ルート"
+  },
+  "post": {
+    "hint": "長押しで投稿",
+    "title": "新しい Post",
+    "preview": "Post",
+    "placeholder": "ここで何が起きていますか？",
+    "addPhoto": "画像を追加",
+    "removePhoto": "削除",
+    "compressing": "圧縮中",
+    "uploading": "アップロード中",
+    "notImage": "画像ファイルではありません",
+    "uploadFailed": "画像をアップロードできませんでした",
+    "needsContent": "何か書くか、画像を追加してください",
+    "submit": "投稿",
+    "posting": "投稿中",
+    "posted": "投稿しました",
+    "by": "投稿者",
+    "where": "場所",
+    "when": "日時",
+    "delete": "削除",
+    "deleting": "削除中",
+    "deleteTitle": "Post を削除",
+    "deleteConfirm": "この Post を削除しますか？この操作は取り消せません。"
+  },
+  "route": {
+    "walking": "徒歩",
+    "driving": "車",
+    "finding": "ルートを検索中",
+    "clear": "ルートを消す",
+    "unavailable": "その場所へのルートが見つかりません"
   },
   "time": {
     "justNow": "たった今"

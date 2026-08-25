@@ -121,7 +121,38 @@
     "rename": "重命名",
     "renameTitle": "重命名记录",
     "distance": "距离 {{distance}}",
-    "showOnMap": "在地图上显示"
+    "showOnMap": "在地图上显示",
+    "navigate": "路线"
+  },
+  "post": {
+    "hint": "长按发布",
+    "title": "新建 Post",
+    "preview": "Post",
+    "placeholder": "这里发生了什么？",
+    "addPhoto": "添加图片",
+    "removePhoto": "移除",
+    "compressing": "压缩中",
+    "uploading": "上传中",
+    "notImage": "该文件不是图片",
+    "uploadFailed": "图片上传失败",
+    "needsContent": "写点什么，或者添加一张图片",
+    "submit": "发布",
+    "posting": "发布中",
+    "posted": "已发布",
+    "by": "作者",
+    "where": "位置",
+    "when": "时间",
+    "delete": "删除",
+    "deleting": "删除中",
+    "deleteTitle": "删除 Post",
+    "deleteConfirm": "删除这条 Post？此操作无法撤销。"
+  },
+  "route": {
+    "walking": "步行",
+    "driving": "驾车",
+    "finding": "规划路线中",
+    "clear": "清除路线",
+    "unavailable": "无法规划到该位置的路线"
   },
   "time": {
     "justNow": "刚刚"

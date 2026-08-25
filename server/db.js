@@ -31,6 +31,28 @@ db.exec(`
 
   CREATE INDEX IF NOT EXISTS marks_user_time_idx ON marks(user_id, time DESC);
 
+  -- A mark is private and says only "I was here"; a post is public and says
+  -- something about the spot, so it carries words, maybe a photo, and the name
+  -- of whoever left it. The photo is a file name from data/images, never bytes:
+  -- the row stays small enough to hand out by the hundred.
+  CREATE TABLE IF NOT EXISTS posts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    time TEXT NOT NULL,
+    latitude REAL NOT NULL,
+    longitude REAL NOT NULL,
+    accuracy REAL,
+    body TEXT NOT NULL DEFAULT '',
+    image TEXT,
+    image_width INTEGER,
+    image_height INTEGER,
+    place TEXT,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+
+  CREATE INDEX IF NOT EXISTS posts_time_idx ON posts(time DESC);
+  CREATE INDEX IF NOT EXISTS posts_latitude_idx ON posts(latitude);
+
   -- Where each account is right now, one row per user and overwritten in place:
   -- this is presence, not history. Marks are the table that keeps things.
   CREATE TABLE IF NOT EXISTS positions (
@@ -88,6 +110,70 @@ const updateMarkLabel = db.prepare(`
 
 const deleteMarkById = db.prepare(`
   DELETE FROM marks
+  WHERE id = ? AND user_id = ?
+`);
+
+/* --------------------------------------------------------------------- posts */
+
+const insertPost = db.prepare(`
+  INSERT INTO posts (user_id, time, latitude, longitude, accuracy, body, image, image_width, image_height, place)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+`);
+
+// The stored image is a bare file name; every reader wants the URL, so the
+// column is turned into one here rather than in each caller.
+const POST_COLUMNS = `
+  p.id,
+  p.time,
+  p.latitude,
+  p.longitude,
+  p.accuracy,
+  p.body,
+  CASE WHEN p.image IS NULL THEN NULL ELSE '/api/images/' || p.image END AS image,
+  p.image_width AS imageWidth,
+  p.image_height AS imageHeight,
+  p.place,
+  u.username
+`;
+
+const selectPostById = db.prepare(`
+  SELECT ${POST_COLUMNS}
+  FROM posts p
+  JOIN users u ON u.id = p.user_id
+  WHERE p.id = ?
+`);
+
+const selectPostsInBox = db.prepare(`
+  SELECT ${POST_COLUMNS}
+  FROM posts p
+  JOIN users u ON u.id = p.user_id
+  WHERE p.latitude BETWEEN ? AND ? AND p.longitude BETWEEN ? AND ?
+  ORDER BY p.time DESC, p.id DESC
+  LIMIT ?
+`);
+
+// The same query for a box that runs off the edge of the world: east of the
+// west edge *or* west of the east edge, because near the antimeridian those two
+// numbers are the wrong way round.
+const selectPostsInWrappedBox = db.prepare(`
+  SELECT ${POST_COLUMNS}
+  FROM posts p
+  JOIN users u ON u.id = p.user_id
+  WHERE p.latitude BETWEEN ? AND ? AND (p.longitude >= ? OR p.longitude <= ?)
+  ORDER BY p.time DESC, p.id DESC
+  LIMIT ?
+`);
+
+const selectRecentPosts = db.prepare(`
+  SELECT ${POST_COLUMNS}
+  FROM posts p
+  JOIN users u ON u.id = p.user_id
+  ORDER BY p.time DESC, p.id DESC
+  LIMIT ?
+`);
+
+const deletePostById = db.prepare(`
+  DELETE FROM posts
   WHERE id = ? AND user_id = ?
 `);
 
@@ -149,6 +235,58 @@ export function renameMark(userId, markId, label) {
 
 export function deleteMark(userId, markId) {
   return deleteMarkById.run(markId, userId).changes > 0;
+}
+
+export function createPost(userId, post) {
+  const result = insertPost.run(
+    userId,
+    post.time,
+    post.latitude,
+    post.longitude,
+    post.accuracy ?? null,
+    post.body ?? "",
+    post.image ?? null,
+    post.imageWidth ?? null,
+    post.imageHeight ?? null,
+    post.place ?? null,
+  );
+  return selectPostById.get(Number(result.lastInsertRowid));
+}
+
+// Posts are everyone's, so they are asked for by ground rather than by author:
+// what is on the map in front of the reader, not what is on the map in Lisbon.
+// The box is a degree conversion of `radiusMeters` — a square around a circle,
+// which lets SQLite answer from the latitude index instead of measuring every
+// row, and costs only a few posts just outside the corner.
+export function getPostsNear({ latitude, longitude }, radiusMeters, limit = 200) {
+  const latSpan = radiusMeters / 110574;
+  // Longitude degrees shrink towards the poles; at 89° the box would be wider
+  // than the world, which is the same as no longitude filter at all.
+  const lonSpan = radiusMeters / Math.max(111320 * Math.cos((latitude * Math.PI) / 180), 1);
+  const minLat = Math.max(-90, latitude - latSpan);
+  const maxLat = Math.min(90, latitude + latSpan);
+  if (lonSpan >= 180) return selectPostsInBox.all(minLat, maxLat, -180, 180, limit);
+
+  const minLon = longitude - lonSpan;
+  const maxLon = longitude + lonSpan;
+  if (minLon >= -180 && maxLon <= 180) {
+    return selectPostsInBox.all(minLat, maxLat, minLon, maxLon, limit);
+  }
+  return selectPostsInWrappedBox.all(
+    minLat,
+    maxLat,
+    minLon < -180 ? minLon + 360 : minLon,
+    maxLon > 180 ? maxLon - 360 : maxLon,
+    limit,
+  );
+}
+
+export function getRecentPosts(limit = 200) {
+  return selectRecentPosts.all(limit);
+}
+
+export function deletePost(userId, postId) {
+  return deletePostById.run(postId, userId).changes > 0;
 }
 
 export function savePosition(userId, { latitude, longitude, accuracy }) {

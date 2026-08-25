@@ -513,37 +513,31 @@ a {
   list-style: none;
 }
 
-/* The clip is what makes the swipe a swipe: the row slides off its own left
-   edge and has to stop there rather than run out over the list's padding */
 .mark-item {
-  position: relative;
-  overflow: hidden;
   border-bottom: 1px solid var(--line);
 }
 
-/* Sits behind the row on its own paper, so sliding the row uncovers the two
-   actions rather than moving them */
 .mark-row {
-  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
   padding: 14px 0;
-  background: var(--paper);
-  cursor: pointer;
-  /* The list scrolls under a vertical drag and the row answers a horizontal
-     one; without this the browser claims both and the swipe never starts. */
-  touch-action: pan-y;
-  user-select: none;
-  -webkit-user-select: none;
 }
 
+/* The name and its numbers are the button that sends the map here — stripped
+   back to the text, so the row keeps three visible actions rather than four */
 .mark-copy {
+  flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   gap: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
 }
 
 .mark-copy strong {
@@ -568,39 +562,35 @@ a {
   white-space: nowrap;
 }
 
-/* The drawer the row is sitting on. Full height and pinned right, so however
-   far the row is dragged the buttons underneath are already in place — the
-   delete outermost, where the thumb ends up on a long swipe. */
-.mark-reveal {
-  position: absolute;
-  inset: 0 0 0 auto;
-  display: flex;
+/* The routed leg, in full ink under the muted coordinates: the distance beside
+   it is how far the spot is as the crow flies and is always there, this is the
+   answer to something that was actually asked for. */
+.mark-route {
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 10px;
 }
 
-.mark-reveal button {
-  display: grid;
-  place-items: center;
-  width: 56px;
-  border: 0;
+/* Distance over actions rather than beside them: three buttons and a figure in
+   one line leave the name almost nothing on a narrow phone */
+.mark-side {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.mark-actions {
+  display: flex;
+  gap: 6px;
+}
+
+/* Inverted while its line is the one on the map, so the row says which spot the
+   route on the map belongs to */
+.mark-actions button[aria-pressed="true"] {
   background: var(--ink);
   color: var(--paper);
-  cursor: pointer;
-}
-
-/* One black drawer, two targets — a hairline is all it takes to say where one
-   ends, and it keeps the pair from reading as a single wide button */
-.mark-reveal-delete {
-  border-left: 1px solid var(--paper);
-}
-
-.mark-reveal svg {
-  width: 16px;
-  height: 16px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
 }
 
 /* --------------------------------------------------------------- account -- */
@@ -708,14 +698,6 @@ a {
 }
 
 @media (hover: hover) {
-  /* Just enough to show which row the pointer has, and no more: the row moves
-     the map, it is not a black button in its own right. Behind the hover query,
-     or a tap on a phone would leave the band standing until something else is
-     touched. */
-  .mark-item:hover .mark-row {
-    background: var(--soft);
-  }
-
   .outline-button:hover {
     background: var(--ink);
     color: var(--paper);

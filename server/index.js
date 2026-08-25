@@ -6,15 +6,20 @@ import express from "express";
 import {
   countMarks,
   createMark,
+  createPost,
   createUser,
   deleteMark,
+  deletePost,
   getMarks,
   getOtherPositions,
+  getPostsNear,
+  getRecentPosts,
   getUser,
   renameMark,
   savePosition,
 } from "./db.js";
 import { lookupEvents, lookupNearby, lookupPlace, lookupTrends, lookupWeather } from "./geo.js";
+import { MAX_IMAGE_BYTES, imageFile, isStoredName, storeImage } from "./images.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "..");
@@ -293,6 +298,121 @@ app.delete("/api/marks/:markId", requireSession, (req, res) => {
   res.status(204).end();
 });
 
+/* ------------------------------------------------------------------- posts */
+
+const POST_BODY_MAX = 500;
+// How far out the map asks for posts. The dashboard map opens on the street the
+// reader is standing in, so anything past this is off the tile at every zoom
+// they are likely to use — and asking for the whole world would put a pin in
+// Lisbon on a map of Shibuya.
+const POSTS_RADIUS_M = 50_000;
+
+// Everyone's, not just the reader's: a post is left on the ground for whoever
+// comes past it, which is the whole difference between a post and a mark.
+app.get("/api/posts", requireSession, (req, res) => {
+  const parsedLimit = Number(req.query.limit);
+  const limit = Number.isInteger(parsedLimit) ? Math.min(500, Math.max(1, parsedLimit)) : 200;
+  const coords = parseCoords(req.query);
+  res.json({ posts: coords ? getPostsNear(coords, POSTS_RADIUS_M, limit) : getRecentPosts(limit) });
+});
+
+app.post("/api/posts", requireSession, async (req, res, next) => {
+  const location = parseLocation(req.body);
+  if (!location) return res.status(400).json({ error: "坐标无效" });
+  const body = String(req.body?.body ?? "").trim().normalize("NFKC");
+  if (body.length > POST_BODY_MAX) {
+    return res.status(400).json({ error: `内容最多 ${POST_BODY_MAX} 个字符` });
+  }
+
+  // The photo arrives as a name /api/images already wrote, never as bytes —
+  // anything else would let this endpoint name a file of its own choosing.
+  const image = req.body?.image ? String(req.body.image) : null;
+  if (image && !isStoredName(image)) return res.status(400).json({ error: "图片无效" });
+  if (!body && !image) return res.status(400).json({ error: "请写点什么，或者添加一张图片" });
+
+  const dimension = (value) => {
+    const number = Number(value);
+    return Number.isFinite(number) && number > 0 ? Math.round(number) : null;
+  };
+  const suppliedTime = req.body?.time ? new Date(req.body.time) : new Date();
+  if (Number.isNaN(suppliedTime.getTime())) return res.status(400).json({ error: "记录时间无效" });
+
+  try {
+    // Looked up here rather than trusted from the client, for the same reason a
+    // mark's is: the place name is what the post is filed under, and it should
+    // read the same however the post was made.
+    const place = await lookupPlace(location.latitude, location.longitude, requestedLang(req)).catch(() => null);
+    const post = createPost(req.user.id, {
+      ...location,
+      time: suppliedTime.toISOString(),
+      body,
+      image,
+      imageWidth: dimension(req.body?.imageWidth),
+      imageHeight: dimension(req.body?.imageHeight),
+      place: place ? [place.locality, place.name, place.region].filter(Boolean).join(" · ") : null,
+    });
+    res.status(201).json({ post });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.delete("/api/posts/:postId", requireSession, (req, res) => {
+  const postId = Number(req.params.postId);
+  if (!Number.isInteger(postId) || postId < 1) return res.status(400).json({ error: "帖子 ID 无效" });
+  // The image file stays: it is named after its own bytes, so another post may
+  // be pointing at the same one.
+  if (!deletePost(req.user.id, postId)) {
+    return res.status(404).json({ error: "帖子不存在", code: "POST_NOT_FOUND" });
+  }
+  res.status(204).end();
+});
+
+/* ------------------------------------------------------------------ images */
+
+// The bytes arrive already compressed to WebP by the browser, which is what
+// keeps lo free of an image library — every browser that can show the map can
+// also encode a canvas — and means the wire carries the small file rather than
+// the 8 MB one off a phone.
+app.post(
+  "/api/images",
+  requireSession,
+  express.raw({ type: () => true, limit: MAX_IMAGE_BYTES }),
+  async (req, res, next) => {
+    if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
+      return res.status(400).json({ error: "图片为空" });
+    }
+    try {
+      const stored = await storeImage(req.body);
+      if (!stored) return res.status(415).json({ error: "不支持的图片格式" });
+      res.json(stored);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+app.get("/api/images/:name", requireSession, (req, res) => {
+  const file = imageFile(req.params.name);
+  if (!file) return res.status(400).json({ error: "图片名称无效" });
+  res.sendFile(
+    file.path,
+    {
+      headers: {
+        "Content-Type": file.type,
+        // Content-addressed, so the bytes behind a name never change.
+        "Cache-Control": "private, max-age=31536000, immutable",
+        "X-Content-Type-Options": "nosniff",
+      },
+    },
+    (error) => {
+      if (!error || res.headersSent) return;
+      if (error.code === "ENOENT") return res.status(404).json({ error: "图片不存在" });
+      res.status(500).json({ error: "服务器错误" });
+    },
+  );
+});
+
 /* ----------------------------------------------------------------- presence */
 
 // How long a published fix still counts as "where someone is". The client
@@ -331,8 +451,14 @@ if (isProduction) {
 }
 
 app.use((error, req, res, _next) => {
-  console.error(error);
   if (res.headersSent) return;
+  // A body over the limit is the sender's answer to give, not a fault worth a
+  // stack trace in the log — a phone photo that failed to compress is the usual
+  // way one gets here.
+  if (error?.type === "entity.too.large") {
+    return res.status(413).json({ error: "文件过大" });
+  }
+  console.error(error);
   res.status(500).json({ error: "服务器错误" });
 });
 

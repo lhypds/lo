@@ -1,0 +1,100 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Where the post is being left, above what it says — a post is about a spot,
+   and the writer should be able to see the app agrees which spot that is */
+.where {
+  margin: 0;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.text {
+  width: 100%;
+  min-height: 96px;
+  padding: 10px 12px;
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  outline: 0;
+  background: var(--paper);
+  color: inherit;
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.file {
+  display: none;
+}
+
+/* Squared off and the full width of the sheet, so choosing a photo is the same
+   shape of gesture as everything else in the app rather than a browser widget */
+.photo {
+  height: 38px;
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.frame {
+  position: relative;
+  border: 1px solid var(--ink);
+  background: var(--soft);
+  line-height: 0;
+}
+
+/* Capped rather than sized: the sheet is for the words, and a portrait photo
+   given its head would push the Post button off the bottom of the screen */
+.image {
+  width: 100%;
+  max-height: 200px;
+  object-fit: contain;
+}
+
+.remove {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  padding: 4px 8px;
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 2px;
+}
+
+.count {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+}
+
+.footer button {
+  width: 96px;
+}
+
+@media (hover: hover) {
+  .photo:not(:disabled):hover,
+  .remove:not(:disabled):hover {
+    background: var(--ink);
+    color: var(--paper);
+  }
+}

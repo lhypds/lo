@@ -31,10 +31,6 @@
   transition: background 100ms linear, color 100ms linear;
 }
 
-.button:disabled {
-  opacity: 1;
-}
-
 .glyph {
   width: clamp(24px, 22%, 44px);
   height: clamp(24px, 22%, 44px);
@@ -55,15 +51,16 @@
   overflow-wrap: anywhere;
 }
 
-.busy,
-.button:active {
+.busy {
   background: var(--ink);
   color: var(--paper);
 }
 
 /* Sits over the bottom of the button, so a saved mark and its undo appear
-   inside the square instead of pushing the grid around */
-.message {
+   inside the square instead of pushing the grid around. The hint takes the same
+   slot while there is no message — only one of them is ever rendered. */
+.message,
+.hint {
   position: absolute;
   left: 8px;
   right: 8px;
@@ -74,6 +71,12 @@
   font-size: 10px;
   line-height: 1.4;
   pointer-events: none;
+}
+
+/* The button fills the tile and inverts on press, so the hint sitting over it
+   has to invert with it or disappear into the black */
+.busy + .message + .hint {
+  color: var(--paper);
 }
 
 .undo {
@@ -88,9 +91,28 @@
   pointer-events: auto;
 }
 
-@media (hover: hover) {
-  .button:not(:disabled):hover {
+/* A press inverts the tile too — but where there is a pointer to hover with,
+   that is the rule below already doing it, so :active is left to touch alone.
+   A press dragged off the button holds :active until the button comes back up
+   somewhere else, which is how a square nobody is pointing at stays black. */
+@media (hover: none) {
+  .button:active {
     background: var(--ink);
+    color: var(--paper);
+  }
+
+  .button:active + .message + .hint {
+    color: var(--paper);
+  }
+}
+
+@media (hover: hover) {
+  .button:hover {
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  .button:hover + .message + .hint {
     color: var(--paper);
   }
 }

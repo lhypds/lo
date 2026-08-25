@@ -38,6 +38,19 @@ export function formatDistance(meters) {
   return `${(meters / 1000).toFixed(meters < 10000 ? 2 : 1)} km`;
 }
 
+// A travel time, in the same shape as the distance it sits beside: one unit,
+// and no more precision than a routing estimate has any business claiming. The
+// units are left in the Latin abbreviations for the same reason "km" is — they
+// read the same in all three languages lo speaks.
+export function formatDuration(seconds) {
+  if (!Number.isFinite(seconds)) return "";
+  const minutes = Math.max(1, Math.round(seconds / 60));
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return rest ? `${hours} h ${rest} min` : `${hours} h`;
+}
+
 // "3 min ago" without pulling in a date library: anything older than a week is
 // better served by the date itself, which the caller renders instead.
 export function relativeTime(iso, locale, t) {

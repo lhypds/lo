@@ -8,17 +8,87 @@ import styles from "./mark.module.css";
 
 const MESSAGE_MS = 6000;
 
+// Long enough not to fire on a slow tap, short enough that holding it feels
+// answered rather than stuck.
+const LONG_PRESS_MS = 500;
+// A press that wanders this far was the start of a scroll, not a hold.
+const LONG_PRESS_SLOP = 10;
+
 // One tap, no dialog: the spot is saved with whatever fix is in hand and named
 // afterwards, from the marks list, if it turns out to be worth a name.
-export default function MarkButton({ onMarked, onUnmarked }) {
+//
+// Holding the same button is the other thing that can be said about a spot —
+// a post, with words and a photo, left on the map for everyone. Both start from
+// the same gesture on the same square because they are the same question
+// answered at two lengths.
+export default function MarkButton({ onMarked, onUnmarked, onLongPress }) {
   const { t } = useTranslation();
   const { coords, refresh } = useHere();
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(null);
   const [message, setMessage] = useState("");
   const timerRef = useRef(null);
+  const holdRef = useRef(null);
+  const originRef = useRef(null);
+  // Set when the hold fired, and read by the click that the same press sends
+  // afterwards — without it, a hold would post *and* mark.
+  const heldRef = useRef(false);
+  // Every press gets a number, and taking one back bumps it: an answer that
+  // arrives afterwards can tell it belongs to a press that no longer exists.
+  const runRef = useRef(0);
 
-  useEffect(() => () => window.clearTimeout(timerRef.current), []);
+  useEffect(
+    () => () => {
+      window.clearTimeout(timerRef.current);
+      window.clearTimeout(holdRef.current);
+    },
+    [],
+  );
+
+  function cancelHold() {
+    window.clearTimeout(holdRef.current);
+    holdRef.current = null;
+    originRef.current = null;
+  }
+
+  function startHold(event) {
+    if (!onLongPress || saving || event.button > 0) return;
+    heldRef.current = false;
+    originRef.current = { x: event.clientX, y: event.clientY };
+    holdRef.current = window.setTimeout(() => {
+      holdRef.current = null;
+      heldRef.current = true;
+      // The only signal a hold has landed on a phone, where the finger is
+      // covering the button it just changed.
+      if (navigator.vibrate) navigator.vibrate(30);
+      onLongPress();
+    }, LONG_PRESS_MS);
+  }
+
+  // Leaving the button takes the press back — the hold that has not fired yet,
+  // and the mark that is still being saved. The fix behind a save can take the
+  // better part of a fifteen-second timeout to arrive, and moving off the black
+  // square is the plainest way to say the spot is no longer wanted.
+  //
+  // Only a mouse can mean it: a touch pointer leaves the button on every tap,
+  // the moment the finger lifts.
+  function leave(event) {
+    cancelHold();
+    if (event.pointerType !== "mouse" || !saving) return;
+    runRef.current += 1;
+    setSaving(false);
+  }
+
+  function moveHold(event) {
+    const origin = originRef.current;
+    if (!origin) return;
+    if (
+      Math.abs(event.clientX - origin.x) > LONG_PRESS_SLOP ||
+      Math.abs(event.clientY - origin.y) > LONG_PRESS_SLOP
+    ) {
+      cancelHold();
+    }
+  }
 
   function scheduleClear() {
     window.clearTimeout(timerRef.current);
@@ -29,12 +99,19 @@ export default function MarkButton({ onMarked, onUnmarked }) {
   }
 
   async function mark() {
+    // The press that opened the post sheet ends with a click on this button;
+    // it has already been answered.
+    if (heldRef.current) {
+      heldRef.current = false;
+      return;
+    }
     if (saving) return;
     if (!coords) {
       setMessage(t("mark.needsLocation"));
       scheduleClear();
       return;
     }
+    const run = (runRef.current += 1);
     setSaving(true);
     setMessage("");
     setSaved(null);
@@ -43,6 +120,9 @@ export default function MarkButton({ onMarked, onUnmarked }) {
     // fix has to be read back from the store — `coords` here is the one this
     // render closed over, which is exactly the position just superseded.
     await refresh().catch(() => {});
+    // Waiting on the device is the long half of a save and nothing has been
+    // sent yet, so a press taken back in this window leaves nothing behind.
+    if (runRef.current !== run) return;
     const fix = getLocationState().coords ?? coords;
     try {
       const { mark: created } = await api.createMark({
@@ -51,16 +131,25 @@ export default function MarkButton({ onMarked, onUnmarked }) {
         accuracy: fix.accuracy,
         time: new Date().toISOString(),
       });
+      // Taken back while the mark was already on the wire. The server has it
+      // either way, so it goes back the way undo sends one back — a cancelled
+      // press must not leave a spot in the list nobody meant to keep.
+      if (runRef.current !== run) {
+        api.deleteMark(created.id).catch(() => {});
+        return;
+      }
       if (navigator.vibrate) navigator.vibrate(20);
       setSaved(created);
       setMessage(t("mark.saved"));
       onMarked?.(created);
       scheduleClear();
     } catch (error) {
+      if (runRef.current !== run) return;
       setMessage(error.message);
       scheduleClear();
     } finally {
-      setSaving(false);
+      // A later press owns the button now; this one has no state left to clear.
+      if (runRef.current === run) setSaving(false);
     }
   }
 
@@ -88,7 +177,18 @@ export default function MarkButton({ onMarked, onUnmarked }) {
         type="button"
         className={`${styles.button}${saving ? ` ${styles.busy}` : ""}`}
         onClick={mark}
-        disabled={saving}
+        onPointerDown={startHold}
+        onPointerMove={moveHold}
+        onPointerUp={cancelHold}
+        onPointerCancel={cancelHold}
+        onPointerLeave={leave}
+        // Android raises its own menu on a hold, over the sheet this one opens
+        onContextMenu={(event) => event.preventDefault()}
+        // Busy, not disabled: a disabled button is dead to pointer events in
+        // every engine, and leaving it is the one gesture that has to reach it
+        // while a save is running. `mark` turns a second press away instead.
+        aria-disabled={saving}
+        aria-busy={saving}
       >
         <svg viewBox="0 0 24 24" className={styles.glyph} aria-hidden="true">
           <path d="M12 21s-7-5.6-7-11a7 7 0 0 1 14 0c0 5.4-7 11-7 11z" />
@@ -109,6 +209,10 @@ export default function MarkButton({ onMarked, onUnmarked }) {
           message
         )}
       </p>
+      {/* A hold has no affordance of its own, so the tile says so — in the slot
+          the message will take over the moment there is one to show. Outside
+          the live region above: it is standing information, not news. */}
+      {onLongPress && !message && <span className={styles.hint}>{t("post.hint")}</span>}
     </div>
   );
 }

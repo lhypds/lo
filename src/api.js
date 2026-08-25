@@ -43,6 +43,13 @@ export const publishPosition = ({ latitude, longitude, accuracy }) =>
   request("/api/position", { method: "PUT", body: JSON.stringify({ latitude, longitude, accuracy }) });
 export const getPeople = () => request("/api/people");
 
+// Posts are everyone's, so the map asks for the ones near it rather than for
+// its own; with no fix to ask from, the newest anywhere is the best there is.
+export const getPosts = (coords) => request(coords ? `/api/posts?${geoQuery(coords)}` : "/api/posts");
+export const createPost = (post) =>
+  request(`/api/posts?lang=${i18n.language || "en"}`, { method: "POST", body: JSON.stringify(post) });
+export const deletePost = (postId) => request(`/api/posts/${postId}`, { method: "DELETE" });
+
 export const getMarks = (limit) => request(limit ? `/api/marks?limit=${limit}` : "/api/marks");
 export const createMark = (mark) =>
   request(`/api/marks?lang=${i18n.language || "en"}`, { method: "POST", body: JSON.stringify(mark) });

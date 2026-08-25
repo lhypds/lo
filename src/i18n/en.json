@@ -121,7 +121,38 @@
     "rename": "Rename",
     "renameTitle": "Rename mark",
     "distance": "{{distance}} away",
-    "showOnMap": "Show on map"
+    "showOnMap": "Show on map",
+    "navigate": "Route here"
+  },
+  "post": {
+    "hint": "Hold to post",
+    "title": "New post",
+    "preview": "Post",
+    "placeholder": "What is here?",
+    "addPhoto": "Add a photo",
+    "removePhoto": "Remove",
+    "compressing": "Compressing",
+    "uploading": "Uploading",
+    "notImage": "That file is not an image",
+    "uploadFailed": "Could not upload that photo",
+    "needsContent": "Write something, or add a photo",
+    "submit": "Post",
+    "posting": "Posting",
+    "posted": "Posted",
+    "by": "By",
+    "where": "Where",
+    "when": "When",
+    "delete": "Delete",
+    "deleting": "Deleting",
+    "deleteTitle": "Delete post",
+    "deleteConfirm": "Delete this post? This cannot be undone."
+  },
+  "route": {
+    "walking": "Walk",
+    "driving": "Drive",
+    "finding": "Finding a route",
+    "clear": "Clear route",
+    "unavailable": "No route to that spot"
   },
   "time": {
     "justNow": "just now"

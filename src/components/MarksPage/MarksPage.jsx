@@ -1,7 +1,8 @@
 import { Suspense, lazy, useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
-import { Modal } from "../../ui/index.js";
+import { Modal, showToast } from "../../ui/index.js";
+import { fetchRoute } from "../../utils/route.js";
 import Header from "../Header/index.js";
 import MarkItem from "../MarkItem/index.js";
 import MarkModal from "../MarkModal/index.js";
@@ -20,6 +21,8 @@ export default function MarksPage() {
   const { coords } = useHere();
   const [marks, setMarks] = useState([]);
   const [focus, setFocus] = useState(null);
+  const [route, setRoute] = useState(null);
+  const [routingId, setRoutingId] = useState(null);
   const [renaming, setRenaming] = useState(null);
   const [deleting, setDeleting] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -34,6 +37,37 @@ export default function MarksPage() {
 
   useEffect(load, [load]);
 
+  // Routing is a toggle on the spot it points at: asking again for the one
+  // already drawn takes the line off, which is the same gesture that put it
+  // there and saves hunting for the × on the map.
+  async function navigateTo(mark) {
+    if (route?.markId === mark.id) {
+      setRoute(null);
+      return;
+    }
+    if (!coords) {
+      showToast(t("mark.needsLocation"));
+      return;
+    }
+    if (routingId) return;
+    setRoutingId(mark.id);
+    try {
+      const found = await fetchRoute(coords, mark);
+      setRoute({
+        ...found,
+        markId: mark.id,
+        label: mark.label || mark.place || t("marks.unnamed"),
+      });
+    } catch {
+      // Every way this fails — no token, no road between here and there, the
+      // network — leaves the reader in the same place with the same next move,
+      // so they all get the one sentence rather than a code from Mapbox.
+      showToast(t("route.unavailable"));
+    } finally {
+      setRoutingId(null);
+    }
+  }
+
   async function rename(label) {
     const { mark } = await api.renameMark(renaming.id, label);
     setMarks((current) => current.map((item) => (item.id === mark.id ? mark : item)));
@@ -47,6 +81,8 @@ export default function MarksPage() {
     try {
       await api.deleteMark(deleting.id);
       setMarks((current) => current.filter((item) => item.id !== deleting.id));
+      // A line to a spot that no longer exists is left pointing at nothing
+      if (route?.markId === deleting.id) setRoute(null);
       setDeleting(null);
     } catch (requestError) {
       setError(requestError.message);
@@ -62,7 +98,13 @@ export default function MarksPage() {
       <Header back />
       <div className="marks-map">
         <Suspense fallback={<div className="marks-map-placeholder" />}>
-          <MapCard fitMarks marks={marks} focus={focus} />
+          <MapCard
+            fitMarks
+            marks={marks}
+            focus={focus}
+            route={route}
+            onClearRoute={() => setRoute(null)}
+          />
         </Suspense>
       </div>
       <main className="marks-list">
@@ -82,8 +124,11 @@ export default function MarksPage() {
                 key={mark.id}
                 mark={mark}
                 from={coords}
+                route={route?.markId === mark.id ? route : null}
+                routing={routingId === mark.id}
                 onRename={setRenaming}
                 onDelete={setDeleting}
+                onNavigate={navigateTo}
                 // A fresh object every time rather than the mark itself: the map
                 // pans on a new `focus`, and asking twice for the same spot —
                 // after wandering off it — has to move the map twice.
