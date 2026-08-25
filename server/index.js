@@ -4,7 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import express from "express";
 import { countMarks, createMark, createUser, deleteMark, getMarks, getUser, renameMark } from "./db.js";
-import { lookupEvents, lookupNearby, lookupPlace, lookupWeather } from "./geo.js";
+import { lookupEvents, lookupHolidays, lookupNearby, lookupPlace, lookupWeather } from "./geo.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "..");
@@ -204,6 +204,17 @@ app.get("/api/events", async (req, res, next) => {
     res.json(await lookupEvents(coords.latitude, coords.longitude, requestedLang(req)));
   } catch (error) {
     if (error.name === "TimeoutError") return res.status(504).json({ error: "获取活动信息超时" });
+    next(error);
+  }
+});
+
+app.get("/api/holidays", async (req, res, next) => {
+  const coords = parseCoords(req.query);
+  if (!coords) return res.status(400).json({ error: "坐标无效" });
+  try {
+    res.json(await lookupHolidays(coords.latitude, coords.longitude, requestedLang(req)));
+  } catch (error) {
+    if (error.name === "TimeoutError") return res.status(504).json({ error: "获取假日信息超时" });
     next(error);
   }
 });

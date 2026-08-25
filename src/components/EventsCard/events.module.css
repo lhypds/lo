@@ -6,80 +6,14 @@
   overscroll-behavior: contain;
 }
 
-/* Dated holidays and event write-ups are two different kinds of answer, so each
-   gets a labelled band — the heavy rule is the same one the weather card uses
-   to separate now from the days ahead */
-.group + .group {
-  border-top: 1px solid var(--ink);
-}
-
-.groupTitle {
-  margin: 0;
-  padding: 7px 10px;
-  border-bottom: 1px solid var(--line);
-  color: var(--muted);
-  font-family: var(--mono);
-  font-size: 10px;
-  font-weight: 400;
-  letter-spacing: 0.04em;
-}
-
-.dates,
 .list {
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.dates li + li,
 .list li + li {
   border-top: 1px solid var(--line);
-}
-
-.dates li {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  padding: 9px 10px;
-}
-
-.when {
-  flex: 0 0 auto;
-  color: var(--muted);
-  font-family: var(--mono);
-  font-size: 10px;
-  white-space: nowrap;
-}
-
-.what {
-  min-width: 0;
-  flex: 1;
-  font-size: 12px;
-  line-height: 1.45;
-  overflow-wrap: anywhere;
-}
-
-/* The English gloss on a holiday named in its own language — worth having, not
-   worth the width when the tile is a phone */
-.gloss {
-  margin-left: 6px;
-  color: var(--muted);
-  font-size: 10px;
-}
-
-.away {
-  flex: 0 0 auto;
-  color: var(--muted);
-  font-family: var(--mono);
-  font-size: 10px;
-  white-space: nowrap;
-}
-
-@container (max-width: 330px) {
-  .gloss,
-  .away {
-    display: none;
-  }
 }
 
 .item {

@@ -75,11 +75,15 @@
   },
   "events": {
     "title": "Events",
-    "holidays": "Public holidays",
-    "happening": "What's on",
-    "empty": "Nothing on the calendar around here",
-    "unavailable": "Could not reach the events services",
+    "empty": "Nothing on around here this fortnight",
+    "unavailable": "Could not reach the events service",
     "loading": "Looking for what is on"
+  },
+  "holidays": {
+    "title": "Holidays",
+    "empty": "No public holidays on the calendar here",
+    "unavailable": "Could not reach the calendar service",
+    "loading": "Reading the calendar"
   },
   "map": {
     "title": "Map",

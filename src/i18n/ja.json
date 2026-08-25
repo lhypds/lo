@@ -75,11 +75,15 @@
   },
   "events": {
     "title": "イベント",
-    "holidays": "祝日",
-    "happening": "開催情報",
-    "empty": "この辺りに予定はありません",
+    "empty": "この2週間、この辺りに開催情報はありません",
     "unavailable": "イベント情報に接続できません",
     "loading": "イベントを探しています"
+  },
+  "holidays": {
+    "title": "祝日",
+    "empty": "この地域の祝日は見つかりません",
+    "unavailable": "カレンダー情報に接続できません",
+    "loading": "カレンダーを読み込み中"
   },
   "map": {
     "title": "地図",

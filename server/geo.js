@@ -323,11 +323,11 @@ export function lookupNearby(latitude, longitude, lang = "en") {
   });
 }
 
-/* ----------------------------------------------------------------- events -- */
+/* --------------------------------------------------------------- holidays -- */
 
-// Two questions under one heading, because neither answers "what is happening
-// here" on its own: the calendar knows what is coming and has real dates for it,
-// the newswire knows what is on this week and has real detail.
+// The calendar half of "what is happening here": days with real dates, known
+// months ahead. Answered separately from the events feed because it comes back
+// in a fraction of the time and should not wait on a newswire search.
 const HOLIDAY_HOST = "https://date.nager.at/api/v3";
 const HOLIDAY_TTL_MS = 12 * 60 * 60 * 1000;
 const EVENTS_TTL_MS = 30 * 60 * 1000;
@@ -365,6 +365,27 @@ function holidaysHere(list, subdivisionCode) {
     }));
 }
 
+export function lookupHolidays(latitude, longitude, lang = "en") {
+  const language = PLACE_LANGUAGE[lang] ?? "en";
+  const key = `holidays-here:${language}:${gridKey(latitude, longitude, PLACE_GRID)}`;
+  // Nothing found is worth asking about again soon — a country Nager has no
+  // answer for should not be re-asked on every page load either.
+  const ttl = (value) => (value.upcoming.length === 0 ? EVENTS_EMPTY_TTL_MS : HOLIDAY_TTL_MS);
+
+  return cached(key, ttl, async () => {
+    const place = await lookupPlace(latitude, longitude, language).catch(() => null);
+    const upcoming = await fetchHolidays(place?.countryCode)
+      .then((list) => holidaysHere(list, place?.subdivisionCode))
+      .catch(() => []);
+    return { place, upcoming };
+  });
+}
+
+/* ----------------------------------------------------------------- events -- */
+
+// The other half: what the newswire says is on this week, which has the detail
+// the calendar does not.
+//
 // One word per language the app speaks, ORed together, because the event worth
 // knowing about is written up in the language of the place and not necessarily
 // in the reader's: a Chinese reader in Kyoto wants 嵯峨天皇祭, and searching for
@@ -387,21 +408,11 @@ async function fetchEventNews(place, locale) {
 export function lookupEvents(latitude, longitude, lang = "en") {
   const language = PLACE_LANGUAGE[lang] ?? "en";
   const key = `events:${language}:${gridKey(latitude, longitude, NEWS_GRID)}`;
-  const ttl = (value) =>
-    value.upcoming.length + value.items.length === 0 ? EVENTS_EMPTY_TTL_MS : EVENTS_TTL_MS;
+  const ttl = (value) => (value.items.length === 0 ? EVENTS_EMPTY_TTL_MS : EVENTS_TTL_MS);
 
   return cached(key, ttl, async () => {
     const place = await lookupPlace(latitude, longitude, language).catch(() => null);
-
-    // Half an answer beats none: the holidays still stand when the newswire is
-    // unreachable, and the other way round.
-    const [upcoming, items] = await Promise.all([
-      fetchHolidays(place?.countryCode)
-        .then((list) => holidaysHere(list, place?.subdivisionCode))
-        .catch(() => []),
-      fetchEventNews(place, readerLocale(language, place?.countryCode)),
-    ]);
-
-    return { place, upcoming, items: dedupe(items).slice(0, MAX_EVENT_ITEMS) };
+    const items = await fetchEventNews(place, readerLocale(language, place?.countryCode));
+    return { place, items: dedupe(items).slice(0, MAX_EVENT_ITEMS) };
   });
 }
