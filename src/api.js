@@ -33,6 +33,13 @@ export const getMe = () => request("/api/me");
 export const getLocal = (coords) => request(`/api/local?${geoQuery(coords)}`);
 export const getNearby = (coords) => request(`/api/nearby?${geoQuery(coords)}`);
 export const getEvents = (coords) => request(`/api/events?${geoQuery(coords)}`);
+export const getTrends = (coords) => request(`/api/trends?${geoQuery(coords)}`);
+
+// Publishing a fix answers with everyone else's, so the map's minute costs one
+// request; the plain GET is for a reader who has no fix of their own to trade.
+export const publishPosition = ({ latitude, longitude, accuracy }) =>
+  request("/api/position", { method: "PUT", body: JSON.stringify({ latitude, longitude, accuracy }) });
+export const getPeople = () => request("/api/people");
 
 export const getMarks = (limit) => request(limit ? `/api/marks?limit=${limit}` : "/api/marks");
 export const createMark = (mark) =>

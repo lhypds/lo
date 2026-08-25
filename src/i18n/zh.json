@@ -79,11 +79,18 @@
     "unavailable": "无法连接活动服务",
     "loading": "正在查找活动"
   },
+  "trends": {
+    "title": "趋势",
+    "empty": "X 暂无此地的趋势",
+    "unavailable": "无法连接 X",
+    "loading": "正在读取 X",
+    "noToken": "请在 .env 中设置 X_BEARER_TOKEN 以显示热门趋势。"
+  },
   "map": {
     "title": "地图",
     "noToken": "请在 .env 中设置 VITE_MAPBOX_TOKEN 以显示地图。",
     "recenter": "回到我的位置",
-    "you": "你在这里",
+    "seen": "{{time}}在此",
     "expand": "全屏地图",
     "collapse": "关闭地图",
     "unavailable": "地图需要 WebGL，当前浏览器未提供。"

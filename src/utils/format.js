@@ -6,6 +6,12 @@ export function formatCoords(latitude, longitude) {
   return `${lat} ${lon}`;
 }
 
+// A username is never shown bare: the @ is what makes it read as a person
+// rather than as a word that happens to be there.
+export function formatUsername(username) {
+  return `@${username}`;
+}
+
 export function formatAccuracy(meters) {
   if (!Number.isFinite(meters)) return "";
   if (meters < 1000) return `±${Math.round(meters)} m`;

@@ -1,7 +1,6 @@
-/* Same shape as the news panel: full width, no natural end, so it gets length
-   and scrolls rather than clipping */
+/* Same shape as the news panel: a four-square tile the list scrolls inside */
 .scroll {
-  max-height: min(64vh, 480px);
+  height: 100%;
   overflow-y: auto;
   overscroll-behavior: contain;
 }

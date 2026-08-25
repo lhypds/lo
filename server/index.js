@@ -3,8 +3,18 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import express from "express";
-import { countMarks, createMark, createUser, deleteMark, getMarks, getUser, renameMark } from "./db.js";
-import { lookupEvents, lookupNearby, lookupPlace, lookupWeather } from "./geo.js";
+import {
+  countMarks,
+  createMark,
+  createUser,
+  deleteMark,
+  getMarks,
+  getOtherPositions,
+  getUser,
+  renameMark,
+  savePosition,
+} from "./db.js";
+import { lookupEvents, lookupNearby, lookupPlace, lookupTrends, lookupWeather } from "./geo.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "..");
@@ -47,8 +57,9 @@ function parseCoords(query) {
   return { latitude, longitude };
 }
 
-// Coordinates on a saved mark, where they are the whole point of the record.
-function parseMarkLocation(body) {
+// Coordinates sent in a body rather than a query — a saved mark, a published
+// position — where they are the whole point of the record.
+function parseLocation(body) {
   const latitude = Number(body?.latitude);
   const longitude = Number(body?.longitude);
   if (!Number.isFinite(latitude) || Math.abs(latitude) > 90) return null;
@@ -208,6 +219,17 @@ app.get("/api/events", async (req, res, next) => {
   }
 });
 
+app.get("/api/trends", async (req, res, next) => {
+  const coords = parseCoords(req.query);
+  if (!coords) return res.status(400).json({ error: "坐标无效" });
+  try {
+    res.json(await lookupTrends(coords.latitude, coords.longitude, requestedLang(req)));
+  } catch (error) {
+    if (error.name === "TimeoutError") return res.status(504).json({ error: "获取趋势超时" });
+    next(error);
+  }
+});
+
 /* ------------------------------------------------------------------- marks */
 
 app.get("/api/marks", requireSession, (req, res) => {
@@ -217,7 +239,7 @@ app.get("/api/marks", requireSession, (req, res) => {
 });
 
 app.post("/api/marks", requireSession, async (req, res, next) => {
-  const location = parseMarkLocation(req.body);
+  const location = parseLocation(req.body);
   if (!location) return res.status(400).json({ error: "坐标无效" });
   const label = String(req.body?.label ?? "").trim().normalize("NFKC");
   if (label.length > 48) return res.status(400).json({ error: "名称最多 48 个字符" });
@@ -257,6 +279,31 @@ app.delete("/api/marks/:markId", requireSession, (req, res) => {
     return res.status(404).json({ error: "记录不存在", code: "MARK_NOT_FOUND" });
   }
   res.status(204).end();
+});
+
+/* ----------------------------------------------------------------- presence */
+
+// How long a published fix still counts as "where someone is". The client
+// republishes every minute while its tab is open, so anything this old means
+// the tab is closed, asleep or out of signal — and a dot for it would be a
+// claim lo cannot stand behind.
+const PRESENCE_WINDOW_MS = 10 * 60 * 1000;
+
+function livePeople(userId) {
+  return getOtherPositions(userId, new Date(Date.now() - PRESENCE_WINDOW_MS).toISOString());
+}
+
+app.get("/api/people", requireSession, (req, res) => {
+  res.json({ people: livePeople(req.user.id) });
+});
+
+// Telling the server where you are and asking who else is out are the same
+// question a minute apart, so they are one round trip rather than two.
+app.put("/api/position", requireSession, (req, res) => {
+  const location = parseLocation(req.body);
+  if (!location) return res.status(400).json({ error: "坐标无效" });
+  savePosition(req.user.id, location);
+  res.json({ people: livePeople(req.user.id) });
 });
 
 if (isProduction) {

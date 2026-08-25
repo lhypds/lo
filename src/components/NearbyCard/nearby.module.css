@@ -1,7 +1,7 @@
-/* The one panel on the page that is not a square, and the only one whose
-   content has no natural end — so it gets the length instead */
+/* The list has no natural end, so it takes the tile it was given — four squares
+   of it — and scrolls inside rather than setting a height of its own */
 .scroll {
-  max-height: min(64vh, 480px);
+  height: 100%;
   overflow-y: auto;
   overscroll-behavior: contain;
 }

@@ -3,7 +3,8 @@ import { useTranslation } from "react-i18next";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { ActionButton, Card } from "../../ui/index.js";
-import { formatCoords } from "../../utils/format.js";
+import { formatCoords, formatUsername, relativeTime } from "../../utils/format.js";
+import { useAuth } from "../AuthProvider/index.js";
 import { useHere } from "../LocationProvider/index.js";
 import styles from "./map.module.css";
 
@@ -48,10 +49,20 @@ function accuracyPolygon(latitude, longitude, radiusMeters, steps = 64) {
 
 const EMPTY_GEOJSON = { type: "FeatureCollection", features: [] };
 
-function hereElement() {
+// One dot per person, with the name hanging under it. The wrapper is exactly
+// the size of the dot so the marker's own centring puts the dot on the
+// coordinate; the name is lifted out of the flow underneath it, which keeps a
+// long name from dragging the dot off the spot it is reporting.
+function personElement(username, self = false) {
+  const wrapper = document.createElement("div");
+  wrapper.className = self ? `${styles.person} ${styles.personSelf}` : styles.person;
   const dot = document.createElement("div");
-  dot.className = styles.hereDot;
-  return dot;
+  dot.className = styles.personDot;
+  const name = document.createElement("span");
+  name.className = styles.personName;
+  name.textContent = formatUsername(username);
+  wrapper.append(dot, name);
+  return wrapper;
 }
 
 function markElement(index) {
@@ -63,14 +74,27 @@ function markElement(index) {
 
 // `expanded` is owned by the page rather than by the map: expanding hides the
 // rest of the dashboard, which is not the map's call to make.
-export default function MapCard({ marks = [], focus = null, expanded = false, onToggleExpanded }) {
+//
+// The same square tile on both pages: the dashboard passes no marks at all and
+// gets the here and now, the marks page passes every saved spot and `fitMarks`
+// and gets a history, with the list of them underneath.
+export default function MapCard({
+  marks = [],
+  focus = null,
+  fitMarks = false,
+  expanded = false,
+  onToggleExpanded,
+}) {
   const { t, i18n } = useTranslation();
-  const { coords } = useHere();
+  const { coords, people = [] } = useHere();
+  const { user } = useAuth();
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const hereMarkerRef = useRef(null);
+  const peopleMarkersRef = useRef([]);
   const markMarkersRef = useRef([]);
   const followRef = useRef(true);
+  const fittedRef = useRef(false);
   const [broken, setBroken] = useState(false);
 
   // The map is built once and then told about changes; rebuilding it on every
@@ -136,6 +160,7 @@ export default function MapCard({ marks = [], focus = null, expanded = false, on
       map.remove();
       mapRef.current = null;
       hereMarkerRef.current = null;
+      peopleMarkersRef.current = [];
       markMarkersRef.current = [];
     };
     // Built from the first fix that exists; later ones move it instead.
@@ -148,18 +173,21 @@ export default function MapCard({ marks = [], focus = null, expanded = false, on
   }, [i18n.language]);
 
   // The blue-dot equivalent: one marker that follows the fix, plus the halo of
-  // however sure the device is about it.
+  // however sure the device is about it. It carries the reader's own name for
+  // the same reason everyone else's does — on a map with several dots on it,
+  // "you are here" is only useful if the others say who they are too.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !coords) return;
+    const name = user?.username ?? "";
     const position = [coords.longitude, coords.latitude];
     if (!hereMarkerRef.current) {
-      hereMarkerRef.current = new mapboxgl.Marker({ element: hereElement() })
+      hereMarkerRef.current = new mapboxgl.Marker({ element: personElement(name, true) })
         .setLngLat(position)
-        .setPopup(new mapboxgl.Popup({ closeButton: false, offset: 14 }).setText(t("map.you")))
         .addTo(map);
     } else {
       hereMarkerRef.current.setLngLat(position);
+      hereMarkerRef.current.getElement().lastElementChild.textContent = formatUsername(name);
     }
 
     const applyAccuracy = () => {
@@ -177,7 +205,28 @@ export default function MapCard({ marks = [], focus = null, expanded = false, on
     if (followRef.current) {
       map.easeTo({ center: position, zoom: Math.max(map.getZoom(), DEFAULT_ZOOM), duration: 600 });
     }
-  }, [coords, t]);
+  }, [coords, user]);
+
+  // Everyone else, redrawn wholesale on each round of the minute loop. The list
+  // is only ever the handful of people whose tabs are open, and it arrives as a
+  // new array every time, so diffing it would cost more than replacing it.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    peopleMarkersRef.current.forEach((marker) => marker.remove());
+    peopleMarkersRef.current = people.map((person) =>
+      new mapboxgl.Marker({ element: personElement(person.username) })
+        .setLngLat([person.longitude, person.latitude])
+        .setPopup(
+          // The name is already on the label; what the label cannot say is how
+          // long ago the dot was true, which is the whole question here.
+          new mapboxgl.Popup({ closeButton: false, offset: 14 }).setText(
+            t("map.seen", { time: relativeTime(person.time, i18n.language, t) }),
+          ),
+        )
+        .addTo(map),
+    );
+  }, [people, t, i18n.language]);
 
   // Saved marks are redrawn wholesale — the list is short, and diffing markers
   // costs more than replacing them.
@@ -193,6 +242,24 @@ export default function MapCard({ marks = [], focus = null, expanded = false, on
         .addTo(map);
     });
   }, [marks]);
+
+  // A history map opens on the whole history: one fit over every saved spot, so
+  // marks left in another city are on screen without anyone having to go and
+  // look for them. It happens once, on the first list that has anything in it —
+  // after that the view belongs to the reader, and following the fix is off for
+  // the same reason a deliberate pan turns it off.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !fitMarks || fittedRef.current || marks.length === 0) return;
+    fittedRef.current = true;
+    followRef.current = false;
+    const bounds = new mapboxgl.LngLatBounds();
+    marks.forEach((mark) => bounds.extend([mark.longitude, mark.latitude]));
+    if (coords) bounds.extend([coords.longitude, coords.latitude]);
+    // Capped, or a lone mark would be fitted to a rooftop; the padding keeps the
+    // outermost pins clear of the edges of the card.
+    map.fitBounds(bounds, { padding: 48, maxZoom: DEFAULT_ZOOM, duration: 0 });
+  }, [fitMarks, marks, coords]);
 
   // Arriving from the marks list with one spot in mind.
   useEffect(() => {

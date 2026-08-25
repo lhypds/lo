@@ -74,7 +74,7 @@ export default function EventsCard() {
   }
 
   return (
-    <Card title={t("events.title")} meta={result?.place?.name} wide flush>
+    <Card title={t("events.title")} meta={result?.place?.name} wide square flush>
       <div className={styles.scroll}>{body}</div>
     </Card>
   );

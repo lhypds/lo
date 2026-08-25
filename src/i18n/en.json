@@ -79,11 +79,18 @@
     "unavailable": "Could not reach the events service",
     "loading": "Looking for what is on"
   },
+  "trends": {
+    "title": "Trends",
+    "empty": "X has no trends for here right now",
+    "unavailable": "Could not reach X",
+    "loading": "Reading X",
+    "noToken": "Add X_BEARER_TOKEN to .env to show trending topics."
+  },
   "map": {
     "title": "Map",
     "noToken": "Add VITE_MAPBOX_TOKEN to .env to display the map.",
     "recenter": "Back to my position",
-    "you": "You are here",
+    "seen": "Seen {{time}}",
     "expand": "Full map",
     "collapse": "Close map",
     "unavailable": "The map needs WebGL, which this browser will not give it."

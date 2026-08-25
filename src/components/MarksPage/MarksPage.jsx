@@ -1,17 +1,25 @@
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
-import { Modal, useNavigate } from "../../ui/index.js";
+import { Modal } from "../../ui/index.js";
 import Header from "../Header/index.js";
 import MarkItem from "../MarkItem/index.js";
 import MarkModal from "../MarkModal/index.js";
 import { useHere } from "../LocationProvider/index.js";
 
+// For the same reason the home page loads it lazily: mapbox-gl is by far the
+// heaviest thing lo ships, and it is worth fetching only on the two screens
+// that draw a map.
+const MapCard = lazy(() => import("../MapCard/MapCard.jsx"));
+
+// The history map lives here rather than on the dashboard: the home map answers
+// "where am I", this one answers "where have I been", and the list of spots is
+// the other half of that same question.
 export default function MarksPage() {
   const { t } = useTranslation();
   const { coords } = useHere();
-  const navigate = useNavigate();
   const [marks, setMarks] = useState([]);
+  const [focus, setFocus] = useState(null);
   const [renaming, setRenaming] = useState(null);
   const [deleting, setDeleting] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -50,9 +58,14 @@ export default function MarksPage() {
   const deletingName = deleting?.label || deleting?.place || t("marks.unnamed");
 
   return (
-    <div className="page-shell">
+    <div className="page-shell marks-page">
       <Header back />
-      <main className="list-page">
+      <div className="marks-map">
+        <Suspense fallback={<div className="marks-map-placeholder" />}>
+          <MapCard fitMarks marks={marks} focus={focus} />
+        </Suspense>
+      </div>
+      <main className="marks-list">
         <div className="section-heading">
           <div className="section-heading-titles">
             <h1>{t("marks.title")}</h1>
@@ -71,9 +84,10 @@ export default function MarksPage() {
                 from={coords}
                 onRename={setRenaming}
                 onDelete={setDeleting}
-                // The map lives on the home page; a mark is shown by handing it
-                // the id rather than by keeping a second map here.
-                onShowOnMap={(target) => navigate(`/?focus=${target.id}`)}
+                // A fresh object every time rather than the mark itself: the map
+                // pans on a new `focus`, and asking twice for the same spot —
+                // after wandering off it — has to move the map twice.
+                onShowOnMap={(target) => setFocus({ ...target })}
               />
             ))}
           </ul>

@@ -78,8 +78,18 @@ export default function NearbyCard() {
     );
   }
 
+  // `panel-lead` is the page's hook for the first of the big panels — on a wide
+  // screen it is pinned to the right of the square tiles, and the rest of the
+  // grid flows around it. Global on purpose, like the map's `map-full`.
   return (
-    <Card title={t("nearby.title")} meta={items.length > 0 ? t(`nearby.${kind}`) : result?.place?.name} wide flush>
+    <Card
+      title={t("nearby.title")}
+      meta={items.length > 0 ? t(`nearby.${kind}`) : result?.place?.name}
+      wide
+      square
+      flush
+      className="panel-lead"
+    >
       <div className={styles.scroll}>{body}</div>
     </Card>
   );

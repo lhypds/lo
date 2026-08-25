@@ -303,6 +303,30 @@ a {
   align-content: start;
 }
 
+/* Once two news panels fit side by side, one column of them is a waste of the
+   window: the grid doubles to four columns, the panels take half of it each,
+   and the page stops growing there so every tile keeps the size it had.
+
+   Only the first panel is placed by hand. Pinning it to the third column keeps
+   the three square tiles that would have filled the top row out of it, and
+   normal auto-placement folds them into a 2x2 block on the left instead — the
+   same four squares, beside the panel rather than above it. The panels after it
+   then fill the rows below, two to a row. */
+@media (min-width: 1200px) {
+  .home-main {
+    width: min(100%, 1200px);
+  }
+
+  .card-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .home-main .card-grid > .panel-lead {
+    grid-column: 3 / span 2;
+    grid-row: 1 / span 2;
+  }
+}
+
 /* Holds the map's slot in the grid while mapbox-gl is still on the wire, so the
    tiles around it do not jump once it arrives */
 .card-placeholder {
@@ -313,9 +337,11 @@ a {
 /* Expanded, the map is the page: the strip and the other tiles are hidden and
    the grid hands its whole height to the one card left, so the map fills the
    window under the topbar instead of floating above a blank half-screen */
-/* The same gutter the expanded map keeps on its sides, so the panel sits inside
-   an even frame instead of hanging off the bottom edge of the window */
+/* The same gutter the expanded map keeps on its sides, on all four — the strip
+   that normally holds the tiles off the topbar is hidden here, so without the
+   top one the map would butt straight up against it */
 .home-main-map {
+  padding-top: 12px;
   padding-bottom: calc(12px + env(safe-area-inset-bottom));
 }
 
@@ -339,6 +365,98 @@ a {
   width: min(100%, 600px);
   margin: 0 auto;
   padding: 20px 12px 40px;
+}
+
+/* The marks page is split rather than scrolled as one column: the map sits at
+   the top and the list scrolls under it, so the spot a row describes is still
+   on screen while the row is being read. The page itself never scrolls — only
+   the list does — which is what keeps the map from being pushed off the top.
+   The height is the one the rest of the app measures the window by (index.html
+   sets --vh), so it agrees with the min-height .page-shell already carries. */
+.marks-page {
+  height: 100vh;
+  height: 100dvh;
+  height: calc(var(--vh, 1vh) * 100);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Map and list share the 600px column every other list on the site keeps. The
+   map is a square of it — the same tile the dashboard uses — and takes its own
+   height rather than a share of the window; whatever is left below is the
+   list's, however much that turns out to be. */
+.marks-map {
+  flex: 0 0 auto;
+  width: min(100%, 600px);
+  margin: 0 auto;
+  padding: 12px 12px 0;
+}
+
+/* Holds the square while mapbox-gl is still on the wire, so the list below does
+   not start at the top of the page and then get shoved down */
+.marks-map-placeholder {
+  aspect-ratio: 1;
+  border: 1px solid var(--ink);
+}
+
+.marks-list {
+  flex: 1;
+  min-height: 0;
+  width: min(100%, 600px);
+  margin: 0 auto;
+  padding: 16px 12px calc(20px + env(safe-area-inset-bottom));
+  overflow-y: auto;
+  /* The list is the only scroller on the page; without this, running off its
+     end hands the gesture to the document and bounces the whole split */
+  overscroll-behavior: contain;
+}
+
+/* Once the window is twice the map's own column, stacking them wastes it: the
+   square tile leaves the whole right half of the screen empty while the list it
+   belongs to scrolls in a gutter. Past that width the two swap axes — the list
+   keeps its 600px column on the left, where reading starts, and the map takes
+   everything left over, which is the half of the split that actually gets better
+   with more room. 1200px is 2x that column, and is already the width the
+   dashboard grid doubles at, so both pages widen on the same line.
+
+   The stacked layout's column flex becomes a two-row grid: the topbar spans it,
+   and the row under it is the split. The map has to be told to stop being a
+   square here — it fills a column of unknown height now, not a tile. */
+@media (min-width: 1200px) {
+  .marks-page {
+    display: grid;
+    grid-template-columns: 600px minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .marks-page > .topbar {
+    grid-column: 1 / -1;
+  }
+
+  .marks-list {
+    grid-column: 1;
+    grid-row: 2;
+    width: 100%;
+    margin: 0;
+  }
+
+  /* The list's own 12px right padding is the gutter between the two, so the map
+     takes none on that side and the pair sits on one 12px rhythm across */
+  .marks-map {
+    grid-column: 2;
+    grid-row: 2;
+    width: auto;
+    min-height: 0;
+    margin: 0;
+    padding: 12px 12px 12px 0;
+  }
+
+  .marks-map > section,
+  .marks-map-placeholder {
+    height: 100%;
+    aspect-ratio: auto;
+  }
 }
 
 .section-heading {
@@ -395,8 +513,11 @@ a {
   list-style: none;
 }
 
+/* The whole row is a target for the pin sitting in it, so it takes the pointer
+   that goes with one */
 .mark-item {
   border-bottom: 1px solid var(--line);
+  cursor: pointer;
 }
 
 .mark-row {
@@ -404,7 +525,11 @@ a {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 14px 0;
+  /* The 8px sides are the room the hover band needs to clear the text it sits
+     behind; the matching negative margin keeps the text itself on the same line
+     as the heading above it, so nothing moves when the band appears. */
+  padding: 14px 8px;
+  margin-inline: -8px;
 }
 
 .mark-copy {
@@ -553,6 +678,14 @@ a {
 }
 
 @media (hover: hover) {
+  /* Just enough to show which row the pointer has, and no more: the row is a
+     shortcut to the pin, not a black button in its own right. Behind the hover
+     query, or a tap on a phone would leave the band standing until something
+     else is touched. */
+  .mark-item:hover .mark-row {
+    background: var(--soft);
+  }
+
   .outline-button:hover {
     background: var(--ink);
     color: var(--paper);

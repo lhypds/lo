@@ -23,6 +23,10 @@
   width: 100%;
   height: 100%;
   overflow: hidden;
+  /* Held as custom properties only so the two long data URIs sit away from the
+     rules that use them; the colour in them is irrelevant, a mask reads alpha */
+  --zoom-in-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M12 6v12'/%3E%3Cpath d='M6 12h12'/%3E%3C/svg%3E");
+  --zoom-out-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M6 12h12'/%3E%3C/svg%3E");
 }
 
 .container {
@@ -38,16 +42,54 @@
   font-size: 12px;
 }
 
-/* The fix itself: a filled dot with a paper ring, so it reads against both the
-   road fill and the satellite imagery */
-.hereDot {
+/* A person on the map: the dot sits on the coordinate and the name hangs off
+   the bottom of it, out of the flow so it cannot move the dot. Colours here are
+   fixed rather than themed — they have to read against road fill and satellite
+   imagery, neither of which knows about light and dark mode. */
+.person {
+  position: relative;
   width: 14px;
   height: 14px;
+}
+
+.personDot {
+  width: 100%;
+  height: 100%;
   border: 2px solid #fff;
   border-radius: 50%;
-  background: #000;
+  background: #666;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5);
   cursor: pointer;
+}
+
+/* The reader's own dot is the filled one — on a map of several people, which
+   one is you should not take a second look */
+.personSelf .personDot {
+  background: #000;
+}
+
+.personName {
+  position: absolute;
+  top: 19px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 1px 4px;
+  border: 1px solid #000;
+  background: #fff;
+  color: #000;
+  font-family: var(--mono);
+  font-size: 10px;
+  line-height: 1.4;
+  white-space: nowrap;
+  /* The label can be wider than the dot by some way; letting it swallow clicks
+     would take a bite out of the map for every name on screen */
+  pointer-events: none;
+}
+
+.personSelf .personName {
+  border-color: #000;
+  background: #000;
+  color: #fff;
 }
 
 /* Saved marks are numbered newest-first, matching the order of the marks list */
@@ -89,6 +131,44 @@
 
 .wrapper :global(.mapboxgl-ctrl-group button + button) {
   border-top: 1px solid var(--line);
+}
+
+/* Mapbox's 32px squares sit on the map like a slab; 20px square is enough to
+   hold the glyph and still take a pointer, and gives the ground back — pinch
+   zoom is the gesture on touch anyway. */
+.wrapper :global(.mapboxgl-ctrl-group button) {
+  width: 20px;
+  height: 20px;
+}
+
+/* The plus and minus themselves are the fat part: Mapbox draws them as filled
+   slabs, about 2.5px of ink, against the 1.2px hairline every other icon on the
+   page is drawn with. Redrawn here as the same two strokes on the same 24-unit
+   viewBox at the same stroke-width ActionButton uses, rendered at the same 14px,
+   so the weight lands exactly where the card's own buttons land. It goes on as a
+   mask rather than a background image because a data URI is its own document and
+   cannot see currentColor — masking paints the glyph with var(--ink), so it
+   still follows the theme the way the border above it does. */
+.wrapper :global(.mapboxgl-ctrl-group button .mapboxgl-ctrl-icon) {
+  background-color: var(--ink);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: 50%;
+  mask-position: 50%;
+  -webkit-mask-size: 14px 14px;
+  mask-size: 14px 14px;
+}
+
+.wrapper :global(.mapboxgl-ctrl button.mapboxgl-ctrl-zoom-in .mapboxgl-ctrl-icon) {
+  background-image: none;
+  -webkit-mask-image: var(--zoom-in-glyph);
+  mask-image: var(--zoom-in-glyph);
+}
+
+.wrapper :global(.mapboxgl-ctrl button.mapboxgl-ctrl-zoom-out .mapboxgl-ctrl-icon) {
+  background-image: none;
+  -webkit-mask-image: var(--zoom-out-glyph);
+  mask-image: var(--zoom-out-glyph);
 }
 
 .wrapper :global(.mapboxgl-popup-content) {

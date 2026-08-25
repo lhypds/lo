@@ -18,4 +18,5 @@ export { default as MarkModal } from "./MarkModal/index.js";
 export { default as MarksPage } from "./MarksPage/index.js";
 export { default as NearbyCard } from "./NearbyCard/index.js";
 export { default as PrivateRoute } from "./PrivateRoute/index.js";
+export { default as TrendsCard } from "./TrendsCard/index.js";
 export { default as WeatherCard } from "./WeatherCard/index.js";

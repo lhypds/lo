@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
 import { useNavigate } from "../../ui/index.js";
+import { formatUsername } from "../../utils/format.js";
 import { isLocationEnabled } from "../../utils/location.js";
 import { useAuth } from "../AuthProvider/index.js";
 import { useHere } from "../LocationProvider/index.js";
@@ -37,7 +38,7 @@ export default function AccountPage() {
           <dl>
             <div>
               <dt>{t("account.username")}</dt>
-              <dd>{user.username}</dd>
+              <dd>{formatUsername(user.username)}</dd>
             </div>
             <div>
               <dt>{t("account.joined")}</dt>

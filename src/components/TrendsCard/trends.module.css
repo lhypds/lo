@@ -1,0 +1,73 @@
+/* Same shape as the news and events panels: the same four-square tile, so the
+   three read as one column */
+.scroll {
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.list li + li {
+  border-top: 1px solid var(--line);
+}
+
+.item {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 9px 10px;
+  text-decoration: none;
+}
+
+/* The rank is the whole point of a trend list, so it gets a fixed column and
+   the names line up under each other however long the numbers get */
+.rank {
+  flex: none;
+  width: 18px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  text-align: right;
+}
+
+.name {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+/* Plenty of live trends come back with no tweet_count at all, so this column
+   has to be allowed to simply not be there */
+.count {
+  flex: none;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+}
+
+.empty {
+  margin: 0;
+  padding: 34px 12px;
+  color: var(--muted);
+  text-align: center;
+  font-size: 11px;
+}
+
+@media (hover: hover) {
+  .item:hover {
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  .item:hover .rank,
+  .item:hover .count {
+    color: var(--paper);
+  }
+}

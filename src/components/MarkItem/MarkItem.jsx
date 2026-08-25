@@ -2,13 +2,23 @@ import { useTranslation } from "react-i18next";
 import { ActionButton } from "../../ui/index.js";
 import { distanceMeters, formatCoords, formatDateTime, formatDistance } from "../../utils/format.js";
 
+// The pin is the control that says the map will move; the row around it is the
+// same control with a thumb-sized target. Only the pin carries a role, so a
+// screen reader is offered one button rather than a button inside a button, and
+// the other two actions stop the click travelling — renaming a spot is not a
+// request to go and look at it.
 export default function MarkItem({ mark, from, onRename, onDelete, onShowOnMap }) {
   const { t, i18n } = useTranslation();
   const name = mark.label || mark.place || t("marks.unnamed");
   const away = from ? formatDistance(distanceMeters(from, mark)) : "";
 
+  function act(event, run) {
+    event.stopPropagation();
+    run(mark);
+  }
+
   return (
-    <li className="mark-item">
+    <li className="mark-item" onClick={() => onShowOnMap(mark)}>
       <div className="mark-row">
         <div className="mark-copy">
           <strong>{name}</strong>
@@ -18,19 +28,19 @@ export default function MarkItem({ mark, from, onRename, onDelete, onShowOnMap }
         <div className="mark-side">
           {away && <span className="mark-distance">{t("marks.distance", { distance: away })}</span>}
           <span className="mark-actions">
-            <ActionButton tooltip={t("marks.showOnMap")} onClick={() => onShowOnMap(mark)}>
+            <ActionButton tooltip={t("marks.showOnMap")} onClick={(event) => act(event, onShowOnMap)}>
               <svg viewBox="0 0 24 24">
                 <path d="M12 21s-7-5.6-7-11a7 7 0 0 1 14 0c0 5.4-7 11-7 11z" />
                 <circle cx="12" cy="10" r="2.5" />
               </svg>
             </ActionButton>
-            <ActionButton tooltip={t("marks.rename")} onClick={() => onRename(mark)}>
+            <ActionButton tooltip={t("marks.rename")} onClick={(event) => act(event, onRename)}>
               <svg viewBox="0 0 24 24">
                 <path d="M12 20h9" />
                 <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
               </svg>
             </ActionButton>
-            <ActionButton tooltip={t("marks.delete")} onClick={() => onDelete(mark)}>
+            <ActionButton tooltip={t("marks.delete")} onClick={(event) => act(event, onDelete)}>
               <svg viewBox="0 0 24 24">
                 <path d="M4 7h16" />
                 <path d="M9 7V5h6v2" />

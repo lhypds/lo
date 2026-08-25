@@ -30,6 +30,18 @@ db.exec(`
   );
 
   CREATE INDEX IF NOT EXISTS marks_user_time_idx ON marks(user_id, time DESC);
+
+  -- Where each account is right now, one row per user and overwritten in place:
+  -- this is presence, not history. Marks are the table that keeps things.
+  CREATE TABLE IF NOT EXISTS positions (
+    user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    latitude REAL NOT NULL,
+    longitude REAL NOT NULL,
+    accuracy REAL,
+    updated_at TEXT NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS positions_updated_idx ON positions(updated_at DESC);
 `);
 
 const selectUserByName = db.prepare(`
@@ -79,6 +91,27 @@ const deleteMarkById = db.prepare(`
   WHERE id = ? AND user_id = ?
 `);
 
+const upsertPosition = db.prepare(`
+  INSERT INTO positions (user_id, latitude, longitude, accuracy, updated_at)
+  VALUES (?, ?, ?, ?, ?)
+  ON CONFLICT(user_id) DO UPDATE SET
+    latitude = excluded.latitude,
+    longitude = excluded.longitude,
+    accuracy = excluded.accuracy,
+    updated_at = excluded.updated_at
+`);
+
+// Everyone but the asker: the reader's own dot comes from their own sensor,
+// which is always fresher than the round trip through here.
+const selectOtherPositions = db.prepare(`
+  SELECT u.username, p.latitude, p.longitude, p.accuracy, p.updated_at AS time
+  FROM positions p
+  JOIN users u ON u.id = p.user_id
+  WHERE p.user_id <> ? AND p.updated_at >= ?
+  ORDER BY p.updated_at DESC
+  LIMIT ?
+`);
+
 export function getUser(username) {
   return selectUserByName.get(username) ?? null;
 }
@@ -116,4 +149,14 @@ export function renameMark(userId, markId, label) {
 
 export function deleteMark(userId, markId) {
   return deleteMarkById.run(markId, userId).changes > 0;
+}
+
+export function savePosition(userId, { latitude, longitude, accuracy }) {
+  upsertPosition.run(userId, latitude, longitude, accuracy ?? null, new Date().toISOString());
+}
+
+// `since` is an ISO timestamp: same format the column is written in, so the
+// string comparison is a chronological one.
+export function getOtherPositions(userId, since, limit = 200) {
+  return selectOtherPositions.all(userId, since, limit);
 }
