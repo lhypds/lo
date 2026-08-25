@@ -4,11 +4,10 @@ import react from "@vitejs/plugin-react";
 export default defineConfig({
   plugins: [react()],
   build: {
-    sourcemap: false,
     rollupOptions: {
-      // Keep peak memory down so the build survives on the small VPS.
-      maxParallelFileOps: 2,
       output: {
+        // mapbox-gl is ~1.9 MB minified and changes far less often than app
+        // code, so give it its own long-lived cacheable chunk.
         manualChunks: {
           mapbox: ["mapbox-gl"],
         },
