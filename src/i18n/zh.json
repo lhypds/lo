@@ -18,7 +18,11 @@
     "username": "用户名",
     "login": "进入",
     "usernameHint": "无需密码，只要一个用户名。",
-    "usernameRequired": "请输入用户名"
+    "usernameRequired": "请输入用户名",
+    "createTitle": "新建账号",
+    "createConfirm": "还没有人用“{{name}}”。创建并登录？",
+    "create": "创建",
+    "creating": "创建中"
   },
   "account": {
     "title": "账号",
@@ -81,10 +85,9 @@
   },
   "trends": {
     "title": "趋势",
-    "empty": "X 暂无此地的趋势",
-    "unavailable": "无法连接 X",
-    "loading": "正在读取 X",
-    "noToken": "请在 .env 中设置 X_BEARER_TOKEN 以显示热门趋势。"
+    "empty": "此地暂无搜索趋势",
+    "unavailable": "无法连接 Google 趋势",
+    "loading": "正在读取 Google 趋势"
   },
   "map": {
     "title": "地图",

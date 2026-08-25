@@ -32,6 +32,7 @@ const isProduction = process.env.NODE_ENV === "production";
 
 const USERNAME_RE =
   /^[a-z0-9_\p{Script_Extensions=Han}\p{Script_Extensions=Hiragana}\p{Script_Extensions=Katakana}\p{Script_Extensions=Hangul}-]{1,32}$/u;
+const USERNAME_HINT = "用户名为 1–32 个字符，可使用中日韩文字、字母、数字、- 和 _";
 const sessions = new Map();
 const sessionAgeMs = 30 * 24 * 60 * 60 * 1000;
 const sessionCookie = "lo_session";
@@ -138,31 +139,42 @@ app.get("/api/session", (req, res) => {
   res.json({ user });
 });
 
-// A username is the whole account: the first time one is used it is created,
-// and every time after that it signs the same person back in.
+// A username is the whole account, but a name nobody has used yet is more often
+// a typo than a new person — so login only signs in, and an unknown name comes
+// back as USER_NOT_FOUND for the browser to ask about before /api/users opens it.
 app.post("/api/login", (req, res) => {
   const username = normalizeUsername(req.body?.username);
   if (!USERNAME_RE.test(username)) {
-    return res.status(400).json({ error: "用户名为 1–32 个字符，可使用中日韩文字、字母、数字、- 和 _" });
+    return res.status(400).json({ error: USERNAME_HINT });
   }
-  let user = getUser(username);
-  let created = false;
-  if (!user) {
-    try {
-      user = createUser(username);
-      created = true;
-    } catch (error) {
-      console.error("create user failed", error);
-      return res.status(500).json({ error: "创建用户失败" });
-    }
-  }
+  const user = getUser(username);
+  if (!user) return res.status(404).json({ error: "用户不存在", code: "USER_NOT_FOUND" });
   startSession(user, req, res);
-  res.status(created ? 201 : 200).json({ user, created });
+  res.json({ user });
 });
 
 app.post("/api/logout", (req, res) => {
   clearSession(req, res);
   res.status(204).end();
+});
+
+// Opening the account and signing into it are the same request: there is no
+// password to set, so a confirmed name is all it takes.
+app.post("/api/users", (req, res) => {
+  const username = normalizeUsername(req.body?.username);
+  if (!USERNAME_RE.test(username)) {
+    return res.status(400).json({ error: USERNAME_HINT });
+  }
+  if (getUser(username)) return res.status(409).json({ error: "用户名已存在", code: "USER_EXISTS" });
+
+  try {
+    const user = createUser(username);
+    startSession(user, req, res);
+    res.status(201).json({ user });
+  } catch (error) {
+    console.error("create user failed", error);
+    res.status(500).json({ error: "创建用户失败" });
+  }
 });
 
 app.get("/api/me", requireSession, (req, res) => {

@@ -513,23 +513,30 @@ a {
   list-style: none;
 }
 
-/* The whole row is a target for the pin sitting in it, so it takes the pointer
-   that goes with one */
+/* The clip is what makes the swipe a swipe: the row slides off its own left
+   edge and has to stop there rather than run out over the list's padding */
 .mark-item {
+  position: relative;
+  overflow: hidden;
   border-bottom: 1px solid var(--line);
-  cursor: pointer;
 }
 
+/* Sits behind the row on its own paper, so sliding the row uncovers the two
+   actions rather than moving them */
 .mark-row {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  /* The 8px sides are the room the hover band needs to clear the text it sits
-     behind; the matching negative margin keeps the text itself on the same line
-     as the heading above it, so nothing moves when the band appears. */
-  padding: 14px 8px;
-  margin-inline: -8px;
+  padding: 14px 0;
+  background: var(--paper);
+  cursor: pointer;
+  /* The list scrolls under a vertical drag and the row answers a horizontal
+     one; without this the browser claims both and the swipe never starts. */
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .mark-copy {
@@ -553,24 +560,47 @@ a {
   font-size: 10px;
 }
 
-.mark-side {
-  flex: 0 0 auto;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 8px;
-}
-
 .mark-distance {
+  flex: 0 0 auto;
   color: var(--muted);
   font-family: var(--mono);
   font-size: 10px;
   white-space: nowrap;
 }
 
-.mark-actions {
+/* The drawer the row is sitting on. Full height and pinned right, so however
+   far the row is dragged the buttons underneath are already in place — the
+   delete outermost, where the thumb ends up on a long swipe. */
+.mark-reveal {
+  position: absolute;
+  inset: 0 0 0 auto;
   display: flex;
-  gap: 6px;
+}
+
+.mark-reveal button {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  border: 0;
+  background: var(--ink);
+  color: var(--paper);
+  cursor: pointer;
+}
+
+/* One black drawer, two targets — a hairline is all it takes to say where one
+   ends, and it keeps the pair from reading as a single wide button */
+.mark-reveal-delete {
+  border-left: 1px solid var(--paper);
+}
+
+.mark-reveal svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 /* --------------------------------------------------------------- account -- */
@@ -678,10 +708,10 @@ a {
 }
 
 @media (hover: hover) {
-  /* Just enough to show which row the pointer has, and no more: the row is a
-     shortcut to the pin, not a black button in its own right. Behind the hover
-     query, or a tap on a phone would leave the band standing until something
-     else is touched. */
+  /* Just enough to show which row the pointer has, and no more: the row moves
+     the map, it is not a black button in its own right. Behind the hover query,
+     or a tap on a phone would leave the band standing until something else is
+     touched. */
   .mark-item:hover .mark-row {
     background: var(--soft);
   }

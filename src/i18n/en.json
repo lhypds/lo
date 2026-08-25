@@ -18,7 +18,11 @@
     "username": "Username",
     "login": "Go",
     "usernameHint": "No password — just a username.",
-    "usernameRequired": "Please enter a username"
+    "usernameRequired": "Please enter a username",
+    "createTitle": "New account",
+    "createConfirm": "No one is using “{{name}}” yet. Create it and sign in?",
+    "create": "Create",
+    "creating": "Creating"
   },
   "account": {
     "title": "Account",
@@ -81,10 +85,9 @@
   },
   "trends": {
     "title": "Trends",
-    "empty": "X has no trends for here right now",
-    "unavailable": "Could not reach X",
-    "loading": "Reading X",
-    "noToken": "Add X_BEARER_TOKEN to .env to show trending topics."
+    "empty": "No search trends for here right now",
+    "unavailable": "Could not reach Google Trends",
+    "loading": "Reading Google Trends"
   },
   "map": {
     "title": "Map",

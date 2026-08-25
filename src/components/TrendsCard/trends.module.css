@@ -35,16 +35,33 @@
   text-align: right;
 }
 
-.name {
+.body {
+  display: flex;
   flex: 1;
   min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.name {
   font-size: 12px;
   line-height: 1.45;
   overflow-wrap: anywhere;
 }
 
-/* Plenty of live trends come back with no tweet_count at all, so this column
-   has to be allowed to simply not be there */
+/* The headline is context, not the row — one line of it, clipped, so ten
+   trends still fit the tile the news and events cards are the same size as */
+.story {
+  overflow: hidden;
+  color: var(--muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+/* approx_traffic is optional in the feed, so this column has to be allowed to
+   simply not be there */
 .count {
   flex: none;
   color: var(--muted);
@@ -67,6 +84,7 @@
   }
 
   .item:hover .rank,
+  .item:hover .story,
   .item:hover .count {
     color: var(--paper);
   }

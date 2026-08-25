@@ -18,7 +18,11 @@
     "username": "ユーザー名",
     "login": "開始",
     "usernameHint": "パスワードは不要。ユーザー名だけ。",
-    "usernameRequired": "ユーザー名を入力してください"
+    "usernameRequired": "ユーザー名を入力してください",
+    "createTitle": "新しいアカウント",
+    "createConfirm": "「{{name}}」はまだ誰も使っていません。作成してログインしますか？",
+    "create": "作成",
+    "creating": "作成中"
   },
   "account": {
     "title": "アカウント",
@@ -81,10 +85,9 @@
   },
   "trends": {
     "title": "トレンド",
-    "empty": "この地域のトレンドは今ありません",
-    "unavailable": "X に接続できません",
-    "loading": "X を読み込み中",
-    "noToken": "トレンドを表示するには .env に X_BEARER_TOKEN を設定してください。"
+    "empty": "この地域の検索トレンドは今ありません",
+    "unavailable": "Google トレンドに接続できません",
+    "loading": "Google トレンドを読み込み中"
   },
   "map": {
     "title": "地図",

@@ -5,8 +5,8 @@ import { Card } from "../../ui/index.js";
 import { useHere } from "../LocationProvider/index.js";
 import styles from "./trends.module.css";
 
-// X answers per metro at best, and the server rounds the fix onto that metro
-// before asking — so the request is keyed as coarsely as the place name is.
+// Google answers per subregion at best, and the server rounds the fix onto that
+// subregion before asking — so the request is keyed as coarsely as the answer.
 function coordKey(coords) {
   if (!coords) return "";
   return `${coords.latitude.toFixed(1)},${coords.longitude.toFixed(1)}`;
@@ -44,20 +44,17 @@ export default function TrendsCard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, language]);
 
-  // Trends run to six figures, and the exact number is never the point — the
-  // order of magnitude is, so it is shown the way X shows it.
+  // Google rounds search volume down to a floor — 200+, 20000+ — so the number
+  // is an order of magnitude and is shown as one, with the + it arrived with.
   const compact = useMemo(
     () => new Intl.NumberFormat(language, { notation: "compact", maximumFractionDigits: 1 }),
     [language],
   );
 
   const items = result?.items ?? [];
-  const configured = result?.configured !== false;
 
   let body;
-  if (!configured) {
-    body = <p className={styles.empty}>{t("trends.noToken")}</p>;
-  } else if (loading && items.length === 0) {
+  if (loading && items.length === 0) {
     body = <p className={styles.empty}>{t("trends.loading")}</p>;
   } else if (error) {
     body = <p className={styles.empty}>{t("trends.unavailable")}</p>;
@@ -70,8 +67,13 @@ export default function TrendsCard() {
           <li key={item.name}>
             <a href={item.url} target="_blank" rel="noreferrer noopener" className={styles.item}>
               <span className={styles.rank}>{index + 1}</span>
-              <span className={styles.name}>{item.name}</span>
-              {item.count != null && <span className={styles.count}>{compact.format(item.count)}</span>}
+              <span className={styles.body}>
+                <span className={styles.name}>{item.name}</span>
+                {/* A search word seldom explains itself — the story behind the
+                    spike is what the row actually opens, so it is shown. */}
+                {item.headline && <span className={styles.story}>{item.headline}</span>}
+              </span>
+              {item.count != null && <span className={styles.count}>{compact.format(item.count)}+</span>}
             </a>
           </li>
         ))}
@@ -79,10 +81,11 @@ export default function TrendsCard() {
     );
   }
 
-  // "Trending in Tokyo" and "trending in Japan" are different claims — the
-  // server says which rung of its table the fix landed on, and the heading
-  // repeats it rather than letting the reader assume the narrower one.
-  const where = configured && result?.name ? result.name : null;
+  // "Trending in Kyoto" and "trending in Japan" are different claims — the
+  // server says whether the fix got a subregion or fell back to its country,
+  // and the heading repeats it rather than letting the reader assume the
+  // narrower one. The name comes back already in the reader's language.
+  const where = result?.name || null;
 
   return (
     <Card title={t("trends.title")} meta={where} wide square flush>

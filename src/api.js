@@ -27,6 +27,8 @@ function geoQuery({ latitude, longitude }) {
 export const getSession = () => request("/api/session");
 export const login = (username) =>
   request("/api/login", { method: "POST", body: JSON.stringify({ username }) });
+export const createUser = (username) =>
+  request("/api/users", { method: "POST", body: JSON.stringify({ username }) });
 export const logout = () => request("/api/logout", { method: "POST" });
 export const getMe = () => request("/api/me");
 

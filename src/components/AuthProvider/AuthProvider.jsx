@@ -66,11 +66,18 @@ export function AuthProvider({ children }) {
           setReady(true);
           dropUserParam();
           return;
-        } catch {
+        } catch (error) {
           // A name the server refuses is no login at all: fall through to the
           // usual restore, which lands on /login when there is nothing left.
           if (cancelled) return;
-          dropUserParam();
+          // A link naming an account that does not exist yet gets the same
+          // question typing the name would: the login page carries it, ready
+          // for the create prompt, rather than creating it on a tap.
+          if (error?.code === "USER_NOT_FOUND") {
+            navigate(`/login?username=${encodeURIComponent(requested)}`, { replace: true });
+          } else {
+            dropUserParam();
+          }
         }
       }
       await restore();
@@ -89,13 +96,22 @@ export function AuthProvider({ children }) {
     return data.user;
   }
 
+  async function register(username) {
+    const data = await api.createUser(username);
+    localStorage.setItem(storageKey, data.user.username);
+    setUser(data.user);
+    return data.user;
+  }
+
   async function logout() {
     await api.logout().catch(() => {});
     localStorage.removeItem(storageKey);
     setUser(null);
   }
 
-  return <AuthContext.Provider value={{ user, ready, login, logout }}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={{ user, ready, login, register, logout }}>{children}</AuthContext.Provider>
+  );
 }
 
 export function useAuth() {

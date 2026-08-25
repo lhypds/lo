@@ -2,16 +2,13 @@
 // over a pair of coordinates and nothing else, so the server turns them into a
 // place name, a clock, a sky and a list of what is happening nearby.
 //
-// Four of the five upstreams are key-free public APIs:
-// - BigDataCloud   — reverse geocoding      https://www.bigdatacloud.com
-// - Open-Meteo     — weather and timezone   https://open-meteo.com
-// - Google News    — local news (RSS)       https://news.google.com/rss
-// - Wikipedia      — nearby places          https://www.mediawiki.org/wiki/API
-//
-// The fifth is not, and is the only paid thing the server talks to:
-// - X             — trending topics         https://docs.x.com/x-api/trends
-//   Metered per request and gated on X_BEARER_TOKEN. Everything above keeps
-//   working when that token is absent; only the trends card notices.
+// Every upstream here is a key-free public API — the server holds no
+// credentials at all, and Mapbox is the browser's business:
+// - BigDataCloud   — reverse geocoding       https://www.bigdatacloud.com
+// - Open-Meteo     — weather and timezone    https://open-meteo.com
+// - Google News    — local news (RSS)        https://news.google.com/rss
+// - Google Trends  — trending searches (RSS) https://trends.google.com/trending
+// - Wikipedia      — nearby places           https://www.mediawiki.org/wiki/API
 //
 // Requests are coarse-keyed and cached: a phone reporting a position every few
 // seconds keeps hitting the same cache entry rather than the same upstream.
@@ -111,6 +108,9 @@ export function lookupPlace(latitude, longitude, lang = "en") {
       region: region === name ? "" : region,
       country: firstString(data.countryName),
       countryCode: firstString(data.countryCode),
+      // ISO-3166-2, e.g. "JP-26" — the form Google Trends files its subregional
+      // lists under, which is what lets the trends card be prefecture-level
+      subdivisionCode: firstString(data.principalSubdivisionCode),
     };
   });
 }
@@ -365,134 +365,83 @@ export function lookupEvents(latitude, longitude, lang = "en") {
 
 /* ----------------------------------------------------------------- trends -- */
 
-// What X says is spiking where you are. The only upstream here that costs money
-// and the only one that can be switched off: with no token the card is told so
-// and the rest of the dashboard carries on.
-const TRENDS_HOST = "https://api.x.com/2";
-// Every call is billed, so the TTL is the cost dial rather than a freshness
-// one — 30 min is ~48 calls a day per location, and the cache is keyed on the
-// WOEID, not the fix, so a whole city shares one entry.
+// What the place is searching for. Google files these by ISO-3166-2 subregion
+// wherever it has the volume to — JP-13 and JP-26 come back as genuinely
+// different lists — so the answer can be prefecture- or state-level rather than
+// the metro-or-nothing X could offer, and it costs nothing, which makes the TTL
+// below a freshness dial rather than a bill.
+const TRENDS_HOST = "https://trends.google.com/trending/rss";
 const TRENDS_TTL_MS = 30 * 60 * 1000;
+// Nothing came back — either a region Google does not cover or a bad minute on
+// the wire. Worth asking again about sooner than a full answer.
 const TRENDS_EMPTY_TTL_MS = 10 * 60 * 1000;
 const MAX_TRENDS = 20;
 
-// X answers per WOEID — Yahoo's retired "Where On Earth" id. v1.1 had
-// trends/closest, which turned a pair of coordinates into the nearest id X
-// actually supports; it went away with v1.1 and v2 replaced it with nothing.
-// There is no endpoint that lists the supported locations either, so the table
-// has to live here.
+// Google answers for a country or one of its subregions and rejects anything
+// else outright with a 400 — it never quietly serves somewhere else's list, so
+// unlike the WOEID table this replaced, asking for the narrow code first and
+// falling back to the country is safe to do blind. No table to maintain.
 //
-// It holds only ids X's own documentation states, because the failure mode of a
-// guess is silent: a wrong-but-valid WOEID returns another city's trends under
-// your city's name, which is worse than showing no card at all. An id X does
-// not support comes back as an empty list rather than an error, so adding a row
-// is safe — but source it, do not infer it.
-// https://docs.x.com/x-api/trends/trends-by-woeid/introduction
-const WORLDWIDE_WOEID = 1;
+// Whole countries are simply absent: geo=CN is a 400 at every level, and the
+// card is left saying it has nothing rather than showing the world's.
+function trendScopes(place) {
+  const country = firstString(place?.countryCode).toUpperCase();
+  const subdivision = firstString(place?.subdivisionCode).toUpperCase();
+  const scopes = [];
 
-const TREND_CITIES = [
-  { woeid: 1118370, name: "Tokyo", latitude: 35.6895, longitude: 139.6917 },
-  { woeid: 2459115, name: "New York", latitude: 40.7128, longitude: -74.006 },
-  { woeid: 2442047, name: "Los Angeles", latitude: 34.0522, longitude: -118.2437 },
-  { woeid: 44418, name: "London", latitude: 51.5074, longitude: -0.1278 },
-];
-
-const TREND_COUNTRIES = {
-  JP: { woeid: 23424856, name: "Japan" },
-  US: { woeid: 23424977, name: "United States" },
-  GB: { woeid: 23424975, name: "United Kingdom" },
-};
-
-// A metro WOEID speaks for its metro, not its centre point: Yokohama is Tokyo's
-// trends as far as X is concerned, and 80 km is about where that stops being
-// true anywhere in the table.
-const TREND_CITY_RADIUS_M = 80_000;
-
-const EARTH_RADIUS_M = 6_371_008.8;
-
-function distanceMeters(latitude, longitude, target) {
-  const rad = (deg) => (deg * Math.PI) / 180;
-  const lat1 = rad(latitude);
-  const lat2 = rad(target.latitude);
-  const dLat = lat2 - lat1;
-  const dLon = rad(target.longitude - longitude);
-  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
-  return 2 * EARTH_RADIUS_M * Math.asin(Math.min(1, Math.sqrt(h)));
-}
-
-// Nearest supported metro, else the country, else the world — narrowing as far
-// as the table allows and saying which rung it landed on, because "trending in
-// Japan" and "trending in Tokyo" are different claims and the card makes it
-// clear which one it is showing.
-function resolveWoeid(latitude, longitude, countryCode) {
-  let nearest = null;
-  for (const city of TREND_CITIES) {
-    const distance = distanceMeters(latitude, longitude, city);
-    if (distance <= TREND_CITY_RADIUS_M && (!nearest || distance < nearest.distance)) {
-      nearest = { ...city, distance };
-    }
+  if (/^[A-Z]{2}-[A-Z0-9]{1,3}$/.test(subdivision) && subdivision.startsWith(`${country}-`)) {
+    // principalSubdivision is blanked out in lookupPlace when it repeats the
+    // city name, which is exactly what happens in a city-prefecture like Kyoto.
+    scopes.push({ geo: subdivision, name: firstString(place?.region, place?.name), scope: "region" });
   }
-  if (nearest) return { woeid: nearest.woeid, name: nearest.name, scope: "city" };
-
-  const country = TREND_COUNTRIES[String(countryCode ?? "").toUpperCase()];
-  if (country) return { woeid: country.woeid, name: country.name, scope: "country" };
-
-  return { woeid: WORLDWIDE_WOEID, name: "Worldwide", scope: "world" };
+  if (/^[A-Z]{2}$/.test(country)) {
+    scopes.push({ geo: country, name: firstString(place?.country), scope: "country" });
+  }
+  return scopes;
 }
 
-async function fetchTrends(woeid, token) {
-  const url = new URL(`${TRENDS_HOST}/trends/by/woeid/${woeid}`);
-  url.searchParams.set("max_trends", String(MAX_TRENDS));
-  url.searchParams.set("trend.fields", "trend_name,tweet_count");
-
-  const response = await fetch(url.href, {
-    headers: { Authorization: `Bearer ${token}`, "User-Agent": USER_AGENT, Accept: "application/json" },
-    signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
-  });
-
-  // A bad token and an exhausted balance are both things the operator has to go
-  // and fix, so they are named rather than folded into a generic failure. The
-  // balance one is not a one-off: credits run down silently, and a card that
-  // has been working for weeks stops on a 402 with nothing else changed.
-  if (response.status === 401 || response.status === 403) throw new Error("X rejected the bearer token");
-  if (response.status === 402) throw new Error("X credits depleted — top up at https://console.x.com");
-  if (response.status === 429) throw new Error("X rate limit reached");
-  if (!response.ok) throw new Error(`api.x.com returned HTTP ${response.status}`);
-
-  const data = await response.json().catch(() => ({}));
-  return (Array.isArray(data.data) ? data.data : [])
-    .filter((trend) => typeof trend.trend_name === "string" && trend.trend_name.trim())
-    .map((trend) => ({
-      name: trend.trend_name.trim(),
-      // Optional in the schema, and absent for plenty of live trends — the card
-      // has to render a trend that will not say how big it is.
-      count: Number.isFinite(trend.tweet_count) ? trend.tweet_count : null,
-      // A public search URL, so tapping a trend costs nothing and needs no key.
-      url: `https://x.com/search?q=${encodeURIComponent(trend.trend_name)}`,
-    }));
-}
-
-export function trendsConfigured() {
-  return Boolean(process.env.X_BEARER_TOKEN);
+async function fetchTrendFeed(geo) {
+  const xml = await getText(`${TRENDS_HOST}?geo=${encodeURIComponent(geo)}`, "application/rss+xml, application/xml");
+  return [...xml.matchAll(/<item>([\s\S]*?)<\/item>/g)]
+    .map(([, item]) => {
+      const name = tagContent(item, "title");
+      // "200+", always rounded down to a power-of-ten-ish floor. The digits are
+      // the only part worth keeping; the card puts the + back on itself.
+      const traffic = Number.parseInt(tagContent(item, "ht:approx_traffic").replace(/[^\d]/g, ""), 10);
+      // A search word on its own rarely says why it is spiking, so the feed's
+      // top related story rides along and becomes the row's destination — the
+      // <link> element is no use, it just points back at the feed.
+      const story = tagContent(item, "ht:news_item_url");
+      return {
+        name,
+        count: Number.isFinite(traffic) ? traffic : null,
+        headline: tagContent(item, "ht:news_item_title"),
+        source: tagContent(item, "ht:news_item_source"),
+        url: story || `https://www.google.com/search?q=${encodeURIComponent(name)}`,
+      };
+    })
+    .filter((trend) => trend.name);
 }
 
 export function lookupTrends(latitude, longitude, lang = "en") {
-  const token = process.env.X_BEARER_TOKEN;
-  if (!token) return Promise.resolve({ configured: false, items: [] });
-
   const language = PLACE_LANGUAGE[lang] ?? "en";
-  const ttl = (value) => (value.items.length === 0 ? TRENDS_EMPTY_TTL_MS : TRENDS_TTL_MS);
+  // A region Google does not cover 400s every time, not once, so the empty list
+  // is cached rather than thrown — otherwise every view of the card would pay
+  // for the same rejection before falling back to the country.
+  const ttl = (items) => (items.length === 0 ? TRENDS_EMPTY_TTL_MS : TRENDS_TTL_MS);
 
   return cached(`trends-where:${language}:${gridKey(latitude, longitude, PLACE_GRID)}`, PLACE_TTL_MS, () =>
     lookupPlace(latitude, longitude, language)
       .catch(() => null)
-      .then((place) => resolveWoeid(latitude, longitude, place?.countryCode)),
-  ).then((where) =>
-    // Keyed on the WOEID alone: every reader in the metro is asking X the same
-    // question, and X's answer is in the language of the place either way.
-    cached(`trends:${where.woeid}`, ttl, async () => {
-      const items = await fetchTrends(where.woeid, token);
-      return { configured: true, ...where, items };
-    }),
-  );
+      .then(trendScopes),
+  ).then(async (scopes) => {
+    for (const where of scopes) {
+      // Keyed on the geo code alone: everyone in the prefecture is asking the
+      // same question, and the answer is in the language of the place either
+      // way — only the label around it is the reader's.
+      const items = await cached(`trends:${where.geo}`, ttl, () => fetchTrendFeed(where.geo).catch(() => []));
+      if (items.length > 0) return { ...where, items: items.slice(0, MAX_TRENDS) };
+    }
+    return { items: [] };
+  });
 }
