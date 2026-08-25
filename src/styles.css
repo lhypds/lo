@@ -7,6 +7,11 @@
   --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
   --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   --display: "Fira Code", var(--mono);
+  /* The clock's time and the weather's temperature are read as one pair across
+     two tiles, so they share a size. Sized in cqi, it resolves against whichever
+     card the figure lands in — both tiles are the same width, so both figures
+     come out the same. */
+  --figure: clamp(24px, 20cqi, 44px);
   --topbar: 48px;
   color: var(--ink);
   background: var(--paper);
@@ -304,6 +309,27 @@ a {
 .card-placeholder {
   aspect-ratio: 1;
   border: 1px solid var(--ink);
+}
+
+/* Expanded, the map is the page: the strip and the other tiles are hidden and
+   the grid hands its whole height to the one card left, so the map fills the
+   window under the topbar instead of floating above a blank half-screen */
+.home-main-map {
+  padding-bottom: 0;
+}
+
+.home-main-map > :not(.card-grid) {
+  display: none;
+}
+
+.home-main-map .card-grid {
+  flex: 1;
+  min-height: 0;
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.home-main-map .card-grid > :not(.map-full) {
+  display: none;
 }
 
 /* ------------------------------------------------------------------ list -- */

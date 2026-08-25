@@ -66,12 +66,20 @@
     "unavailable": "Weather is unavailable right now"
   },
   "nearby": {
-    "title": "Nearby",
-    "news": "Local news",
+    "title": "News",
+    "news": "Local",
     "places": "Around you",
     "empty": "Nothing to report around here",
     "unavailable": "Could not reach the news service",
     "loading": "Reading the neighbourhood"
+  },
+  "events": {
+    "title": "Events",
+    "holidays": "Public holidays",
+    "happening": "What's on",
+    "empty": "Nothing on the calendar around here",
+    "unavailable": "Could not reach the events services",
+    "loading": "Looking for what is on"
   },
   "map": {
     "title": "Map",

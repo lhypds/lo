@@ -1,5 +1,14 @@
+/* Expanded, the map breaks out of the 600px reading column to the full width of
+   the window — seeing more ground is the entire point of expanding it. The
+   negative margins are half the difference between the grid area and the
+   window, so the panel lands flush on both edges without ever overflowing into
+   a horizontal scroll. Its height comes from the grid row, which the page hands
+   the whole viewport once everything else is hidden. */
 .cardExpanded {
-  height: min(76vh, 720px);
+  width: 100vw;
+  height: 100%;
+  margin-inline: calc(50% - 50vw);
+  border-inline: 0;
 }
 
 .actions {

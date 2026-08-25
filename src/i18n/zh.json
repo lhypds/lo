@@ -66,12 +66,20 @@
     "unavailable": "暂时无法获取天气"
   },
   "nearby": {
-    "title": "周围",
-    "news": "本地新闻",
+    "title": "新闻",
+    "news": "本地",
     "places": "你的周边",
     "empty": "附近暂无可报道的内容",
     "unavailable": "无法连接新闻服务",
     "loading": "正在读取周边"
+  },
+  "events": {
+    "title": "活动",
+    "holidays": "公共假日",
+    "happening": "正在举办",
+    "empty": "附近暂无活动",
+    "unavailable": "无法连接活动服务",
+    "loading": "正在查找活动"
   },
   "map": {
     "title": "地图",

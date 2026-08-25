@@ -1,6 +1,8 @@
-/* The readout rows sit on the bottom edge of the square and the clock face
-   floats in whatever is left, so the tile reads as filled at any size rather
-   than as content stacked at the top with a hole under it */
+/* The readout rows sit on the bottom edge of the square and the clock face on
+   the top edge, so the slack lands between them. Centring the face instead
+   would put it wherever this tile's rows happen to end, and the weather tile
+   carries a forecast block the clock has no equivalent of — the two figures
+   would sit at different heights on a dashboard that reads them as a pair. */
 .inner {
   height: 100%;
   display: flex;
@@ -12,7 +14,6 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  justify-content: center;
 }
 
 .face {
@@ -23,8 +24,8 @@
 
 .time {
   font-family: var(--display);
-  font-size: clamp(24px, 21cqi, 46px);
-  font-weight: 700;
+  font-size: var(--figure);
+  font-weight: 400;
   line-height: 1;
   letter-spacing: -0.04em;
   font-variant-numeric: tabular-nums;

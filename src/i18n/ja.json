@@ -66,12 +66,20 @@
     "unavailable": "天気を取得できません"
   },
   "nearby": {
-    "title": "周辺",
-    "news": "地域のニュース",
+    "title": "ニュース",
+    "news": "地元",
     "places": "あなたの周り",
     "empty": "この辺りに伝えることはありません",
     "unavailable": "ニュースサービスに接続できません",
     "loading": "周辺を読み込み中"
+  },
+  "events": {
+    "title": "イベント",
+    "holidays": "祝日",
+    "happening": "開催情報",
+    "empty": "この辺りに予定はありません",
+    "unavailable": "イベント情報に接続できません",
+    "loading": "イベントを探しています"
   },
   "map": {
     "title": "地図",

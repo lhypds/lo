@@ -5,11 +5,22 @@ import styles from "./card.module.css";
 // `square` is what makes the dashboard a grid of equal tiles; the card is also
 // a container, so the content inside can size itself to the tile it landed in
 // rather than to the window.
-export default function Card({ title, meta, action, square = false, wide = false, flush = false, className, children }) {
+export default function Card({
+  title,
+  meta,
+  action,
+  square = false,
+  wide = false,
+  flush = false,
+  openHead = false,
+  className,
+  children,
+}) {
   const classes = [styles.card, square ? styles.square : "", wide ? styles.wide : "", className];
+  const head = [styles.head, openHead ? styles.openHead : ""];
   return (
     <section className={classes.filter(Boolean).join(" ")}>
-      <header className={styles.head}>
+      <header className={head.filter(Boolean).join(" ")}>
         <h2 className={styles.title}>{title}</h2>
         {meta != null && <span className={styles.meta}>{meta}</span>}
         {action}

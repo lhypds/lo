@@ -1,16 +1,37 @@
 import { createContext, useContext, useEffect, useState } from "react";
+import { useNavigate } from "../../ui/index.js";
 import * as api from "../../api.js";
 
 const storageKey = "lo:user";
 const AuthContext = createContext(null);
 
+// A username is the whole credential here, so a ?user=<name> link carries an
+// entire login: opening one signs that account in, exactly as typing the name
+// on /login would.
+function linkedUsername() {
+  const raw = new URLSearchParams(window.location.search).get("user") || "";
+  return raw.trim().normalize("NFKC").toLowerCase();
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [ready, setReady] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     let cancelled = false;
     const storedUsername = localStorage.getItem(storageKey);
+    const requested = linkedUsername();
+
+    // The name has done its job the moment it is signed in, so it comes back
+    // out of the URL — a bookmark or a shared link should not keep handing the
+    // account out, and a later reload should not undo a sign-out.
+    function dropUserParam() {
+      const url = new URL(window.location.href);
+      if (!url.searchParams.has("user")) return;
+      url.searchParams.delete("user");
+      navigate(`${url.pathname}${url.search}${url.hash}`, { replace: true });
+    }
 
     async function restore() {
       try {
@@ -33,11 +54,33 @@ export function AuthProvider({ children }) {
       }
     }
 
-    restore();
+    async function start() {
+      // The link says who should be signed in, so it wins over whatever
+      // session this browser is already holding.
+      if (requested) {
+        try {
+          const data = await api.login(requested);
+          if (cancelled) return;
+          localStorage.setItem(storageKey, data.user.username);
+          setUser(data.user);
+          setReady(true);
+          dropUserParam();
+          return;
+        } catch {
+          // A name the server refuses is no login at all: fall through to the
+          // usual restore, which lands on /login when there is nothing left.
+          if (cancelled) return;
+          dropUserParam();
+        }
+      }
+      await restore();
+    }
+
+    start();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [navigate]);
 
   async function login(username) {
     const data = await api.login(username);

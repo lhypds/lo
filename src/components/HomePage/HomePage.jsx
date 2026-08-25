@@ -21,6 +21,8 @@ export default function HomePage() {
   const { coords } = useHere();
   const [params] = useSearchParams();
   const [marks, setMarks] = useState([]);
+  // Held here, not in the map: expanding it hides the rest of the dashboard.
+  const [mapExpanded, setMapExpanded] = useState(false);
 
   const loadMarks = useCallback(() => {
     api
@@ -46,13 +48,24 @@ export default function HomePage() {
   return (
     <div className="page-shell home-page">
       <Header />
-      <main className="home-main" aria-label={t("location.title")}>
+      {/* Everything but the map is hidden rather than unmounted while it is
+          expanded, so collapsing back does not refetch the news or reset what
+          the mark button knows about this spot. */}
+      <main
+        className={mapExpanded ? "home-main home-main-map" : "home-main"}
+        aria-label={t("location.title")}
+      >
         <HereStrip />
         <div className="card-grid">
           <ClockCard />
           <WeatherCard />
           <Suspense fallback={<div className="card-placeholder" />}>
-            <MapCard marks={marks} focus={focus} />
+            <MapCard
+              marks={marks}
+              focus={focus}
+              expanded={mapExpanded}
+              onToggleExpanded={() => setMapExpanded((value) => !value)}
+            />
           </Suspense>
           <MarkButton
             onMarked={(mark) => setMarks((current) => [mark, ...current])}

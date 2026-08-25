@@ -27,6 +27,12 @@
   border-bottom: 1px solid var(--ink);
 }
 
+/* For a tile whose content already reads as one column under its title — the
+   rule under the header only adds a line the eye has to cross */
+.openHead {
+  border-bottom: 0;
+}
+
 .title {
   margin: 0;
   font-family: var(--display);

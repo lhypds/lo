@@ -61,7 +61,9 @@ function markElement(index) {
   return pin;
 }
 
-export default function MapCard({ marks = [], focus = null, standalone = false }) {
+// `expanded` is owned by the page rather than by the map: expanding hides the
+// rest of the dashboard, which is not the map's call to make.
+export default function MapCard({ marks = [], focus = null, expanded = false, onToggleExpanded }) {
   const { t, i18n } = useTranslation();
   const { coords } = useHere();
   const containerRef = useRef(null);
@@ -69,7 +71,6 @@ export default function MapCard({ marks = [], focus = null, standalone = false }
   const hereMarkerRef = useRef(null);
   const markMarkersRef = useRef([]);
   const followRef = useRef(true);
-  const [expanded, setExpanded] = useState(standalone);
   const [broken, setBroken] = useState(false);
 
   // The map is built once and then told about changes; rebuilding it on every
@@ -242,11 +243,8 @@ export default function MapCard({ marks = [], focus = null, standalone = false }
           </svg>
         </ActionButton>
       )}
-      {live && !standalone && (
-        <ActionButton
-          tooltip={expanded ? t("map.collapse") : t("map.expand")}
-          onClick={() => setExpanded((value) => !value)}
-        >
+      {live && onToggleExpanded && (
+        <ActionButton tooltip={expanded ? t("map.collapse") : t("map.expand")} onClick={onToggleExpanded}>
           {expanded ? (
             <svg viewBox="0 0 24 24">
               <path d="M9 3v6H3" />
@@ -265,8 +263,9 @@ export default function MapCard({ marks = [], focus = null, standalone = false }
     </span>
   );
 
-  // Square in the grid; expanding trades the square for a tall full-width panel,
-  // which is the only way a map this small is any use for looking around.
+  // Square in the grid; expanding trades the square for the whole window, which
+  // is the only way a map this small is any use for looking around. `map-full`
+  // is the hook the page hides everything else by, so it is deliberately global.
   return (
     <Card
       title={t("map.title")}
@@ -274,7 +273,7 @@ export default function MapCard({ marks = [], focus = null, standalone = false }
       square={!expanded}
       wide={expanded}
       flush
-      className={expanded ? styles.cardExpanded : undefined}
+      className={expanded ? `map-full ${styles.cardExpanded}` : undefined}
     >
       {body}
     </Card>
