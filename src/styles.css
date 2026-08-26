@@ -705,7 +705,9 @@ a {
 .mark-item.row-hovered,
 .post-item.row-hovered {
   background: var(--soft);
-  box-shadow: -8px 0 var(--soft), 8px 0 var(--soft);
+  box-shadow:
+    -8px 0 var(--soft),
+    8px 0 var(--soft);
 }
 
 .mark-row {
@@ -862,12 +864,17 @@ a {
 
 /* ------------------------------------------------------------------ form -- */
 
+/* Under the bar rather than a tenth of the window below it: the column that used
+   to be here was a short form floated down into the middle of the screen, and
+   what this page holds is a picture and a list of rows that are read from the
+   top. It keeps the 24px the base rule already pads with, which is the same
+   hand's breadth the two list pages start their own columns with. */
 .form-page {
   min-height: calc(100vh - var(--topbar));
   min-height: calc(100dvh - var(--topbar));
   min-height: calc(var(--vh, 1vh) * 100 - var(--topbar));
   align-items: flex-start;
-  padding-top: clamp(40px, 10vh, 96px);
+  padding-top: 32px;
 }
 
 /* A profile is not a form, so it is not held to a form's column: 360px is the
