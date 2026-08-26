@@ -134,14 +134,11 @@
    than left hanging at the top of a mostly empty sheet — see the auto margin
    below, which is the way to do that without breaking the scroll.
 
-   Dotted paper under the lines, run out to the edges of the sheet: it says where
-   the conversation is without drawing a box around it, and it is the one part of
-   the app that is a ground rather than a page. A grey point every 16px, which is
-   near enough a grid to read as one and far enough from ink to stay behind the
-   words. `local` prints the dots on the paper rather than on the window: the
-   ground travels with the lines when the thread is scrolled, the way a sheet of
-   squared paper does. The negative margin is the bleed, and the padding puts the
-   bubbles back where the sheet's own edge would have held them. */
+   Plain paper: the bubbles say where the conversation is on their own, and the
+   thread is quieter read off the same ground as everything else. The negative
+   margin runs the scrolling column out to the sheet's own edges so the
+   scrollbar rides there rather than inset over the lines, and the padding puts
+   the bubbles back where the sheet's edge would have held them. */
 .scroll {
   flex: 1;
   min-height: 0;
@@ -154,9 +151,6 @@
   margin: 0 -16px;
   padding: 0 16px;
   background-color: var(--paper);
-  background-image: radial-gradient(circle at 1px 1px, var(--line) 1px, transparent 0);
-  background-size: 16px 16px;
-  background-attachment: local;
 }
 
 /* The auto margin eats whatever height is left over, which sits the lines on the
@@ -175,10 +169,7 @@
 }
 
 /* Yours on the right and in ink, theirs on the left and on paper: which way a
-   line was going is the one thing a thread has to say that the words do not.
-   Paper here is painted rather than left to show through, because what is behind
-   it now is the dotted ground — a line of somebody's writing is read off a clean
-   sheet, not off the squares. */
+   line was going is the one thing a thread has to say that the words do not. */
 .message {
   max-width: 78%;
   align-self: flex-start;

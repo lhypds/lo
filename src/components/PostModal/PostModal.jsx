@@ -148,20 +148,27 @@ export default function PostModal({ isOpen, coords, place, post = null, onClose,
     albumRef.current?.click();
   }
 
-  // The album is asked for here, in the timer, with the finger still down —
-  // which is the whole trick, and the one place it had not been asked from.
+  // The album is asked for twice, and the two engines refuse opposite halves of
+  // it. A file dialog is allowed out of a user gesture and nothing else, and
+  // they do not mean the same thing by that.
   //
-  // A file dialog is allowed out of a user gesture and nothing else. Asking at
-  // the end of the hold was tried four ways and refused every time on Blink: it
-  // takes a long press to be its own gesture and sends nothing afterwards that
-  // it will count — not the click WebKit sends, not the pointerup or the
-  // touchend before it, not the contextmenu. By the lift it is already too late.
+  // Blink counts activation as transient rather than stack-bound: the
+  // pointerdown that began the press opens a window a few seconds wide, and a
+  // timeout does not close it. What it will not do is give a long press away —
+  // it takes one to be its own gesture and sends nothing afterwards that counts,
+  // not the click, the pointerup, the touchend, or the contextmenu. So on
+  // Android the ask has to happen early, from the timer below, with the finger
+  // still down and before Blink has anything to take away.
   //
-  // But the gesture is not the only thing that grants a dialog. Activation is
-  // transient rather than stack-bound: the pointerdown that began this press
-  // opens a window a few seconds wide, and a timeout does not close it. Half a
-  // second in, that window should still be standing — so the album is asked for
-  // while it is, before Blink has anything to take away.
+  // WebKit is the other way round. It never took up transient activation for
+  // file dialogs: the ask has to sit in the gesture's own call stack, which a
+  // timeout is not, so the one below is thrown away on iOS. What it does send
+  // is the click that ends the press — and that is where `tap` asks again.
+  //
+  // Neither ask can fire twice, because each engine drops one of them: Blink
+  // opens the album from the timer and then sends no click at all, and WebKit
+  // discards the timer's and answers the click. `document.hasFocus` is the belt
+  // to that pair of braces — a dialog that is already up has taken the focus.
   function startPress(event) {
     if (busy || event.button > 0) return;
     heldRef.current = false;
@@ -197,13 +204,17 @@ export default function PostModal({ isOpen, coords, place, post = null, onClose,
     }
   }
 
-  // The click that ends a hold is not a tap: that press has already been
-  // answered with the album, and taking a photo as well would be answering it
-  // twice. On Blink no click arrives after a hold at all — `heldRef` is cleared
-  // by the next press rather than by this one.
+  // The click that ends a hold is not a tap — it must not also take a photo. On
+  // WebKit it is something better: the one context that engine will open a file
+  // dialog from, and so the hold's second and only real ask. On Blink no click
+  // arrives after a hold at all, and `heldRef` is cleared by the next press
+  // rather than by this one.
   function tap() {
     if (heldRef.current) {
       heldRef.current = false;
+      // Unless the timer's ask already landed, in which case the album is up and
+      // holding the focus, and asking again would put a second one over it.
+      if (document.hasFocus()) openAlbum();
       return;
     }
     if (busy) return;
