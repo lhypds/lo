@@ -8,7 +8,7 @@ import UserProfile from "../../components/UserProfile/index.js";
 export default function UserPage({ username }) {
   return (
     <div className="page-shell">
-      <Header back />
+      <Header back cards />
       <main className="form-page">
         {/* The account page's column, and deliberately not its card: what is on
             that page is a record and a form, and the rules it draws its own list

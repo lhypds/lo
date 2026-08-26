@@ -7,15 +7,19 @@ import AccountModal from "../AccountModal/index.js";
 import AddCard from "../AddCard/index.js";
 import LanguageSwitcher from "../LanguageSwitcher/index.js";
 
-// `cards` puts the dashboard's own contents page in the bar. On the three pages
-// that are your own — the dashboard, your posts, your spots — because what the
-// dashboard carries is a setting rather than a thing on the page under it, and a
-// reader who has just come back from the posts list is exactly the reader who
-// wants the posts panel on the grid. It costs the trip home to want it and
-// another to use it if the menu is only ever at home.
+// `cards` puts the dashboard's own contents page in the bar. On every page there
+// is a dashboard to go back to, because what the dashboard carries is a setting
+// rather than a thing on the page under it, and a reader who has just come back
+// from the posts list is exactly the reader who wants the posts panel on the
+// grid. It costs the trip home to want it and another to use it if the menu is
+// only ever at home. A profile is somebody else's page and the menu is still
+// about your own dashboard there, which is an argument about what the bar is
+// saying rather than about what the reader can reach: the plus is the same
+// control in the same corner of every bar in lo, and the reader who wants it
+// wants it wherever they have got to.
 //
-// Not on a profile: that page is somebody else's, and a control for the shape of
-// your own dashboard has no business in the bar over it.
+// Not on the gate: there is no position yet, and which cards this place can be
+// asked about is an answer about where you are standing.
 export default function Header({ back = false, backTo = "/", cards = false }) {
   const { t } = useTranslation();
   const { user } = useAuth();
