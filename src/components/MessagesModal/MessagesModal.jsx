@@ -172,6 +172,12 @@ export default function MessagesModal() {
       // somebody's writing on one line, and at the narrow size the line was the
       // half that got cut.
       wide
+      // And on a phone, the whole window. A conversation is the one thing in lo
+      // that is stayed in — read, answered, waited on — rather than glanced at
+      // and put down, and half a phone screen of it was a keyhole: three or four
+      // lines above a composer, with the dashboard showing around the edges of
+      // something that has nothing to do with where you are standing.
+      full
     >
       {to ? (
         <div className={styles.thread}>
@@ -179,19 +185,14 @@ export default function MessagesModal() {
               what somebody has said and nothing about who they are, and that is
               the question a name at the top of a conversation raises — so the
               answer is one press from the top of it.
-              It hands the sheet over rather than stacking a second one on top:
-              the same swap the profile makes in the other direction, where "send
-              a message" closes the profile and opens this. One sheet at a time,
-              and the row back is always on the other side. */}
+              It opens over the conversation rather than in place of it: this is
+              a glance aside in the middle of writing to somebody — who is this,
+              again — and closing it should put the thread and the half-written
+              line back exactly as they were, which handing the sheet over did
+              not. The profile's own "send a message" still closes onto this
+              conversation from the other side, so the two ways in agree. */}
           <div className={styles.who}>
-            <button
-              type="button"
-              className={styles.profile}
-              onClick={() => {
-                setOpen(false);
-                openProfile(to);
-              }}
-            >
+            <button type="button" className={styles.profile} onClick={() => openProfile(to)}>
               {t("messages.profile")}
             </button>
           </div>

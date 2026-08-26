@@ -222,6 +222,24 @@
   font-size: 12px;
 }
 
+/* On a phone the sheet is the window (see `full` in ui/Modal), so neither view
+   has to guess at a share of it any more: both take the height the sheet has
+   left after its header, and the composer sits on the floor of the screen with
+   the conversation scrolling above it. The two stay the same height as each
+   other here, the way they are at every other width — opening a conversation
+   should not resize the thing it opened in. The breakpoint is the sheet's, not
+   the dashboard's: it has to be the same 560px, or between the two there would
+   be a window where the sheet is full-screen and its contents are still 48vh
+   tall. */
+@media (max-width: 560px) {
+  .threads,
+  .thread {
+    flex: 1;
+    min-height: 0;
+    height: auto;
+  }
+}
+
 @media (hover: hover) {
   .back:hover,
   .profile:hover {

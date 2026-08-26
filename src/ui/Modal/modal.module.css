@@ -66,3 +66,46 @@
   overflow-y: auto;
   flex: 1;
 }
+
+/* The phone's own sheet: `full` says this one is worked in for as long as it is
+   open — a conversation, not a question with two buttons under it — and on a
+   screen this size the page behind it was never going to be read anyway. So it
+   stops being a card floating over that page and becomes the window: no border,
+   no margin, positioned rather than centred, which is also how it escapes the
+   width the overlay would otherwise hold it to.
+
+   The height is the one the rest of the app measures the window by (index.html
+   keeps --vh in step with the address bar), because a sheet whose foot is the
+   composer must not have that foot under the browser's own chrome. The insets
+   are for the notch and the home bar in standalone mode, where there is no
+   chrome to keep the header and the composer clear of them.
+
+   560px rather than the 420px the dashboard uses for a phone: that is this
+   sheet's own cap, and under it a "centred card" is within a thumb's width of
+   the window on every side already.
+
+   The body becomes a column here so a sheet whose content is one tall thing —
+   the thread, the list of them — can hand it the whole height rather than have
+   it guess at a fraction of the window. */
+@media (max-width: 560px) {
+  .full {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    width: auto;
+    max-width: none;
+    height: 100vh;
+    height: 100dvh;
+    height: calc(var(--vh, 1vh) * 100);
+    max-height: none;
+    border: 0;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .full .content {
+    display: flex;
+    flex-direction: column;
+  }
+}
