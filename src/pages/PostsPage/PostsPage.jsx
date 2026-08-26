@@ -39,10 +39,17 @@ export default function PostsPage() {
   // which one and ?author= to say whose, so the map lands on the post and the
   // list around it is the rest of what that person left rather than the whole
   // neighbourhood.
-  const [query, setQuery] = useState(() => {
-    const author = searchParams.get("author");
-    return author ? formatUsername(author) : "";
-  });
+  //
+  // Which is also the whole of what the page knows about where its reader came
+  // from, and so is what the back button goes on: a name in ?author= means a
+  // profile sent them, and back from a post read on somebody's page is that
+  // person's page rather than the dashboard. It stays the way back even after
+  // the field has been widened or cleared — the button is about the trip here,
+  // not about what is on the map now. Without the name — the dashboard's posts
+  // panel presses through with ?post= alone — the page is the whole
+  // neighbourhood's and back is home, as before.
+  const author = searchParams.get("author");
+  const [query, setQuery] = useState(() => (author ? formatUsername(author) : ""));
   const [focus, setFocus] = useState(null);
   // The post the pointer is resting on, from whichever half of the page it is
   // resting on it — the same two-way pairing the marks page makes, for the same
@@ -104,7 +111,7 @@ export default function PostsPage() {
 
   return (
     <div className="page-shell posts-page">
-      <Header back cards />
+      <Header back backTo={author ? `/${encodeURIComponent(author)}` : "/"} cards />
       <div className="posts-map">
         <Suspense fallback={<div className="posts-map-placeholder" />}>
           {/* Filtered with the list, for the reason the marks map is */}
