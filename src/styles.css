@@ -203,6 +203,36 @@ a {
   font-size: 12px;
 }
 
+/* Sending a line in a thread, drawn as the key that already sends it: the field
+   carries enterKeyHint="send" and Enter is how a message actually goes, so the
+   button says the same thing the keyboard does rather than spelling out a word
+   in a language it then has to be translated into. Narrower than the worded
+   slabs beside it for the same reason a key is narrower than a sentence.
+
+   Black in every state, the empty box and the send in flight included. Greying
+   it out would read as a broken key rather than as an empty field above it, and
+   the thing that says whether there is anything to send is the field. */
+.joined-field button.send-key {
+  width: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.joined-field button.send-key:disabled {
+  opacity: 1;
+}
+
+.joined-field button.send-key svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .form-message {
   min-height: 18px;
   margin: 9px 0 0;
@@ -247,6 +277,26 @@ a {
 
 .topbar-action-slot-right {
   justify-content: flex-end;
+}
+
+/* The envelope in the top bar wears a mark when something is waiting for the
+   reader. A dot and not a figure: how many there are is the list's own answer,
+   and a number that small in a 22px box is a smudge. */
+.topbar-badge {
+  position: relative;
+  display: inline-flex;
+}
+
+.topbar-dot {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 6px;
+  height: 6px;
+  border: 1px solid var(--paper);
+  border-radius: 50%;
+  background: var(--ink);
+  pointer-events: none;
 }
 
 /* ------------------------------------------------------------------ gate -- */
@@ -757,7 +807,7 @@ a {
   gap: 6px;
 }
 
-/* --------------------------------------------------------------- account -- */
+/* ------------------------------------------------------------------ form -- */
 
 .form-page {
   min-height: calc(100vh - var(--topbar));
@@ -768,7 +818,7 @@ a {
 }
 
 .plain-form,
-.account-card {
+.profile-card {
   width: 100%;
   max-width: 360px;
 }
@@ -784,45 +834,6 @@ a {
   flex-direction: column;
   gap: 7px;
   font-size: 12px;
-}
-
-.account-card h1 {
-  margin: 0;
-  font-family: var(--display);
-  font-size: 18px;
-  font-weight: 700;
-}
-
-.account-card dl {
-  margin: 26px 0;
-  border-top: 1px solid var(--ink);
-}
-
-.account-card dl div {
-  display: grid;
-  grid-template-columns: 92px 1fr;
-  gap: 16px;
-  padding: 13px 0;
-  border-bottom: 1px solid var(--line);
-  font-size: 13px;
-}
-
-.account-card dt {
-  color: var(--muted);
-}
-
-.account-card dd {
-  min-width: 0;
-  margin: 0;
-  overflow-wrap: anywhere;
-}
-
-.account-secondary {
-  margin-bottom: 10px;
-}
-
-.account-primary {
-  width: 100%;
 }
 
 .primary-button,
@@ -869,6 +880,92 @@ a {
   height: 30px;
   padding: 0 14px;
   font-size: 12px;
+}
+
+/* --------------------------------------------------------------- profile -- */
+
+/* The half of the account sheet its owner writes — the heading over it, and the
+   spacing around it, are the sheet's own (see AccountModal). Packed tighter than
+   the record above it: that list is the sheet's answer and is read, while this
+   is three short boxes and a button and is worked through. */
+.profile-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+}
+
+.profile-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* The name of the field, and on the bio the count as well — set on the same line
+   so a field is one row of small grey type above the box it belongs to. */
+.profile-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.profile-count {
+  font-family: var(--mono);
+  font-size: 10px;
+}
+
+/* A contact is a handle in somebody else's app, so it is set in the mono face
+   the app writes coordinates and times in — it is read a character at a time. */
+.profile-input {
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  outline: 0;
+  background: var(--paper);
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+/* The bio is a sentence rather than a handle, so it keeps the sans face the
+   textarea already carries and only comes down to the size of the boxes under
+   it — the house textarea sets no size of its own. */
+.profile-text {
+  padding: 8px 10px;
+  font-size: 12px;
+}
+
+/* The form's one control, on the same terms as the sheet's own: white with a
+   black rule, turning over under the pointer, as wide as its word and set at the
+   right-hand end of the column — where the eye leaves the last field. */
+.profile-save {
+  align-self: flex-end;
+  padding: 6px 16px;
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 1;
+}
+
+@media (hover: hover) {
+  .profile-save:hover:not(:disabled) {
+    background: var(--ink);
+    color: var(--paper);
+  }
+}
+
+@media (hover: hover) {
+  /* The envelope inverts under the pointer, and a black dot on a black box is
+     no dot at all */
+  .topbar-badge:hover .topbar-dot {
+    border-color: var(--ink);
+    background: var(--paper);
+  }
 }
 
 @media (hover: hover) {

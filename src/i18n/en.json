@@ -33,7 +33,6 @@
     "location": "Location",
     "locationOn": "On",
     "locationOff": "Off",
-    "forget": "Turn location off",
     "logout": "Logout"
   },
   "gate": {
@@ -197,7 +196,36 @@
   },
   "people": {
     "nearby": "Nearby people",
+    "you": "you",
     "empty": "Nobody else out here right now"
+  },
+  "profile": {
+    "title": "Profile",
+    "bio": "About you",
+    "email": "Email",
+    "line": "LINE",
+    "whatsapp": "WhatsApp",
+    "wechat": "WeChat",
+    "saving": "Saving",
+    "saved": "Saved"
+  },
+  "user": {
+    "title": "User",
+    "joined": "since {{date}}",
+    "contact": "Contact",
+    "posts": "Recent posts",
+    "noPosts": "Nothing posted yet",
+    "message": "Send a message"
+  },
+  "messages": {
+    "title": "Messages",
+    "waiting": "Messages — {{n}} waiting",
+    "empty": "No messages yet",
+    "said": "You: {{body}}",
+    "emptyThread": "Nothing said to {{name}} yet",
+    "placeholder": "Say something",
+    "send": "Send",
+    "sending": "Sending"
   },
   "search": {
     "marks": "Search your marks",

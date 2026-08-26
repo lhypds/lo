@@ -27,12 +27,16 @@ export default function PostsPage() {
   const { coords, posts, postsError, dropPost, replacePost } = useHere();
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
-  // Arriving from the dashboard's list of people with one person in mind: the
-  // name comes over on the URL and the field opens with @them in it. A starting
-  // value and not a filter of its own — the query is the reader's from the first
-  // keystroke, so they can widen it, narrow it, or clear it like any other, and
-  // what the page is showing them is written where they can see it rather than
-  // held somewhere off screen.
+  // Arriving with one person in mind: the name comes over on the URL and the
+  // field opens with @them in it. A starting value and not a filter of its own —
+  // the query is the reader's from the first keystroke, so they can widen it,
+  // narrow it, or clear it like any other, and what the page is showing them is
+  // written where they can see it rather than held somewhere off screen.
+  //
+  // The dashboard's list of people used to be what sent readers here that way.
+  // It opens the person themselves now, so nothing in lo writes this link any
+  // more — but ?author= is a question this page can answer, and a name in a URL
+  // is the plainest way there is to ask it.
   const [query, setQuery] = useState(() => {
     const author = searchParams.get("author");
     return author ? formatUsername(author) : "";

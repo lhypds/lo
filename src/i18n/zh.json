@@ -33,7 +33,6 @@
     "location": "定位",
     "locationOn": "已开启",
     "locationOff": "已关闭",
-    "forget": "关闭定位",
     "logout": "退出登录"
   },
   "gate": {
@@ -197,7 +196,36 @@
   },
   "people": {
     "nearby": "附近的人",
+    "you": "我",
     "empty": "附近暂时没有其他人"
+  },
+  "profile": {
+    "title": "个人资料",
+    "bio": "个人简介",
+    "email": "邮箱",
+    "line": "LINE",
+    "whatsapp": "WhatsApp",
+    "wechat": "微信",
+    "saving": "保存中",
+    "saved": "已保存"
+  },
+  "user": {
+    "title": "用户",
+    "joined": "{{date}} 加入",
+    "contact": "联系方式",
+    "posts": "最近的 posts",
+    "noPosts": "还没有发过 post",
+    "message": "发送消息"
+  },
+  "messages": {
+    "title": "消息",
+    "waiting": "消息 — {{n}} 条未读",
+    "empty": "还没有消息",
+    "said": "我：{{body}}",
+    "emptyThread": "还没有和 {{name}} 说过话",
+    "placeholder": "说点什么",
+    "send": "发送",
+    "sending": "发送中"
   },
   "search": {
     "marks": "搜索你的记录",

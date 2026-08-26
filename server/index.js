@@ -5,19 +5,27 @@ import { fileURLToPath } from "node:url";
 import express from "express";
 import {
   countMarks,
+  countUnread,
   createMark,
+  createMessage,
   createPost,
   createUser,
   deleteMark,
   deletePost,
+  getConversation,
   getMarks,
   getOtherPositions,
+  getPostsByUser,
   getPostsNear,
+  getProfile,
   getRecentPosts,
+  getThreads,
   getUser,
+  readConversation,
   renameMark,
   savePosition,
   updatePost,
+  updateProfile,
 } from "./db.js";
 import { COMPONENTS, componentsFor, countryList } from "./countries.js";
 import {
@@ -193,6 +201,54 @@ app.post("/api/users", (req, res) => {
 
 app.get("/api/me", requireSession, (req, res) => {
   res.json({ user: req.user, markCount: countMarks(req.user.id) });
+});
+
+/* ----------------------------------------------------------------- profile */
+
+// How much of each a profile will hold. The line about yourself is the only one
+// with room to be a sentence; a contact is a handle in somebody else's app, and
+// none of those are long.
+const PROFILE_LIMITS = { bio: 280, email: 160, line: 64, whatsapp: 32, wechat: 64 };
+// How much of somebody's own writing their page carries. Enough to say what they
+// post about without handing out a year of it.
+const PROFILE_POSTS = 20;
+
+// One reading of the whole profile, whatever it was sent by — the same reason
+// a post has one. An empty field means cleared rather than untouched: the sheet
+// holds all five, so what it sends back is the whole of them.
+function readProfile(payload) {
+  const fields = {};
+  for (const [field, limit] of Object.entries(PROFILE_LIMITS)) {
+    const value = String(payload?.[field] ?? "").trim().normalize("NFKC");
+    if (value.length > limit) return { error: `${field} 最多 ${limit} 个字符` };
+    fields[field] = value;
+  }
+  // The one field lo can say anything about the shape of. Everything else is a
+  // handle in an app lo cannot ask, so a name that looks wrong here is still the
+  // only name its owner has.
+  if (fields.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fields.email)) {
+    return { error: "邮箱地址无效" };
+  }
+  return { profile: fields };
+}
+
+app.patch("/api/me", requireSession, (req, res) => {
+  const { profile, error } = readProfile(req.body);
+  if (error) return res.status(400).json({ error });
+  updateProfile(req.user.id, profile);
+  res.json({ user: getUser(req.user.username) });
+});
+
+// Somebody else, as far as anyone signed in may ask: who they are, the line they
+// wrote about themselves, how to reach them off lo, and what they have left
+// lying around. A contact is filled in to be read — that is the whole point of
+// filling one in — so it is part of this answer rather than held back.
+app.get("/api/users/:username", requireSession, (req, res) => {
+  const username = normalizeUsername(req.params.username);
+  if (!USERNAME_RE.test(username)) return res.status(400).json({ error: USERNAME_HINT });
+  const user = getProfile(username);
+  if (!user) return res.status(404).json({ error: "用户不存在", code: "USER_NOT_FOUND" });
+  res.json({ user, posts: getPostsByUser(username, PROFILE_POSTS) });
 });
 
 /* ------------------------------------------------------------- here and now */
@@ -486,6 +542,51 @@ app.get("/api/images/:name", requireSession, (req, res) => {
   );
 });
 
+/* ----------------------------------------------------------------- messages */
+
+const MESSAGE_BODY_MAX = 1000;
+
+// Everyone this account has traded a word with, with the last of those words and
+// how many are still unread. A post is left on the ground for whoever comes past;
+// this is addressed, so it is filed under the pair and nobody else can ask for it.
+app.get("/api/messages", requireSession, (req, res) => {
+  res.json({ threads: getThreads(req.user.id), unread: countUnread(req.user.id) });
+});
+
+// One thread, and opening it is what reads it: there is no separate gesture for
+// marking a message read, because looking at it is the gesture.
+app.get("/api/messages/:username", requireSession, (req, res) => {
+  const username = normalizeUsername(req.params.username);
+  if (!USERNAME_RE.test(username)) return res.status(400).json({ error: USERNAME_HINT });
+  const other = getUser(username);
+  if (!other) return res.status(404).json({ error: "用户不存在", code: "USER_NOT_FOUND" });
+  readConversation(req.user.id, other.id);
+  res.json({
+    // The profile rides along so the thread can say who it is with — the name at
+    // the top of it is a person, and pressing it opens the rest of them.
+    user: getProfile(username),
+    messages: getConversation(req.user.id, other.id),
+    // Counted after the read above, so the badge in the top bar goes out with
+    // the same answer that cleared it.
+    unread: countUnread(req.user.id),
+  });
+});
+
+app.post("/api/messages", requireSession, (req, res) => {
+  const username = normalizeUsername(req.body?.to);
+  if (!USERNAME_RE.test(username)) return res.status(400).json({ error: USERNAME_HINT });
+  const body = String(req.body?.body ?? "").trim().normalize("NFKC");
+  if (!body) return res.status(400).json({ error: "请写点什么" });
+  if (body.length > MESSAGE_BODY_MAX) {
+    return res.status(400).json({ error: `消息最多 ${MESSAGE_BODY_MAX} 个字符` });
+  }
+  if (username === req.user.username) return res.status(400).json({ error: "不能给自己发消息" });
+
+  const other = getUser(username);
+  if (!other) return res.status(404).json({ error: "用户不存在", code: "USER_NOT_FOUND" });
+  res.status(201).json({ message: createMessage(req.user.id, other.id, body) });
+});
+
 /* ----------------------------------------------------------------- presence */
 
 // How long a published fix still counts as "where someone is". The client
@@ -498,8 +599,12 @@ function livePeople(userId) {
   return getOtherPositions(userId, new Date(Date.now() - PRESENCE_WINDOW_MS).toISOString());
 }
 
+// Who else is out, and whether anything is waiting to be read. The second half
+// is nothing to do with the first, and it rides along anyway: the minute loop is
+// already asking, and a badge in the top bar that cost a request of its own would
+// be a second loop for one number.
 app.get("/api/people", requireSession, (req, res) => {
-  res.json({ people: livePeople(req.user.id) });
+  res.json({ people: livePeople(req.user.id), unread: countUnread(req.user.id) });
 });
 
 // Telling the server where you are and asking who else is out are the same
@@ -508,7 +613,7 @@ app.put("/api/position", requireSession, (req, res) => {
   const location = parseLocation(req.body);
   if (!location) return res.status(400).json({ error: "坐标无效" });
   savePosition(req.user.id, location);
-  res.json({ people: livePeople(req.user.id) });
+  res.json({ people: livePeople(req.user.id), unread: countUnread(req.user.id) });
 });
 
 if (isProduction) {

@@ -62,7 +62,7 @@
 }
 
 .content {
-  padding: 4px 16px 24px;
+  padding: 4px 16px 16px;
   overflow-y: auto;
   flex: 1;
 }

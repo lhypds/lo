@@ -31,6 +31,22 @@ export const createUser = (username) =>
   request("/api/users", { method: "POST", body: JSON.stringify({ username }) });
 export const logout = () => request("/api/logout", { method: "POST" });
 export const getMe = () => request("/api/me");
+// The whole profile every time, which is what makes an emptied field a cleared
+// one rather than an untouched one.
+export const updateProfile = (profile) =>
+  request("/api/me", { method: "PATCH", body: JSON.stringify(profile) });
+// Somebody else: who they are, how to reach them, and what they have left lying
+// around. One request, because a page about a person answers all three at once.
+export const getUser = (username) => request(`/api/users/${encodeURIComponent(username)}`);
+
+// Everyone you have a conversation with, newest first. It carries the unread
+// count with it, so the dot on the envelope and the sheet behind it are one
+// answer.
+export const getThreads = () => request("/api/messages");
+// Asking for a thread is what reads it — there is no separate call for that.
+export const getConversation = (username) => request(`/api/messages/${encodeURIComponent(username)}`);
+export const sendMessage = (to, body) =>
+  request("/api/messages", { method: "POST", body: JSON.stringify({ to, body }) });
 
 export const getLocal = (coords) => request(`/api/local?${geoQuery(coords)}`);
 export const getNearby = (coords) => request(`/api/nearby?${geoQuery(coords)}`);

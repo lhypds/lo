@@ -1,0 +1,221 @@
+/* The name of the thread, which is also the way back to the list of them. It
+   sits in the sheet's own title slot, so it wears the title's face and is a
+   button only in what it does. */
+.back {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+/* The list of people, at the height the thread view keeps: the sheet is the same
+   size either way, so opening a conversation does not resize it under the
+   pointer that opened it. */
+.threads {
+  height: 48vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  touch-action: pan-y pinch-zoom;
+  margin: 0 -6px;
+}
+
+/* Ruled top and bottom as well as between, so the list is a block with a lid and
+   a floor rather than a run of rows fading into the sheet. It is also what says
+   the list has ended: the last row and the empty space under it were separated
+   by nothing, which on a short mailbox read as a list still going. */
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--line);
+}
+
+.list li {
+  border-bottom: 1px solid var(--line);
+}
+
+/* The whole row is the press, and it is a button rather than a link: a thread is
+   a place inside this sheet now, not an address of its own. */
+.row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 6px;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: left;
+}
+
+.lines {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.lines strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+/* One line of the last thing said, ellipsised: the thread itself is one press
+   away, and this is only enough to know which conversation it is. */
+.preview {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.side {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+}
+
+/* Where the envelope's dot becomes a number: a row is one person, so how many of
+   theirs are waiting is worth saying before it is opened. */
+.unread {
+  min-width: 18px;
+  padding: 2px 4px;
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+  text-align: center;
+}
+
+/* A definite height, so the composer sits at the foot of the sheet and the
+   conversation scrolls above it rather than pushing it off. Short enough to
+   leave the page showing around the sheet on a phone — and the same height the
+   list of threads keeps, so opening a conversation does not resize the sheet
+   under the pointer that opened it. */
+.thread {
+  height: 48vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* A column, so a short conversation can be pushed down to the composer rather
+   than left hanging at the top of a mostly empty sheet — see the auto margin
+   below, which is the way to do that without breaking the scroll.
+
+   Dotted paper under the lines, run out to the edges of the sheet: it says where
+   the conversation is without drawing a box around it, and it is the one part of
+   the app that is a ground rather than a page. A grey point every 16px, which is
+   near enough a grid to read as one and far enough from ink to stay behind the
+   words. `local` prints the dots on the paper rather than on the window: the
+   ground travels with the lines when the thread is scrolled, the way a sheet of
+   squared paper does. The negative margin is the bleed, and the padding puts the
+   bubbles back where the sheet's own edge would have held them. */
+.scroll {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  touch-action: pan-y pinch-zoom;
+  margin: 0 -16px;
+  padding: 0 16px;
+  background-color: var(--paper);
+  background-image: radial-gradient(circle at 1px 1px, var(--line) 1px, transparent 0);
+  background-size: 16px 16px;
+  background-attachment: local;
+}
+
+/* The auto margin eats whatever height is left over, which sits the lines on the
+   floor of the sheet; once there are more of them than fit there is nothing left
+   over, it collapses to nothing, and the oldest line is still reachable by
+   scrolling up. `justify-content: flex-end` would look the same and put that
+   line somewhere the scrollbar cannot reach. */
+.messages {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 0;
+  padding: 2px 0 4px;
+  list-style: none;
+}
+
+/* Yours on the right and in ink, theirs on the left and on paper: which way a
+   line was going is the one thing a thread has to say that the words do not.
+   Paper here is painted rather than left to show through, because what is behind
+   it now is the dotted ground — a line of somebody's writing is read off a clean
+   sheet, not off the squares. */
+.message {
+  max-width: 78%;
+  align-self: flex-start;
+  padding: 8px 10px;
+  border: 1px solid var(--ink);
+  background: var(--paper);
+}
+
+.mine {
+  align-self: flex-end;
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.body {
+  display: block;
+  font-size: 12px;
+  line-height: 1.55;
+  /* Somebody typed the line breaks, so somebody meant them */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.message time {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+}
+
+/* Against the ink, the grey the other bubbles use is all but gone */
+.mine time {
+  color: var(--line);
+}
+
+.form {
+  flex: 0 0 auto;
+  padding-top: 10px;
+}
+
+/* Centred in whatever room it has in a thread, where the sheet has a height of
+   its own to fill; in a mailbox box it is a block and the auto margins
+   come to nothing, which leaves it where it already was. */
+.empty {
+  margin: auto 0;
+  padding: 34px 12px;
+  color: var(--muted);
+  text-align: center;
+  font-size: 12px;
+}
+
+@media (hover: hover) {
+  .back:hover {
+    text-decoration: underline;
+  }
+
+  .row:hover {
+    background: var(--soft);
+  }
+}

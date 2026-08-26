@@ -31,14 +31,16 @@
   stroke-linejoin: round;
 }
 
-/* A letter in place of an icon. Sized and weighted to sit at the same optical
-   density as the 14px hairline drawings beside it rather than at the same
-   height — a capital at 14px would shout next to them. */
+/* A letter in place of an icon. Sized to sit at the same optical density as the
+   14px hairline drawings beside it rather than at the same height — a capital at
+   14px would shout next to them — and set at the regular weight for the same
+   reason: the icons it stands among are drawn in a single hairline, and a
+   semibold letter is the one thing in the bar with a heavy stroke. */
 .glyph {
   display: block;
   font-family: var(--display);
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 400;
   line-height: 1;
 }
 

@@ -42,6 +42,11 @@ export function LocationProvider({ children }) {
   const [people, setPeople] = useState([]);
   const [posts, setPosts] = useState([]);
   const [postsError, setPostsError] = useState(null);
+  // How many messages are waiting, which is nothing to do with where anybody is
+  // standing and lives here anyway: it comes back on the presence trade, so the
+  // badge in the top bar keeps itself current on a loop that was already running
+  // rather than on a second one of its own.
+  const [unread, setUnread] = useState(0);
   // Bumped by the refresh in the top bar. Cards that ask the server for
   // themselves — the news, what is on, what is trending, the warnings, the
   // marks — key their effect on this alongside the fix, which is how a button
@@ -124,6 +129,7 @@ export function LocationProvider({ children }) {
     try {
       const data = coords ? await api.publishPosition(coords) : await api.getPeople();
       setPeople(data.people ?? []);
+      setUnread(data.unread ?? 0);
     } catch {
       // Losing sight of the others is no reason to lose your own position
     }
@@ -228,6 +234,12 @@ export function LocationProvider({ children }) {
     components,
     supports: (component) => components.includes(component),
     people,
+    unread,
+    // Every answer about messages carries the count with it, so a page that has
+    // just read a thread hands the new number back rather than asking for it —
+    // otherwise the badge would go on saying there is something waiting until
+    // the next turn of the presence loop.
+    noteUnread: setUnread,
     posts,
     postsError,
     localError,

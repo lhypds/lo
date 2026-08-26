@@ -346,6 +346,33 @@
   object-fit: cover;
 }
 
+/* The one thing in a bubble that takes the pointer, which is why it is the only
+   rule undoing the pointer-events above. A post says somebody was standing here,
+   and their name is the way to the rest of them.
+
+   The bubble sits clear above its own pin, so a name that takes the pointer
+   cannot start the open-close loop that rule is there to prevent: leaving the pin
+   closes a merely-hovered bubble, and what the pointer is over then is the map,
+   not the pin again. Where the name is reached for and pressed is the bubble the
+   reader chose by clicking its pin — that one stays up under the pointer, which
+   is what choosing means here. */
+.postPopupWho {
+  pointer-events: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .postPopupWho:hover {
+    color: var(--ink);
+  }
+}
+
 /* Three lines of it, then the rest is what opening it is for */
 .postPopupText {
   display: -webkit-box;

@@ -7,6 +7,10 @@ import { formatCoords, formatDateTime, formatUsername } from "../../utils/format
 import { MARK_PIN_EYE, MARK_PIN_PATH, MARK_PIN_TIP_Y } from "../../utils/icons.js";
 import { useAuth } from "../AuthProvider/index.js";
 import { useHere } from "../LocationProvider/index.js";
+// The opener rather than the sheet: this file is the one lo loads lazily, and
+// naming the component here would pull it and everything under it into the map's
+// own chunk to no purpose — the sheet is already mounted by the top bar.
+import { openProfile } from "../UserModal/userApi.js";
 import styles from "./map.module.css";
 
 const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
@@ -172,7 +176,13 @@ function markPopupElement(name, coords, iso, when) {
 // what was written and by whom. It is a preview and not the post — the words
 // are clamped and the picture is small — and the click that opens it properly
 // is still there underneath.
-function postPopupElement(post, headline, byline, iso, when) {
+//
+// The name on the byline is the one thing in a bubble that can be pressed, and
+// what it opens is the person: a post says somebody was standing here, and who
+// that is, is a fair next question to have an answer to. Everything else in here
+// stays deaf to the pointer — see .postPopupWho in map.module.css, which is the
+// one hole in that.
+function postPopupElement(post, headline, place, iso, when) {
   const wrapper = document.createElement("div");
   wrapper.className = styles.postPopup;
   if (post.image) {
@@ -190,7 +200,24 @@ function postPopupElement(post, headline, byline, iso, when) {
   label.textContent = headline;
   const who = document.createElement("span");
   who.className = styles.markPopupMeta;
-  who.textContent = byline;
+  const name = document.createElement("button");
+  name.type = "button";
+  name.className = styles.postPopupWho;
+  name.textContent = formatUsername(post.username);
+  name.addEventListener("click", (event) => {
+    // Short of the map, which reads a click as "put the chosen bubble away" —
+    // the reader is opening the person, not dismissing the post.
+    event.stopPropagation();
+    openProfile(post.username);
+  });
+  who.append(name);
+  // Where the post was left, after the name and in the same grey: the two
+  // together are the line the row in the list carries.
+  if (place) {
+    const at = document.createElement("span");
+    at.textContent = ` · ${place}`;
+    who.append(at);
+  }
   const time = document.createElement("time");
   time.className = styles.markPopupMeta;
   time.dateTime = iso;
@@ -576,9 +603,10 @@ export default function MapCard({
       // a photo with no words is a whole post, and the line that would have held
       // the words holds where it was taken instead.
       const headline = post.body || post.place || formatCoords(post.latitude, post.longitude);
-      const byline = [formatUsername(post.username), post.body ? post.place : ""]
-        .filter(Boolean)
-        .join(" · ");
+      // Where it was left goes on the byline beside the name — but only when the
+      // headline is the post's own words, since otherwise the headline is that
+      // very place and the bubble would say it twice.
+      const place = post.body ? post.place : "";
       const marker = preview(
         new mapboxgl.Marker({ element, anchor: "bottom" })
           .setLngLat([post.longitude, post.latitude])
@@ -587,7 +615,7 @@ export default function MapCard({
               postPopupElement(
                 post,
                 headline,
-                byline,
+                place,
                 post.time,
                 formatDateTime(post.time, i18n.language),
               ),

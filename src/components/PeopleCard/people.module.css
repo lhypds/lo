@@ -42,6 +42,13 @@
   background: #666;
 }
 
+/* Your own row's bullet, in full ink where everybody else's is grey. The only
+   mark the row carries — it says nothing the others say, since where you are is
+   here and when you were last seen is now. */
+.dotSelf {
+  background: var(--ink);
+}
+
 .who {
   min-width: 0;
   overflow: hidden;

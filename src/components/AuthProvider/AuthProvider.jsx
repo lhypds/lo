@@ -110,7 +110,12 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, ready, login, register, logout }}>{children}</AuthContext.Provider>
+    // `updateUser` is for the account itself changing under a signed-in session —
+    // the profile page saving a bio, or reading back what another device saved.
+    // Signing in is what sets the account; this only ever refreshes it.
+    <AuthContext.Provider value={{ user, ready, login, register, logout, updateUser: setUser }}>
+      {children}
+    </AuthContext.Provider>
   );
 }
 

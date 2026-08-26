@@ -1,0 +1,85 @@
+/* liveboard's account sheet, in lo's ink and paper: a narrow column, a titled
+   block for each thing that can be done, and every control the same white box
+   with a black rule that turns over under the pointer. Nothing in here is a
+   black bar — a filled button is lo's way of saying "this is the one thing to
+   press", and a sheet you opened to read your own record has no such thing. */
+/* No width of its own: how wide a sheet is in lo is the house Modal's answer
+   (400px), and this one and the profile sheet beside it are the same frame.
+
+   The extra inset on top of the sheet's own 16px, which is liveboard's 24px: a
+   column of small type wants more air at its edges than a line of buttons does,
+   and the record's rules run the full width of whatever it is given. */
+.account {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 0 8px;
+}
+
+/* What lo knows about you, read down a pair of columns and ruled the way the
+   account page ruled it: a record is a list of pairs, not a paragraph. The
+   sheet's own title bar says Account above it, so it starts at the top rule. */
+.facts {
+  margin: 0;
+  border-top: 1px solid var(--ink);
+}
+
+.facts div {
+  display: grid;
+  grid-template-columns: 88px 1fr;
+  gap: 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+}
+
+.facts dt {
+  color: var(--muted);
+}
+
+.facts dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Small, unemphatic and set in capitals: the block below it is the thing being
+   looked at, and the title is only there to say which block it is. */
+.sectionTitle {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* The way out, at the right-hand end of the record it belongs to and only as
+   wide as its word — the corner every answer in lo is given from, and the corner
+   liveboard signs out in. Never a bar across the sheet: leaving is not what this
+   is for. Sized the way liveboard sizes it, to the word rather than to a height:
+   6px of air over and under a 12px line. */
+.logout {
+  align-self: flex-end;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 16px;
+  border: 1px solid var(--ink);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 1;
+}
+
+@media (hover: hover) {
+  .logout:hover {
+    background: var(--ink);
+    color: var(--paper);
+  }
+}

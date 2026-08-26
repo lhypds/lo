@@ -11,9 +11,19 @@ db.exec(`
   PRAGMA journal_mode = WAL;
   PRAGMA foreign_keys = ON;
 
+  -- The username is the whole account, and everything after it is optional: a
+  -- line about yourself and the ways you can be reached off lo. A contact is
+  -- kept as the bare handle its own app asks for — an address, a LINE ID, a
+  -- number, a WeChat ID — because that is what a reader would have to type into
+  -- that app anyway, and lo is in no position to check any of them.
   CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    bio TEXT,
+    email TEXT,
+    line_id TEXT,
+    whatsapp TEXT,
+    wechat TEXT,
     created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
   );
 
@@ -52,6 +62,10 @@ db.exec(`
 
   CREATE INDEX IF NOT EXISTS posts_time_idx ON posts(time DESC);
   CREATE INDEX IF NOT EXISTS posts_latitude_idx ON posts(latitude);
+  -- Posts are asked for by ground almost everywhere, and by author on one page:
+  -- a profile, which reads what somebody has been leaving about. Same shape as
+  -- the marks index, since it answers the same question about one account.
+  CREATE INDEX IF NOT EXISTS posts_user_time_idx ON posts(user_id, time DESC);
 
   -- Where each account is right now, one row per user and overwritten in place:
   -- this is presence, not history. Marks are the table that keeps things.
@@ -64,12 +78,69 @@ db.exec(`
   );
 
   CREATE INDEX IF NOT EXISTS positions_updated_idx ON positions(updated_at DESC);
+
+  -- A word from one account to one other. Unlike a post it is addressed, so it
+  -- is filed under the pair rather than under the ground: nothing here knows or
+  -- cares where either of them was standing.
+  CREATE TABLE IF NOT EXISTS messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    from_user INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    to_user INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    body TEXT NOT NULL,
+    -- When the recipient opened the thread it is in, which is the only thing
+    -- either side is told about a message after it is sent.
+    read_at TEXT,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+
+  -- One thread is every row with both accounts on it in either direction, so
+  -- both directions are indexed; the second one is also what counts an inbox.
+  CREATE INDEX IF NOT EXISTS messages_from_idx ON messages(from_user, id DESC);
+  CREATE INDEX IF NOT EXISTS messages_to_idx ON messages(to_user, id DESC);
 `);
 
+// The account grew a profile after the first accounts were opened, so the
+// columns are added to a table that already exists rather than only declared
+// above. On a database made by the CREATE above every one of these is already
+// there and the loop does nothing.
+const userColumns = new Set(db.prepare(`PRAGMA table_info(users)`).all().map((column) => column.name));
+for (const column of ["bio", "email", "line_id", "whatsapp", "wechat"]) {
+  if (!userColumns.has(column)) db.exec(`ALTER TABLE users ADD COLUMN ${column} TEXT`);
+}
+
+// What a person is, as far as anyone else is concerned: the name, when they
+// turned up, the line they wrote about themselves and the ways to reach them.
+// A contact is filled in to be read by whoever comes past a post, so it is part
+// of the public answer rather than something held back for its owner.
+const PROFILE_COLUMNS = `
+  u.username,
+  u.created_at AS createdAt,
+  u.bio,
+  u.email,
+  u.line_id AS line,
+  u.whatsapp,
+  u.wechat
+`;
+
 const selectUserByName = db.prepare(`
-  SELECT id, username, created_at AS createdAt
-  FROM users
-  WHERE username = ?
+  SELECT u.id, ${PROFILE_COLUMNS}
+  FROM users u
+  WHERE u.username = ?
+`);
+
+const selectProfileByName = db.prepare(`
+  SELECT ${PROFILE_COLUMNS}
+  FROM users u
+  WHERE u.username = ?
+`);
+
+// Every field at once, and every one of them clearable: the sheet that sends
+// this holds the whole profile, so what it does not send is what the reader
+// deleted rather than what they left alone.
+const updateProfileFields = db.prepare(`
+  UPDATE users
+  SET bio = ?, email = ?, line_id = ?, whatsapp = ?, wechat = ?
+  WHERE id = ?
 `);
 
 const insertUser = db.prepare(`
@@ -172,6 +243,18 @@ const selectRecentPosts = db.prepare(`
   LIMIT ?
 `);
 
+// One person's, newest first and without a box around them: this is the answer
+// to "who is this", not to "what is around here", so where they were standing is
+// the row's own business rather than the question being asked.
+const selectPostsByUser = db.prepare(`
+  SELECT ${POST_COLUMNS}
+  FROM posts p
+  JOIN users u ON u.id = p.user_id
+  WHERE u.username = ?
+  ORDER BY p.time DESC, p.id DESC
+  LIMIT ?
+`);
+
 // The words and the photo, and nothing else: a post is filed under the spot and
 // the moment it was left at, and letting an edit move either of those would make
 // a pin on the map a claim about somewhere its author was never standing.
@@ -207,8 +290,121 @@ const selectOtherPositions = db.prepare(`
   LIMIT ?
 `);
 
+/* ------------------------------------------------------------------ messages */
+
+const insertMessage = db.prepare(`
+  INSERT INTO messages (from_user, to_user, body)
+  VALUES (?, ?, ?)
+`);
+
+// Both names rather than both ids: a message is read as "@someone said", and the
+// two joins here save every caller from carrying an id it has no other use for.
+const MESSAGE_COLUMNS = `
+  m.id,
+  m.body,
+  m.created_at AS time,
+  sender.username AS fromUser,
+  recipient.username AS toUser
+`;
+
+const selectMessageById = db.prepare(`
+  SELECT ${MESSAGE_COLUMNS}
+  FROM messages m
+  JOIN users sender ON sender.id = m.from_user
+  JOIN users recipient ON recipient.id = m.to_user
+  WHERE m.id = ?
+`);
+
+// A thread is every row with both accounts on it, whichever way round — the two
+// halves of a conversation are one conversation. Newest first and reversed by the
+// caller, so a long thread hands back its end rather than its beginning.
+const selectConversation = db.prepare(`
+  SELECT ${MESSAGE_COLUMNS}
+  FROM messages m
+  JOIN users sender ON sender.id = m.from_user
+  JOIN users recipient ON recipient.id = m.to_user
+  WHERE (m.from_user = ? AND m.to_user = ?) OR (m.from_user = ? AND m.to_user = ?)
+  ORDER BY m.id DESC
+  LIMIT ?
+`);
+
+// Everyone this account has traded a word with, one row each: who they are, the
+// last thing either of them said, and how much of it is still unread.
+//
+// A conversation and not a mailbox. Which direction a message went is a fact
+// about that message, not a place it lives — filing them under "in" and "out"
+// cuts one conversation in half and puts the halves in different boxes. So the
+// list is of people, and a person opens the thread.
+//
+// `other` is the account at the far end of a row whichever end this one is at,
+// which is what turns a table of messages into a list of people. The last word
+// in each thread is the row with the highest id under that name — ids are handed
+// out in order, so that is the newest without trusting either side's clock.
+const selectThreads = db.prepare(`
+  WITH conv AS (
+    SELECT
+      CASE WHEN m.from_user = ? THEN m.to_user ELSE m.from_user END AS other,
+      m.id,
+      m.body,
+      m.created_at,
+      m.from_user
+    FROM messages m
+    WHERE m.from_user = ? OR m.to_user = ?
+  )
+  SELECT
+    u.username,
+    c.body,
+    c.created_at AS time,
+    CASE WHEN c.from_user = ? THEN 1 ELSE 0 END AS mine,
+    (
+      SELECT COUNT(*)
+      FROM messages unread
+      WHERE unread.to_user = ? AND unread.from_user = u.id AND unread.read_at IS NULL
+    ) AS unread
+  FROM conv c
+  JOIN users u ON u.id = c.other
+  WHERE c.id = (SELECT MAX(latest.id) FROM conv latest WHERE latest.other = c.other)
+  ORDER BY c.id DESC
+  LIMIT ?
+`);
+
+// Opening a thread reads it: everything in it addressed to the reader and not
+// already stamped, in one statement.
+const markConversationRead = db.prepare(`
+  UPDATE messages
+  SET read_at = ?
+  WHERE to_user = ? AND from_user = ? AND read_at IS NULL
+`);
+
+const countUnreadMessages = db.prepare(`
+  SELECT COUNT(*) AS count
+  FROM messages
+  WHERE to_user = ? AND read_at IS NULL
+`);
+
 export function getUser(username) {
   return selectUserByName.get(username) ?? null;
+}
+
+export function getProfile(username) {
+  return selectProfileByName.get(username) ?? null;
+}
+
+// An empty field is stored as nothing rather than as an empty string, so "not
+// filled in" is one value in the column and not two.
+export function updateProfile(userId, profile) {
+  const kept = (value) => {
+    const text = String(value ?? "").trim();
+    return text || null;
+  };
+  updateProfileFields.run(
+    kept(profile.bio),
+    kept(profile.email),
+    kept(profile.line),
+    kept(profile.whatsapp),
+    kept(profile.wechat),
+    userId,
+  );
 }
 
 export function createUser(username) {
@@ -294,6 +490,10 @@ export function getRecentPosts(limit = 200) {
   return selectRecentPosts.all(limit);
 }
 
+export function getPostsByUser(username, limit = 20) {
+  return selectPostsByUser.all(username, limit);
+}
+
 // Nothing back rather than a row when the id is somebody else's or nobody's,
 // which is how renameMark answers the same question.
 export function updatePost(userId, postId, post) {
@@ -321,4 +521,29 @@ export function savePosition(userId, { latitude, longitude, accuracy }) {
 // string comparison is a chronological one.
 export function getOtherPositions(userId, since, limit = 200) {
   return selectOtherPositions.all(userId, since, limit);
+}
+
+export function createMessage(fromUserId, toUserId, body) {
+  const result = insertMessage.run(fromUserId, toUserId, body);
+  return selectMessageById.get(Number(result.lastInsertRowid));
+}
+
+// Oldest last out of SQLite and oldest first on the way out of here: a thread is
+// read downwards, so the newest is the row nearest the composer.
+export function getConversation(userId, otherUserId, limit = 200) {
+  return selectConversation.all(userId, otherUserId, otherUserId, userId, limit).reverse();
+}
+
+export function getThreads(userId, limit = 100) {
+  return selectThreads
+    .all(userId, userId, userId, userId, userId, limit)
+    .map((thread) => ({ ...thread, mine: thread.mine === 1 }));
+}
+
+export function readConversation(userId, otherUserId) {
+  return markConversationRead.run(new Date().toISOString(), userId, otherUserId).changes;
+}
+
+export function countUnread(userId) {
+  return countUnreadMessages.get(userId)?.count ?? 0;
 }
