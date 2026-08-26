@@ -617,6 +617,32 @@ a {
   }
 }
 
+/* And the document under it is pinned for as long as it is up. body keeps a
+   window's worth of min-height, which iOS answers with the window it would have
+   if its own bars were away — so with the bars showing, the document stands a bar
+   taller than the window, and there is a bar's worth of scroll in a page that has
+   nothing whatever to scroll.
+
+   Empty scroll, and it would go unnoticed but for the keyboard. Asked to keep the
+   field clear of the keys, iOS spends whatever document scroll it can find before
+   it moves the part of the window that can be seen — and spent scroll is the one
+   movement this page cannot follow. What the page watches is that window's own
+   offset (see pages/MessagesPage), and through a document scroll it never leaves
+   nothing: the page is drawn a bar up the screen with the top bar off the top of
+   it, and dropped back only once the keys have arrived and the offset has finally
+   moved. Which is the page pushed up from the bottom and the name landing late.
+
+   So there is nothing to spend. The page is fixed and covers the window, and
+   nothing underneath it was ever meant to move.
+
+   In the stylesheet rather than set on the document from JS, where the sheets
+   this page opens over itself keep a lock of their own (see ui/Modal) and would
+   have taken this one away with them on closing. */
+html:has(.messages-page),
+html:has(.messages-page) body {
+  overflow: hidden;
+}
+
 /* Once the window is twice the map's own column, stacking them wastes it: the
    square tile leaves the whole right half of the screen empty while the list it
    belongs to scrolls in a gutter. Past that width the two swap axes — the list
