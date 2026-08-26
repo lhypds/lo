@@ -39,15 +39,6 @@ export const updateProfile = (profile) =>
 // around. One request, because a page about a person answers all three at once.
 export const getUser = (username) => request(`/api/users/${encodeURIComponent(username)}`);
 
-// Everyone you have a conversation with, newest first. It carries the unread
-// count with it, so the dot on the envelope and the sheet behind it are one
-// answer.
-export const getThreads = () => request("/api/messages");
-// Asking for a thread is what reads it — there is no separate call for that.
-export const getConversation = (username) => request(`/api/messages/${encodeURIComponent(username)}`);
-export const sendMessage = (to, body) =>
-  request("/api/messages", { method: "POST", body: JSON.stringify({ to, body }) });
-
 export const getLocal = (coords) => request(`/api/local?${geoQuery(coords)}`);
 export const getNearby = (coords) => request(`/api/nearby?${geoQuery(coords)}`);
 export const getEvents = (coords) => request(`/api/events?${geoQuery(coords)}`);

@@ -5,23 +5,18 @@ import { fileURLToPath } from "node:url";
 import express from "express";
 import {
   countMarks,
-  countUnread,
   createMark,
-  createMessage,
   createPost,
   createUser,
   deleteMark,
   deletePost,
-  getConversation,
   getMarks,
   getOtherPositions,
   getPostsByUser,
   getPostsNear,
   getProfile,
   getRecentPosts,
-  getThreads,
   getUser,
-  readConversation,
   renameMark,
   savePosition,
   updatePost,
@@ -542,51 +537,6 @@ app.get("/api/images/:name", requireSession, (req, res) => {
   );
 });
 
-/* ----------------------------------------------------------------- messages */
-
-const MESSAGE_BODY_MAX = 1000;
-
-// Everyone this account has traded a word with, with the last of those words and
-// how many are still unread. A post is left on the ground for whoever comes past;
-// this is addressed, so it is filed under the pair and nobody else can ask for it.
-app.get("/api/messages", requireSession, (req, res) => {
-  res.json({ threads: getThreads(req.user.id), unread: countUnread(req.user.id) });
-});
-
-// One thread, and opening it is what reads it: there is no separate gesture for
-// marking a message read, because looking at it is the gesture.
-app.get("/api/messages/:username", requireSession, (req, res) => {
-  const username = normalizeUsername(req.params.username);
-  if (!USERNAME_RE.test(username)) return res.status(400).json({ error: USERNAME_HINT });
-  const other = getUser(username);
-  if (!other) return res.status(404).json({ error: "用户不存在", code: "USER_NOT_FOUND" });
-  readConversation(req.user.id, other.id);
-  res.json({
-    // The profile rides along so the thread can say who it is with — the name at
-    // the top of it is a person, and pressing it opens the rest of them.
-    user: getProfile(username),
-    messages: getConversation(req.user.id, other.id),
-    // Counted after the read above, so the badge in the top bar goes out with
-    // the same answer that cleared it.
-    unread: countUnread(req.user.id),
-  });
-});
-
-app.post("/api/messages", requireSession, (req, res) => {
-  const username = normalizeUsername(req.body?.to);
-  if (!USERNAME_RE.test(username)) return res.status(400).json({ error: USERNAME_HINT });
-  const body = String(req.body?.body ?? "").trim().normalize("NFKC");
-  if (!body) return res.status(400).json({ error: "请写点什么" });
-  if (body.length > MESSAGE_BODY_MAX) {
-    return res.status(400).json({ error: `消息最多 ${MESSAGE_BODY_MAX} 个字符` });
-  }
-  if (username === req.user.username) return res.status(400).json({ error: "不能给自己发消息" });
-
-  const other = getUser(username);
-  if (!other) return res.status(404).json({ error: "用户不存在", code: "USER_NOT_FOUND" });
-  res.status(201).json({ message: createMessage(req.user.id, other.id, body) });
-});
-
 /* ----------------------------------------------------------------- presence */
 
 // How long a published fix still counts as "where someone is". The client
@@ -599,12 +549,9 @@ function livePeople(userId) {
   return getOtherPositions(userId, new Date(Date.now() - PRESENCE_WINDOW_MS).toISOString());
 }
 
-// Who else is out, and whether anything is waiting to be read. The second half
-// is nothing to do with the first, and it rides along anyway: the minute loop is
-// already asking, and a badge in the top bar that cost a request of its own would
-// be a second loop for one number.
+// Who else is out.
 app.get("/api/people", requireSession, (req, res) => {
-  res.json({ people: livePeople(req.user.id), unread: countUnread(req.user.id) });
+  res.json({ people: livePeople(req.user.id) });
 });
 
 // Telling the server where you are and asking who else is out are the same
@@ -613,7 +560,7 @@ app.put("/api/position", requireSession, (req, res) => {
   const location = parseLocation(req.body);
   if (!location) return res.status(400).json({ error: "坐标无效" });
   savePosition(req.user.id, location);
-  res.json({ people: livePeople(req.user.id), unread: countUnread(req.user.id) });
+  res.json({ people: livePeople(req.user.id) });
 });
 
 if (isProduction) {

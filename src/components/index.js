@@ -15,8 +15,6 @@ export { LocationProvider, useHere } from "./LocationProvider/index.js";
 export { default as MarkButton } from "./MarkButton/index.js";
 export { default as MarkItem } from "./MarkItem/index.js";
 export { default as MarkModal } from "./MarkModal/index.js";
-export { default as Messages } from "./Messages/index.js";
-export { default as MessagesModal, openMessages, useOpenMessages } from "./MessagesModal/index.js";
 export { default as NewsCard } from "./NewsCard/index.js";
 export { default as PeopleCard } from "./PeopleCard/index.js";
 export { default as PostItem } from "./PostItem/index.js";

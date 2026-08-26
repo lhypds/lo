@@ -4,8 +4,6 @@ import * as api from "../../api.js";
 import { Link } from "../../ui/index.js";
 import { CONTACTS } from "../../utils/contacts.js";
 import { formatCoords, formatUsername, relativeTime } from "../../utils/format.js";
-import { useAuth } from "../AuthProvider/index.js";
-import { useOpenMessages } from "../MessagesModal/messagesApi.js";
 import styles from "./user.module.css";
 
 // Who somebody is, in the four things one account can ask about another: the
@@ -19,10 +17,8 @@ import styles from "./user.module.css";
 // and a copy of it would drift. What differs is only the frame around it: on the
 // page the name is the heading, and in the sheet it is the way through to the
 // page.
-export default function UserProfile({ username, linkName = false, onDone }) {
+export default function UserProfile({ username, linkName = false }) {
   const { t, i18n } = useTranslation();
-  const { user } = useAuth();
-  const openMessages = useOpenMessages();
   const [profile, setProfile] = useState(null);
   const [posts, setPosts] = useState([]);
   const [error, setError] = useState("");
@@ -51,47 +47,19 @@ export default function UserProfile({ username, linkName = false, onDone }) {
   }, [username]);
 
   const name = formatUsername(username);
-  const mine = Boolean(user && user.username === username);
 
-  // How to reach this person, lo's own way first. It is the one channel that is
-  // always there — an account is reachable in lo by being an account — so the
-  // list is never empty for somebody else, and the four that have to be filled
-  // in follow it. Only the filled ones: an empty row would be lo answering "how
-  // do I reach them" with a label and a blank.
-  //
-  // Your own profile has no lo row on it, because writing to yourself is not a
-  // way of being reached; with nothing filled in either, the section goes
-  // entirely — see below.
+  // How to reach this person, off lo: the four that have to be filled in, and
+  // only the filled ones — an empty row would be lo answering "how do I reach
+  // them" with a label and a blank. Nobody is reachable inside lo any more, so
+  // there is nothing of lo's own at the head of this list, and a profile with
+  // none of the four filled in has no contacts at all — see below.
   const contacts = profile
-    ? [
-        ...(mine
-          ? []
-          : [
-              {
-                field: "lo",
-                // The app's own name, as the top bar writes it: the other rows
-                // are named after the app the handle belongs to, and so is this.
-                label: "lo",
-                value: t("user.message"),
-                // Off to the conversation, in whichever frame this screen opens
-                // them in — the sheet on a desktop, the page on a phone; the
-                // profile has no opinion on that and does not need one. Its own
-                // sheet is told to close on the way out: on a desktop the
-                // conversation opens where it is standing, and on a phone it is
-                // over the page being left.
-                press: () => {
-                  onDone?.();
-                  openMessages(username);
-                },
-              },
-            ]),
-        ...CONTACTS.filter((contact) => profile[contact.field]).map((contact) => ({
-          ...contact,
-          label: t(contact.label),
-          value: profile[contact.field],
-          href: contact.link ? contact.link(profile[contact.field]) : null,
-        })),
-      ]
+    ? CONTACTS.filter((contact) => profile[contact.field]).map((contact) => ({
+        ...contact,
+        label: t(contact.label),
+        value: profile[contact.field],
+        href: contact.link ? contact.link(profile[contact.field]) : null,
+      }))
     : [];
 
   return (
@@ -122,9 +90,8 @@ export default function UserProfile({ username, linkName = false, onDone }) {
 
           {/* Nothing at all when there is nothing to put in it, heading and all:
               a rule with "no contact details" under it is a whole section spent
-              saying there is no section. It only ever happens on your own
-              profile, since everybody else has the lo row above. Same reading as
-              the bio — what is not there is left out. */}
+              saying there is no section. Same reading as the bio — what is not
+              there is left out. */}
           {contacts.length > 0 && (
             <>
               <h2 className={styles.sectionTitle}>{t("user.contact")}</h2>
@@ -133,15 +100,10 @@ export default function UserProfile({ username, linkName = false, onDone }) {
                   <div key={contact.field}>
                     <dt>{contact.label}</dt>
                     <dd>
-                      {/* Three kinds of row, and they look alike on purpose: a
-                          way through to lo's own sheet, an address something can
-                          be handed to, and a handle to be read off and typed
-                          into another app — see CONTACTS. */}
-                      {contact.press ? (
-                        <button type="button" onClick={contact.press}>
-                          {contact.value}
-                        </button>
-                      ) : contact.href ? (
+                      {/* Two kinds of row, and they look alike on purpose: an
+                          address something can be handed to, and a handle to be
+                          read off and typed into another app — see CONTACTS. */}
+                      {contact.href ? (
                         <a href={contact.href} rel="noreferrer">
                           {contact.value}
                         </a>

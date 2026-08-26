@@ -221,18 +221,7 @@
     "joined": "since {{date}}",
     "contact": "Contact",
     "posts": "Recent posts",
-    "noPosts": "Nothing posted yet",
-    "message": "Send a message"
-  },
-  "messages": {
-    "title": "Messages",
-    "waiting": "Messages — {{n}} waiting",
-    "empty": "No messages yet",
-    "said": "You: {{body}}",
-    "emptyThread": "Nothing said to {{name}} yet",
-    "send": "Send",
-    "sending": "Sending",
-    "profile": "View Profile"
+    "noPosts": "Nothing posted yet"
   },
   "search": {
     "marks": "Search your marks",

@@ -209,45 +209,14 @@ a {
    16px as one the reader cannot be expected to read, and answers by zooming the
    whole page into it on focus — which throws the layout about, carries the
    field up the screen, and leaves the page zoomed after the keyboard has gone.
-   16px is the line it stops at, and it is a better size to type a message at
-   with a thumb anyway; the row grows to keep the type off its own edges. The
-   fields this reaches are the two a sheet asks for a line of text in: naming a
-   spot, and sending a message. */
+   16px is the line it stops at, and it is a better size to type at with a thumb
+   anyway; the row grows to keep the type off its own edges. The one field this
+   reaches is the one a sheet asks for a line of text in: naming a spot. */
 @media (pointer: coarse) {
   .mark-field input {
     height: 36px;
     font-size: 16px;
   }
-}
-
-/* Sending a line in a thread, drawn as the key that already sends it: the field
-   carries enterKeyHint="send" and Enter is how a message actually goes, so the
-   button says the same thing the keyboard does rather than spelling out a word
-   in a language it then has to be translated into. Narrower than the worded
-   slabs beside it for the same reason a key is narrower than a sentence.
-
-   Black in every state, the empty box and the send in flight included. Greying
-   it out would read as a broken key rather than as an empty field above it, and
-   the thing that says whether there is anything to send is the field. */
-.joined-field button.send-key {
-  width: 44px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.joined-field button.send-key:disabled {
-  opacity: 1;
-}
-
-.joined-field button.send-key svg {
-  width: 14px;
-  height: 14px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
 }
 
 .form-message {
@@ -304,26 +273,6 @@ a {
 
 .topbar-action-slot-right {
   justify-content: flex-end;
-}
-
-/* The envelope in the top bar wears a mark when something is waiting for the
-   reader. A dot and not a figure: how many there are is the list's own answer,
-   and a number that small in a box this size is a smudge. */
-.topbar-badge {
-  position: relative;
-  display: inline-flex;
-}
-
-.topbar-dot {
-  position: absolute;
-  top: -2px;
-  right: -2px;
-  width: 6px;
-  height: 6px;
-  border: 1px solid var(--paper);
-  border-radius: 50%;
-  background: var(--ink);
-  pointer-events: none;
 }
 
 /* ------------------------------------------------------------------ gate -- */
@@ -567,80 +516,6 @@ a {
   /* The list is the only scroller on the page; without this, running off its
      end hands the gesture to the document and bounces the whole split */
   overscroll-behavior: contain;
-}
-
-/* The conversation page is the same split from the other direction: a window's
-   worth of height that never scrolls as a whole, with one scroller inside it —
-   the thread — and the composer standing on the floor below.
-
-   --view-* are the visual viewport — how much of the window can actually be
-   seen, and where on screen that part of it is — measured by the page itself and
-   set on it (see pages/MessagesPage). They win wherever they are set, which is
-   everywhere but under a pinch.
-
-   Three deep, because the two units under them are each right about something
-   and wrong on their own. dvh is the browser's own answer about how much window
-   there is, and on a browser that shortens the window for the keyboard
-   (index.html asks it to, with interactive-widget) it is the answer that follows
-   the keys down — but on iOS it is a bar too tall on this page's first paint and
-   stays that way until something resizes it, which sank the composer into the
-   curve at the bottom of the screen until a keyboard had been up once. --vh, the
-   number index.html keeps, is written before the first paint but is a frame
-   behind from then on. So the measurement leads, dvh is what a pinch and the
-   first paint fall back to, and --vh is for engines that do not know dvh.
-
-   Fixed to the window rather than laid in it, so that shift down can never grow
-   the document under it and leave the page draggable over a strip of nothing.
-   `top` rather than a transform for a second reason: a transformed box would
-   become the containing block for the sheets the top bar opens over this page,
-   which are fixed to the window on purpose. */
-.messages-page {
-  position: fixed;
-  top: var(--view-top, 0px);
-  left: 0;
-  right: 0;
-  height: 100vh;
-  height: calc(var(--vh, 1vh) * 100);
-  height: var(--view-height, calc(var(--vh, 1vh) * 100));
-  /* .page-shell's floor is a window's worth, and a floor beats a height: with
-     the keyboard up this page is deliberately shorter than that, and left in it
-     would put the composer back under the keys. */
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-@supports (height: 100dvh) {
-  .messages-page {
-    height: var(--view-height, 100dvh);
-  }
-}
-
-/* And the document under it is pinned for as long as it is up. body keeps a
-   window's worth of min-height, which iOS answers with the window it would have
-   if its own bars were away — so with the bars showing, the document stands a bar
-   taller than the window, and there is a bar's worth of scroll in a page that has
-   nothing whatever to scroll.
-
-   Empty scroll, and it would go unnoticed but for the keyboard. Asked to keep the
-   field clear of the keys, iOS spends whatever document scroll it can find before
-   it moves the part of the window that can be seen — and spent scroll is the one
-   movement this page cannot follow. What the page watches is that window's own
-   offset (see pages/MessagesPage), and through a document scroll it never leaves
-   nothing: the page is drawn a bar up the screen with the top bar off the top of
-   it, and dropped back only once the keys have arrived and the offset has finally
-   moved. Which is the page pushed up from the bottom and the name landing late.
-
-   So there is nothing to spend. The page is fixed and covers the window, and
-   nothing underneath it was ever meant to move.
-
-   In the stylesheet rather than set on the document from JS, where the sheets
-   this page opens over itself keep a lock of their own (see ui/Modal) and would
-   have taken this one away with them on closing. */
-html:has(.messages-page),
-html:has(.messages-page) body {
-  overflow: hidden;
 }
 
 /* Once the window is twice the map's own column, stacking them wastes it: the
@@ -1083,15 +958,6 @@ html:has(.messages-page) body {
   .profile-save:hover:not(:disabled) {
     background: var(--ink);
     color: var(--paper);
-  }
-}
-
-@media (hover: hover) {
-  /* The envelope inverts under the pointer, and a black dot on a black box is
-     no dot at all */
-  .topbar-badge:hover .topbar-dot {
-    border-color: var(--ink);
-    background: var(--paper);
   }
 }
 

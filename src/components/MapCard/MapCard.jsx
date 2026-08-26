@@ -248,11 +248,20 @@ const HOVERS = window.matchMedia("(hover: hover)").matches;
 // bubble underneath — where it covers the ground the pin is standing on, points
 // the wrong way at it, and reads as a different kind of thing than the same
 // bubble did a moment ago on the pin below. One side, always, is worth more than
-// the few rows of pixels the flip was buying: the pins are 16 and 18px tall and
-// the offset clears both, so the bubble sits on top of its own pin wherever that
-// pin happens to be. Near the top edge it is cropped by the tile instead, which
-// is at least the truth about where the pin is.
-function previewPopup(offset) {
+// the few rows of pixels the flip was buying: the offset clears the taller of
+// the two pins, so the bubble sits on top of its own pin wherever that pin
+// happens to be. Near the top edge it is cropped by the tile instead, which is
+// at least the truth about where the pin is.
+//
+// The offset is measured off the pins in map.module.css, which are anchored by
+// their bottom edge and so stand that far up from the spot they report: 25.2px
+// for the mark pin — 28 wide by the cropped viewBox's ratio — and 20 for a post's
+// square. One number covers both. A post's bubble a few pixels clear of its
+// square is no worse off than one resting on it, and two offsets would be one
+// more pair of numbers to keep in step with the stylesheet.
+const POPUP_OFFSET = 26;
+
+function previewPopup(offset = POPUP_OFFSET) {
   return new mapboxgl.Popup({ closeButton: false, offset, anchor: "bottom", closeOnClick: !HOVERS });
 }
 
@@ -568,7 +577,7 @@ export default function MapCard({
         new mapboxgl.Marker({ element: markElement(mark.label || ""), anchor: "bottom" })
           .setLngLat([mark.longitude, mark.latitude])
           .setPopup(
-            previewPopup(16).setDOMContent(
+            previewPopup().setDOMContent(
               markPopupElement(
                 name,
                 formatCoords(mark.latitude, mark.longitude),
@@ -611,7 +620,7 @@ export default function MapCard({
         new mapboxgl.Marker({ element, anchor: "bottom" })
           .setLngLat([post.longitude, post.latitude])
           .setPopup(
-            previewPopup(16).setDOMContent(
+            previewPopup().setDOMContent(
               postPopupElement(
                 post,
                 headline,

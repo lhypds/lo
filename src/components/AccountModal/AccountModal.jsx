@@ -11,17 +11,14 @@ import styles from "./account.module.css";
 
 // Your own account, over whatever page you were on. It used to be a page at
 // /account, which meant leaving the dashboard to read four facts and change a
-// bio and then finding your way back to it — the same round trip the messages
-// list and somebody else's profile both stopped making when they became sheets.
-// Nothing here is worth an address of its own: an account is not somewhere you
-// go, and it is nobody's to open but yours, so there is nothing to link to,
-// bookmark or send. That is the line between this and a conversation, which is
-// all three — and which is why messages, alone of the three, kept a page as well
-// for the screens a sheet cannot hold one on. See MessagesPage.
+// bio and then finding your way back to it — the same round trip somebody else's
+// profile stopped making when it became a sheet. Nothing here is worth an address
+// of its own: an account is not somewhere you go, and it is nobody's to open but
+// yours, so there is nothing to link to, bookmark or send.
 //
-// Unlike the other two sheets this one has exactly one way in — the figure in
-// the top bar, which mounts it — so it is opened by a prop rather than through a
-// module of its own the way MessagesModal and UserModal are.
+// Unlike the profile sheet this one has exactly one way in — the figure in the
+// top bar, which mounts it — so it is opened by a prop rather than through a
+// module of its own the way UserModal is.
 //
 // Laid out the way liveboard's own account sheet is: the record, then a titled
 // block for each thing that can be done to it, and the way out set on its own at

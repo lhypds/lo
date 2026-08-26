@@ -84,11 +84,13 @@
   pointer-events: none;
 }
 
-/* A post is a square with a p in it, held close to the letter: 14px around a
-   10px glyph leaves 2px inside the border, which is about as tight as the box
+/* A post is a square with a p in it, held close to the letter: 20px around a
+   14px glyph leaves 2px inside the border, which is about as tight as the box
    can go before it reads as drawn on the p rather than around it. Smaller than
    the mark pin beside it on purpose — a mark is a spot you chose, a post is one
-   you are passing.
+   you are passing — but no longer the 14px square it was, which was a fair
+   drawing and a poor target: a pin on a map is something to be pressed, and 14px
+   of it is under half of what a thumb lands on.
 
    The padding is not air. Centring a line box puts the *box* in the middle, and
    a lowercase p has no ascender to balance the tail it hangs below the baseline
@@ -97,8 +99,8 @@
    where the eye expects it, without the square growing to pay for it: the whole
    page is border-box, so this comes out of the inside. */
 .postDot {
-  width: 14px;
-  height: 14px;
+  width: 20px;
+  height: 20px;
   padding-bottom: 2px;
   display: flex;
   align-items: center;
@@ -107,25 +109,31 @@
   background: #fff;
   color: #000;
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: 14px;
   line-height: 1;
   cursor: pointer;
 }
 
-/* 20 wide to the cropped box's 24, which is where both the size and the weight
-   come from: the alignment holds at any scale — the ink fills the box to its
-   bottom edge whatever it is rendered at — so shrinking it here rather than in
-   the path takes the 1.2-unit stroke down to a 1px hairline along with it. The
-   same stroke the button's copy of this pin is drawn with, at the size a marker
-   on a 300px tile can afford.
+/* 28 wide, against the 20 it was drawn at first. The old one was the size the
+   shape wants on a 300px tile and not the size a target wants under a finger,
+   and of the two a pin has to be the second: everything the map has to say about
+   a mark is behind a press on it. This is about as far as that can go before two
+   pins in the same street stand on each other.
+
+   No height. It comes from the cropped viewBox instead — see MARK_VIEWBOX in
+   MapCard.jsx, which ends at the pin's own point — so the ink fills the box to
+   its bottom edge and that edge is the coordinate the marker is anchored by,
+   whatever width this rule asks for. Any px height here would be a second
+   statement of the same ratio, wrong by a fraction, and the pin would float or
+   sink by it.
 
    Its colours are fixed rather than themed, the same bargain the dots make: a
    pin has to read against road fill and park green, and neither of those knows
    about dark mode. */
 .markPin {
   position: relative;
-  width: 20px;
-  height: 18px;
+  width: 28px;
+  aspect-ratio: 24 / 21.6;
   cursor: pointer;
 }
 
@@ -135,7 +143,12 @@
   height: 100%;
   fill: #fff;
   stroke: #000;
-  stroke-width: 1.2;
+  /* The one thing that did not grow with the box. A stroke on the 24-unit grid
+     is scaled along with everything else on it, so the 1.2 the button's copy of
+     this pin is drawn with would come out at 1.4px here — a fatter line than any
+     other icon on the page, on the one drawing that is meant to read as the same
+     object as those. 24/28 of it renders as the 1px hairline the 20px pin had. */
+  stroke-width: 0.857;
   /* Round, and not miter: a mitred join at the point would run it to a spike
      well past the box, and the crop above is measured off this one */
   stroke-linejoin: round;

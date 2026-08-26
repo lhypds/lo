@@ -1,14 +1,11 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ActionButton, Link, useNavigate } from "../../ui/index.js";
-import { useHandheld } from "../../utils/device.js";
 import { MARK_PIN_EYE, MARK_PIN_PATH } from "../../utils/icons.js";
 import { useAuth } from "../AuthProvider/index.js";
-import { useHere } from "../LocationProvider/index.js";
 import AccountModal from "../AccountModal/index.js";
 import AddCard from "../AddCard/index.js";
 import LanguageSwitcher from "../LanguageSwitcher/index.js";
-import MessagesModal, { useOpenMessages } from "../MessagesModal/index.js";
 import UserModal from "../UserModal/index.js";
 
 // `cards` is the dashboard asking for its own contents page in the bar. Only the
@@ -17,15 +14,9 @@ import UserModal from "../UserModal/index.js";
 export default function Header({ back = false, backTo = "/", cards = false }) {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const { unread } = useHere();
   const navigate = useNavigate();
-  // Which frame messages open in here — the sheet below, or the page — and
-  // whether there is a sheet to mount at all.
-  const openMessages = useOpenMessages();
-  const handheld = useHandheld();
-  // The account sheet is the only one of the three opened from here and nowhere
-  // else, so it is held open by the bar rather than by a module the way the
-  // messages and profile sheets are.
+  // The account sheet is the one opened from here and nowhere else, so it is
+  // held open by the bar rather than by a module the way the profile sheet is.
   const [accountOpen, setAccountOpen] = useState(false);
 
   // There is no refresh button. The dashboard keeps itself current — the fix
@@ -74,31 +65,6 @@ export default function Header({ back = false, backTo = "/", cards = false }) {
               </svg>
             </ActionButton>
           )}
-          {/* What somebody said to you, rather than what somebody left on the
-              ground: posts are addressed to nobody and this is addressed to you,
-              so it is the one thing in the top bar that can be waiting. The dot
-              says something is; how many is the answer inside.
-
-              A sheet on a desktop, so reading it costs nothing: the dashboard is
-              still underneath, and closing puts the reader back exactly where
-              they were standing. On a phone the same press opens the page
-              instead, where a sheet would only be the window with the dashboard
-              showing through its edges — see MessagesPage. */}
-          {user && (
-            <span className="topbar-badge">
-              <ActionButton
-                tooltip={t("messages.title")}
-                aria-label={unread > 0 ? t("messages.waiting", { n: unread }) : t("messages.title")}
-                onClick={() => openMessages()}
-              >
-                <svg viewBox="0 0 24 24">
-                  <path d="M3 6h18v12H3z" />
-                  <path d="m3 7 9 6 9-6" />
-                </svg>
-              </ActionButton>
-              {unread > 0 && <span className="topbar-dot" aria-hidden="true" />}
-            </span>
-          )}
           {/* Your own account, on the same terms as everything else up here: a
               sheet over the page you were reading rather than a page you have to
               come back from. */}
@@ -114,18 +80,11 @@ export default function Header({ back = false, backTo = "/", cards = false }) {
         </span>
       </header>
 
-      {/* All three sheets are mounted beside the bar rather than inside it: the
-          bar is sticky and carries a stacking context of its own, and a sheet
-          opened in there would be pinned under it. Out here they are children of
-          the page, like every other sheet in lo — and because the bar is on
-          every page, so are they, which is what lets a name anywhere open one.
-
-          The messages sheet only where it is the frame messages open in: on a
-          phone that press goes to the page instead, and a sheet nothing can open
-          is a loop and a fetch waiting behind a button that will never be
-          pressed. The profile sheet stays either way — it opens over the
-          conversation page as readily as over the dashboard. */}
-      {user && !handheld && <MessagesModal />}
+      {/* Both sheets are mounted beside the bar rather than inside it: the bar is
+          sticky and carries a stacking context of its own, and a sheet opened in
+          there would be pinned under it. Out here they are children of the page,
+          like every other sheet in lo — and because the bar is on every page, so
+          are they, which is what lets a name anywhere open one. */}
       {user && <UserModal />}
       {user && <AccountModal isOpen={accountOpen} onClose={() => setAccountOpen(false)} />}
     </>

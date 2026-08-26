@@ -35,7 +35,7 @@ export default function UserModal() {
             than the same one refilled: opening a second person while the first
             is still on screen must not leave one set of answers under another's
             name. */}
-        {username && <UserProfile key={username} username={username} linkName onDone={close} />}
+        {username && <UserProfile key={username} username={username} linkName />}
       </div>
     </Modal>
   );

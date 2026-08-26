@@ -78,25 +78,6 @@ db.exec(`
   );
 
   CREATE INDEX IF NOT EXISTS positions_updated_idx ON positions(updated_at DESC);
-
-  -- A word from one account to one other. Unlike a post it is addressed, so it
-  -- is filed under the pair rather than under the ground: nothing here knows or
-  -- cares where either of them was standing.
-  CREATE TABLE IF NOT EXISTS messages (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    from_user INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    to_user INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    body TEXT NOT NULL,
-    -- When the recipient opened the thread it is in, which is the only thing
-    -- either side is told about a message after it is sent.
-    read_at TEXT,
-    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
-  );
-
-  -- One thread is every row with both accounts on it in either direction, so
-  -- both directions are indexed; the second one is also what counts an inbox.
-  CREATE INDEX IF NOT EXISTS messages_from_idx ON messages(from_user, id DESC);
-  CREATE INDEX IF NOT EXISTS messages_to_idx ON messages(to_user, id DESC);
 `);
 
 // The account grew a profile after the first accounts were opened, so the
@@ -290,98 +271,6 @@ const selectOtherPositions = db.prepare(`
   LIMIT ?
 `);
 
-/* ------------------------------------------------------------------ messages */
-
-const insertMessage = db.prepare(`
-  INSERT INTO messages (from_user, to_user, body)
-  VALUES (?, ?, ?)
-`);
-
-// Both names rather than both ids: a message is read as "@someone said", and the
-// two joins here save every caller from carrying an id it has no other use for.
-const MESSAGE_COLUMNS = `
-  m.id,
-  m.body,
-  m.created_at AS time,
-  sender.username AS fromUser,
-  recipient.username AS toUser
-`;
-
-const selectMessageById = db.prepare(`
-  SELECT ${MESSAGE_COLUMNS}
-  FROM messages m
-  JOIN users sender ON sender.id = m.from_user
-  JOIN users recipient ON recipient.id = m.to_user
-  WHERE m.id = ?
-`);
-
-// A thread is every row with both accounts on it, whichever way round — the two
-// halves of a conversation are one conversation. Newest first and reversed by the
-// caller, so a long thread hands back its end rather than its beginning.
-const selectConversation = db.prepare(`
-  SELECT ${MESSAGE_COLUMNS}
-  FROM messages m
-  JOIN users sender ON sender.id = m.from_user
-  JOIN users recipient ON recipient.id = m.to_user
-  WHERE (m.from_user = ? AND m.to_user = ?) OR (m.from_user = ? AND m.to_user = ?)
-  ORDER BY m.id DESC
-  LIMIT ?
-`);
-
-// Everyone this account has traded a word with, one row each: who they are, the
-// last thing either of them said, and how much of it is still unread.
-//
-// A conversation and not a mailbox. Which direction a message went is a fact
-// about that message, not a place it lives — filing them under "in" and "out"
-// cuts one conversation in half and puts the halves in different boxes. So the
-// list is of people, and a person opens the thread.
-//
-// `other` is the account at the far end of a row whichever end this one is at,
-// which is what turns a table of messages into a list of people. The last word
-// in each thread is the row with the highest id under that name — ids are handed
-// out in order, so that is the newest without trusting either side's clock.
-const selectThreads = db.prepare(`
-  WITH conv AS (
-    SELECT
-      CASE WHEN m.from_user = ? THEN m.to_user ELSE m.from_user END AS other,
-      m.id,
-      m.body,
-      m.created_at,
-      m.from_user
-    FROM messages m
-    WHERE m.from_user = ? OR m.to_user = ?
-  )
-  SELECT
-    u.username,
-    c.body,
-    c.created_at AS time,
-    CASE WHEN c.from_user = ? THEN 1 ELSE 0 END AS mine,
-    (
-      SELECT COUNT(*)
-      FROM messages unread
-      WHERE unread.to_user = ? AND unread.from_user = u.id AND unread.read_at IS NULL
-    ) AS unread
-  FROM conv c
-  JOIN users u ON u.id = c.other
-  WHERE c.id = (SELECT MAX(latest.id) FROM conv latest WHERE latest.other = c.other)
-  ORDER BY c.id DESC
-  LIMIT ?
-`);
-
-// Opening a thread reads it: everything in it addressed to the reader and not
-// already stamped, in one statement.
-const markConversationRead = db.prepare(`
-  UPDATE messages
-  SET read_at = ?
-  WHERE to_user = ? AND from_user = ? AND read_at IS NULL
-`);
-
-const countUnreadMessages = db.prepare(`
-  SELECT COUNT(*) AS count
-  FROM messages
-  WHERE to_user = ? AND read_at IS NULL
-`);
-
 export function getUser(username) {
   return selectUserByName.get(username) ?? null;
 }
@@ -523,27 +412,3 @@ export function getOtherPositions(userId, since, limit = 200) {
   return selectOtherPositions.all(userId, since, limit);
 }
 
-export function createMessage(fromUserId, toUserId, body) {
-  const result = insertMessage.run(fromUserId, toUserId, body);
-  return selectMessageById.get(Number(result.lastInsertRowid));
-}
-
-// Oldest last out of SQLite and oldest first on the way out of here: a thread is
-// read downwards, so the newest is the row nearest the composer.
-export function getConversation(userId, otherUserId, limit = 200) {
-  return selectConversation.all(userId, otherUserId, otherUserId, userId, limit).reverse();
-}
-
-export function getThreads(userId, limit = 100) {
-  return selectThreads
-    .all(userId, userId, userId, userId, userId, limit)
-    .map((thread) => ({ ...thread, mine: thread.mine === 1 }));
-}
-
-export function readConversation(userId, otherUserId) {
-  return markConversationRead.run(new Date().toISOString(), userId, otherUserId).changes;
-}
-
-export function countUnread(userId) {
-  return countUnreadMessages.get(userId)?.count ?? 0;
-}
