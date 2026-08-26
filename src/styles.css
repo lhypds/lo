@@ -509,6 +509,41 @@ a {
   overscroll-behavior: contain;
 }
 
+/* The conversation page is the same split from the other direction: a window's
+   worth of height that never scrolls as a whole, with one scroller inside it —
+   the thread — and the composer standing on the floor below. The height is the
+   one the rest of the app measures the window by (index.html sets --vh), the
+   same as the two list pages above take.
+
+   --view-* are the visual viewport, set by the page itself and only while a
+   keyboard is up (see pages/MessagesPage): the window minus whatever the keys
+   have taken, and where on screen that part of it now is. The fallbacks are the
+   whole window standing still, which is what this comes to on a desktop and on
+   any browser that cannot say.
+
+   Fixed to the window rather than moved within it, so that shift down can never
+   grow the document under it and leave the page draggable over a strip of
+   nothing. `top` rather than a transform for the same kind of reason: a
+   transformed box would become the containing block for the sheets the top bar
+   opens over this page, which are fixed to the window on purpose. */
+.messages-page {
+  position: fixed;
+  top: var(--view-top, 0px);
+  left: 0;
+  right: 0;
+  height: 100vh;
+  height: 100dvh;
+  height: calc(var(--vh, 1vh) * 100);
+  height: var(--view-height, calc(var(--vh, 1vh) * 100));
+  /* .page-shell's floor is a window's worth, and a floor beats a height: with
+     the keyboard up this page is deliberately shorter than that, and left in it
+     would put the composer back under the keys. */
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 /* Once the window is twice the map's own column, stacking them wastes it: the
    square tile leaves the whole right half of the screen empty while the list it
    belongs to scrolls in a gutter. Past that width the two swap axes — the list

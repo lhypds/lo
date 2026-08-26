@@ -15,7 +15,9 @@ import styles from "./account.module.css";
 // list and somebody else's profile both stopped making when they became sheets.
 // Nothing here is worth an address of its own: an account is not somewhere you
 // go, and it is nobody's to open but yours, so there is nothing to link to,
-// bookmark or send.
+// bookmark or send. That is the line between this and a conversation, which is
+// all three — and which is why messages, alone of the three, kept a page as well
+// for the screens a sheet cannot hold one on. See MessagesPage.
 //
 // Unlike the other two sheets this one has exactly one way in — the figure in
 // the top bar, which mounts it — so it is opened by a prop rather than through a

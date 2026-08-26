@@ -1,9 +1,5 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import styles from "./modal.module.css";
-
-// Below this much of the window missing, whatever has taken the space is the
-// keyboard rather than a browser's own chrome sliding in or out.
-const KEYBOARD_MIN = 120;
 
 // How many sheets are open at once. Sheets stack — a profile opens over a
 // conversation and closes back onto it — so the page underneath has to stay
@@ -12,10 +8,6 @@ const KEYBOARD_MIN = 120;
 // that is still behind an open sheet.
 let openSheets = 0;
 
-// `full` is for a sheet that is stayed in rather than glanced at — on a phone it
-// stops pretending to be a card over the page and takes the whole window. It is
-// a phone rule only: on a desktop the window is not the sheet's size, and a
-// conversation blown up to fill one reads as having lost the page behind it.
 const Modal = ({
   isOpen,
   onClose,
@@ -23,7 +15,6 @@ const Modal = ({
   children,
   closeOnOverlay = false,
   wide = false,
-  full = false,
   className,
 }) => {
   // Prevent touchmove on background
@@ -61,47 +52,6 @@ const Modal = ({
     };
   }, [isOpen]);
 
-  // A phone's keyboard does not take its room out of the window: on iOS it
-  // slides up over the page, `innerHeight` never moves, and the browser scrolls
-  // what it calls the visual viewport to keep the focused field in sight. A
-  // full-screen sheet is fixed to the window, so what that scroll carries off
-  // the top of the screen is the sheet's own header — the way back and the ✕,
-  // the two things somebody typing is most likely to want next.
-  //
-  // So while such a sheet is open it is measured against that visual viewport
-  // rather than the window: as tall as the part of the screen that can actually
-  // be seen, and moved down to wherever the browser has scrolled that part to.
-  // The header stays at the top of it, the composer sits on the keyboard, and
-  // the browser has nothing left to scroll out of the way. Written as custom
-  // properties rather than as height and top, so the desktop rules — which are
-  // outside the phone's media query and want none of this — are not overwritten
-  // by an inline style they cannot answer.
-  //
-  // The home bar's inset goes while the keyboard is up: it is there to keep the
-  // composer off a bar that the keyboard is now covering, and left in it would
-  // read as a gap between the two.
-  const boxRef = useRef(null);
-  useEffect(() => {
-    const viewport = window.visualViewport;
-    if (!isOpen || !full || !viewport) return undefined;
-    const box = boxRef.current;
-    if (!box) return undefined;
-    const sync = () => {
-      box.style.setProperty("--sheet-height", `${viewport.height}px`);
-      box.style.setProperty("--sheet-top", `${viewport.offsetTop}px`);
-      const keyboard = window.innerHeight - viewport.height > KEYBOARD_MIN;
-      if (keyboard) box.style.setProperty("--sheet-foot", "0px");
-      else box.style.removeProperty("--sheet-foot");
-    };
-    sync();
-    viewport.addEventListener("resize", sync);
-    viewport.addEventListener("scroll", sync);
-    return () => {
-      viewport.removeEventListener("resize", sync);
-      viewport.removeEventListener("scroll", sync);
-    };
-  }, [isOpen, full]);
-
   if (!isOpen) return null;
 
   const handleOverlayClick = (e) => {
@@ -112,12 +62,7 @@ const Modal = ({
 
   return (
     <div className={styles.overlay} onClick={handleOverlayClick}>
-      <div
-        ref={boxRef}
-        className={[styles.modal, wide ? styles.wide : "", full ? styles.full : "", className]
-          .filter(Boolean)
-          .join(" ")}
-      >
+      <div className={[styles.modal, wide ? styles.wide : "", className].filter(Boolean).join(" ")}>
         <div className={styles.header}>
           {title && <span className={styles.title}>{title}</span>}
           <button className={styles.closeButton} onClick={onClose} disabled={!onClose} aria-label="Close">

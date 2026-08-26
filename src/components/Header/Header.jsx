@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ActionButton, Link, useNavigate } from "../../ui/index.js";
+import { useHandheld } from "../../utils/device.js";
 import { MARK_PIN_EYE, MARK_PIN_PATH } from "../../utils/icons.js";
 import { useAuth } from "../AuthProvider/index.js";
 import { useHere } from "../LocationProvider/index.js";
 import AccountModal from "../AccountModal/index.js";
 import LanguageSwitcher from "../LanguageSwitcher/index.js";
-import MessagesModal, { openMessages } from "../MessagesModal/index.js";
+import MessagesModal, { useOpenMessages } from "../MessagesModal/index.js";
 import UserModal from "../UserModal/index.js";
 
 export default function Header({ back = false, backTo = "/" }) {
@@ -14,6 +15,10 @@ export default function Header({ back = false, backTo = "/" }) {
   const { user } = useAuth();
   const { coords, refresh, unread } = useHere();
   const navigate = useNavigate();
+  // Which frame messages open in here — the sheet below, or the page — and
+  // whether there is a sheet to mount at all.
+  const openMessages = useOpenMessages();
+  const handheld = useHandheld();
   const [refreshing, setRefreshing] = useState(false);
   // The account sheet is the only one of the three opened from here and nowhere
   // else, so it is held open by the bar rather than by a module the way the
@@ -79,11 +84,13 @@ export default function Header({ back = false, backTo = "/" }) {
           {/* What somebody said to you, rather than what somebody left on the
               ground: posts are addressed to nobody and this is addressed to you,
               so it is the one thing in the top bar that can be waiting. The dot
-              says something is; how much is the sheet's own answer.
+              says something is; how many is the answer inside.
 
-              A sheet rather than a page, so reading it costs nothing: the
-              dashboard is still underneath, and closing puts the reader back
-              exactly where they were standing. */}
+              A sheet on a desktop, so reading it costs nothing: the dashboard is
+              still underneath, and closing puts the reader back exactly where
+              they were standing. On a phone the same press opens the page
+              instead, where a sheet would only be the window with the dashboard
+              showing through its edges — see MessagesPage. */}
           {user && (
             <span className="topbar-badge">
               <ActionButton
@@ -118,8 +125,14 @@ export default function Header({ back = false, backTo = "/" }) {
           bar is sticky and carries a stacking context of its own, and a sheet
           opened in there would be pinned under it. Out here they are children of
           the page, like every other sheet in lo — and because the bar is on
-          every page, so are they, which is what lets a name anywhere open one. */}
-      {user && <MessagesModal />}
+          every page, so are they, which is what lets a name anywhere open one.
+
+          The messages sheet only where it is the frame messages open in: on a
+          phone that press goes to the page instead, and a sheet nothing can open
+          is a loop and a fetch waiting behind a button that will never be
+          pressed. The profile sheet stays either way — it opens over the
+          conversation page as readily as over the dashboard. */}
+      {user && !handheld && <MessagesModal />}
       {user && <UserModal />}
       {user && <AccountModal isOpen={accountOpen} onClose={() => setAccountOpen(false)} />}
     </>

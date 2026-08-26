@@ -1,2 +1,2 @@
 export { default } from "./MessagesModal.jsx";
-export { openMessages } from "./messagesApi.js";
+export { openMessages, useOpenMessages } from "./messagesApi.js";

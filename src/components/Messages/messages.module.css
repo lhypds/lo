@@ -1,29 +1,31 @@
-/* The name of the thread, which is also the way back to the list of them. It
-   sits in the sheet's own title slot, so it wears the title's face and is a
-   button only in what it does. */
-.back {
-  padding: 0;
-  border: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
-}
+/* The conversation itself, in whichever frame is holding it: the sheet over the
+   dashboard on a desktop, the page of its own on a phone. Everything here is
+   sized against that frame rather than against the window — the frame is a flex
+   column with a height of its own, and these are its parts. */
 
-/* The list of people, at the height the thread view keeps: the sheet is the same
-   size either way, so opening a conversation does not resize it under the
-   pointer that opened it. */
+/* All the room the frame has left under whatever it puts at the top. The same
+   share in both views, so opening a conversation does not resize the thing that
+   was pressed to open it. */
 .threads {
-  height: 48vh;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
-  overflow-x: hidden;
-  overscroll-behavior: contain;
-  touch-action: pan-y pinch-zoom;
+  /* Out to the frame's own edges, which the row's matching padding then brings
+     the type back from: the rules between rows run the full width of the sheet
+     or the column, and the names still line up with whatever is above them. */
   margin: 0 -6px;
+  /* Naming one axis makes the other one auto, not visible; the rows are a column
+     of type and there is nothing out to the side to reach. touch-action says the
+     same thing to the finger, and leaves pinch-zoom alone. */
+  overflow-x: hidden;
+  touch-action: pan-y pinch-zoom;
+  /* The only scroller in the frame: without this, running off its end hands the
+     gesture to whatever is underneath and bounces it */
+  overscroll-behavior: contain;
 }
 
 /* Ruled top and bottom as well as between, so the list is a block with a lid and
-   a floor rather than a run of rows fading into the sheet. It is also what says
+   a floor rather than a run of rows fading into the paper. It is also what says
    the list has ended: the last row and the empty space under it were separated
    by nothing, which on a short mailbox read as a list still going. */
 .list {
@@ -37,8 +39,10 @@
   border-bottom: 1px solid var(--line);
 }
 
-/* The whole row is the press, and it is a button rather than a link: a thread is
-   a place inside this sheet now, not an address of its own. */
+/* The whole row is the press — a link where the frame has given threads an
+   address of their own, a button where a thread is a place inside it. Undressed
+   as a link in either case: the row is the thing being pressed, and an
+   underlined name inside it would be a second one inside the first. */
 .row {
   width: 100%;
   display: flex;
@@ -50,6 +54,7 @@
   background: none;
   color: inherit;
   text-align: left;
+  text-decoration: none;
 }
 
 .lines {
@@ -98,21 +103,10 @@
   text-align: center;
 }
 
-/* A definite height, so the composer sits at the foot of the sheet and the
-   conversation scrolls above it rather than pushing it off. Short enough to
-   leave the page showing around the sheet on a phone — and the same height the
-   list of threads keeps, so opening a conversation does not resize the sheet
-   under the pointer that opened it. */
-.thread {
-  height: 48vh;
-  display: flex;
-  flex-direction: column;
-}
-
 /* The strip over the conversation, holding the one thing there is to do about
    the person on the other end of it. Right-aligned and in the same small mono
-   the timestamps wear: the name is already in the sheet's title, and this is a
-   way through rather than a heading of its own. It keeps its height whatever
+   the timestamps wear: the name is already at the top of the frame, and this is
+   a way through rather than a heading of its own. It keeps its height whatever
    happens below it, so the lines scroll under it rather than push it away. */
 .who {
   flex: 0 0 auto;
@@ -131,14 +125,11 @@
 }
 
 /* A column, so a short conversation can be pushed down to the composer rather
-   than left hanging at the top of a mostly empty sheet — see the auto margin
+   than left hanging at the top of a mostly empty frame — see the auto margin
    below, which is the way to do that without breaking the scroll.
 
    Plain paper: the bubbles say where the conversation is on their own, and the
-   thread is quieter read off the same ground as everything else. The negative
-   margin runs the scrolling column out to the sheet's own edges so the
-   scrollbar rides there rather than inset over the lines, and the padding puts
-   the bubbles back where the sheet's edge would have held them. */
+   thread is quieter read off the same ground as everything else. */
 .scroll {
   flex: 1;
   min-height: 0;
@@ -148,13 +139,11 @@
   overflow-x: hidden;
   overscroll-behavior: contain;
   touch-action: pan-y pinch-zoom;
-  margin: 0 -16px;
-  padding: 0 16px;
   background-color: var(--paper);
 }
 
 /* The auto margin eats whatever height is left over, which sits the lines on the
-   floor of the sheet; once there are more of them than fit there is nothing left
+   floor of the frame; once there are more of them than fit there is nothing left
    over, it collapses to nothing, and the oldest line is still reachable by
    scrolling up. `justify-content: flex-end` would look the same and put that
    line somewhere the scrollbar cannot reach. */
@@ -211,9 +200,9 @@
   padding-top: 10px;
 }
 
-/* Centred in whatever room it has in a thread, where the sheet has a height of
-   its own to fill; in a mailbox box it is a block and the auto margins
-   come to nothing, which leaves it where it already was. */
+/* Centred in whatever room it has in a thread, where the column has a height of
+   its own to fill; in a mailbox it is a block and the auto margins come to
+   nothing, which leaves it where it already was. */
 .empty {
   margin: auto 0;
   padding: 34px 12px;
@@ -222,32 +211,10 @@
   font-size: 12px;
 }
 
-/* On a phone the sheet is the window (see `full` in ui/Modal), so neither view
-   has to guess at a share of it any more: both take the height the sheet has
-   left after its header, and the composer sits on the floor of the screen with
-   the conversation scrolling above it. The two stay the same height as each
-   other here, the way they are at every other width — opening a conversation
-   should not resize the thing it opened in. The breakpoint is the sheet's, not
-   the dashboard's: it has to be the same 560px, or between the two there would
-   be a window where the sheet is full-screen and its contents are still 48vh
-   tall. */
-@media (max-width: 560px) {
-  .threads,
-  .thread {
-    flex: 1;
-    min-height: 0;
-    height: auto;
-  }
-}
-
 @media (hover: hover) {
-  .back:hover,
-  .profile:hover {
-    text-decoration: underline;
-  }
-
   .profile:hover {
     color: var(--ink);
+    text-decoration: underline;
   }
 
   .row:hover {

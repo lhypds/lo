@@ -1,0 +1,30 @@
+/* The page's column, the same 600px every other list on the site keeps, and a
+   column rather than a scroll: the top of it is the name, the middle is the only
+   thing that scrolls, and the foot is the composer. That is what keeps the
+   composer on the floor of the window instead of at the end of a conversation
+   the reader would have to scroll to reach. It is also the box the conversation
+   itself is sized against — see components/Messages, which is the half of this
+   screen the desktop's sheet is holding too.
+
+   --view-foot is the room under it, given up while the keyboard is up (see
+   MessagesPage): with the keys on screen there is no bottom edge to hold clear
+   — the page ends where the keyboard begins — and the room would read as a gap
+   between the composer and the keys rather than as a margin. The inset is for
+   the home bar in standalone mode, where there is no browser chrome to sit
+   above. */
+.main {
+  flex: 1;
+  min-height: 0;
+  width: min(100%, 600px);
+  margin: 0 auto;
+  padding: 16px 12px;
+  padding-bottom: var(--view-foot, calc(12px + env(safe-area-inset-bottom)));
+  display: flex;
+  flex-direction: column;
+}
+
+/* The name gives up no height to the thing under it: what scrolls is the
+   conversation, and who it is with stays where it is. */
+.heading {
+  flex: 0 0 auto;
+}

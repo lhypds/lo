@@ -1,0 +1,26 @@
+/* The name of the thread, which is also the way back to the list of them. It
+   sits in the sheet's own title slot, so it wears the title's face and is a
+   button only in what it does. */
+.back {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+/* What the conversation is sized against — see MessagesModal. Short enough to
+   leave the page showing around the sheet, which on a desktop is the point of
+   its being a sheet at all. */
+.box {
+  height: 48vh;
+  display: flex;
+  flex-direction: column;
+}
+
+@media (hover: hover) {
+  .back:hover {
+    text-decoration: underline;
+  }
+}

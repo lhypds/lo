@@ -5,7 +5,7 @@ import { Link } from "../../ui/index.js";
 import { CONTACTS } from "../../utils/contacts.js";
 import { formatCoords, formatUsername, relativeTime } from "../../utils/format.js";
 import { useAuth } from "../AuthProvider/index.js";
-import { openMessages } from "../MessagesModal/messagesApi.js";
+import { useOpenMessages } from "../MessagesModal/messagesApi.js";
 import styles from "./user.module.css";
 
 // Who somebody is, in the four things one account can ask about another: the
@@ -22,6 +22,7 @@ import styles from "./user.module.css";
 export default function UserProfile({ username, linkName = false, onDone }) {
   const { t, i18n } = useTranslation();
   const { user } = useAuth();
+  const openMessages = useOpenMessages();
   const [profile, setProfile] = useState(null);
   const [posts, setPosts] = useState([]);
   const [error, setError] = useState("");
@@ -72,6 +73,12 @@ export default function UserProfile({ username, linkName = false, onDone }) {
                 // are named after the app the handle belongs to, and so is this.
                 label: "lo",
                 value: t("user.message"),
+                // Off to the conversation, in whichever frame this screen opens
+                // them in — the sheet on a desktop, the page on a phone; the
+                // profile has no opinion on that and does not need one. Its own
+                // sheet is told to close on the way out: on a desktop the
+                // conversation opens where it is standing, and on a phone it is
+                // over the page being left.
                 press: () => {
                   onDone?.();
                   openMessages(username);
