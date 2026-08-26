@@ -421,6 +421,18 @@ a {
     grid-row: 1 / span 2;
   }
 
+  /* The same corner, for the news pulled a third tile down: the pin has to say
+     how many rows it is holding, so a panel that grows needs the pin to grow with
+     it — left at two the card would be three tiles tall standing in two rows of
+     the grid, and everything under it would ride up into its bottom edge. Only
+     the news asks for this; a panel anywhere else on the grid takes its rows from
+     its own height (see .wide.tall in the card's stylesheet), and it is being
+     pinned by hand that makes this one the exception. */
+  .home-main .card-grid > .panel-lead-tall {
+    grid-column: 3 / span 2;
+    grid-row: 1 / span 3;
+  }
+
   /* What the country says about the place — the warnings and what it is
      searching for — is pinned to the right half of the rows under the news
      panel, which is the rest of that same reading. That leaves the left half to
@@ -858,13 +870,19 @@ a {
   padding-top: clamp(40px, 10vh, 96px);
 }
 
-.plain-form,
+/* A profile is not a form, so it is not held to a form's column: 360px is the
+   width of an answer being typed, and this page is rows being read. It takes the
+   dashboard's own measure instead — two of the grid's squares and the gap
+   between them, which is the 600px column the dashboard and both list pages
+   keep, less the 12px it is padded with on each side. */
 .profile-card {
   width: 100%;
-  max-width: 360px;
+  max-width: 576px;
 }
 
 .plain-form {
+  width: 100%;
+  max-width: 360px;
   display: flex;
   flex-direction: column;
   gap: 18px;
@@ -977,6 +995,183 @@ a {
 .profile-text {
   padding: 8px 10px;
   font-size: 12px;
+}
+
+/* The picture field, built like the fields under it: its name on a line of small
+   grey type and the thing itself below, at the 4px a label stands off its own box
+   everywhere else in this form. The label used to sit beside the frame, in the
+   column with the buttons, which saved a row and cost the reading — a form is read
+   down its left edge, and one field naming itself somewhere off to the right is
+   the one the eye has to go back for. */
+.profile-avatar-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Under the label, the picture and what there is to do about it side by side: the
+   frame is the size the picture will be drawn at, and the buttons take the space
+   beside it, which a 64px box leaves plenty of. */
+.profile-avatar-row {
+  display: flex;
+  /* Set on the bottom rather than the middle: a button whose underside sits a
+     couple of pixels above the picture's own reads as neither aligned nor
+     deliberately offset. */
+  align-items: flex-end;
+  gap: 12px;
+}
+
+/* The frame, which is also the button: pressing the picture is how a picture is
+   changed, and an empty one is the same press. Square, ruled like every box in
+   here, and holding either the picture or the figure that stands in for one. */
+.profile-avatar {
+  flex: none;
+  width: 64px;
+  height: 64px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  background: var(--paper);
+}
+
+.profile-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* The stand-in, drawn in the grey the empty states of the app are written in:
+   what the box is missing is the thing it is asking for, and full ink would read
+   as a picture of a person rather than as the absence of one. */
+.profile-avatar svg {
+  width: 32px;
+  height: 32px;
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+}
+
+.profile-avatar-buttons {
+  min-width: 0;
+  display: flex;
+  gap: 6px;
+}
+
+/* Never on the page: the file control is reached by the buttons that are (see
+   ProfileForm), and no browser lets one be drawn to match anything around it. */
+.profile-file {
+  display: none;
+}
+
+/* The smaller of the two controls in this form — choose a picture, take it down,
+   add a link. Same white box and black rule as Save, sized to the word the way
+   the sheet sizes the way out: 12px of type with 4px of air over and under it,
+   which is a control that is pressed rather than one that is arrived at. */
+.profile-small {
+  align-self: flex-start;
+  padding: 4px 10px;
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 1;
+}
+
+/* Everywhere else somebody keeps an account: a column of rows, the label over
+   them, spaced the way a field is spaced from its own label. */
+.profile-links {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Which platform, the handle, and the way to take the row off. The menu is as
+   wide as the longest name it holds and no wider — the handle is what is read
+   along this row, so it takes what is left. */
+.profile-link-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.profile-link-row .profile-input {
+  min-width: 0;
+  flex: 1;
+}
+
+/* Drawn to the boxes beside it rather than to the browser's own idea of a menu:
+   appearance: none is what makes a select a box in lo's ink, and the arrow is
+   drawn back on as a background so there is still something saying it opens. */
+.profile-select {
+  flex: none;
+  max-width: 40%;
+  height: 32px;
+  padding: 0 22px 0 8px;
+  appearance: none;
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  outline: 0;
+  background-color: var(--paper);
+  /* A chevron, in the ink the type is set in, 6px of it against the right edge */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%230b0b0b' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 8px 6px;
+  color: var(--ink);
+  font-size: 12px;
+}
+
+/* The way a row comes off, and the size of the buttons in a card's heading: the
+   smallest square in lo that can still be pressed, which is what a control that
+   deletes one line of a form should be — reachable, and never the thing the eye
+   lands on first. */
+.profile-remove {
+  flex: none;
+  width: 22px;
+  height: 32px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.profile-remove svg {
+  width: 10px;
+  height: 10px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+
+/* Under the last row and at the left, where the next row would begin — the one
+   control in this form that adds rather than finishes, and the only reason it is
+   not at the right-hand end with Save. */
+.profile-add {
+  margin-top: 4px;
+}
+
+@media (hover: hover) {
+  .profile-small:hover:not(:disabled),
+  .profile-remove:hover {
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  .profile-avatar:hover:not(:disabled) svg {
+    stroke: var(--ink);
+  }
 }
 
 /* The form's one control, on the same terms as the sheet's own: white with a

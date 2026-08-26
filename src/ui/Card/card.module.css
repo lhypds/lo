@@ -35,6 +35,16 @@
   height: var(--tile);
 }
 
+/* `wide tall` is the same panel a third tile deep — the tallest thing the grid
+   has, and the one size a card cannot say with aspect-ratio, since three tiles
+   down and two across is no ratio the width knows about. Counted out of --tile
+   for the reason .half is, and with the two gaps the tiles it is standing in
+   place of would have had between them: the panel covers three rows of the module
+   exactly, so whatever is beside it still lines up. */
+.tall {
+  height: calc(var(--tile) * 3 + 20px);
+}
+
 /* Past the width of two of those panels the dashboard grid is four columns
    instead of two (see .card-grid in styles.css, same breakpoint), so covering
    four squares means half the grid rather than all of it. `wide` on its own
@@ -48,6 +58,11 @@
   .wide.half {
     grid-column: span 2;
     grid-row: span 1;
+  }
+
+  .wide.tall {
+    grid-column: span 2;
+    grid-row: span 3;
   }
 }
 

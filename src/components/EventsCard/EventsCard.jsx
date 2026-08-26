@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
 import { Card, Skeleton } from "../../ui/index.js";
-import { LARGE, useCardSize } from "../../utils/cards.js";
+import { LARGE, SMALL, TALL, useCardSize } from "../../utils/cards.js";
 import { relativeTime } from "../../utils/format.js";
 import CardSize from "../CardSize/index.js";
 import { useHere } from "../LocationProvider/index.js";
@@ -25,6 +25,9 @@ function coordKey(coords) {
 export default function EventsCard() {
   const { t, i18n } = useTranslation();
   const { coords, reloadToken } = useHere();
+  // Up to six squares like the news, and for the same reason: a week's worth of
+  // what is on is a longer list than two tiles hold (see utils/cards.js). It stays
+  // in the right-hand column at every one of them — it is the news that moves.
   const size = useCardSize("events");
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
@@ -94,8 +97,9 @@ export default function EventsCard() {
       meta={result?.place?.name}
       action={<CardSize id="events" />}
       wide
-      half={size !== LARGE}
+      half={size === SMALL}
       square={size === LARGE}
+      tall={size === TALL}
       flush
       // The right half of the grid on a wide screen, with the warnings and the
       // trending list: what the place itself has to say, in one column under the

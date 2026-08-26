@@ -96,6 +96,16 @@ export async function preload(url) {
   });
 }
 
+// A stored picture comes back on a post or a profile as the URL that serves it,
+// and what writing one takes is the bare name — the file is content-addressed, so
+// the last segment is it. Undone here rather than carried as a second field on
+// every row: the shape of that URL is one line of SQL away, and the two things
+// that write a picture — the post sheet, and the profile on its way into the form
+// (see profileFields) — are the only ones that ever have to undo it.
+export function storedName(url) {
+  return url ? String(url).split("/").pop() : null;
+}
+
 // Sends the bytes as they are; the server names the file after their digest and
 // hands back { name, url, bytes, type }.
 export async function uploadImage(blob) {

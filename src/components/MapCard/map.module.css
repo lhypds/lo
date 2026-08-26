@@ -369,11 +369,12 @@
    not the pin again. Where the name is reached for and pressed is the bubble the
    reader chose by clicking its pin — that one stays up under the pointer, which
    is what choosing means here. */
+/* An anchor to /<name>, which is why there is no box to undo here any more —
+   it was a button until the profile stopped being a sheet. What is left is what
+   an anchor in a bubble needs said: the pointer let through, and the colour and
+   the type of the grey line it is standing in rather than a link's own. */
 .postPopupWho {
   pointer-events: auto;
-  padding: 0;
-  border: 0;
-  background: none;
   color: inherit;
   font: inherit;
   text-decoration: underline;

@@ -3,13 +3,15 @@ import { useSyncExternalStore } from "react";
 // How much of the grid a panel covers, counted in squares. One is the square the
 // clock and the weather stand in, the smallest tile there is; two is the width of
 // the panel column — the whole grid on a phone, half of it on a laptop — one tile
-// tall; four is that same width and twice the height, which is the largest tile
-// the grid has. Nothing in between, because anything in between is off the module
-// the whole page is drawn on (see .card-grid in styles.css).
+// tall; four is that same width and twice the height; six is that width three
+// tiles tall, the tallest thing on the grid. Nothing in between, because anything
+// in between is off the module the whole page is drawn on (see .card-grid in
+// styles.css).
 export const TINY = 1;
 export const SMALL = 2;
 export const LARGE = 4;
-const SIZES = [TINY, SMALL, LARGE];
+export const TALL = 6;
+const SIZES = [TINY, SMALL, LARGE, TALL];
 
 // Which cards the dashboard is carrying. Two questions decide it and only one of
 // them is the reader's: whether the place can feed a card at all is the server's
@@ -50,6 +52,15 @@ const SIZES = [TINY, SMALL, LARGE];
 // square. What the reader does from either default — a card added, a panel given
 // more room — is the only thing the layout below remembers.
 //
+// `max` is the other end of the same ladder, and it is four squares unless a card
+// says otherwise: two tiles is as tall as a panel can be and still leave the
+// square block beside it looking like part of the same grid. The two feeds that
+// come back with more rows than that — the newswire and what is on this week —
+// say `max: TALL` and can be pulled a third tile down, because there the extra
+// height is more of the answer rather than more air under it: the posts and the
+// people run to a handful of rows and the trending list to ten by definition,
+// while these two arrive long and are read by scrolling inside a tile.
+//
 // The clock, the weather and the map are single squares and never resize: those
 // three with the mark button are the block the rest of the grid is set against.
 export const CARDS = [
@@ -59,8 +70,8 @@ export const CARDS = [
   { id: "posts", label: "posts.nearby", own: true, off: true },
   { id: "people", label: "people.nearby", own: true, min: TINY },
   { id: "warnings", label: "warnings.title", min: TINY },
-  { id: "nearby", label: "news.title", off: true },
-  { id: "events", label: "events.title", off: true },
+  { id: "nearby", label: "news.title", off: true, max: TALL },
+  { id: "events", label: "events.title", off: true, max: TALL },
   { id: "trends", label: "trends.title", off: true },
 ];
 
@@ -115,11 +126,14 @@ function isOn(choices, id) {
 }
 
 // Every size a panel is offered at, smallest first — the ladder the pair of
-// buttons in its heading walks (see CardSize). Where it starts is the card's own
-// `min`, and the top is the same for all of them.
+// buttons in its heading walks (see CardSize). Both ends are the card's own: where
+// it starts is `min` and where it stops is `max`, and most cards take the defaults
+// for both and get the same two rungs everything else has.
 export function cardSizes(id) {
-  const min = BY_ID.get(id)?.min ?? SMALL;
-  return SIZES.filter((size) => size >= min);
+  const card = BY_ID.get(id);
+  const min = card?.min ?? SMALL;
+  const max = card?.max ?? LARGE;
+  return SIZES.filter((size) => size >= min && size <= max);
 }
 
 // The reader's answer where there is one and the card's smallest where there is

@@ -7,8 +7,9 @@ import styles from "./size.module.css";
 // step more room and a minus that hands the step back. One step at a time up the
 // panel's own ladder rather than a jump to either end (see cardSizes in
 // utils/cards.js) — most panels have two rungs and the two buttons are the two of
-// them, and the panels that can also stand in a single square have three, where a
-// button that jumped would put the middle one out of reach.
+// them, and the ones that reach further at either end — down to a single square,
+// up to a third tile — have three, where a button that jumped would put the middle
+// one out of reach.
 //
 // At either end of the ladder one of the two buttons is spent — shown rather than
 // hidden, because a control that comes and goes moves the other one under the

@@ -1,20 +1,56 @@
-/* The same column the account page keeps, on the page and in the sheet both: a
-   profile is a short list of short answers, and the two frames it appears in
-   should not be two readings of it. */
+/* The same column the account page keeps: a profile is a short list of short
+   answers, and who somebody else is should not be read differently from how your
+   own record is. */
 .profile {
   display: flex;
   flex-direction: column;
 }
 
+/* The picture, and the name on the line under it. A column rather than a row:
+   beside the name the picture was a bullet in front of a heading, sized to the
+   type it stood next to — and a profile picture is the one thing on this page
+   that is looked at rather than read, so it goes first and it goes whole, with
+   the name underneath it the way a caption sits under what it names.
+   Where there is no picture the column is the name's own line and nothing has
+   moved: the row below still holds both ends of it. */
 .head {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
+  flex-direction: column;
+  gap: 10px;
 }
 
-/* The name is the heading on the page and the way through to it in the sheet, so
-   it is one rule wearing two tags — an h1 and an anchor read the same here. */
+/* The name and the day, at the two ends of the line under the picture. Wrapping,
+   because this line is as wide as the column now rather than as wide as what is
+   left beside a square — a long name takes the line and the day drops under it
+   rather than squeezing it. */
+.headNames {
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+}
+
+/* Square, ruled like every other box in lo, and cropped to fill rather than
+   letterboxed: a profile picture is whatever shape it was taken in, and the page
+   is a grid of squares.
+   96 rather than the 64 it was: on its own line it is not being sized against a
+   heading any more, and this is a picture of somebody rather than a marker
+   saying there is one. The sheet that uploads it keeps 320 (see ProfileForm),
+   which is this at three times the pixels. */
+.avatar {
+  align-self: flex-start;
+  width: 96px;
+  height: 96px;
+  object-fit: cover;
+  border: 1px solid var(--ink);
+  display: block;
+}
+
+/* The name is the heading of the page. text-decoration is still spelled out: it
+   was an anchor when a sheet drew this same column, and it is the sort of thing a
+   heading should say for itself rather than inherit an answer to. */
 .name {
   min-width: 0;
   margin: 0;
@@ -61,9 +97,15 @@
   margin: 0;
 }
 
+/* Set on the baseline: the label is 13px of sans and the value 12px of mono, so
+   two boxes squared off at the top leave the two lines of type sitting a pixel or
+   so apart. What is read across this row is the words, and the words share a line.
+   A value that runs to more than one line still starts on it — the rest of it
+   hangs below, which is where the rest of an answer belongs. */
 .contacts div {
   display: grid;
   grid-template-columns: 80px 1fr;
+  align-items: baseline;
   gap: 12px;
   padding: 10px 0;
   border-bottom: 1px solid var(--line);
@@ -82,9 +124,11 @@
   overflow-wrap: anywhere;
 }
 
-/* The lo row's own value is a way through rather than a handle, and it is set to
-   read as one of the list rather than as a control dropped into it: same face,
-   same size, same underline the addresses beside it carry. */
+/* Every value is a control now — pressing one copies it — and every one of them
+   is set to read as one of the list rather than as a control dropped into it:
+   same face, same size, same underline the addresses used to carry when some of
+   these rows were links. The underline is what says a row can be pressed, and
+   that is still true of it; what is on the other side of the press has changed. */
 .contacts dd button {
   padding: 0;
   border: 0;
@@ -107,19 +151,26 @@
 }
 
 /* The dashboard's post row, in a narrower column: a thumbnail, two lines, and
-   the whole of it pressable. */
+   the whole of it pressable. Set on the top rather than the middle: the words
+   start where the picture starts, so a row whose post runs to one line reads
+   against the same edge as one that runs to two, and the time under them lands
+   wherever the words leave it rather than being centred with them. */
 .post {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
   padding: 8px 0;
   text-decoration: none;
 }
 
+/* 48 rather than 32: the row beside it is two lines of type and a line of grey,
+   and at 32 the picture was shorter than the words it belonged to — which read as
+   an icon on a row rather than as the photograph the post is mostly made of. This
+   is as tall as the row it is in. */
 .thumb {
   flex: 0 0 auto;
-  width: 32px;
-  height: 32px;
+  width: 48px;
+  height: 48px;
   border: 1px solid var(--ink);
   background: var(--soft);
   object-fit: cover;
@@ -177,7 +228,6 @@
     text-decoration: underline;
   }
 
-  .contacts a:hover,
   .contacts dd button:hover {
     text-decoration: none;
   }

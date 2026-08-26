@@ -6,17 +6,22 @@ import { useAuth } from "../AuthProvider/index.js";
 import AccountModal from "../AccountModal/index.js";
 import AddCard from "../AddCard/index.js";
 import LanguageSwitcher from "../LanguageSwitcher/index.js";
-import UserModal from "../UserModal/index.js";
 
-// `cards` is the dashboard asking for its own contents page in the bar. Only the
-// dashboard has one: it is the only page made of cards, and a menu of them over
-// the marks list would be a list of things that are somewhere else.
+// `cards` puts the dashboard's own contents page in the bar. On the three pages
+// that are your own — the dashboard, your posts, your spots — because what the
+// dashboard carries is a setting rather than a thing on the page under it, and a
+// reader who has just come back from the posts list is exactly the reader who
+// wants the posts panel on the grid. It costs the trip home to want it and
+// another to use it if the menu is only ever at home.
+//
+// Not on a profile: that page is somebody else's, and a control for the shape of
+// your own dashboard has no business in the bar over it.
 export default function Header({ back = false, backTo = "/", cards = false }) {
   const { t } = useTranslation();
   const { user } = useAuth();
   const navigate = useNavigate();
-  // The account sheet is the one opened from here and nowhere else, so it is
-  // held open by the bar rather than by a module the way the profile sheet is.
+  // The account sheet is opened from here and nowhere else, so the bar holds it
+  // open itself rather than through a module anything could call.
   const [accountOpen, setAccountOpen] = useState(false);
 
   // There is no refresh button. The dashboard keeps itself current — the fix
@@ -46,9 +51,10 @@ export default function Header({ back = false, backTo = "/", cards = false }) {
           )}
         </span>
         <span className="topbar-action-slot topbar-action-slot-right">
-          {/* First of the right-hand buttons: the only one that is about the page
-              under the bar rather than about somewhere else in lo. Its list opens
-              rightwards over its own row (see add.module.css). */}
+          {/* First of the right-hand buttons: the only one that is about the
+              dashboard rather than about somewhere else in lo — which on the two
+              list pages is the page you came from and will go back to. Its list
+              opens rightwards over its own row (see add.module.css). */}
           {cards && <AddCard />}
           {/* A letter rather than a drawing, because the thing it opens is drawn
               as a letter: the squares on the map say p, and so does this. */}
@@ -80,12 +86,10 @@ export default function Header({ back = false, backTo = "/", cards = false }) {
         </span>
       </header>
 
-      {/* Both sheets are mounted beside the bar rather than inside it: the bar is
-          sticky and carries a stacking context of its own, and a sheet opened in
-          there would be pinned under it. Out here they are children of the page,
-          like every other sheet in lo — and because the bar is on every page, so
-          are they, which is what lets a name anywhere open one. */}
-      {user && <UserModal />}
+      {/* Mounted beside the bar rather than inside it: the bar is sticky and
+          carries a stacking context of its own, and a sheet opened in there would
+          be pinned under it. Out here it is a child of the page, like every other
+          sheet in lo. */}
       {user && <AccountModal isOpen={accountOpen} onClose={() => setAccountOpen(false)} />}
     </>
   );

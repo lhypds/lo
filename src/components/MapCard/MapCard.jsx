@@ -2,15 +2,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import { ActionButton, Card } from "../../ui/index.js";
+import { ActionButton, Card, useNavigate } from "../../ui/index.js";
 import { formatCoords, formatDateTime, formatUsername } from "../../utils/format.js";
 import { MARK_PIN_EYE, MARK_PIN_PATH, MARK_PIN_TIP_Y } from "../../utils/icons.js";
 import { useAuth } from "../AuthProvider/index.js";
 import { useHere } from "../LocationProvider/index.js";
-// The opener rather than the sheet: this file is the one lo loads lazily, and
-// naming the component here would pull it and everything under it into the map's
-// own chunk to no purpose — the sheet is already mounted by the top bar.
-import { openProfile } from "../UserModal/userApi.js";
 import styles from "./map.module.css";
 
 const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
@@ -178,11 +174,17 @@ function markPopupElement(name, coords, iso, when) {
 // is still there underneath.
 //
 // The name on the byline is the one thing in a bubble that can be pressed, and
-// what it opens is the person: a post says somebody was standing here, and who
+// where it goes is the person: a post says somebody was standing here, and who
 // that is, is a fair next question to have an answer to. Everything else in here
 // stays deaf to the pointer — see .postPopupWho in map.module.css, which is the
 // one hole in that.
-function postPopupElement(post, headline, place, iso, when) {
+//
+// An anchor built by hand, and handed the router's own `navigate` rather than
+// reaching for it: this is DOM mapbox owns, outside any React tree, so there is
+// no Link to use and no context to read one from. Written as a real href all the
+// same, because that is what makes it a name that can be opened in a tab, copied
+// or sent to somebody — the press is intercepted, the address is not a pretence.
+function postPopupElement(post, headline, place, iso, when, navigate) {
   const wrapper = document.createElement("div");
   wrapper.className = styles.postPopup;
   if (post.image) {
@@ -200,15 +202,23 @@ function postPopupElement(post, headline, place, iso, when) {
   label.textContent = headline;
   const who = document.createElement("span");
   who.className = styles.markPopupMeta;
-  const name = document.createElement("button");
-  name.type = "button";
+  const path = `/${encodeURIComponent(post.username)}`;
+  const name = document.createElement("a");
   name.className = styles.postPopupWho;
+  name.href = path;
   name.textContent = formatUsername(post.username);
   name.addEventListener("click", (event) => {
     // Short of the map, which reads a click as "put the chosen bubble away" —
-    // the reader is opening the person, not dismissing the post.
+    // the reader is going to the person, not dismissing the post.
     event.stopPropagation();
-    openProfile(post.username);
+    // What the browser is being asked for by a held modifier or a middle button
+    // is a tab or a window, which is the href's business and not ours. The same
+    // hand-off Link makes (see ui/Router).
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+      return;
+    }
+    event.preventDefault();
+    navigate(path);
   });
   who.append(name);
   // Where the post was left, after the name and in the same grey: the two
@@ -292,6 +302,9 @@ export default function MapCard({
   const { t, i18n } = useTranslation();
   const { coords } = useHere();
   const { user } = useAuth();
+  // For the byline in a post's bubble, which is hand-built DOM outside the tree
+  // and so cannot carry a Link of its own (see postPopupElement)
+  const navigate = useNavigate();
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const hereMarkerRef = useRef(null);
@@ -627,6 +640,7 @@ export default function MapCard({
                 place,
                 post.time,
                 formatDateTime(post.time, i18n.language),
+                navigate,
               ),
             ),
           )
@@ -635,7 +649,7 @@ export default function MapCard({
       );
       return { id: post.id, marker };
     });
-  }, [posts, i18n.language, preview]);
+  }, [posts, i18n.language, preview, navigate]);
 
   // The pairing the other way round: a row under the pointer in the list opens
   // the bubble on its own pin, so whichever half the reader is looking at, the

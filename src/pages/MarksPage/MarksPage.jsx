@@ -88,7 +88,7 @@ export default function MarksPage() {
 
   return (
     <div className="page-shell marks-page">
-      <Header back />
+      <Header back cards />
       <div className="marks-map">
         <Suspense fallback={<div className="marks-map-placeholder" />}>
           {/* The map narrows with the list: they are two halves of one answer,

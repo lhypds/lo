@@ -15,15 +15,29 @@ db.exec(`
   -- line about yourself and the ways you can be reached off lo. A contact is
   -- kept as the bare handle its own app asks for — an address, a LINE ID, a
   -- number, a WeChat ID — because that is what a reader would have to type into
-  -- that app anyway, and lo is in no position to check any of them.
+  -- that app anyway, and lo is in no position to check any of them. The website
+  -- is the exception it can: it is stored with its scheme on the front, because
+  -- what it is for is being pressed, and http or https is the whole of what lo
+  -- will put in a link (see readProfile in index.js).
   CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    -- A file name from data/images, the same as a post's photo and never bytes
+    avatar TEXT,
     bio TEXT,
     email TEXT,
+    website TEXT,
     line_id TEXT,
     whatsapp TEXT,
     wechat TEXT,
+    -- Everywhere else somebody keeps an account, as a JSON array of
+    -- {kind, value}. A column rather than a table of its own because it is a
+    -- list with no identity and no questions asked of it: it is written whole
+    -- every time the sheet saves, read whole with the row it belongs to, and its
+    -- order is the reader's own — which is a document, and SQLite is being asked
+    -- to keep it rather than to know anything about it. Parsed on the way out of
+    -- this file, so nothing above ever sees the string.
+    links TEXT,
     created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
   );
 
@@ -85,7 +99,16 @@ db.exec(`
 // above. On a database made by the CREATE above every one of these is already
 // there and the loop does nothing.
 const userColumns = new Set(db.prepare(`PRAGMA table_info(users)`).all().map((column) => column.name));
-for (const column of ["bio", "email", "line_id", "whatsapp", "wechat"]) {
+for (const column of [
+  "avatar",
+  "bio",
+  "email",
+  "website",
+  "line_id",
+  "whatsapp",
+  "wechat",
+  "links",
+]) {
   if (!userColumns.has(column)) db.exec(`ALTER TABLE users ADD COLUMN ${column} TEXT`);
 }
 
@@ -96,8 +119,14 @@ for (const column of ["bio", "email", "line_id", "whatsapp", "wechat"]) {
 const PROFILE_COLUMNS = `
   u.username,
   u.created_at AS createdAt,
+  -- The URL rather than the name it is stored under, the same way a post hands
+  -- over its photo: every reader of this wants the address, and the one place
+  -- that needs the name back is the sheet that writes it (see profileFields).
+  CASE WHEN u.avatar IS NULL THEN NULL ELSE '/api/images/' || u.avatar END AS avatar,
+  u.links,
   u.bio,
   u.email,
+  u.website,
   u.line_id AS line,
   u.whatsapp,
   u.wechat
@@ -120,7 +149,7 @@ const selectProfileByName = db.prepare(`
 // deleted rather than what they left alone.
 const updateProfileFields = db.prepare(`
   UPDATE users
-  SET bio = ?, email = ?, line_id = ?, whatsapp = ?, wechat = ?
+  SET avatar = ?, links = ?, bio = ?, email = ?, website = ?, line_id = ?, whatsapp = ?, wechat = ?
   WHERE id = ?
 `);
 
@@ -271,12 +300,28 @@ const selectOtherPositions = db.prepare(`
   LIMIT ?
 `);
 
+// The one thing in a profile row that is not already the shape its reader wants:
+// the links are a JSON array on the way in and out of the column, and text
+// nowhere else in lo. Anything unreadable in there is read as no links at all —
+// a profile is still a profile without them, and there is nobody to tell.
+function withLinks(row) {
+  if (!row) return null;
+  let links = [];
+  try {
+    const parsed = JSON.parse(row.links ?? "[]");
+    if (Array.isArray(parsed)) links = parsed;
+  } catch {
+    // Left empty
+  }
+  return { ...row, links };
+}
+
 export function getUser(username) {
-  return selectUserByName.get(username) ?? null;
+  return withLinks(selectUserByName.get(username) ?? null);
 }
 
 export function getProfile(username) {
-  return selectProfileByName.get(username) ?? null;
+  return withLinks(selectProfileByName.get(username) ?? null);
 }
 
 // An empty field is stored as nothing rather than as an empty string, so "not
@@ -287,8 +332,13 @@ export function updateProfile(userId, profile) {
     return text || null;
   };
   updateProfileFields.run(
+    kept(profile.avatar),
+    // Stored as nothing when there are none, for the same reason every other
+    // empty field is: "[]" and NULL would be two ways of saying the same thing.
+    profile.links?.length ? JSON.stringify(profile.links) : null,
     kept(profile.bio),
     kept(profile.email),
+    kept(profile.website),
     kept(profile.line),
     kept(profile.whatsapp),
     kept(profile.wechat),

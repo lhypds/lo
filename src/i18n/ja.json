@@ -209,8 +209,18 @@
   },
   "profile": {
     "title": "プロフィール",
+    "avatar": "写真",
+    "avatarPick": "選ぶ",
+    "avatarClear": "削除",
+    "avatarWorking": "アップロード中",
+    "links": "ほかのサービス",
+    "linkKind": "サービス",
+    "linkValue": "ID またはリンク",
+    "linkAdd": "追加",
+    "linkRemove": "この行を削除",
     "bio": "自己紹介",
     "email": "メール",
+    "website": "ウェブサイト",
     "line": "LINE",
     "whatsapp": "WhatsApp",
     "wechat": "WeChat",
@@ -218,9 +228,11 @@
     "saved": "保存しました"
   },
   "user": {
-    "title": "ユーザー",
     "joined": "{{date}} から",
     "contact": "連絡先",
+    "copy": "コピー",
+    "copied": "コピーしました",
+    "copyFailed": "コピーできませんでした",
     "posts": "最近の posts",
     "noPosts": "まだ post はありません"
   },

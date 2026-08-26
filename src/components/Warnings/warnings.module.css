@@ -24,12 +24,15 @@
   list-style: none;
 }
 
+/* A rule under every warning, the last one included: it closes the row off rather
+   than only holding two of them apart, the same way the posts and people lists
+   close theirs. The same rule as theirs, too — one line at one weight in one grey
+   is what a row ending looks like across the dashboard, and a card drawing its own
+   kind of line for its own rows would only be saying that its rows end
+   differently, which they do not */
 .list li {
   display: block;
-}
-
-.list li + li {
-  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
 }
 
 /* The whole row is the link to the bulletin — the words, the clock and the

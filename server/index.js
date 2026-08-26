@@ -50,6 +50,10 @@ const isProduction = process.env.NODE_ENV === "production";
 const USERNAME_RE =
   /^[a-z0-9_\p{Script_Extensions=Han}\p{Script_Extensions=Hiragana}\p{Script_Extensions=Katakana}\p{Script_Extensions=Hangul}-]{1,32}$/u;
 const USERNAME_HINT = "用户名为 1–32 个字符，可使用中日韩文字、字母、数字、- 和 _";
+// A profile lives at /<name>, so lo's own paths are names nobody can have: an
+// account called "posts" would be one the router sends to the posts page and
+// nothing could ever link to. Kept in step with RESERVED in src/App.jsx.
+const RESERVED_NAMES = new Set(["login", "marks", "posts", "account"]);
 const sessions = new Map();
 const sessionAgeMs = 30 * 24 * 60 * 60 * 1000;
 const sessionCookie = "lo_session";
@@ -182,6 +186,7 @@ app.post("/api/users", (req, res) => {
   if (!USERNAME_RE.test(username)) {
     return res.status(400).json({ error: USERNAME_HINT });
   }
+  if (RESERVED_NAMES.has(username)) return res.status(409).json({ error: "用户名不可用" });
   if (getUser(username)) return res.status(409).json({ error: "用户名已存在", code: "USER_EXISTS" });
 
   try {
@@ -202,15 +207,51 @@ app.get("/api/me", requireSession, (req, res) => {
 
 // How much of each a profile will hold. The line about yourself is the only one
 // with room to be a sentence; a contact is a handle in somebody else's app, and
-// none of those are long.
-const PROFILE_LIMITS = { bio: 280, email: 160, line: 64, whatsapp: 32, wechat: 64 };
+// none of those are long. A website is a home page rather than a deep link into
+// one, so it needs about as much room as an address does.
+const PROFILE_LIMITS = { bio: 280, email: 160, website: 200, line: 64, whatsapp: 32, wechat: 64 };
+
+// And the list that has no column of its own: everywhere else somebody keeps an
+// account, each row a kind and a handle. Twelve is not a rule about people — it
+// is the point past which a profile has stopped being a way to reach somebody.
+//
+// The kind is checked for shape and not against a list of platforms. The list
+// lives in the browser, where the names and the addresses they build are (see
+// utils/links.js), and a second copy here is a copy that would drift — a kind
+// added to the menu and refused by the server is worse than one the server has
+// never heard of, which the page in front of the reader simply shows by name.
+// What the shape is for is the column: a slug, so nothing else can be smuggled
+// through it.
+const LINKS_MAX = 12;
+const LINK_VALUE_MAX = 200;
+const LINK_KIND_RE = /^[a-z0-9-]{1,24}$/;
+
+// An empty row is dropped rather than refused: the sheet keeps a blank one at the
+// end for the next link, and saving with it still blank is not a mistake anybody
+// made.
+function readLinks(payload) {
+  const sent = payload?.links;
+  if (sent == null) return { links: [] };
+  if (!Array.isArray(sent)) return { error: "链接无效" };
+  const links = [];
+  for (const item of sent) {
+    const kind = String(item?.kind ?? "").trim().toLowerCase();
+    const value = String(item?.value ?? "").trim().normalize("NFKC");
+    if (!value) continue;
+    if (!LINK_KIND_RE.test(kind)) return { error: "链接无效" };
+    if (value.length > LINK_VALUE_MAX) return { error: `链接最多 ${LINK_VALUE_MAX} 个字符` };
+    links.push({ kind, value });
+  }
+  if (links.length > LINKS_MAX) return { error: `最多 ${LINKS_MAX} 个链接` };
+  return { links };
+}
 // How much of somebody's own writing their page carries. Enough to say what they
 // post about without handing out a year of it.
 const PROFILE_POSTS = 20;
 
 // One reading of the whole profile, whatever it was sent by — the same reason
 // a post has one. An empty field means cleared rather than untouched: the sheet
-// holds all five, so what it sends back is the whole of them.
+// holds every field, so what it sends back is the whole of them.
 function readProfile(payload) {
   const fields = {};
   for (const [field, limit] of Object.entries(PROFILE_LIMITS)) {
@@ -218,12 +259,50 @@ function readProfile(payload) {
     if (value.length > limit) return { error: `${field} 最多 ${limit} 个字符` };
     fields[field] = value;
   }
-  // The one field lo can say anything about the shape of. Everything else is a
+  // The two fields lo can say anything about the shape of. Everything else is a
   // handle in an app lo cannot ask, so a name that looks wrong here is still the
   // only name its owner has.
   if (fields.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fields.email)) {
     return { error: "邮箱地址无效" };
   }
+  if (fields.website) {
+    // Nobody types the scheme, so a bare host is read as one asking for https —
+    // which is what a home page typed into a browser's own bar gets too.
+    const site = /^[a-z][a-z0-9+.-]*:/i.test(fields.website)
+      ? fields.website
+      : `https://${fields.website}`;
+    // Checked rather than trusted, and this is the one contact lo has to check:
+    // it is the only one that becomes an href, and an href will run whatever
+    // scheme it is given. Two are addresses on the web and the rest are not
+    // somewhere a link can go.
+    let url;
+    try {
+      url = new URL(site);
+    } catch {
+      return { error: "网址无效" };
+    }
+    // A hostname with a dot in it, so a single word is a typo rather than a
+    // machine name nobody outside this network could reach.
+    if (!/^https?:$/.test(url.protocol) || !/[^.]\.[^.]/.test(url.hostname)) {
+      return { error: "网址无效" };
+    }
+    // The reader's own text with the scheme put back on the front, not the URL
+    // object's idea of it: new URL adds a trailing slash to a bare host, and a
+    // profile should show the address its owner wrote.
+    fields.website = site;
+  }
+
+  // The picture arrives as a name /api/images already wrote, never as bytes —
+  // the same rule a post's photo is held to, and for the same reason: anything
+  // else would let this endpoint name a file of its own choosing.
+  const avatar = String(payload?.avatar ?? "").trim();
+  if (avatar && !isStoredName(avatar)) return { error: "头像无效" };
+  fields.avatar = avatar;
+
+  const { links, error } = readLinks(payload);
+  if (error) return { error };
+  fields.links = links;
+
   return { profile: fields };
 }
 

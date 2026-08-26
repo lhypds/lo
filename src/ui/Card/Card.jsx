@@ -18,6 +18,7 @@ export default function Card({
   action,
   square = false,
   half = false,
+  tall = false,
   wide = false,
   flush = false,
   className,
@@ -27,6 +28,7 @@ export default function Card({
     styles.card,
     square ? styles.square : "",
     half ? styles.half : "",
+    tall ? styles.tall : "",
     wide ? styles.wide : "",
     className,
   ];

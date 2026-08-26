@@ -34,9 +34,11 @@ export default function PostsPage() {
   // written where they can see it rather than held somewhere off screen.
   //
   // The dashboard's list of people used to be what sent readers here that way.
-  // It opens the person themselves now, so nothing in lo writes this link any
-  // more — but ?author= is a question this page can answer, and a name in a URL
-  // is the plainest way there is to ask it.
+  // It opens the person themselves now, and it is their page that asks the
+  // question instead: a post pressed on a profile arrives with ?post= to say
+  // which one and ?author= to say whose, so the map lands on the post and the
+  // list around it is the rest of what that person left rather than the whole
+  // neighbourhood.
   const [query, setQuery] = useState(() => {
     const author = searchParams.get("author");
     return author ? formatUsername(author) : "";
@@ -102,7 +104,7 @@ export default function PostsPage() {
 
   return (
     <div className="page-shell posts-page">
-      <Header back />
+      <Header back cards />
       <div className="posts-map">
         <Suspense fallback={<div className="posts-map-placeholder" />}>
           {/* Filtered with the list, for the reason the marks map is */}

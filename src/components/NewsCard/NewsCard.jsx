@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
 import { Card, Skeleton } from "../../ui/index.js";
-import { LARGE, useCardSize } from "../../utils/cards.js";
+import { LARGE, SMALL, TALL, useCardSize } from "../../utils/cards.js";
 import { formatDistance, relativeTime } from "../../utils/format.js";
 import CardSize from "../CardSize/index.js";
 import { useHere } from "../LocationProvider/index.js";
@@ -25,8 +25,10 @@ function coordKey(coords) {
 export default function NewsCard() {
   const { t, i18n } = useTranslation();
   const { coords, reloadToken } = useHere();
-  // Two squares like every other panel, until the reader gives it four. The only
-  // one whose place on a wide grid changes with its height — see the class below.
+  // Two squares like every other panel, until the reader gives it four or six.
+  // One of the two that go to six, because the wire comes back with more rows than
+  // two tiles can hold (see utils/cards.js) — and the only card whose place on a
+  // wide grid changes with its height, see the class below.
   const size = useCardSize("nearby");
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
@@ -97,22 +99,25 @@ export default function NewsCard() {
   }
 
   // `panel-lead` is the page's hook for a tall panel at the top of the right
-  // half: on a wide screen it is pinned across two rows there, and the square
+  // half: on a wide screen it is pinned across the rows there, and the square
   // tiles fold into a block beside it rather than above it. That pin is a claim
-  // only a card two rows tall can make good on — at one row the news would leave
-  // the row under it standing empty — so it is the news grown to four squares
-  // that takes it, and at its own default size it is another of the panels in
-  // that column. Both classes are global on purpose, like the map's `map-full`.
+  // only a card more than a row tall can make good on — at one row the news would
+  // leave the row under it standing empty — so it is the news grown past two
+  // squares that takes it, and at its own default size it is another of the panels
+  // in that column. Which of the two pins depends on how far it has grown: the pin
+  // names the rows it covers, so a panel three tiles deep needs the one that says
+  // three. All of these classes are global on purpose, like the map's `map-full`.
   return (
     <Card
       title={t("news.title")}
       meta={items.length > 0 ? t(`news.${kind}`) : result?.place?.name}
       action={<CardSize id="nearby" />}
       wide
-      half={size !== LARGE}
+      half={size === SMALL}
       square={size === LARGE}
+      tall={size === TALL}
       flush
-      className={size === LARGE ? "panel-lead" : "panel-aside"}
+      className={size === SMALL ? "panel-aside" : size === LARGE ? "panel-lead" : "panel-lead-tall"}
     >
       <div className={styles.scroll}>{body}</div>
     </Card>

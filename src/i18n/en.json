@@ -209,8 +209,18 @@
   },
   "profile": {
     "title": "Profile",
+    "avatar": "Picture",
+    "avatarPick": "Choose",
+    "avatarClear": "Remove",
+    "avatarWorking": "Uploading",
+    "links": "Elsewhere",
+    "linkKind": "Platform",
+    "linkValue": "Handle or link",
+    "linkAdd": "Add a link",
+    "linkRemove": "Remove this link",
     "bio": "About you",
     "email": "Email",
+    "website": "Website",
     "line": "LINE",
     "whatsapp": "WhatsApp",
     "wechat": "WeChat",
@@ -218,9 +228,11 @@
     "saved": "Saved"
   },
   "user": {
-    "title": "User",
     "joined": "since {{date}}",
     "contact": "Contact",
+    "copy": "Copy",
+    "copied": "Copied",
+    "copyFailed": "Could not copy",
     "posts": "Recent posts",
     "noPosts": "Nothing posted yet"
   },

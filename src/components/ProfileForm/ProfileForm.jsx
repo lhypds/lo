@@ -1,12 +1,27 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
 import { TextArea, showToast } from "../../ui/index.js";
 import { contactsFor, profileFields } from "../../utils/contacts.js";
+import { compressToWebp, preload, uploadImage } from "../../utils/image.js";
+import { LINK_KINDS } from "../../utils/links.js";
 
-// The same ceiling the server keeps. Long enough for a sentence about yourself
-// and short enough that a profile stays a profile rather than becoming a post.
+// The same ceilings the server keeps. The line about yourself is long enough for
+// a sentence and short enough that a profile stays a profile rather than becoming
+// a post; the list of other accounts is long enough that nobody sensible reaches
+// the end of it.
 const BIO_MAX = 280;
+const LINKS_MAX = 12;
+
+// A picture the size of the box it is shown in and no larger. A profile picture
+// is drawn at 96px on the page and 64px in this sheet, so 320 is three times what
+// the larger of them asks for — which covers the densest screen there is and
+// stops there, because this is one file every reader of the profile downloads.
+const AVATAR_SIZE = 320;
+// And the box it is drawn in here, which is also what the <img> is told it is:
+// a picture whose size is on the tag does not resize the form around it when it
+// arrives.
+const AVATAR_BOX = 64;
 
 // The half of the account page that can be written to. The list above it is what
 // lo knows about you and cannot be argued with — the name, the day you turned
@@ -23,6 +38,16 @@ export default function ProfileForm({ user, onSaved }) {
   const [fields, setFields] = useState(() => profileFields(user));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  // What the picture looks like right now, which is not always what the account
+  // says: a picture just chosen is on screen before the save that keeps it. Held
+  // beside the field rather than in it because the field is the name and this is
+  // the address, and the two are the same file said two ways.
+  const [avatarUrl, setAvatarUrl] = useState(user.avatar ?? "");
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef(null);
+  // Whether the reader has chosen or cleared a picture since the account last
+  // arrived — see the effect below, which is what this is for.
+  const touchedAvatar = useRef(false);
 
   // Which of the four this reader is asked for, which is the language's answer
   // rather than the account's — see contactsFor. Read off the account as it was
@@ -32,12 +57,85 @@ export default function ProfileForm({ user, onSaved }) {
 
   // The account arrives from the session and again from /api/me a moment later,
   // so the fields are refilled when it does rather than only on first render.
+  //
+  // The picture is the one thing here the account is not allowed to overwrite once
+  // it has been touched. Everything else in this form is typed in a moment and the
+  // answer to /api/me lands in the first of them; a picture is chosen, compressed
+  // and uploaded, which takes seconds — and choosing one and then having the old
+  // one put back by an answer to a question asked before it is the one way this
+  // form could lose work.
   useEffect(() => {
-    setFields(profileFields(user));
+    const next = profileFields(user);
+    setFields((current) => (touchedAvatar.current ? { ...next, avatar: current.avatar } : next));
+    if (!touchedAvatar.current) setAvatarUrl(user.avatar ?? "");
   }, [user]);
 
   function edit(field, value) {
     setFields((current) => ({ ...current, [field]: value }));
+    setError("");
+  }
+
+  // The picture is compressed and uploaded the moment it is chosen rather than on
+  // save — the same trade the post sheet makes, and for the same reason: it is by
+  // far the slowest part of this, and doing it while the rest is still being typed
+  // is time that was being spent anyway. What is kept in the field is the name the
+  // server stored it under; the save is what attaches it to the account.
+  async function pick(event) {
+    const file = event.target.files?.[0];
+    // The picker is reset either way, so choosing the same file twice in a row is
+    // twice a change rather than once.
+    event.target.value = "";
+    if (!file) return;
+    setUploading(true);
+    setError("");
+    try {
+      const { blob } = await compressToWebp(file, { maxSize: AVATAR_SIZE });
+      const stored = await uploadImage(blob);
+      // Held until the browser has the pixels, so the box fills with the picture
+      // instead of going blank and then filling.
+      await preload(stored.url);
+      touchedAvatar.current = true;
+      edit("avatar", stored.name);
+      setAvatarUrl(stored.url);
+    } catch (pickError) {
+      setError(pickError.message);
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  // Taken off the account rather than off the disk: the file is content-addressed
+  // and may be somebody else's picture too, so what this clears is the column.
+  function clearAvatar() {
+    touchedAvatar.current = true;
+    edit("avatar", "");
+    setAvatarUrl("");
+  }
+
+  const links = fields.links;
+
+  function editLink(index, change) {
+    setFields((current) => ({
+      ...current,
+      links: current.links.map((link, at) => (at === index ? { ...link, ...change } : link)),
+    }));
+    setError("");
+  }
+
+  // A row is added empty and filed under the first platform on the list, which is
+  // the one thing a menu cannot ask before it is opened. Nothing is sent for a row
+  // with no handle in it, so an added row that is never filled in costs nothing —
+  // see readLinks on the server.
+  function addLink() {
+    setFields((current) => ({
+      ...current,
+      links: [...current.links, { kind: LINK_KINDS[0].kind, value: "" }],
+    }));
+    setError("");
+  }
+
+  function removeLink(index) {
+    setFields((current) => ({ ...current, links: current.links.filter((_, at) => at !== index) }));
     setError("");
   }
 
@@ -53,6 +151,9 @@ export default function ProfileForm({ user, onSaved }) {
       // is why the word comes after, from a toast that lives above the sheet
       // rather than in it: by now these fields may be off the screen, and this
       // is the only thing left that says it went through.
+      // The account and the form are the same answer again, so the picture goes
+      // back to following it.
+      touchedAvatar.current = false;
       onSaved?.(data.user);
       showToast(t("profile.saved"), 1800);
     } catch (requestError) {
@@ -64,6 +165,70 @@ export default function ProfileForm({ user, onSaved }) {
 
   return (
     <form className="profile-form" onSubmit={submit} autoComplete="off">
+      {/* The picture, first, because it is the one thing on the profile that is
+          read before anything is read. Its name over it and the box under that —
+          the shape every other field in this form has, and the reason this one now
+          has it too: a label standing beside a field is a label the eye has to be
+          told belongs to it, and there is no telling it in a column of fields that
+          all say their name on the line above. Beside the box, the two things there
+          are to do about it — choose a picture, or take the one there down. No drag
+          target and no cropper: a profile picture is a square shown small, and
+          every phone and every desktop already has a picker that does the choosing
+          better than a page can. */}
+      <div className="profile-avatar-field">
+        <span className="profile-label">{t("profile.avatar")}</span>
+        <div className="profile-avatar-row">
+          {/* A button rather than a label wrapping the input, so the picture itself
+              is what is pressed to change it — and so the same press works from the
+              frame when there is no picture in it yet. */}
+          <button
+            type="button"
+            className="profile-avatar"
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading}
+            aria-label={t("profile.avatarPick")}
+          >
+            {avatarUrl ? (
+              <img src={avatarUrl} alt="" width={AVATAR_BOX} height={AVATAR_BOX} />
+            ) : (
+              /* The same figure the top bar draws for an account, which is what an
+                 empty frame here is standing in for. */
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="12" cy="8" r="4" />
+                <path d="M4 21c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5" />
+              </svg>
+            )}
+          </button>
+          <span className="profile-avatar-buttons">
+            <button
+              type="button"
+              className="profile-small"
+              onClick={() => fileRef.current?.click()}
+              disabled={uploading}
+            >
+              {uploading ? t("profile.avatarWorking") : t("profile.avatarPick")}
+            </button>
+            {/* Only where there is one to take down — this is the one control here
+                that has nothing to do when the frame is empty, and a disabled
+                button beside an empty box would be a second way of saying it. */}
+            {avatarUrl && (
+              <button type="button" className="profile-small" onClick={clearAvatar}>
+                {t("profile.avatarClear")}
+              </button>
+            )}
+          </span>
+          {/* Off the page and reached by the buttons beside it: the browser's own
+              file control cannot be made to look like anything else in here. */}
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            className="profile-file"
+            onChange={pick}
+          />
+        </div>
+      </div>
+
       <label>
         <span className="profile-label">
           {t("profile.bio")}
@@ -101,6 +266,72 @@ export default function ProfileForm({ user, onSaved }) {
           />
         </label>
       ))}
+
+      {/* And the open end of the same question: everywhere else you keep an
+          account, a row at a time. The four above are asked for by name because
+          lo knows which ones nearly everybody has; past those there is no list
+          worth guessing at, so the reader picks the platform and lo keeps the
+          handle — see utils/links.js, which is where the menu comes from.
+          Empty until somebody adds a row. A form that opened with a blank row in
+          it would be asking a question of every reader who has none of these,
+          and most of them have none of these. */}
+      <div className="profile-links">
+        <span className="profile-label">{t("profile.links")}</span>
+        {links.map((link, index) => (
+          // Keyed by position, which is the one thing a row here has: two rows
+          // can be the same platform, both can be blank while they are being
+          // filled in, and nothing about a row is its identity.
+          // eslint-disable-next-line react/no-array-index-key
+          <div className="profile-link-row" key={index}>
+            <select
+              className="profile-select"
+              value={link.kind}
+              onChange={(event) => editLink(index, { kind: event.target.value })}
+              aria-label={t("profile.linkKind")}
+            >
+              {/* Whatever it was saved under stays selectable even where this
+                  build of lo no longer has a name for it: the alternative is a
+                  menu that quietly refiles somebody's link under X. */}
+              {!LINK_KINDS.some((entry) => entry.kind === link.kind) && (
+                <option value={link.kind}>{link.kind}</option>
+              )}
+              {LINK_KINDS.map((entry) => (
+                <option key={entry.kind} value={entry.kind}>
+                  {entry.name}
+                </option>
+              ))}
+            </select>
+            <input
+              className="profile-input"
+              type="text"
+              value={link.value}
+              placeholder={t("profile.linkValue")}
+              onChange={(event) => editLink(index, { value: event.target.value })}
+              autoComplete="off"
+              aria-label={t("profile.linkValue")}
+            />
+            <button
+              type="button"
+              className="profile-remove"
+              onClick={() => removeLink(index)}
+              aria-label={t("profile.linkRemove")}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M6 6l12 12" />
+                <path d="M18 6L6 18" />
+              </svg>
+            </button>
+          </div>
+        ))}
+        {/* Stops offering at the ceiling the server keeps rather than refusing at
+            it: a form that lets a row be added and then loses it on save is the
+            worse of the two ways to say twelve is enough. */}
+        {links.length < LINKS_MAX && (
+          <button type="button" className="profile-small profile-add" onClick={addLink}>
+            {t("profile.linkAdd")}
+          </button>
+        )}
+      </div>
 
       {/* Set like the sheet's other controls rather than as the black bar the
           account page ended on — see account.module.css. */}

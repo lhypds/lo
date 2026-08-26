@@ -209,8 +209,18 @@
   },
   "profile": {
     "title": "个人资料",
+    "avatar": "头像",
+    "avatarPick": "选择",
+    "avatarClear": "移除",
+    "avatarWorking": "上传中",
+    "links": "其他平台",
+    "linkKind": "平台",
+    "linkValue": "ID 或链接",
+    "linkAdd": "添加一个",
+    "linkRemove": "移除这一行",
     "bio": "个人简介",
     "email": "邮箱",
+    "website": "主页",
     "line": "LINE",
     "whatsapp": "WhatsApp",
     "wechat": "微信",
@@ -218,9 +228,11 @@
     "saved": "已保存"
   },
   "user": {
-    "title": "用户",
     "joined": "{{date}} 加入",
     "contact": "联系方式",
+    "copy": "复制",
+    "copied": "已复制",
+    "copyFailed": "复制失败",
     "posts": "最近的 posts",
     "noPosts": "还没有发过 post"
   },

@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
 import { Modal, TextArea } from "../../ui/index.js";
 import { formatCoords } from "../../utils/format.js";
-import { compressToWebp, preload, uploadImage } from "../../utils/image.js";
+import { compressToWebp, preload, storedName, uploadImage } from "../../utils/image.js";
 import styles from "./post.module.css";
 
 const BODY_MAX = 500;
@@ -13,15 +13,6 @@ const BODY_MAX = 500;
 // wanders this far was the start of a scroll rather than a hold.
 const LONG_PRESS_MS = 500;
 const LONG_PRESS_SLOP = 10;
-
-// A stored photo comes back on the post as the URL that serves it, and what
-// writing a post takes is the bare name — the file is content-addressed, so the
-// last segment is it. Pulled apart here rather than carried as a second field on
-// every post: the shape of that URL is one line of SQL away, and this is the
-// only place that has to undo it.
-function storedName(url) {
-  return url ? url.split("/").pop() : null;
-}
 
 // Writing a post about the spot underfoot. The fix was taken when the press
 // that opened this landed, not when Post is pressed — whoever is writing may

@@ -5,7 +5,6 @@ import { distanceMeters, formatDistance, formatUsername, relativeTime } from "..
 import { useAuth } from "../AuthProvider/index.js";
 import CardSize from "../CardSize/index.js";
 import { useHere } from "../LocationProvider/index.js";
-import { openProfile } from "../UserModal/userApi.js";
 import styles from "./people.module.css";
 
 // Who else has a tab open around here, as a list — and the only place they are
@@ -19,19 +18,15 @@ import styles from "./people.module.css";
 //
 // A row used to press through to the posts page with @them in the search field,
 // which answered one question about a person — what have they left around here —
-// by leaving the dashboard to answer it. Now there is a person to open instead:
-// the sheet says who they are, how to reach them, what they have posted, and
-// carries the one thing you can do about somebody, which is say something to
-// them. The dashboard stays where it is underneath.
+// by leaving the dashboard to answer it. Now it goes to the person: /<name>
+// says who they are, how to reach them, what they have posted, and carries the
+// one thing you can do about somebody, which is say something to them.
 //
-// Still an anchor, and still pointing at the profile's own page: a plain press
-// opens the sheet over the dashboard, and a middle click or a held modifier does
-// what it does to every other row here and opens the person in their own tab.
-//
-// The sheet itself belongs to the top bar rather than to this tile, and is asked
-// for by name — every card on the dashboard is a size container, and a container
-// is a containing block for anything fixed inside it, so a sheet opened in here
-// would be centred in a 175px tile.
+// A plain link, and nothing held back from it. There was a sheet over the
+// dashboard here for a while, opened by the same press and leaving the page
+// underneath; a person turned out to be one answer and not two, so the page is
+// all of it — which is what a middle click or a held modifier was already
+// reaching for, and is a thing that can be kept, shared or opened in a tab.
 export default function PeopleCard() {
   const { t, i18n } = useTranslation();
   const { coords, people, loadingPeople } = useHere();
@@ -102,15 +97,7 @@ export default function PeopleCard() {
         <ul className={styles.list}>
           {me && (
             <li>
-              <Link
-                to={`/u/${encodeURIComponent(me.username)}`}
-                className={styles.item}
-                onClick={(event) => {
-                  if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-                  event.preventDefault();
-                  openProfile(me.username);
-                }}
-              >
+              <Link to={`/${encodeURIComponent(me.username)}`} className={styles.item}>
                 {/* Filled where the others are grey, which is the whole of what
                     the row has to add: this one is you. */}
                 <span className={`${styles.dot} ${styles.dotSelf}`} aria-hidden="true" />
@@ -123,19 +110,7 @@ export default function PeopleCard() {
           )}
           {rows.map(({ person, away }) => (
             <li key={person.username}>
-              <Link
-                to={`/u/${encodeURIComponent(person.username)}`}
-                className={styles.item}
-                // Refusing the navigation is what Link reads as "handled": the
-                // sheet is the answer to a plain press. A held modifier means the
-                // reader asked for a tab or a window, so those are let through to
-                // the browser and land on the profile's page.
-                onClick={(event) => {
-                  if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-                  event.preventDefault();
-                  openProfile(person.username);
-                }}
-              >
+              <Link to={`/${encodeURIComponent(person.username)}`} className={styles.item}>
                 {/* A bullet for the row — a person is somewhere, and a small
                     grey disc says that before the name is read. */}
                 <span className={styles.dot} aria-hidden="true" />
