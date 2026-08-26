@@ -6,16 +6,22 @@
    itself is sized against — see components/Messages, which is the half of this
    screen the desktop's sheet is holding too.
 
-   The foot is the 12px the sides keep and nothing more, whatever is under it —
-   the home bar, the screen's own corner, the top of a keyboard. The composer
-   sits the same distance off the bottom edge as it does off the left and right
-   ones, which is the one number that looks right against all three. */
+   The foot is 26px, and it is 26px whatever is under it — the home bar, the
+   screen's own corner, the top of a keyboard. The number is read off the corner,
+   which is the worst of the three: a phone's bottom edge is rounded and the
+   composer's is not, so the last band of the window is a strip the picture
+   narrows through, and a box run down into it loses its two bottom corners to
+   the curve. The column already holds the field 12px in from the side of the
+   window, and 12px in is the point where a corner of about 55px stops reaching
+   more than 21px up. One number, held through the keyboard coming and going,
+   rather than a floor that moves under the composer while somebody types. */
 .main {
   flex: 1;
   min-height: 0;
   width: min(100%, 600px);
   margin: 0 auto;
   padding: 16px 12px;
+  padding-bottom: 26px;
   display: flex;
   flex-direction: column;
 }
