@@ -1,0 +1,98 @@
+/* The news panel's list, carrying posts. The two are the same shape of thing on
+   the dashboard — a column of rows in a tile that scrolls — and what a post adds
+   is a thumbnail on the left, because a post is somebody's and a headline is
+   nobody's. Scroll chaining is left on for the reason it is left on there: this
+   tile is a small window inside a page that scrolls, and containing the gesture
+   strands a thumb that has already run the list to its end. */
+.scroll {
+  height: 100%;
+  overflow-y: auto;
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.list li + li {
+  border-top: 1px solid var(--line);
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  text-decoration: none;
+}
+
+/* Bordered, which the framed pictures elsewhere in the app do not need: at 32px
+   a white-cornered photo bleeds into the row without one. */
+.thumb {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--ink);
+  background: var(--soft);
+  object-fit: cover;
+}
+
+.lines {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Two lines, then ellipsised: a post can be 500 characters and this row is a way
+   in to it, not the post itself. */
+.itemTitle {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.itemMeta {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+}
+
+.who {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.itemMeta > * + *::before {
+  content: "·";
+  margin-right: 8px;
+}
+
+.empty {
+  margin: 0;
+  padding: 34px 12px;
+  color: var(--muted);
+  text-align: center;
+  font-size: 11px;
+}
+
+@media (hover: hover) {
+  .item:hover {
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  .item:hover .itemMeta {
+    color: var(--paper);
+  }
+}

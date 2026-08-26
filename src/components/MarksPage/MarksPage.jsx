@@ -30,6 +30,10 @@ export default function MarksPage() {
   // with the list sitting still, or a row read with nothing happening on the
   // map, left the reader to pair the two up themselves.
   const [hovered, setHovered] = useState(null);
+  // And the one they have chosen, by clicking its pin or pressing its row. The
+  // map holds the choice — it is the half that has a bubble open because of it —
+  // and tells the page, whose only use for it is to show which row that was.
+  const [chosen, setChosen] = useState(null);
   const [renaming, setRenaming] = useState(null);
   const [deleting, setDeleting] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -98,6 +102,7 @@ export default function MarksPage() {
             focus={focus}
             hovered={hovered}
             onHoverPin={setHovered}
+            onSelectPin={setChosen}
           />
         </Suspense>
       </div>
@@ -127,6 +132,7 @@ export default function MarksPage() {
                 mark={mark}
                 from={coords}
                 hovered={mark.id === hovered}
+                chosen={mark.id === chosen}
                 onHover={setHovered}
                 onRename={setRenaming}
                 onDelete={setDeleting}

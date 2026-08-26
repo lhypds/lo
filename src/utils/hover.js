@@ -21,3 +21,12 @@ export function hoverProps(id, onHover) {
     },
   };
 }
+
+// What a row is wearing, on both list pages. Two states, one wash: it means the
+// preview this row belongs to is up on the map, whether that is because the
+// pointer is on the row, on its pin, or because the reader chose it and the
+// bubble has stayed. A chosen row needs no mark of its own — being the washed
+// row while the pointer is somewhere else entirely is what says it.
+export function rowClass(base, hovered, chosen) {
+  return hovered || chosen ? `${base} row-hovered` : base;
+}

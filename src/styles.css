@@ -313,6 +313,14 @@ a {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
   align-content: start;
+  /* The grid is a query container so that a card can be sized against the
+     module rather than against itself: --tile is one square — the grid's own
+     width, less the gaps between the columns, over the column count. A square
+     tile does not need it, since a square says its own height with
+     aspect-ratio; the panels that are not squares do, and they need it to the
+     pixel or they put the panels beside them out of line. */
+  container-type: inline-size;
+  --tile: calc((100cqw - 10px) / 2);
 }
 
 /* Once two news panels fit side by side, one column of them is a waste of the
@@ -331,6 +339,8 @@ a {
 
   .card-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
+    /* Four columns, so three gaps to take out of the width before it is split */
+    --tile: calc((100cqw - 30px) / 4);
   }
 
   .home-main .card-grid > .panel-lead {
@@ -560,7 +570,12 @@ a {
   border-bottom: 1px solid var(--line);
 }
 
-/* The row belonging to the pin the pointer is resting on, up on the map. The
+/* The row whose preview is showing on the map — because the pointer is on it or
+   on its pin, or because the reader chose it and it is still chosen. The two are
+   one wash on purpose: what it means is "this is the row the bubble up there
+   belongs to", and that is the same sentence either way.
+
+   The row belonging to the pin the pointer is resting on, up on the map. The
    bubble that opens there answers "which spot is this"; the wash answers the
    other direction, which is the half the reader cannot do for themselves on a
    list of forty. Both pages share the rule for the reason they share every

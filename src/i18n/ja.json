@@ -70,19 +70,13 @@
     "low": "最低",
     "unavailable": "天気を取得できません"
   },
-  "nearby": {
+  "news": {
     "title": "ニュース",
-    "news": "地元",
+    "local": "地元",
     "places": "あなたの周り",
     "empty": "この辺りに伝えることはありません",
     "unavailable": "ニュースサービスに接続できません",
     "loading": "周辺を読み込み中"
-  },
-  "events": {
-    "title": "イベント",
-    "empty": "この2週間、この辺りに開催情報はありません",
-    "unavailable": "イベント情報に接続できません",
-    "loading": "イベントを探しています"
   },
   "warnings": {
     "title": "警報・注意報",
@@ -172,7 +166,6 @@
     "hint": "長押しで投稿",
     "title": "新しい post",
     "placeholder": "ここで何が起きていますか？",
-    "addPhoto": "画像を追加",
     "photoTap": "タップで撮影",
     "photoHold": "長押しでアルバムから選択",
     "dropPhoto": "ここに画像をドロップ",
@@ -196,7 +189,8 @@
   },
   "posts": {
     "title": "posts",
-    "subtitle": "近くの post",
+    "nearby": "近くの posts",
+    "subtitle": "近くの posts",
     "empty": "近くにまだ post はありません"
   },
   "search": {

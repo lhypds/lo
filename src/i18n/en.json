@@ -70,19 +70,13 @@
     "low": "Low",
     "unavailable": "Weather is unavailable right now"
   },
-  "nearby": {
+  "news": {
     "title": "News",
-    "news": "Local",
+    "local": "Local",
     "places": "Around you",
     "empty": "Nothing to report around here",
     "unavailable": "Could not reach the news service",
     "loading": "Reading the neighbourhood"
-  },
-  "events": {
-    "title": "Events",
-    "empty": "Nothing on around here this fortnight",
-    "unavailable": "Could not reach the events service",
-    "loading": "Looking for what is on"
   },
   "warnings": {
     "title": "Warnings",
@@ -172,7 +166,6 @@
     "hint": "Hold to post",
     "title": "New post",
     "placeholder": "What is here?",
-    "addPhoto": "Add a photo",
     "photoTap": "Tap to take a photo",
     "photoHold": "Hold to choose from your photos",
     "dropPhoto": "Drop the photo here",
@@ -196,6 +189,7 @@
   },
   "posts": {
     "title": "posts",
+    "nearby": "Nearby posts",
     "subtitle": "what is around you",
     "empty": "No posts around here yet"
   },

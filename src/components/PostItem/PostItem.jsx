@@ -7,7 +7,7 @@ import {
   formatDistance,
   formatUsername,
 } from "../../utils/format.js";
-import { hoverProps } from "../../utils/hover.js";
+import { hoverProps, rowClass } from "../../utils/hover.js";
 import { directionsLink } from "../../utils/maps.js";
 
 // The marks row, carrying a post — and now the same row in full: pressing the
@@ -19,12 +19,15 @@ import { directionsLink } from "../../utils/maps.js";
 //
 // Paired with its square on the map both ways round, the way the marks row is:
 // `hovered` is the pointer resting on the square up there, and `onHover` is the
-// pointer resting on this row, which opens the bubble on the square.
+// pointer resting on this row, which opens the bubble on the square. `chosen` is
+// the row that was pressed, whose bubble is being held open until it is pressed
+// again — see the marks row, which wears both the same way.
 export default function PostItem({
   post,
   from,
   mine = false,
   hovered = false,
+  chosen = false,
   onHover,
   onShowOnMap,
   onEdit,
@@ -39,7 +42,7 @@ export default function PostItem({
 
   return (
     <li
-      className={hovered ? "post-item row-hovered" : "post-item"}
+      className={rowClass("post-item", hovered, chosen)}
       {...hoverProps(post.id, onHover)}
     >
       <div className="post-row">

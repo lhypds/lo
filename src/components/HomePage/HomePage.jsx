@@ -4,13 +4,13 @@ import * as api from "../../api.js";
 import { showToast } from "../../ui/index.js";
 import { getLocationState, refreshLocation } from "../../utils/location.js";
 import ClockCard from "../ClockCard/index.js";
-import EventsCard from "../EventsCard/index.js";
 import Header from "../Header/index.js";
 import HereStrip from "../HereStrip/index.js";
 import LocationGate from "../LocationGate/index.js";
 import MarkButton from "../MarkButton/index.js";
-import NearbyCard from "../NearbyCard/index.js";
+import NewsCard from "../NewsCard/index.js";
 import PostModal from "../PostModal/index.js";
+import PostsCard from "../PostsCard/index.js";
 import TrendsCard from "../TrendsCard/index.js";
 import Warnings from "../Warnings/index.js";
 import WeatherCard from "../WeatherCard/index.js";
@@ -123,8 +123,14 @@ export default function HomePage() {
               grid, so it lands on the row below the map's own — the four
               squares stay a block, and the panels start here. */}
           {supports("warnings") && <Warnings />}
-          {supports("nearby") && <NearbyCard />}
-          {supports("events") && <EventsCard />}
+          {/* One panel off both feeds now, and it stands if either of them can
+              be fed: an edition that covers the news but has no event listing
+              still has something to say about the place. */}
+          {(supports("nearby") || supports("events")) && <NewsCard />}
+          {/* Posts are lo's own and belong to no country, so this one is
+              unconditional — the same reason the mark button is. It reads the
+              list the map above it is already drawing. */}
+          <PostsCard />
           {supports("trends") && <TrendsCard />}
         </div>
       </main>

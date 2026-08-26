@@ -1,7 +1,7 @@
-import { Suspense, lazy, useMemo, useState } from "react";
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
-import { Modal, showToast } from "../../ui/index.js";
+import { Modal, showToast, useSearchParams } from "../../ui/index.js";
 import { formatUsername } from "../../utils/format.js";
 import { filterBy } from "../../utils/search.js";
 import { useAuth } from "../AuthProvider/index.js";
@@ -32,6 +32,9 @@ export default function PostsPage() {
   // resting on it — the same two-way pairing the marks page makes, for the same
   // reason: the square on the map and the row in the list are one post.
   const [hovered, setHovered] = useState(null);
+  // And the one they have chosen — the same pairing the marks page makes: the map
+  // holds the choice, the page only shows which row it was.
+  const [chosen, setChosen] = useState(null);
   const [editing, setEditing] = useState(null);
   const [deleting, setDeleting] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -51,6 +54,21 @@ export default function PostsPage() {
       setBusy(false);
     }
   }
+
+  // Arriving from the dashboard's panel with one post in mind: the row there
+  // presses through to here, and the map opens on the post it was. Once only —
+  // the list is asked for again whenever the ground moves, and a page that
+  // re-panned on every answer would keep taking the view back off the reader.
+  const [searchParams] = useSearchParams();
+  const wanted = searchParams.get("post");
+  const arrivedRef = useRef(false);
+  useEffect(() => {
+    if (arrivedRef.current || !wanted) return;
+    const target = posts.find((post) => String(post.id) === wanted);
+    if (!target) return;
+    arrivedRef.current = true;
+    setFocus({ ...target });
+  }, [wanted, posts]);
 
   // The words, where they were left, and who left them — the three things a
   // row says, and the three a post is remembered by. The name is folded in as
@@ -73,6 +91,7 @@ export default function PostsPage() {
             focus={focus}
             hovered={hovered}
             onHoverPin={setHovered}
+            onSelectPin={setChosen}
           />
         </Suspense>
       </div>
@@ -100,6 +119,7 @@ export default function PostsPage() {
                 from={coords}
                 mine={Boolean(user && post.username === user.username)}
                 hovered={post.id === hovered}
+                chosen={post.id === chosen}
                 onHover={setHovered}
                 onEdit={setEditing}
                 onDelete={setDeleting}

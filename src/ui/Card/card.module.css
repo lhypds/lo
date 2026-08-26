@@ -22,12 +22,17 @@
    four of them — the largest tile the grid has, on the same module as the rest */
 
 /* `wide half` is that panel cut down the middle: two tiles across, one tile
-   tall. The ratio is 2:1 rather than the (2 tiles + gap) : 1 tile the grid would
-   give exactly, which leaves it 5px taller than the squares beside it — near
-   enough that the row still reads as one module, and it holds at every width
-   without the card having to know what the gap is. */
+   tall — one tile exactly, not the 2:1 ratio that would be the obvious way to
+   say it. That ratio comes out 5px taller than a square, because the width it
+   is halving has the gap between the two columns in it, and 5px is not the
+   rounding it looks like: on a four-column grid two halves stack up the side of
+   the posts panel, and the pair of them leave its bottom edge 10px above
+   theirs. So the height is the tile itself, which the grid publishes as --tile
+   (see .card-grid in styles.css) — the panel is on the module at every width,
+   and the card still does not have to know what the gap or the column count
+   is. */
 .half {
-  aspect-ratio: 2 / 1;
+  height: var(--tile);
 }
 
 /* Past the width of two of those panels the dashboard grid is four columns

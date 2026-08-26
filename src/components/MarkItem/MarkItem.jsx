@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { ActionButton } from "../../ui/index.js";
 import { distanceMeters, formatCoords, formatDateTime, formatDistance } from "../../utils/format.js";
-import { hoverProps } from "../../utils/hover.js";
+import { hoverProps, rowClass } from "../../utils/hover.js";
 import { directionsLink } from "../../utils/maps.js";
 
 // Three actions, out on the row where they can be seen rather than behind a
@@ -11,10 +11,16 @@ import { directionsLink } from "../../utils/maps.js";
 // pointer resting on the pin, and the wash it puts on the row says which line of
 // the list that pin is; `onHover` is the same thing said in the other direction,
 // and what it opens up there is the bubble.
+//
+// `chosen` is the row that was pressed, whose bubble is being held open up there
+// until it is pressed again. It wears the same wash — the preview it belongs to
+// is showing, which is what the wash has always meant — and a rule down its left
+// edge to say that this one is being held rather than merely pointed at.
 export default function MarkItem({
   mark,
   from,
   hovered = false,
+  chosen = false,
   onHover,
   onRename,
   onDelete,
@@ -27,7 +33,7 @@ export default function MarkItem({
 
   return (
     <li
-      className={hovered ? "mark-item row-hovered" : "mark-item"}
+      className={rowClass("mark-item", hovered, chosen)}
       {...hoverProps(mark.id, onHover)}
     >
       <div className="mark-row">

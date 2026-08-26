@@ -198,29 +198,32 @@ function postPopupElement(post, headline, byline, iso, when) {
   return wrapper;
 }
 
-// Everything on the map that carries a bubble opens it on a click, which is
-// Mapbox's own doing and is the only answer a touchscreen has — there is no
-// hover there to open anything with. Where there is a pointer, resting it on a
-// pin is a cheaper question than clicking one, so the bubble follows the pointer
-// instead. The click is stopped short of the map, which would otherwise read it
-// as a second toggle and shut the bubble the pointer is holding open.
+// A pointer that can rest on a thing, as against a finger that can only land on
+// it. Read once, because a device does not change its mind about this — and it
+// is the whole difference between the two ways a bubble is worked below.
+const HOVERS = window.matchMedia("(hover: hover)").matches;
+
+// Every bubble on the map, and who is allowed to take it away.
 //
-// `onHover` is told the same thing the bubble is, so a page with a list beside
-// the map can say which row the pin belongs to. Only the pins on a list page
-// pass one; the people's dots have no row to point at.
-function previewOnHover(marker, onHover) {
-  if (!window.matchMedia("(hover: hover)").matches) return marker;
-  const element = marker.getElement();
-  element.addEventListener("mouseenter", () => {
-    if (!marker.getPopup()?.isOpen()) marker.togglePopup();
-    onHover?.(true);
-  });
-  element.addEventListener("mouseleave", () => {
-    if (marker.getPopup()?.isOpen()) marker.togglePopup();
-    onHover?.(false);
-  });
-  element.addEventListener("click", (event) => event.stopPropagation());
-  return marker;
+// On a touchscreen it is Mapbox's own doing from end to end: a tap on a pin
+// opens it, since there is no hover to open anything with, and a tap anywhere
+// else — the map, or the bubble, which is deaf to the pointer and lets the tap
+// through to the map beneath it — is the way back out. That is what closeOnClick
+// is, and there it is the whole dismissal.
+//
+// Where there is a pointer, closing is ours to do: the bubble follows the pointer
+// and a clicked one is kept, neither of which mapbox is in a position to know
+// about. Left on, closeOnClick would fire on the click that keeps one — the click
+// falls through the bubble onto the map — and shut the very thing it was holding.
+function previewPopup(offset) {
+  return new mapboxgl.Popup({ closeButton: false, offset, closeOnClick: !HOVERS });
+}
+
+// Whether the bubble under the pointer is open at all, asked of the popup rather
+// than remembered: mapbox closes one when its marker is taken off the map, and
+// nothing tells us it happened.
+function showing(marker) {
+  return Boolean(marker.getPopup()?.isOpen());
 }
 
 // `expanded` is owned by the page rather than by the map: expanding hides the
@@ -238,6 +241,7 @@ export default function MapCard({
   expanded = false,
   onToggleExpanded,
   onHoverPin,
+  onSelectPin,
 }) {
   const { t, i18n } = useTranslation();
   const { coords, people = [] } = useHere();
@@ -287,6 +291,107 @@ export default function MapCard({
     [enterPin, leavePin],
   );
 
+  // The one the reader has chosen, by clicking its pin or pressing its row.
+  //
+  // Hovering is a question asked in passing — the pointer crosses a pin on its
+  // way somewhere else — and a bubble that answers it can be taken back the
+  // moment the pointer moves on. Choosing is not: it is somebody saying *this
+  // one*, so its bubble stays through the mouseleave that would have closed a
+  // hovered one, through the pan the press set off, and through a reach across
+  // the row for the buttons on the end of it.
+  //
+  // One bubble at a time — two of them on a 300px tile overlap, and the second is
+  // never the one being read — but only one *choice* at a time either, and the
+  // two are not the same thing. Hovering something else borrows the bubble: the
+  // chosen one steps aside while the pointer is elsewhere and comes back when it
+  // leaves, so a reader can run down the rest of the list without losing the row
+  // they had picked out. The choice itself only changes when the reader says so —
+  // by choosing another one, by pressing the chosen one again, or by a click on
+  // the bare map.
+  const keptRef = useRef(null);
+  // The page hears about it as an id, so the row can show itself as chosen. Held
+  // in a ref for the reason the hover callback is: the handlers below are on DOM
+  // nodes the map owns, and they outlive the render that built them.
+  const selectPinRef = useRef(null);
+  // The prop, mirrored, so the press below can ask whether the pointer is on the
+  // row it belongs to without the effect having to re-run on every hover.
+  const hoveredPropRef = useRef(hovered);
+  hoveredPropRef.current = hovered;
+
+  const keep = useCallback((marker, id = null) => {
+    const previous = keptRef.current;
+    keptRef.current = marker;
+    selectPinRef.current?.(id);
+    if (previous && previous !== marker && showing(previous)) previous.togglePopup();
+    if (!showing(marker)) marker.togglePopup();
+  }, []);
+
+  // The chosen bubble stepping aside while the pointer is on something else, and
+  // stepping back when it has gone. Neither touches the choice: they are about
+  // which bubble is up, which is a different question from which row is chosen.
+  const hide = useCallback(() => {
+    const marker = keptRef.current;
+    if (marker && showing(marker)) marker.togglePopup();
+  }, []);
+
+  const restore = useCallback(() => {
+    const marker = keptRef.current;
+    if (marker && !showing(marker)) marker.togglePopup();
+  }, []);
+
+  // `close` is false when the pointer is still resting on what was chosen:
+  // letting go hands the bubble back to the hover that is holding it rather than
+  // putting it out from under the reader's own pointer.
+  const release = useCallback((close = true) => {
+    const marker = keptRef.current;
+    keptRef.current = null;
+    selectPinRef.current?.(null);
+    if (close && marker && showing(marker)) marker.togglePopup();
+  }, []);
+
+  const drop = useCallback(() => release(), [release]);
+
+  // Where there is a pointer, resting it on a pin is a cheaper question than
+  // clicking one, so the bubble follows the pointer — and a click holds it.
+  //
+  // The id is what the page is told, so a list beside the map can light up the
+  // row the pin belongs to and show it as chosen. The people's dots have no row
+  // to point at and pass none.
+  const preview = useCallback(
+    (marker, id = null) => {
+      if (!HOVERS) return marker;
+      const element = marker.getElement();
+      const onHover = id === null ? null : hoverPin(id);
+      element.addEventListener("mouseenter", () => {
+        // Borrowed, not taken: the chosen bubble steps aside for as long as the
+        // pointer is on this pin.
+        if (keptRef.current !== marker) hide();
+        if (!showing(marker)) marker.togglePopup();
+        onHover?.(true);
+      });
+      element.addEventListener("mouseleave", () => {
+        // A chosen bubble is the reader's, not the pointer's — this closes only a
+        // borrowed one, and hands the map back to whatever was chosen.
+        if (keptRef.current !== marker) {
+          if (showing(marker)) marker.togglePopup();
+          restore();
+        }
+        onHover?.(false);
+      });
+      element.addEventListener("click", (event) => {
+        // Stopped short of the map, which is where a click means the opposite of
+        // this one: off the pins is how a chosen bubble is put away.
+        event.stopPropagation();
+        // Clicked again — the choice is dropped, and the bubble is left up
+        // because the pointer is still on the pin holding it there.
+        if (keptRef.current === marker) release(false);
+        else keep(marker, id);
+      });
+      return marker;
+    },
+    [hide, hoverPin, keep, release, restore],
+  );
+
   // The map is built once and then told about changes; rebuilding it on every
   // new fix would throw away the reader's pan and zoom every few seconds.
   useEffect(() => {
@@ -328,6 +433,12 @@ export default function MapCard({
     });
 
     map.on("style.load", () => map.setLanguage(mapLanguage(i18n.language)));
+
+    // A click anywhere off the pins puts a kept bubble away: every pin stops its
+    // own click short of the map, so whatever reaches here was meant for the
+    // ground — or fell through the bubble, which is deaf to the pointer, and is
+    // the plainest way somebody says they are done with it.
+    map.on("click", drop);
 
     return () => {
       map.remove();
@@ -407,20 +518,20 @@ export default function MapCard({
     if (!map) return;
     peopleMarkersRef.current.forEach((marker) => marker.remove());
     peopleMarkersRef.current = people.map((person) =>
-      previewOnHover(
+      preview(
         new mapboxgl.Marker({ element: personElement(person.username) })
           .setLngLat([person.longitude, person.latitude])
           .setPopup(
             // The name is already on the label; what the label cannot say is how
             // long ago the dot was true, which is the whole question here.
-            new mapboxgl.Popup({ closeButton: false, offset: 14 }).setText(
+            previewPopup(14).setText(
               t("map.seen", { time: relativeTime(person.time, i18n.language, t) }),
             ),
           )
           .addTo(map),
       ),
     );
-  }, [people, t, i18n.language]);
+  }, [people, t, i18n.language, preview]);
 
   // Saved marks are redrawn wholesale — the list is short, and diffing markers
   // costs more than replacing them.
@@ -432,12 +543,12 @@ export default function MapCard({
     // answered by the one pin that belongs to it.
     markMarkersRef.current = marks.map((mark) => {
       const name = mark.label || mark.place || t("marks.unnamed");
-      const marker = previewOnHover(
+      const marker = preview(
         // The label, not `name`: the pin wears only what somebody wrote on it.
         new mapboxgl.Marker({ element: markElement(mark.label || ""), anchor: "bottom" })
           .setLngLat([mark.longitude, mark.latitude])
           .setPopup(
-            new mapboxgl.Popup({ closeButton: false, offset: 16 }).setDOMContent(
+            previewPopup(16).setDOMContent(
               markPopupElement(
                 name,
                 formatCoords(mark.latitude, mark.longitude),
@@ -447,15 +558,16 @@ export default function MapCard({
             ),
           )
           .addTo(map),
-        hoverPin(mark.id),
+        mark.id,
       );
       return { id: mark.id, marker };
     });
-  }, [marks, t, i18n.language, hoverPin]);
+  }, [marks, t, i18n.language, preview]);
 
   useEffect(() => {
     hoverPinRef.current = onHoverPin;
-  }, [onHoverPin]);
+    selectPinRef.current = onSelectPin;
+  }, [onHoverPin, onSelectPin]);
 
   // Posts, drawn the same wholesale way and for the same reason. The bubble on
   // these is the post: the picture, the words, who left them and when. There is
@@ -474,11 +586,11 @@ export default function MapCard({
       const byline = [formatUsername(post.username), post.body ? post.place : ""]
         .filter(Boolean)
         .join(" · ");
-      const marker = previewOnHover(
+      const marker = preview(
         new mapboxgl.Marker({ element, anchor: "bottom" })
           .setLngLat([post.longitude, post.latitude])
           .setPopup(
-            new mapboxgl.Popup({ closeButton: false, offset: 16 }).setDOMContent(
+            previewPopup(16).setDOMContent(
               postPopupElement(
                 post,
                 headline,
@@ -489,11 +601,11 @@ export default function MapCard({
             ),
           )
           .addTo(map),
-        hoverPin(post.id),
+        post.id,
       );
       return { id: post.id, marker };
     });
-  }, [posts, i18n.language, hoverPin]);
+  }, [posts, i18n.language, preview]);
 
   // The pairing the other way round: a row under the pointer in the list opens
   // the bubble on its own pin, so whichever half the reader is looking at, the
@@ -511,18 +623,28 @@ export default function MapCard({
     const markerFor = (id) => pins.find((pin) => pin.id === id)?.marker;
     if (openedRef.current !== null && openedRef.current !== hovered) {
       const marker = markerFor(openedRef.current);
-      if (marker?.getPopup()?.isOpen()) marker.togglePopup();
+      // Unless the row was pressed as well as pointed at, which keeps the bubble:
+      // this effect opened it, but it is not this effect's any more.
+      if (marker && marker !== keptRef.current && showing(marker)) marker.togglePopup();
       openedRef.current = null;
     }
-    if (hovered === null) return;
+    // Nothing under the pointer: whatever was chosen has the map back.
+    if (hovered === null) {
+      restore();
+      return;
+    }
     const marker = markerFor(hovered);
+    // A row under the pointer borrows the bubble from the chosen one, which is
+    // put back the moment the pointer leaves. One bubble at a time; the choice
+    // itself is not something a passing pointer gets to change.
+    if (marker !== keptRef.current) hide();
     // Already open means the pointer is on the pin itself rather than on the row,
     // and the pin closes its own bubble when the pointer leaves it.
-    if (marker && !marker.getPopup()?.isOpen()) {
+    if (marker && !showing(marker)) {
       marker.togglePopup();
       openedRef.current = hovered;
     }
-  }, [hovered, marks, posts]);
+  }, [hovered, marks, posts, hide, restore]);
 
   // A list map opens on the whole list: one fit over every pin it was given, so
   // a mark left in another city — or a post two suburbs over — is on screen
@@ -543,13 +665,40 @@ export default function MapCard({
     map.fitBounds(bounds, { padding: 48, maxZoom: DEFAULT_ZOOM, duration: 0 });
   }, [fitMarks, marks, posts, coords]);
 
-  // Arriving from the marks list with one spot in mind.
+  // Arriving from the list with one spot in mind, which is a row that has been
+  // pressed — or a post named in the address bar, arrived at from the dashboard.
+  //
+  // The bubble goes up with the pan and stays up. Pressing a row is the same
+  // deliberate "this one" as clicking the pin itself, and a preview that went out
+  // the moment the pointer left the row would be the map answering the question
+  // and then taking the answer back — with the row's own actions sitting a few
+  // pixels away, that is most of the time.
+  //
+  // Pressing the chosen row again lets it go, exactly as a second click on its
+  // pin does. The bubble is left up if the pointer is still on that row, since
+  // from then on the row is holding it the way any hovered row does; if the press
+  // came from somewhere else — an address bar carrying a post id — there is
+  // nobody holding it and it goes out.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !focus) return;
     followRef.current = false;
     map.easeTo({ center: [focus.longitude, focus.latitude], zoom: 16, duration: 700 });
-  }, [focus]);
+
+    const marker = [...markMarkersRef.current, ...postMarkersRef.current].find(
+      (pin) => pin.id === focus.id,
+    )?.marker;
+    if (!marker) return;
+    if (keptRef.current === marker) {
+      const held = hoveredPropRef.current === focus.id;
+      release(!held);
+      // Handed back to the hover that is holding it, which is what closes it when
+      // the pointer finally leaves the row.
+      if (held) openedRef.current = focus.id;
+      return;
+    }
+    keep(marker, focus.id);
+  }, [focus, keep, release]);
 
   function recenter() {
     const map = mapRef.current;
