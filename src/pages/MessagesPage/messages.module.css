@@ -36,7 +36,11 @@
 
    The field having the focus is the keyboard being up, so the page reads it
    there rather than measuring anything: no number to be taken mid-slide, and
-   nothing to put back afterwards.
+   nothing to put back afterwards. That holds only for as long as nothing puts
+   the caret in the field that a keyboard does not come with — on a touchscreen
+   the two are the same event and there is nothing else that gives a field the
+   focus, which is why the composer is not focused on arrival there. See
+   components/Messages, where this rule is the reason for that one.
 
    And the corner goes with it, for the same reason the bar does: what the
    composer is sitting on while somebody is typing is the top of the keyboard,
