@@ -122,19 +122,6 @@ export default function HomePage() {
         <div className="card-grid">
           {shown("clock") && <ClockCard />}
           {shown("weather") && <WeatherCard />}
-          {/* Before the map rather than after it, which on a two-column grid is
-              the square to its left: the button is the one thing here you press,
-              and the map is what it writes on. Read in that order — keep this
-              spot, then see where it landed — the pin appears on the tile beside
-              the finger that made it instead of behind it. */}
-          <MarkButton
-            onLongPress={compose}
-            onMarked={(mark) => setMarks((current) => [mark, ...current])}
-            onUnmarked={(mark) => setMarks((current) => current.filter((item) => item.id !== mark.id))}
-            onRenamed={(mark) =>
-              setMarks((current) => current.map((item) => (item.id === mark.id ? mark : item)))
-            }
-          />
           {shown("map") && (
             <Suspense
               fallback={
@@ -160,6 +147,18 @@ export default function HomePage() {
               />
             </Suspense>
           )}
+          {/* Last of the four squares, which on a two-column grid is the one to
+              the right of the map: the ground you are standing on first and the
+              one thing you can do about it after it — the button is the corner
+              the block ends on. */}
+          <MarkButton
+            onLongPress={compose}
+            onMarked={(mark) => setMarks((current) => [mark, ...current])}
+            onUnmarked={(mark) => setMarks((current) => current.filter((item) => item.id !== mark.id))}
+            onRenamed={(mark) =>
+              setMarks((current) => current.map((item) => (item.id === mark.id ? mark : item)))
+            }
+          />
           {/* Then lo's own two, ahead of everything the country has to say —
               the warnings, the news and the trending list all come after them.
               What somebody left on this street and who is standing on it are the

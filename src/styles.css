@@ -44,7 +44,11 @@
 }
 
 html {
-  overscroll-behavior-y: none;
+  /* Both axes, not just the one: down, it is the bounce past the end of the page
+     that shows the browser's own background under a page that has run out; across
+     it is the drag that goes nowhere and, on iOS, the one Safari can read as
+     going back a page. Neither is something this page has anything to show for. */
+  overscroll-behavior: none;
   background: var(--paper);
 }
 
@@ -54,6 +58,34 @@ body {
   min-height: calc(var(--vh, 1vh) * 100);
   margin: 0;
   background: var(--paper);
+}
+
+/* Nothing on this page is laid out sideways — every page is a column, and the
+   dashboard grid's own columns are minmax(0, 1fr), which cannot be pushed wider
+   than the grid. So a sideways drag has nothing to reach, and on iOS it should
+   not move the page at all: rubber-banding a page that is already showing all of
+   its width reads as something being over there.
+   The same pair the lists further down use for the same reason (see .posts-list):
+   overflow-x settles what can be scrolled to, and touch-action settles what the
+   finger is allowed to ask for — which is what stops the drag from being read as
+   a gesture in the first place. Pinch-zoom is left alone, since making the type
+   bigger is nobody's mistake, and pan-y leaves the page scrolling as it did.
+   The map keeps its own gestures either way: mapbox-gl asks for touch-action:
+   none on its canvas and drives every drag from JS, and none of that is the
+   browser panning something.
+
+   Held to 320px and up, which is every iOS device there is, because that is the
+   width body is laid out at: on anything narrower the page really is wider than
+   the window, and clipping there would put a strip of it out of reach rather than
+   out of the way. */
+@media (min-width: 320px) {
+  html {
+    overflow-x: hidden;
+  }
+
+  body {
+    touch-action: pan-y pinch-zoom;
+  }
 }
 
 button,
