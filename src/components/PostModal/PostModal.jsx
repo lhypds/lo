@@ -8,6 +8,12 @@ import styles from "./post.module.css";
 
 const BODY_MAX = 500;
 
+// The same pair the mark button holds to: long enough not to fire on a slow tap,
+// short enough that holding it feels answered rather than stuck, and a press that
+// wanders this far was the start of a scroll rather than a hold.
+const LONG_PRESS_MS = 500;
+const LONG_PRESS_SLOP = 10;
+
 // A stored photo comes back on the post as the URL that serves it, and what
 // writing a post takes is the bare name — the file is content-addressed, so the
 // last segment is it. Pulled apart here rather than carried as a second field on
@@ -42,11 +48,18 @@ export default function PostModal({ isOpen, coords, place, post = null, onClose,
   // Two ways to the same photo, because they are two different requests to the
   // phone: `capture` asks for the camera itself, and without it the same input
   // asks for what is already in the album. One input cannot be both — the
-  // attribute is read when the picker opens — so there is one of each, and a
-  // button in front of each of them.
+  // attribute is read when the picker opens — so there is one of each, and the
+  // tap and the hold ask one each.
   const cameraRef = useRef(null);
   const albumRef = useRef(null);
   const textRef = useRef(null);
+  // The hold on the shutter: where the press landed, the timer that decides
+  // whether it is a hold, and whether it has become one — which is what the
+  // click at the end of the same press reads, so that a hold does not also take
+  // a photo on the engines that send a click after one.
+  const originRef = useRef(null);
+  const holdRef = useRef(null);
+  const heldRef = useRef(false);
   // Every element the pointer crosses fires its own dragenter and dragleave, so
   // the ones on the way in are counted rather than any single event believed —
   // otherwise crossing from the sheet onto the textarea inside it reads as
@@ -77,6 +90,7 @@ export default function PostModal({ isOpen, coords, place, post = null, onClose,
     setSubmitting(false);
     setDragging(false);
     dragDepthRef.current = 0;
+    heldRef.current = false;
     // The keyboard should already be up on a phone by the time the sheet lands.
     const timer = window.setTimeout(() => textRef.current?.focus(), 30);
     return () => window.clearTimeout(timer);
@@ -98,6 +112,8 @@ export default function PostModal({ isOpen, coords, place, post = null, onClose,
       window.removeEventListener("drop", swallow);
     };
   }, [isOpen]);
+
+  useEffect(() => () => window.clearTimeout(holdRef.current), []);
 
   async function accept(file) {
     if (!file) return;
@@ -124,26 +140,85 @@ export default function PostModal({ isOpen, coords, place, post = null, onClose,
     }
   }
 
-  // Two buttons, one gesture: a plain tap on each, which is the only thing every
-  // engine agrees is a gesture a file dialog may come out of.
-  //
-  // It used to be one button that took a tap for the camera and a hold for the
-  // album, and the hold could not be made to work on Android at any price. A
-  // file dialog is allowed out of a user gesture and nothing else; Blink treats a
-  // long press as its own gesture and sends nothing afterwards that it will
-  // count — not the click that WebKit sends, and not the pointerup or the
-  // touchend before it. The engine had already decided what that press was for.
-  //
-  // So the second way to a photo is a second button rather than a second gesture
-  // on the first one. It is the plainer thing to draw as well: a hold has no
-  // affordance of its own and had to be written out underneath in words, and one
-  // of the two ways in was reachable only by reading that line first.
   function openCamera() {
     cameraRef.current?.click();
   }
 
   function openAlbum() {
     albumRef.current?.click();
+  }
+
+  // The album is asked for here, in the timer, with the finger still down —
+  // which is the whole trick, and the one place it had not been asked from.
+  //
+  // A file dialog is allowed out of a user gesture and nothing else. Asking at
+  // the end of the hold was tried four ways and refused every time on Blink: it
+  // takes a long press to be its own gesture and sends nothing afterwards that
+  // it will count — not the click WebKit sends, not the pointerup or the
+  // touchend before it, not the contextmenu. By the lift it is already too late.
+  //
+  // But the gesture is not the only thing that grants a dialog. Activation is
+  // transient rather than stack-bound: the pointerdown that began this press
+  // opens a window a few seconds wide, and a timeout does not close it. Half a
+  // second in, that window should still be standing — so the album is asked for
+  // while it is, before Blink has anything to take away.
+  function startPress(event) {
+    if (busy || event.button > 0) return;
+    heldRef.current = false;
+    originRef.current = { x: event.clientX, y: event.clientY };
+    holdRef.current = window.setTimeout(() => {
+      holdRef.current = null;
+      heldRef.current = true;
+      // The buzz is the answer to a hold on a phone, where the finger is
+      // covering the button it just worked — and the album is the rest of it.
+      if (navigator.vibrate) navigator.vibrate(30);
+      openAlbum();
+    }, LONG_PRESS_MS);
+  }
+
+  // `heldRef` is left standing on purpose — it is what the click reads, and the
+  // press it describes is over either way.
+  function endPress() {
+    window.clearTimeout(holdRef.current);
+    holdRef.current = null;
+    originRef.current = null;
+  }
+
+  // A press that wanders was the start of a scroll, and the hold is called off
+  // before it fires: the click that may still follow reads as a plain tap.
+  function movePress(event) {
+    const origin = originRef.current;
+    if (!origin) return;
+    if (
+      Math.abs(event.clientX - origin.x) > LONG_PRESS_SLOP ||
+      Math.abs(event.clientY - origin.y) > LONG_PRESS_SLOP
+    ) {
+      endPress();
+    }
+  }
+
+  // The click that ends a hold is not a tap: that press has already been
+  // answered with the album, and taking a photo as well would be answering it
+  // twice. On Blink no click arrives after a hold at all — `heldRef` is cleared
+  // by the next press rather than by this one.
+  function tap() {
+    if (heldRef.current) {
+      heldRef.current = false;
+      return;
+    }
+    if (busy) return;
+    openCamera();
+  }
+
+  // A right-click, and the Menu key behind it — the way to the album that does
+  // not start with a finger, and the only one a keyboard has. Asked here only
+  // when no press is in flight: during a hold the timer above has it, or is
+  // about to, and this would open the dialog a second time.
+  function menuKey(event) {
+    // Android raises its own menu on a hold, over the album this one is opening
+    event.preventDefault();
+    if (busy || holdRef.current !== null || heldRef.current) return;
+    openAlbum();
   }
 
   function handleChange(event) {
@@ -293,37 +368,46 @@ export default function PostModal({ isOpen, coords, place, post = null, onClose,
             </button>
           </div>
         ) : (
-          // The two ways to a photo, side by side and the same size: a camera and
-          // an album are not a main way and a lesser one — which of them a post
-          // wants depends only on whether the picture has been taken yet.
-          <div className={styles.picker}>
-            <div className={styles.ways}>
-              <button type="button" className={styles.way} onClick={openCamera} disabled={busy}>
-                <svg viewBox="0 0 24 24" className={styles.glyph} aria-hidden="true">
-                  <path d="M3 8h4l1.5-2.5h7L17 8h4v11H3z" />
-                  <circle cx="12" cy="13.5" r="3.2" />
-                </svg>
-                {t("post.photoCamera")}
-              </button>
-              <button type="button" className={styles.way} onClick={openAlbum} disabled={busy}>
-                {/* A picture rather than a lens: a frame with something in it,
-                    which is what an album holds. */}
-                <svg viewBox="0 0 24 24" className={styles.glyph} aria-hidden="true">
-                  <path d="M3.5 5.5h17v13h-17z" />
-                  <path d="m6 15.5 3.5-4 3 3.5 2.5-3 3 3.5" />
-                  <circle cx="8" cy="9.5" r="1.3" />
-                </svg>
-                {t("post.photoAlbum")}
-              </button>
-            </div>
-            {/* Where the photo has got to. Both buttons are disabled while it is
-                on its way, so this line is the only word the sheet gives on it —
-                and it keeps its space when there is nothing to say, or the two
-                buttons above would hop as it comes and goes. */}
-            <p className={styles.stage} aria-live="polite">
-              {stage === "uploading" ? t("post.uploading") : stage === "compressing" ? t("post.compressing") : ""}
-            </p>
-          </div>
+          // A shutter, with what the two gestures on it do written inside it: the
+          // drawing says what the button is for, and the two lines under it say
+          // how to work it — all three inside the one thing they are about, so
+          // nothing on the sheet is a caption on something else.
+          <button
+            type="button"
+            className={styles.photo}
+            onClick={tap}
+            onPointerDown={startPress}
+            onPointerMove={movePress}
+            onPointerUp={endPress}
+            onPointerCancel={endPress}
+            onPointerLeave={endPress}
+            onContextMenu={menuKey}
+            disabled={busy}
+            aria-busy={busy}
+          >
+            <svg viewBox="0 0 24 24" className={styles.glyph} aria-hidden="true">
+              <path d="M3 8h4l1.5-2.5h7L17 8h4v11H3z" />
+              <circle cx="12" cy="13.5" r="3.2" />
+            </svg>
+            {/* Two lines that belong together: what a tap does, and under it
+                what a hold does. While a photo is on its way the first line says
+                where it has got to instead — the button is disabled by then, so
+                it is also the only word the sheet gives on it, and the second
+                keeps its space rather than unmounting and letting the drawing
+                above hop as it goes. */}
+            <span className={styles.copy}>
+              <span className={styles.tap} aria-live="polite">
+                {stage === "uploading"
+                  ? t("post.uploading")
+                  : stage === "compressing"
+                    ? t("post.compressing")
+                    : t("post.photoTap")}
+              </span>
+              <span className={stage ? `${styles.hold} ${styles.holdHidden}` : styles.hold}>
+                {t("post.photoHold")}
+              </span>
+            </span>
+          </button>
         )}
 
         <TextArea
@@ -339,7 +423,7 @@ export default function PostModal({ isOpen, coords, place, post = null, onClose,
           rows={4}
           // The floor the handle stops at, kept level with the field's own
           // opening height so dragging cannot shrink it under that.
-          minHeight={96}
+          minHeight={160}
         />
 
         <div className={styles.footer}>
