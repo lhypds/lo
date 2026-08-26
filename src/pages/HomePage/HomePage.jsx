@@ -153,11 +153,19 @@ export default function HomePage() {
               the trends: everything the country itself has to say, in one
               column (see .card-grid in styles.css). */}
           {supports("warnings") && <Warnings />}
-          {/* One panel off both feeds now, and it stands if either of them can
-              be fed: an edition that covers the news but has no event listing
-              still has something to say about the place. */}
-          {(supports("nearby") || supports("events")) && <NewsCard />}
-          {/* Posts are lo's own and belong to no country, so this one is
+          {/* Then lo's own two, ahead of anything the country has to say. What
+              somebody left on this street and who is standing on it are the
+              nearest things on the page, and the only two that can change while
+              it is open; the news is a slower reading of a wider place. Somebody
+              who opened lo to see where they are should not have to scroll past
+              a headline to find out who is next to them.
+
+              A phone reads this as the order it is written in. A wide screen
+              does not read it as an order at all — these two keep the left
+              column and everything the country says keeps the right, whichever
+              way round they are written here (see .card-grid in styles.css).
+
+              Posts are lo's own and belong to no country, so this one is
               unconditional — the same reason the mark button is. It reads the
               list the map above it is already drawing. */}
           <PostsCard />
@@ -167,6 +175,10 @@ export default function HomePage() {
               Unconditional for the same reason the posts are: presence is lo's
               own and stops at no border. */}
           <PeopleCard />
+          {/* One panel off both feeds now, and it stands if either of them can
+              be fed: an edition that covers the news but has no event listing
+              still has something to say about the place. */}
+          {(supports("nearby") || supports("events")) && <NewsCard />}
           {supports("trends") && <TrendsCard />}
         </div>
       </main>

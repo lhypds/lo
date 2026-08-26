@@ -395,8 +395,11 @@ a {
    The news panel is placed by hand. Pinning it to the third column keeps the
    three square tiles that would have filled the top row out of it, and normal
    auto-placement folds them into a 2x2 block on the left instead — the same
-   four squares, beside the panel rather than above it. The panels after it then
-   fill the rows below, two to a row. */
+   four squares, beside the panel rather than above it. The other panels then
+   fill the rows below it, two to a row, wherever in the page's own order they
+   are written: the pin is a place on the grid and not a place in the queue,
+   which is what lets the page put lo's own panels first without moving the news
+   out of the corner it belongs in on a wide screen. */
 @media (min-width: 1200px) {
   .home-main {
     width: min(100%, 1200px);
