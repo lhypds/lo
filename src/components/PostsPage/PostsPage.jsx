@@ -1,13 +1,13 @@
 import { Suspense, lazy, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
-import { Modal } from "../../ui/index.js";
+import { Modal, showToast } from "../../ui/index.js";
 import { formatUsername } from "../../utils/format.js";
 import { filterBy } from "../../utils/search.js";
 import { useAuth } from "../AuthProvider/index.js";
 import Header from "../Header/index.js";
 import PostItem from "../PostItem/index.js";
-import PostPreview from "../PostPreview/index.js";
+import PostModal from "../PostModal/index.js";
 import SearchField from "../SearchField/index.js";
 import { useHere } from "../LocationProvider/index.js";
 
@@ -24,11 +24,15 @@ export default function PostsPage() {
   // The list itself belongs to the provider: it is asked for again when the
   // ground changes and when the refresh in the top bar is pressed, neither of
   // which this page is in a position to notice.
-  const { coords, posts, postsError, dropPost } = useHere();
+  const { coords, posts, postsError, dropPost, replacePost } = useHere();
   const { user } = useAuth();
   const [query, setQuery] = useState("");
   const [focus, setFocus] = useState(null);
-  const [previewing, setPreviewing] = useState(null);
+  // The post the pointer is resting on, from whichever half of the page it is
+  // resting on it — the same two-way pairing the marks page makes, for the same
+  // reason: the square on the map and the row in the list are one post.
+  const [hovered, setHovered] = useState(null);
+  const [editing, setEditing] = useState(null);
   const [deleting, setDeleting] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -63,7 +67,13 @@ export default function PostsPage() {
       <div className="posts-map">
         <Suspense fallback={<div className="posts-map-placeholder" />}>
           {/* Filtered with the list, for the reason the marks map is */}
-          <MapCard fitMarks posts={shown} focus={focus} onSelectPost={setPreviewing} />
+          <MapCard
+            fitMarks
+            posts={shown}
+            focus={focus}
+            hovered={hovered}
+            onHoverPin={setHovered}
+          />
         </Suspense>
       </div>
       <main className="posts-list">
@@ -89,11 +99,15 @@ export default function PostsPage() {
                 post={post}
                 from={coords}
                 mine={Boolean(user && post.username === user.username)}
-                onOpen={setPreviewing}
+                hovered={post.id === hovered}
+                onHover={setHovered}
+                onEdit={setEditing}
                 onDelete={setDeleting}
-                // A fresh object every time rather than the post itself: the map
-                // pans on a new `focus`, and asking twice for the same spot —
-                // after wandering off it — has to move the map twice.
+                // Pressing the row is what sends the map, the way pressing a
+                // mark's name does. A fresh object every time rather than the
+                // post itself: the map pans on a new `focus`, and asking twice
+                // for the same spot — after wandering off it — has to move the
+                // map twice.
                 onShowOnMap={(target) => setFocus({ ...target })}
               />
             ))}
@@ -105,13 +119,23 @@ export default function PostsPage() {
         {(error || postsError) && <p className="list-error">{error || postsError.message}</p>}
       </main>
 
-      <PostPreview
-        post={previewing}
-        from={coords}
-        onClose={() => setPreviewing(null)}
-        onDelete={(post) => {
-          setPreviewing(null);
-          setDeleting(post);
+      {/* The composer again, opened on a post that already exists. Rewriting one
+          is the same act as writing it — the same words, the same photo, the same
+          sheet — and the spot and the moment it was left at are not up for
+          revision, so nothing here asks for a fix. */}
+      <PostModal
+        isOpen={Boolean(editing)}
+        post={editing}
+        onClose={() => setEditing(null)}
+        onSaved={(post) => {
+          setEditing(null);
+          // Into the provider's list, which the map and the rows both read: the
+          // author is looking at the post they have just rewritten.
+          replacePost(post);
+          // The row it lands in may be well down a long list, and the sheet
+          // closing is not by itself an answer about whether the save went
+          // through — the same reason writing one says so.
+          showToast(t("post.saved"), 1800);
         }}
       />
 

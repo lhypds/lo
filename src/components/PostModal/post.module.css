@@ -55,16 +55,68 @@
 
 /* Squared off and the full width of the sheet, so choosing a photo is the same
    shape of gesture as everything else in the app rather than a browser widget.
-   The same 30px slab as the button in the footer: they are the two things this
-   sheet asks the reader to press, and a difference in height between them would
-   read as a difference in weight neither of them has. */
+   Deeper than the slab in the footer, where it used to match: it holds a drawing
+   and the two gestures that work it now, and it is the one thing on this sheet a
+   thumb reaches for while standing in the street. Sized by its padding rather
+   than given a height, so a line that wraps in one language has somewhere to go.
+   The touch properties are the mark button's, and for its reason: this one is
+   held as well as pressed, and a hold that selected the button or raised iOS's
+   own callout would be answering the reader with something else. */
 .photo {
-  height: 30px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px;
   border: 1px solid var(--ink);
   border-radius: 0;
   background: var(--paper);
   color: var(--ink);
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.camera {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* What the button says, in two lines that belong together — the mark button's
+   own arrangement, since it is the same pair of gestures on the same kind of
+   square. */
+.copy {
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  text-align: center;
+}
+
+.tap {
   font-size: 12px;
+  line-height: 1.3;
+}
+
+/* Dimmed rather than coloured, so it stays the quieter of the two lines when the
+   button inverts under the pointer as well as when it is white */
+.hold {
+  opacity: 0.55;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+/* Held in place, not removed: the line above has taken over what it says */
+.holdHidden {
+  visibility: hidden;
 }
 
 .frame {
@@ -130,4 +182,11 @@
     background: var(--ink);
     color: var(--paper);
   }
+}
+
+/* Dimmed while a photo is being compressed and sent, which is the only time it
+   is disabled — and the line inside it is saying so, so the whole square reads
+   as the one thing being waited on. */
+.photo:disabled {
+  opacity: 0.4;
 }

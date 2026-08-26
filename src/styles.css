@@ -560,6 +560,21 @@ a {
   border-bottom: 1px solid var(--line);
 }
 
+/* The row belonging to the pin the pointer is resting on, up on the map. The
+   bubble that opens there answers "which spot is this"; the wash answers the
+   other direction, which is the half the reader cannot do for themselves on a
+   list of forty. Both pages share the rule for the reason they share every
+   other one: they are the same page asking two questions.
+
+   The wash is cast 8px past the text column rather than padded out to it, so
+   lighting a row moves nothing in it — and the divider between rows keeps the
+   width it has on every other row. */
+.mark-item.row-hovered,
+.post-item.row-hovered {
+  background: var(--soft);
+  box-shadow: -8px 0 var(--soft), 8px 0 var(--soft);
+}
+
 .mark-row {
   display: flex;
   align-items: center;

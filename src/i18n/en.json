@@ -171,9 +171,10 @@
   "post": {
     "hint": "Hold to post",
     "title": "New post",
-    "preview": "post",
     "placeholder": "What is here?",
     "addPhoto": "Add a photo",
+    "photoTap": "Tap to take a photo",
+    "photoHold": "Hold to choose from your photos",
     "dropPhoto": "Drop the photo here",
     "removePhoto": "Remove",
     "compressing": "Compressing",
@@ -187,7 +188,11 @@
     "delete": "Delete",
     "deleting": "Deleting",
     "deleteTitle": "Delete post",
-    "deleteConfirm": "Delete this post? This cannot be undone."
+    "deleteConfirm": "Delete this post? This cannot be undone.",
+    "edit": "Edit",
+    "editTitle": "Edit post",
+    "saving": "Saving",
+    "saved": "Saved"
   },
   "posts": {
     "title": "posts",

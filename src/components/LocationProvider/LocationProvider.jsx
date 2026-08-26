@@ -200,11 +200,18 @@ export function LocationProvider({ children }) {
     await Promise.all([load(coords), syncPeople(coords), loadPosts(coords)]);
   }, [load, syncPeople, loadPosts]);
 
-  // A post the reader just wrote or just deleted, into the list without a round
-  // trip: they are looking at the spot it is about.
+  // A post the reader just wrote, rewrote or deleted, into the list without a
+  // round trip: they are looking at the spot it is about.
   const addPost = useCallback((post) => setPosts((current) => [post, ...current]), []);
   const dropPost = useCallback(
     (postId) => setPosts((current) => current.filter((post) => post.id !== postId)),
+    [],
+  );
+  // In place rather than moved to the front: an edit is a second thought about
+  // something already left somewhere, not a new post, and the list is ordered by
+  // when each one was written.
+  const replacePost = useCallback(
+    (post) => setPosts((current) => current.map((item) => (item.id === post.id ? post : item))),
     [],
   );
 
@@ -232,6 +239,7 @@ export function LocationProvider({ children }) {
     reloadLocal: () => load(getLocationState().coords),
     addPost,
     dropPost,
+    replacePost,
   };
 
   return <LocationContext.Provider value={value}>{children}</LocationContext.Provider>;

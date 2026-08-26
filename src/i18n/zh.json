@@ -171,9 +171,10 @@
   "post": {
     "hint": "长按发布 post",
     "title": "新建 post",
-    "preview": "post",
     "placeholder": "这里有什么新鲜事？",
     "addPhoto": "添加图片",
+    "photoTap": "点击拍照",
+    "photoHold": "长按从相册选择",
     "dropPhoto": "把图片拖到这里",
     "removePhoto": "移除",
     "compressing": "压缩中",
@@ -187,7 +188,11 @@
     "delete": "删除",
     "deleting": "删除中",
     "deleteTitle": "删除 post",
-    "deleteConfirm": "删除这条 post？此操作无法撤销。"
+    "deleteConfirm": "删除这条 post？此操作无法撤销。",
+    "edit": "编辑",
+    "editTitle": "编辑帖子",
+    "saving": "保存中",
+    "saved": "已保存"
   },
   "posts": {
     "title": "posts",

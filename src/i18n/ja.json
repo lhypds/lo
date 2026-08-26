@@ -171,9 +171,10 @@
   "post": {
     "hint": "長押しで投稿",
     "title": "新しい post",
-    "preview": "post",
     "placeholder": "ここで何が起きていますか？",
     "addPhoto": "画像を追加",
+    "photoTap": "タップで撮影",
+    "photoHold": "長押しでアルバムから選択",
     "dropPhoto": "ここに画像をドロップ",
     "removePhoto": "削除",
     "compressing": "圧縮中",
@@ -187,7 +188,11 @@
     "delete": "削除",
     "deleting": "削除中",
     "deleteTitle": "post を削除",
-    "deleteConfirm": "この post を削除しますか？この操作は取り消せません。"
+    "deleteConfirm": "この post を削除しますか？この操作は取り消せません。",
+    "edit": "編集",
+    "editTitle": "投稿を編集",
+    "saving": "保存中",
+    "saved": "保存しました"
   },
   "posts": {
     "title": "posts",

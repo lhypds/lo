@@ -172,6 +172,15 @@ const selectRecentPosts = db.prepare(`
   LIMIT ?
 `);
 
+// The words and the photo, and nothing else: a post is filed under the spot and
+// the moment it was left at, and letting an edit move either of those would make
+// a pin on the map a claim about somewhere its author was never standing.
+const updatePostContent = db.prepare(`
+  UPDATE posts
+  SET body = ?, image = ?, image_width = ?, image_height = ?
+  WHERE id = ? AND user_id = ?
+`);
+
 const deletePostById = db.prepare(`
   DELETE FROM posts
   WHERE id = ? AND user_id = ?
@@ -283,6 +292,21 @@ export function getPostsNear({ latitude, longitude }, radiusMeters, limit = 200)
 
 export function getRecentPosts(limit = 200) {
   return selectRecentPosts.all(limit);
+}
+
+// Nothing back rather than a row when the id is somebody else's or nobody's,
+// which is how renameMark answers the same question.
+export function updatePost(userId, postId, post) {
+  const changed = updatePostContent.run(
+    post.body ?? "",
+    post.image ?? null,
+    post.imageWidth ?? null,
+    post.imageHeight ?? null,
+    postId,
+    userId,
+  ).changes;
+  if (changed === 0) return null;
+  return selectPostById.get(postId);
 }
 
 export function deletePost(userId, postId) {

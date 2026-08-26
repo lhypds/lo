@@ -24,6 +24,12 @@ export default function MarksPage() {
   const [marks, setMarks] = useState([]);
   const [query, setQuery] = useState("");
   const [focus, setFocus] = useState(null);
+  // The spot the pointer is resting on, whichever half of the page it is resting
+  // on it: the map reports the pin, a row reports itself, and both halves are
+  // told the answer. One spot, written twice — a bubble that opened over a pin
+  // with the list sitting still, or a row read with nothing happening on the
+  // map, left the reader to pair the two up themselves.
+  const [hovered, setHovered] = useState(null);
   const [renaming, setRenaming] = useState(null);
   const [deleting, setDeleting] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -86,7 +92,13 @@ export default function MarksPage() {
               the list has just said are not the ones. The fit happens once, on
               the first list that had anything in it, so typing thins the pins
               out where they stand rather than throwing the view about. */}
-          <MapCard fitMarks marks={shown} focus={focus} />
+          <MapCard
+            fitMarks
+            marks={shown}
+            focus={focus}
+            hovered={hovered}
+            onHoverPin={setHovered}
+          />
         </Suspense>
       </div>
       <main className="marks-list">
@@ -114,6 +126,8 @@ export default function MarksPage() {
                 key={mark.id}
                 mark={mark}
                 from={coords}
+                hovered={mark.id === hovered}
+                onHover={setHovered}
                 onRename={setRenaming}
                 onDelete={setDeleting}
                 // A fresh object every time rather than the mark itself: the map

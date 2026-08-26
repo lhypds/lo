@@ -1,7 +1,7 @@
 import { Suspense, lazy, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
-import { Modal, showToast } from "../../ui/index.js";
+import { showToast } from "../../ui/index.js";
 import { getLocationState, refreshLocation } from "../../utils/location.js";
 import ClockCard from "../ClockCard/index.js";
 import EventsCard from "../EventsCard/index.js";
@@ -11,7 +11,6 @@ import LocationGate from "../LocationGate/index.js";
 import MarkButton from "../MarkButton/index.js";
 import NearbyCard from "../NearbyCard/index.js";
 import PostModal from "../PostModal/index.js";
-import PostPreview from "../PostPreview/index.js";
 import TrendsCard from "../TrendsCard/index.js";
 import Warnings from "../Warnings/index.js";
 import WeatherCard from "../WeatherCard/index.js";
@@ -27,7 +26,7 @@ export default function HomePage() {
   // Posts come from the provider rather than from here: they are a reading of
   // the fix, like the place name is, and the refresh in the top bar has to be
   // able to reach them without knowing which page it is sitting on.
-  const { coords, place, posts, addPost, dropPost, supports, reloadToken } = useHere();
+  const { coords, place, posts, addPost, supports, reloadToken } = useHere();
   // Held here, not in the map: expanding it hides the rest of the dashboard.
   const [mapExpanded, setMapExpanded] = useState(false);
   const [marks, setMarks] = useState([]);
@@ -35,9 +34,6 @@ export default function HomePage() {
   // a post belongs to the spot its writer was standing on when they started it,
   // not to wherever they have drifted by the time they press Post.
   const [composing, setComposing] = useState(null);
-  const [previewing, setPreviewing] = useState(null);
-  const [deleting, setDeleting] = useState(null);
-  const [busy, setBusy] = useState(false);
 
   // Marks are yours and are the same list wherever you are standing, so unlike
   // posts they are not asked for again on every move — only on the refresh in
@@ -70,20 +66,6 @@ export default function HomePage() {
     // looking at the spot they just posted about.
     addPost(post);
     showToast(t("post.posted"), 1800);
-  }
-
-  async function confirmDelete() {
-    if (busy) return;
-    setBusy(true);
-    try {
-      await api.deletePost(deleting.id);
-      dropPost(deleting.id);
-      setDeleting(null);
-    } catch (error) {
-      showToast(error.message);
-    } finally {
-      setBusy(false);
-    }
   }
 
   // Nothing below answers a question without a position, so the gate stands in
@@ -124,7 +106,6 @@ export default function HomePage() {
                 marks={marks}
                 expanded={expanded}
                 onToggleExpanded={() => setMapExpanded((value) => !value)}
-                onSelectPost={setPreviewing}
               />
             </Suspense>
           )}
@@ -149,7 +130,10 @@ export default function HomePage() {
       </main>
 
       {/* Outside <main>, which is emptied down to the map while it is expanded:
-          a post can be opened from the full-screen map too. */}
+          the hold that opens this can be made on the full-screen map too.
+          Reading a post needs nothing out here — the bubble on its own square
+          says the whole of it — and rewriting or taking one down is done from the
+          list on the posts page, where every post of yours is in one place. */}
       <PostModal
         isOpen={Boolean(composing)}
         coords={composing}
@@ -157,33 +141,6 @@ export default function HomePage() {
         onClose={() => setComposing(null)}
         onCreated={created}
       />
-
-      <PostPreview
-        post={previewing}
-        from={coords}
-        onClose={() => setPreviewing(null)}
-        onDelete={(post) => {
-          setPreviewing(null);
-          setDeleting(post);
-        }}
-      />
-
-      <Modal
-        isOpen={Boolean(deleting)}
-        title={t("post.deleteTitle")}
-        onClose={() => setDeleting(null)}
-        closeOnOverlay
-      >
-        <p className="modal-text">{t("post.deleteConfirm")}</p>
-        <div className="modal-actions">
-          <button type="button" className="outline-button" onClick={() => setDeleting(null)} disabled={busy}>
-            {t("common.cancel")}
-          </button>
-          <button type="button" className="primary-button" onClick={confirmDelete} disabled={busy}>
-            {busy ? t("post.deleting") : t("post.delete")}
-          </button>
-        </div>
-      </Modal>
     </div>
   );
 }

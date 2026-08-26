@@ -17,6 +17,7 @@ import {
   getUser,
   renameMark,
   savePosition,
+  updatePost,
 } from "./db.js";
 import { COMPONENTS, componentsFor, countryList } from "./countries.js";
 import {
@@ -352,24 +353,40 @@ app.get("/api/posts", requireSession, (req, res) => {
   res.json({ posts: coords ? getPostsNear(coords, POSTS_RADIUS_M, limit) : getRecentPosts(limit) });
 });
 
-app.post("/api/posts", requireSession, async (req, res, next) => {
-  const location = parseLocation(req.body);
-  if (!location) return res.status(400).json({ error: "坐标无效" });
-  const body = String(req.body?.body ?? "").trim().normalize("NFKC");
-  if (body.length > POST_BODY_MAX) {
-    return res.status(400).json({ error: `内容最多 ${POST_BODY_MAX} 个字符` });
-  }
+// What a post is allowed to hold, read the same way whether one is being written
+// or rewritten. The two endpoints have to agree about it exactly — a rule that
+// held only on the way in would be no rule at all — and the only way to be sure
+// of that is for there to be one reading of it.
+function readPostContent(payload) {
+  const body = String(payload?.body ?? "").trim().normalize("NFKC");
+  if (body.length > POST_BODY_MAX) return { error: `内容最多 ${POST_BODY_MAX} 个字符` };
 
   // The photo arrives as a name /api/images already wrote, never as bytes —
   // anything else would let this endpoint name a file of its own choosing.
-  const image = req.body?.image ? String(req.body.image) : null;
-  if (image && !isStoredName(image)) return res.status(400).json({ error: "图片无效" });
-  if (!body && !image) return res.status(400).json({ error: "请写点什么，或者添加一张图片" });
+  const image = payload?.image ? String(payload.image) : null;
+  if (image && !isStoredName(image)) return { error: "图片无效" };
+  if (!body && !image) return { error: "请写点什么，或者添加一张图片" };
 
   const dimension = (value) => {
     const number = Number(value);
     return Number.isFinite(number) && number > 0 ? Math.round(number) : null;
   };
+  return {
+    content: {
+      body,
+      image,
+      imageWidth: dimension(payload?.imageWidth),
+      imageHeight: dimension(payload?.imageHeight),
+    },
+  };
+}
+
+app.post("/api/posts", requireSession, async (req, res, next) => {
+  const location = parseLocation(req.body);
+  if (!location) return res.status(400).json({ error: "坐标无效" });
+  const { content, error } = readPostContent(req.body);
+  if (error) return res.status(400).json({ error });
+
   const suppliedTime = req.body?.time ? new Date(req.body.time) : new Date();
   if (Number.isNaN(suppliedTime.getTime())) return res.status(400).json({ error: "记录时间无效" });
 
@@ -380,17 +397,37 @@ app.post("/api/posts", requireSession, async (req, res, next) => {
     const place = await lookupPlace(location.latitude, location.longitude, requestedLang(req)).catch(() => null);
     const post = createPost(req.user.id, {
       ...location,
+      ...content,
       time: suppliedTime.toISOString(),
-      body,
-      image,
-      imageWidth: dimension(req.body?.imageWidth),
-      imageHeight: dimension(req.body?.imageHeight),
       place: place ? [place.locality, place.name, place.region].filter(Boolean).join(" · ") : null,
     });
     res.status(201).json({ post });
-  } catch (error) {
-    next(error);
+  } catch (requestError) {
+    next(requestError);
   }
+});
+
+// Rewriting one of your own. Only the words and the photo: where and when the
+// post was left are what it is filed under, and an edit that could move the pin
+// would let a post claim ground its author never stood on. It is the same line a
+// mark draws, which can be renamed and not re-placed — and it is why nothing
+// here goes back to the geocoder, since the ground has not changed.
+//
+// Somebody else's post is answered as a missing one rather than as a forbidden
+// one: the UPDATE is by id *and* author, so a post nobody may edit and a post
+// that is not there are the same row count coming back.
+app.patch("/api/posts/:postId", requireSession, (req, res) => {
+  const postId = Number(req.params.postId);
+  if (!Number.isInteger(postId) || postId < 1) return res.status(400).json({ error: "帖子 ID 无效" });
+  const { content, error } = readPostContent(req.body);
+  if (error) return res.status(400).json({ error });
+
+  // The photo it was carrying stays on disk: it is named after its own bytes, so
+  // another post may be pointing at the same file — the same reason deleting a
+  // post leaves it alone.
+  const post = updatePost(req.user.id, postId, content);
+  if (!post) return res.status(404).json({ error: "帖子不存在", code: "POST_NOT_FOUND" });
+  res.json({ post });
 });
 
 app.delete("/api/posts/:postId", requireSession, (req, res) => {

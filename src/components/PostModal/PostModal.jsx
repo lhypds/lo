@@ -8,6 +8,21 @@ import styles from "./post.module.css";
 
 const BODY_MAX = 500;
 
+// The same pair the mark button holds to: long enough not to fire on a slow tap,
+// short enough that holding it feels answered rather than stuck, and a press that
+// wanders more than a few pixels was the start of a scroll.
+const LONG_PRESS_MS = 500;
+const LONG_PRESS_SLOP = 10;
+
+// A stored photo comes back on the post as the URL that serves it, and what
+// writing a post takes is the bare name — the file is content-addressed, so the
+// last segment is it. Pulled apart here rather than carried as a second field on
+// every post: the shape of that URL is one line of SQL away, and this is the
+// only place that has to undo it.
+function storedName(url) {
+  return url ? url.split("/").pop() : null;
+}
+
 // Writing a post about the spot underfoot. The fix was taken when the press
 // that opened this landed, not when Post is pressed — whoever is writing may
 // take a minute over it, and the post belongs to the spot they were standing on
@@ -16,7 +31,13 @@ const BODY_MAX = 500;
 // The photo is compressed and uploaded as soon as it is chosen rather than on
 // submit: it is by far the slowest part, and doing it while the words are still
 // being typed is time the writer was spending anyway.
-export default function PostModal({ isOpen, coords, place, onClose, onCreated }) {
+//
+// A `post` makes the same sheet an edit of that one, and the difference is only
+// what it opens with and where it sends it. What can be changed is the words and
+// the photo; the spot and the moment are what the post is filed under, so the
+// line at the top goes on saying where it was left rather than where its author
+// happens to be standing now.
+export default function PostModal({ isOpen, coords, place, post = null, onClose, onCreated, onSaved }) {
   const { t } = useTranslation();
   const [body, setBody] = useState("");
   const [image, setImage] = useState(null);
@@ -24,8 +45,20 @@ export default function PostModal({ isOpen, coords, place, onClose, onCreated })
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [dragging, setDragging] = useState(false);
-  const inputRef = useRef(null);
+  // Two ways to the same photo, because they are two different requests to the
+  // phone: `capture` asks for the camera itself, and without it the same input
+  // asks for what is already in the album. One input cannot be both — the
+  // attribute is read when the picker opens — so the button carries one of each
+  // and the gesture decides which one is asked.
+  const cameraRef = useRef(null);
+  const albumRef = useRef(null);
   const textRef = useRef(null);
+  // The hold on the camera button: the timer that turns a press into one, where
+  // the finger went down, and whether it fired — read by the click the same press
+  // sends afterwards, which would otherwise open the camera on top of the album.
+  const holdRef = useRef(null);
+  const originRef = useRef(null);
+  const heldRef = useRef(false);
   // Every element the pointer crosses fires its own dragenter and dragleave, so
   // the ones on the way in are counted rather than any single event believed —
   // otherwise crossing from the sheet onto the textarea inside it reads as
@@ -33,11 +66,24 @@ export default function PostModal({ isOpen, coords, place, onClose, onCreated })
   const dragDepthRef = useRef(0);
 
   const busy = stage !== "" || submitting;
+  const editing = Boolean(post);
 
   useEffect(() => {
     if (!isOpen) return undefined;
-    setBody("");
-    setImage(null);
+    // An edit opens on what is already there; a new post opens on nothing. The
+    // photo is rebuilt into the shape the picker leaves behind, so everything
+    // below — the frame, Remove, the submit — cannot tell the two apart.
+    setBody(post?.body ?? "");
+    setImage(
+      post?.image
+        ? {
+            name: storedName(post.image),
+            url: post.image,
+            width: post.imageWidth ?? null,
+            height: post.imageHeight ?? null,
+          }
+        : null,
+    );
     setStage("");
     setError("");
     setSubmitting(false);
@@ -46,7 +92,7 @@ export default function PostModal({ isOpen, coords, place, onClose, onCreated })
     // The keyboard should already be up on a phone by the time the sheet lands.
     const timer = window.setTimeout(() => textRef.current?.focus(), 30);
     return () => window.clearTimeout(timer);
-  }, [isOpen]);
+  }, [isOpen, post]);
 
   // A photo let go a little wide of the sheet must not cost the draft: left to
   // itself the browser opens the file over the page, and the half-written post
@@ -88,6 +134,57 @@ export default function PostModal({ isOpen, coords, place, onClose, onCreated })
     } finally {
       setStage("");
     }
+  }
+
+  // The hold is timed here and acted on when the finger lifts, not when the timer
+  // fires. A file picker is only allowed out of a gesture, and a timeout 500ms
+  // after one is not a gesture — Safari refuses it outright — so the timer only
+  // marks the press as a hold and says so through the phone, and the pointerup
+  // that follows, which is a gesture, is what opens the album.
+  useEffect(() => () => window.clearTimeout(holdRef.current), []);
+
+  function cancelHold() {
+    window.clearTimeout(holdRef.current);
+    holdRef.current = null;
+    originRef.current = null;
+  }
+
+  function startHold(event) {
+    if (busy || event.button > 0) return;
+    heldRef.current = false;
+    originRef.current = { x: event.clientX, y: event.clientY };
+    holdRef.current = window.setTimeout(() => {
+      holdRef.current = null;
+      heldRef.current = true;
+      // The only signal a hold has landed on a phone, where the finger is
+      // covering the button it just changed.
+      if (navigator.vibrate) navigator.vibrate(30);
+    }, LONG_PRESS_MS);
+  }
+
+  function moveHold(event) {
+    const origin = originRef.current;
+    if (!origin) return;
+    if (
+      Math.abs(event.clientX - origin.x) > LONG_PRESS_SLOP ||
+      Math.abs(event.clientY - origin.y) > LONG_PRESS_SLOP
+    ) {
+      cancelHold();
+    }
+  }
+
+  function endHold() {
+    cancelHold();
+    if (heldRef.current) albumRef.current?.click();
+  }
+
+  // A hold ends in a click as well, and that one has already been answered.
+  function tap() {
+    if (heldRef.current) {
+      heldRef.current = false;
+      return;
+    }
+    cameraRef.current?.click();
   }
 
   function handleChange(event) {
@@ -142,24 +239,35 @@ export default function PostModal({ isOpen, coords, place, onClose, onCreated })
       setError(t("post.needsContent"));
       return;
     }
-    if (!coords) {
+    // Only a new post needs a fix; an edit already has the one it was written on
+    if (!editing && !coords) {
       setError(t("mark.needsLocation"));
       return;
     }
     setSubmitting(true);
     setError("");
+    // The words and the photo, which is all an edit may change and all a new post
+    // adds to the spot and the moment underneath it.
+    const content = {
+      body: text,
+      image: image?.name ?? null,
+      imageWidth: image?.width ?? null,
+      imageHeight: image?.height ?? null,
+    };
     try {
-      const { post } = await api.createPost({
-        latitude: coords.latitude,
-        longitude: coords.longitude,
-        accuracy: coords.accuracy,
-        time: new Date().toISOString(),
-        body: text,
-        image: image?.name ?? null,
-        imageWidth: image?.width ?? null,
-        imageHeight: image?.height ?? null,
-      });
-      onCreated(post);
+      if (editing) {
+        const saved = await api.updatePost(post.id, content);
+        onSaved(saved.post);
+      } else {
+        const written = await api.createPost({
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+          accuracy: coords.accuracy,
+          time: new Date().toISOString(),
+          ...content,
+        });
+        onCreated(written.post);
+      }
     } catch (requestError) {
       setError(requestError.message);
     } finally {
@@ -167,10 +275,19 @@ export default function PostModal({ isOpen, coords, place, onClose, onCreated })
     }
   }
 
-  const where = place || (coords ? formatCoords(coords.latitude, coords.longitude) : "");
+  // An edit says where the post is, not where its author is: the spot is the one
+  // thing about it that cannot be rewritten.
+  const where = editing
+    ? post.place || formatCoords(post.latitude, post.longitude)
+    : place || (coords ? formatCoords(coords.latitude, coords.longitude) : "");
 
   return (
-    <Modal isOpen={isOpen} title={t("post.title")} onClose={busy ? undefined : onClose} wide>
+    <Modal
+      isOpen={isOpen}
+      title={editing ? t("post.editTitle") : t("post.title")}
+      onClose={busy ? undefined : onClose}
+      wide
+    >
       <form
         className={styles.form}
         onSubmit={submit}
@@ -184,6 +301,80 @@ export default function PostModal({ isOpen, coords, place, onClose, onCreated })
         onDrop={drop}
       >
         {where && <p className={styles.where}>{where}</p>}
+
+        {/* The photo above the words, which is the order a post is made in as
+            often as not: the picture is the reason there is something to say
+            about this spot, and the words are the caption on it. */}
+        <input
+          ref={cameraRef}
+          type="file"
+          accept="image/*"
+          // The back camera: a post is about the ground its writer is standing
+          // on, not about the writer.
+          capture="environment"
+          className={styles.file}
+          onChange={handleChange}
+        />
+        <input ref={albumRef} type="file" accept="image/*" className={styles.file} onChange={handleChange} />
+
+        {image ? (
+          <div className={styles.frame}>
+            {/* The picture is the post's own content, and the stored name is a
+                digest — there is nothing to read out that the post does not
+                already say. */}
+            {/* Sized from the compressed photo's own dimensions, as in the
+                preview: the frame then holds the picture's box from the first
+                frame it exists, so nothing collapses to a line if the bytes
+                have to be fetched again. */}
+            <img className={styles.image} src={image.url} alt="" width={image.width} height={image.height} />
+            <button type="button" className={styles.remove} onClick={() => setImage(null)} disabled={busy}>
+              {t("post.removePhoto")}
+            </button>
+          </div>
+        ) : (
+          // A shutter, with what the two gestures on it do written inside it: the
+          // drawing says what the button is for, and the two lines under it say
+          // how to work it — all three inside the one thing they are about, so
+          // nothing on the sheet is a caption on something else.
+          <button
+            type="button"
+            className={styles.photo}
+            onClick={tap}
+            onPointerDown={startHold}
+            onPointerMove={moveHold}
+            onPointerUp={endHold}
+            onPointerCancel={cancelHold}
+            onPointerLeave={cancelHold}
+            // Android raises its own menu on a hold, over the album this one is
+            // about to open
+            onContextMenu={(event) => event.preventDefault()}
+            disabled={busy}
+            aria-busy={busy}
+          >
+            <svg viewBox="0 0 24 24" className={styles.camera} aria-hidden="true">
+              <path d="M3 8h4l1.5-2.5h7L17 8h4v11H3z" />
+              <circle cx="12" cy="13.5" r="3.2" />
+            </svg>
+            {/* Two lines that belong together: what a tap does, and under it
+                what a hold does. While a photo is on its way in the first line
+                says where it has got to instead — the button is disabled by
+                then, so it is also the only way that progress is announced, and
+                the second line keeps its space rather than unmounting and
+                letting the drawing above hop as it goes. */}
+            <span className={styles.copy}>
+              <span className={styles.tap} aria-live="polite">
+                {stage === "uploading"
+                  ? t("post.uploading")
+                  : stage === "compressing"
+                    ? t("post.compressing")
+                    : t("post.photoTap")}
+              </span>
+              <span className={stage ? `${styles.hold} ${styles.holdHidden}` : styles.hold}>
+                {t("post.photoHold")}
+              </span>
+            </span>
+          </button>
+        )}
 
         <TextArea
           ref={textRef}
@@ -201,43 +392,18 @@ export default function PostModal({ isOpen, coords, place, onClose, onCreated })
           minHeight={96}
         />
 
-        <input ref={inputRef} type="file" accept="image/*" className={styles.file} onChange={handleChange} />
-
-        {image ? (
-          <div className={styles.frame}>
-            {/* The picture is the post's own content, and the stored name is a
-                digest — there is nothing to read out that the post does not
-                already say. */}
-            {/* Sized from the compressed photo's own dimensions, as in the
-                preview: the frame then holds the picture's box from the first
-                frame it exists, so nothing collapses to a line if the bytes
-                have to be fetched again. */}
-            <img className={styles.image} src={image.url} alt="" width={image.width} height={image.height} />
-            <button type="button" className={styles.remove} onClick={() => setImage(null)} disabled={busy}>
-              {t("post.removePhoto")}
-            </button>
-          </div>
-        ) : (
-          <button
-            type="button"
-            className={styles.photo}
-            onClick={() => inputRef.current?.click()}
-            disabled={busy}
-          >
-            {stage === "uploading"
-              ? t("post.uploading")
-              : stage === "compressing"
-                ? t("post.compressing")
-                : t("post.addPhoto")}
-          </button>
-        )}
-
         <div className={styles.footer}>
           <span className={styles.count}>
             {body.length}/{BODY_MAX}
           </span>
           <button type="submit" className="primary-button" disabled={busy}>
-            {submitting ? t("post.posting") : t("post.submit")}
+            {editing
+              ? submitting
+                ? t("post.saving")
+                : t("common.save")
+              : submitting
+                ? t("post.posting")
+                : t("post.submit")}
           </button>
         </div>
 

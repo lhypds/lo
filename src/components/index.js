@@ -19,7 +19,6 @@ export { default as MarksPage } from "./MarksPage/index.js";
 export { default as NearbyCard } from "./NearbyCard/index.js";
 export { default as PostItem } from "./PostItem/index.js";
 export { default as PostModal } from "./PostModal/index.js";
-export { default as PostPreview } from "./PostPreview/index.js";
 export { default as PostsPage } from "./PostsPage/index.js";
 export { default as PrivateRoute } from "./PrivateRoute/index.js";
 export { default as SearchField } from "./SearchField/index.js";
