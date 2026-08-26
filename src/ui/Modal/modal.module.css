@@ -90,7 +90,12 @@
 @media (max-width: 560px) {
   .full {
     position: fixed;
-    top: 0;
+    /* --sheet-* are the visual viewport, kept in step by the sheet itself while
+       it is open (see ui/Modal) — the window minus whatever the keyboard has
+       taken, and where on screen that part of it now is. The fallbacks are the
+       whole window, which is what they come to whenever there is no keyboard
+       up and on any browser that cannot say. */
+    top: var(--sheet-top, 0px);
     left: 0;
     right: 0;
     width: auto;
@@ -98,10 +103,11 @@
     height: 100vh;
     height: 100dvh;
     height: calc(var(--vh, 1vh) * 100);
+    height: var(--sheet-height, calc(var(--vh, 1vh) * 100));
     max-height: none;
     border: 0;
     padding-top: env(safe-area-inset-top);
-    padding-bottom: env(safe-area-inset-bottom);
+    padding-bottom: var(--sheet-foot, env(safe-area-inset-bottom));
   }
 
   .full .content {

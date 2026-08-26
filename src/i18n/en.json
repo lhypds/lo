@@ -224,7 +224,6 @@
     "empty": "No messages yet",
     "said": "You: {{body}}",
     "emptyThread": "Nothing said to {{name}} yet",
-    "placeholder": "Say something",
     "send": "Send",
     "sending": "Sending",
     "profile": "View Profile"

@@ -224,7 +224,6 @@
     "empty": "メッセージはまだありません",
     "said": "自分：{{body}}",
     "emptyThread": "{{name}} とのやり取りはまだありません",
-    "placeholder": "何か書く",
     "send": "送信",
     "sending": "送信中",
     "profile": "プロフィールを見る"

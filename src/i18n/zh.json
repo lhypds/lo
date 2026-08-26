@@ -224,7 +224,6 @@
     "empty": "还没有消息",
     "said": "我：{{body}}",
     "emptyThread": "还没有和 {{name}} 说过话",
-    "placeholder": "说点什么",
     "send": "发送",
     "sending": "发送中",
     "profile": "查看资料"

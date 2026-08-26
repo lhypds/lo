@@ -18,6 +18,10 @@ const MESSAGES_REFRESH_MS = 15 * 1000;
 // The same ceiling the server keeps: the field stops taking characters at the
 // point the request would have been refused.
 const BODY_MAX = 1000;
+// Within this much of the last line, the thread counts as standing on its floor
+// — near enough that the reader is following the conversation rather than
+// looking back through it.
+const NEAR_BOTTOM = 80;
 
 // A username is the whole address, so it is read the way the server reads it.
 function normalize(value) {
@@ -58,6 +62,7 @@ export default function MessagesModal() {
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
   const requestRef = useRef(0);
+  const atBottomRef = useRef(true);
 
   useEffect(
     () =>
@@ -123,6 +128,39 @@ export default function MessagesModal() {
     const scroller = scrollRef.current;
     if (scroller) scroller.scrollTop = scroller.scrollHeight;
   }, [messages.length]);
+
+  // Whether it is standing on that floor, kept current as the thread is
+  // scrolled. Held as a flag rather than measured when it is needed, because by
+  // then the room it would have been measured against is the one the keyboard
+  // has just taken half of.
+  useEffect(() => {
+    const scroller = scrollRef.current;
+    if (!scroller) return undefined;
+    const note = () => {
+      atBottomRef.current =
+        scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < NEAR_BOTTOM;
+    };
+    note();
+    scroller.addEventListener("scroll", note, { passive: true });
+    return () => scroller.removeEventListener("scroll", note);
+  }, [open, to]);
+
+  // The keyboard coming up shortens the sheet under the thread (see `full` in
+  // ui/Modal), and the lines it shortens away are the newest ones — the half of
+  // the conversation somebody reaching for the field is in the middle of. So the
+  // thread is put back on its floor as the room for it changes. Only if it was
+  // already there: someone who has scrolled up to find something older and then
+  // starts to type has not asked to be sent back to the end.
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!open || !to || !viewport) return undefined;
+    const pin = () => {
+      const scroller = scrollRef.current;
+      if (scroller && atBottomRef.current) scroller.scrollTop = scroller.scrollHeight;
+    };
+    viewport.addEventListener("resize", pin);
+    return () => viewport.removeEventListener("resize", pin);
+  }, [open, to]);
 
   // Arriving from a profile, the composer is the whole reason the sheet opened
   useEffect(() => {
@@ -230,7 +268,6 @@ export default function MessagesModal() {
                   setBody(event.target.value);
                   setError("");
                 }}
-                placeholder={t("messages.placeholder")}
                 maxLength={BODY_MAX}
                 enterKeyHint="send"
                 autoComplete="off"
