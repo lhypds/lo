@@ -3,24 +3,24 @@ import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
 import { showToast } from "../../ui/index.js";
 import { getLocationState, refreshLocation } from "../../utils/location.js";
-import ClockCard from "../ClockCard/index.js";
-import Header from "../Header/index.js";
-import HereStrip from "../HereStrip/index.js";
-import LocationGate from "../LocationGate/index.js";
-import MarkButton from "../MarkButton/index.js";
-import NewsCard from "../NewsCard/index.js";
-import PeopleCard from "../PeopleCard/index.js";
-import PostModal from "../PostModal/index.js";
-import PostsCard from "../PostsCard/index.js";
-import TrendsCard from "../TrendsCard/index.js";
-import Warnings from "../Warnings/index.js";
-import WeatherCard from "../WeatherCard/index.js";
-import { useHere } from "../LocationProvider/index.js";
+import ClockCard from "../../components/ClockCard/index.js";
+import Header from "../../components/Header/index.js";
+import HereStrip from "../../components/HereStrip/index.js";
+import LocationGate from "../../components/LocationGate/index.js";
+import MarkButton from "../../components/MarkButton/index.js";
+import NewsCard from "../../components/NewsCard/index.js";
+import PeopleCard from "../../components/PeopleCard/index.js";
+import PostModal from "../../components/PostModal/index.js";
+import PostsCard from "../../components/PostsCard/index.js";
+import TrendsCard from "../../components/TrendsCard/index.js";
+import Warnings from "../../components/Warnings/index.js";
+import WeatherCard from "../../components/WeatherCard/index.js";
+import { useHere } from "../../components/LocationProvider/index.js";
 
 // mapbox-gl is by far the heaviest thing lo loads, and the login and gate
 // screens both come before any map — so it is fetched only once there is a
 // position worth drawing.
-const MapCard = lazy(() => import("../MapCard/MapCard.jsx"));
+const MapCard = lazy(() => import("../../components/MapCard/MapCard.jsx"));
 
 export default function HomePage() {
   const { t } = useTranslation();

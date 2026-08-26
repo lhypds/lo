@@ -4,16 +4,16 @@ import * as api from "../../api.js";
 import { Modal, showToast, useSearchParams } from "../../ui/index.js";
 import { formatUsername } from "../../utils/format.js";
 import { filterBy } from "../../utils/search.js";
-import { useAuth } from "../AuthProvider/index.js";
-import Header from "../Header/index.js";
-import PostItem from "../PostItem/index.js";
-import PostModal from "../PostModal/index.js";
-import SearchField from "../SearchField/index.js";
-import { useHere } from "../LocationProvider/index.js";
+import { useAuth } from "../../components/AuthProvider/index.js";
+import Header from "../../components/Header/index.js";
+import PostItem from "../../components/PostItem/index.js";
+import PostModal from "../../components/PostModal/index.js";
+import SearchField from "../../components/SearchField/index.js";
+import { useHere } from "../../components/LocationProvider/index.js";
 
 // For the same reason the other two pages load it lazily: mapbox-gl is by far
 // the heaviest thing lo ships.
-const MapCard = lazy(() => import("../MapCard/MapCard.jsx"));
+const MapCard = lazy(() => import("../../components/MapCard/MapCard.jsx"));
 
 // The marks page, asking the other question. Marks are yours and are a history,
 // so that page is a map of where you have been; posts are everyone's and are a

@@ -4,16 +4,16 @@ import * as api from "../../api.js";
 import { Modal } from "../../ui/index.js";
 import { formatCoords } from "../../utils/format.js";
 import { filterBy } from "../../utils/search.js";
-import Header from "../Header/index.js";
-import MarkItem from "../MarkItem/index.js";
-import MarkModal from "../MarkModal/index.js";
-import SearchField from "../SearchField/index.js";
-import { useHere } from "../LocationProvider/index.js";
+import Header from "../../components/Header/index.js";
+import MarkItem from "../../components/MarkItem/index.js";
+import MarkModal from "../../components/MarkModal/index.js";
+import SearchField from "../../components/SearchField/index.js";
+import { useHere } from "../../components/LocationProvider/index.js";
 
 // For the same reason the home page loads it lazily: mapbox-gl is by far the
 // heaviest thing lo ships, and it is worth fetching only on the two screens
 // that draw a map.
-const MapCard = lazy(() => import("../MapCard/MapCard.jsx"));
+const MapCard = lazy(() => import("../../components/MapCard/MapCard.jsx"));
 
 // The history map lives here rather than on the dashboard: the home map answers
 // "where am I", this one answers "where have I been", and the list of spots is

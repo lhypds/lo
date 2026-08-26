@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Modal, Navigate, useNavigate, useSearchParams } from "../../ui/index.js";
-import { useAuth } from "../AuthProvider/index.js";
-import LanguageSwitcher from "../LanguageSwitcher/index.js";
+import { useAuth } from "../../components/AuthProvider/index.js";
+import LanguageSwitcher from "../../components/LanguageSwitcher/index.js";
 
 export default function AuthPage() {
   const { t } = useTranslation();

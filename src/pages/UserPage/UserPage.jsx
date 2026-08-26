@@ -1,5 +1,5 @@
-import Header from "../Header/index.js";
-import UserProfile from "../UserProfile/index.js";
+import Header from "../../components/Header/index.js";
+import UserProfile from "../../components/UserProfile/index.js";
 
 // The sheet's own contents as a page of its own, at /u/<name>: a person is a
 // thing worth a URL, which is what makes them shareable, bookmarkable and

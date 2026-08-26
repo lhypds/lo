@@ -1,13 +1,5 @@
-import {
-  AuthPage,
-  HomePage,
-  Loading,
-  MarksPage,
-  PostsPage,
-  PrivateRoute,
-  UserPage,
-  useAuth,
-} from "./components/index.js";
+import { Loading, PrivateRoute, useAuth } from "./components/index.js";
+import { AuthPage, HomePage, MarksPage, PostsPage, UserPage } from "./pages/index.js";
 import { Navigate, useLocation } from "./ui/index.js";
 
 // A person is the one thing lo has a path with a name in it: /u/<name>. The name
