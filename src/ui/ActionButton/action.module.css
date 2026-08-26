@@ -61,6 +61,20 @@
   transition: opacity 0.1s;
 }
 
+/* The rows on the marks and posts lists carry their buttons at the right edge
+   of a list that has to clip sideways — see .marks-list in styles.css, where
+   the clip is what stops these very boxes from giving the column a sideways
+   drag. A tooltip centred under a button there hangs past the edge and is cut
+   in half by that clip, and on a wide window what shows through the cut is the
+   map in the next column. No z-index reaches out of a scroller's clip, so the
+   box is anchored to the button's right edge instead and grows back across the
+   row, where there is always room for it. */
+.actionButton[data-tooltip].tooltipRight::after {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+
 @media (hover: hover) {
   .actionButton:not(:disabled):hover {
     background: var(--ink);

@@ -52,8 +52,13 @@ export default function PostItem({ post, from, mine = false, onOpen, onShowOnMap
             {/* A ring on a spot rather than the marks row's paper plane: this
                 row has both actions where that one has only the second, and the
                 plane has to stay with the one that leaves lo. */}
+            {/* All three tooltips open leftwards, not just the one on the end:
+                which button is last depends on whose post this is, and a row
+                where the boxes changed sides with the author would read as a
+                glitch. */}
             <ActionButton
               tooltip={t("marks.showOnMap")}
+              tooltipRight
               aria-label={`${t("marks.showOnMap")} ${headline}`}
               onClick={() => onShowOnMap(post)}
             >
@@ -68,6 +73,7 @@ export default function PostItem({ post, from, mine = false, onOpen, onShowOnMap
                 elsewhere. */}
             <ActionButton
               tooltip={t("marks.navigate")}
+              tooltipRight
               aria-label={`${t("marks.navigate")} ${headline}`}
               {...directionsLink(post, from)}
             >
@@ -78,6 +84,7 @@ export default function PostItem({ post, from, mine = false, onOpen, onShowOnMap
             {mine && (
               <ActionButton
                 tooltip={t("post.delete")}
+                tooltipRight
                 aria-label={`${t("post.delete")} ${headline}`}
                 onClick={() => onDelete(post)}
               >

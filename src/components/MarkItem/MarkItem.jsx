@@ -32,8 +32,11 @@ export default function MarkItem({ mark, from, onRename, onDelete, onShowOnMap }
                 on a dashboard does badly, so this hands the spot to Google Maps
                 — the app on a handheld, the directions page on a desktop —
                 rather than drawing a line lo cannot then follow. */}
+            {/* Leftwards, like the posts row's: this list clips sideways too,
+                and the box under the last button is cut off without it. */}
             <ActionButton
               tooltip={t("marks.navigate")}
+              tooltipRight
               aria-label={`${t("marks.navigate")} ${name}`}
               {...directionsLink(mark, from)}
             >
@@ -43,6 +46,7 @@ export default function MarkItem({ mark, from, onRename, onDelete, onShowOnMap }
             </ActionButton>
             <ActionButton
               tooltip={t("marks.rename")}
+              tooltipRight
               aria-label={`${t("marks.rename")} ${name}`}
               onClick={() => onRename(mark)}
             >
@@ -53,6 +57,7 @@ export default function MarkItem({ mark, from, onRename, onDelete, onShowOnMap }
             </ActionButton>
             <ActionButton
               tooltip={t("marks.delete")}
+              tooltipRight
               aria-label={`${t("marks.delete")} ${name}`}
               onClick={() => onDelete(mark)}
             >

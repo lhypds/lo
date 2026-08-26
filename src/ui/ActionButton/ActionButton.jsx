@@ -1,7 +1,17 @@
 import { Children, cloneElement } from "react";
 import styles from "./action.module.css";
 
-export default function ActionButton({ tooltip, children, href, type = "button", ...props }) {
+export default function ActionButton({
+  tooltip,
+  // For the buttons that sit against the right edge of something that clips:
+  // the tooltip hangs off its own button by default, which is fine in the top
+  // bar and is cut off in a list.
+  tooltipRight = false,
+  children,
+  href,
+  type = "button",
+  ...props
+}) {
   const icon = Children.only(children);
   // Most of these carry a drawn icon, which wants stroking and a fixed box. A
   // few carry a letter instead — the map's pins are letters, so the button that
@@ -15,7 +25,7 @@ export default function ActionButton({ tooltip, children, href, type = "button",
     <Tag
       {...props}
       {...(href ? { href } : { type })}
-      className={styles.actionButton}
+      className={tooltipRight ? `${styles.actionButton} ${styles.tooltipRight}` : styles.actionButton}
       data-tooltip={tooltip}
       aria-label={props["aria-label"] || tooltip}
     >
