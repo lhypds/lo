@@ -25,10 +25,60 @@ const SETTLE_MS = 300;
 // keyboard's height remembered off one of those would shorten the page by a bar
 // — which is the composer under the keys the next time somebody types.
 const KEYBOARD_MIN = 120;
+// What the keys are taken to be worth on a screen that has never had them up
+// before. A share of the window rather than a count of pixels, since the first
+// tap has to be answered on a phone of unknown size — and read high on purpose.
+// A page shortened by more than the keys turn out to need leaves the field
+// standing clear of them, which is a field iOS has no reason to move the window
+// for; the true figure lands a moment later and the composer settles down onto
+// the keys. Shortened by less and the field is under them, which is the one
+// thing that takes the top bar off the top of the screen. Landscape keys take a
+// larger share of a smaller window.
+const KEYBOARD_GUESS_TALL = 0.45;
+const KEYBOARD_GUESS_WIDE = 0.6;
+// And where the true figure is kept between visits, so the guess above is only
+// ever wanted on the very first tap this phone has made in lo. Keyed by the
+// screen and the way up it is held: a turned phone is a different keyboard.
+const KEYS_STORE = "lo:keys";
 // Which phone this is does not change while the page is open, so it is asked
 // once at import rather than on every paint. It decides how much room the
 // composer keeps under it — see .curved in the stylesheet beside this.
 const CURVED = isIOS();
+
+// Which way up the phone is held, which is the only part of the screen's own
+// description that changes while lo is open — iOS reports the glass in its
+// natural orientation whichever way it is turned.
+function held() {
+  return window.innerWidth > window.innerHeight ? "wide" : "tall";
+}
+
+function keysKey() {
+  return `${KEYS_STORE}:${window.screen.width}x${window.screen.height}:${held()}`;
+}
+
+// The keyboard's height as last learned on this screen, or null where it has
+// never been learned — which is a different answer from nothing at all, since a
+// screen with no on-screen keyboard on it (an iPad with a keyboard of its own
+// attached) learns a nothing worth keeping.
+function keysKept() {
+  try {
+    const kept = window.localStorage.getItem(keysKey());
+    if (kept === null) return null;
+    const height = Number(kept);
+    return Number.isFinite(height) && height >= 0 ? height : null;
+  } catch {
+    return null;
+  }
+}
+
+function keepKeys(height) {
+  try {
+    window.localStorage.setItem(keysKey(), String(Math.round(height)));
+  } catch {
+    // A phone that will not keep the figure is a phone that guesses on its first
+    // tap of every visit, which is the behaviour above rather than a fault.
+  }
+}
 
 // The phone's frame around a conversation: a page of its own, at /messages for
 // the mailbox and /messages/<name> for one of the threads in it.
@@ -128,12 +178,20 @@ export default function MessagesPage({ username = null }) {
     const page = pageRef.current;
     if (!viewport || !page) return undefined;
 
-    // The window with nothing over it, and what a keyboard takes out of it. Both
-    // learned from the browser rather than assumed — how tall a keyboard is is
-    // the phone's business and no number this page could know — and both only
-    // ever this device's own, relearned every time the movement stops.
+    // The window with nothing over it, and what a keyboard takes out of it. The
+    // second is learned from the browser rather than assumed — how tall a
+    // keyboard is is the phone's business and no number this page could know —
+    // and it comes back from the last visit already known, which is what leaves
+    // even the first tap of this one prepared for. null until it has been learned
+    // anywhere, and 0 where it has been learned to be nothing.
     let rest = viewport.height;
-    let keys = 0;
+    let keys = keysKept();
+    // Which screen the figure above belongs to, so that turning the phone goes
+    // and fetches the one for the way it is now held rather than typing under the
+    // other one's keyboard. Only when it has actually changed: a phone that will
+    // not keep the figure at all answers null every time it is asked, and asking
+    // it after every keystroke would be guessing afresh on every tap.
+    let kept = keysKey();
     // What is on the page now, so a frame that would change nothing writes
     // nothing: on every tap after the first the height does not move at all, and
     // this is what keeps a per-frame read from reflowing the thread anyway.
@@ -147,14 +205,18 @@ export default function MessagesPage({ username = null }) {
 
     // How tall the page should be this frame. Measured whenever there is nothing
     // over the window — that is the browser's own business and it is right about
-    // it, on arrival and while the keys are going back down alike. Remembered
-    // while somebody is typing, for the reasons above; and the smaller of the two
-    // rather than the remembered one flat, so that a keyboard which has come back
-    // taller than last time — a predictive strip, a switch to emoji — is under the
-    // composer rather than over it while it waits to be relearned.
+    // it, on arrival and while the keys are going back down alike. Known rather
+    // than measured while somebody is typing, for the reasons above, and guessed
+    // where it has never been known; and the smaller of the two rather than the
+    // known figure flat, so that a keyboard which has come back taller than last
+    // time — a predictive strip, a switch to emoji — is under the composer rather
+    // than over it while it waits to be relearned.
     const tall = () => {
-      if (!typing() || !keys) return viewport.height;
-      return Math.min(rest - keys, viewport.height);
+      if (!typing()) return viewport.height;
+      const guess = held() === "wide" ? KEYBOARD_GUESS_WIDE : KEYBOARD_GUESS_TALL;
+      const room = keys === null ? rest * guess : keys;
+      if (!room) return viewport.height;
+      return Math.min(rest - room, viewport.height);
     };
 
     const draw = () => {
@@ -197,10 +259,23 @@ export default function MessagesPage({ username = null }) {
       frame = 0;
       if (viewport.scale <= ZOOMED) {
         if (typing()) {
+          // Anything under a keyboard's worth was some other thing moving, and on
+          // a screen whose keys are not on the glass at all there is nothing to
+          // take — which is worth learning as the nothing it is, so that the guess
+          // is not made again on a phone that has a keyboard of its own attached.
           const taken = rest - viewport.height;
-          if (taken > KEYBOARD_MIN) keys = taken;
+          const learnt = taken > KEYBOARD_MIN ? taken : 0;
+          if (learnt !== keys) {
+            keys = learnt;
+            keepKeys(learnt);
+          }
         } else {
           rest = viewport.height;
+          const key = keysKey();
+          if (key !== kept) {
+            kept = key;
+            keys = keysKept();
+          }
         }
       }
       draw();
