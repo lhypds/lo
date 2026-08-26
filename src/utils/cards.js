@@ -24,12 +24,19 @@ const SIZES = [SMALL, LARGE];
 // the menu is a list of the things on the page, and a second name for a tile the
 // reader can already see would be a second thing to learn.
 //
-// Nothing here says whether a card is on the page or how tall it stands, because
-// nothing here needs to: every card the place can feed is on it, and every panel
-// starts at two squares. What the reader does from there — a card put away, a
-// panel given four squares — is the only thing the layout below remembers. A card
-// that should arrive off the page, or taller than the rest, can say so when there
-// is one; today there is not.
+// `off` is a card that arrives off the page. What lo opens as is the 2x2 block
+// and nothing else: the clock, the weather, the map, and the button that keeps
+// where you are standing — the time here, the sky here, the ground here, and the
+// one thing you can do about any of it. Everything under that block is a reading
+// of a wider place than the one you are in, and which of those readings are
+// worth the room is not a question lo can answer for a reader it has not met:
+// the plus in the top bar is where they answer it, and a dashboard that starts
+// at four squares is a page that asks rather than one that has to be cleared.
+//
+// Nothing here says how tall a panel stands, because every panel still starts at
+// two squares; one that should arrive taller can say so when there is one. What
+// the reader does from either default — a card added, a panel given four squares
+// — is the only thing the layout below remembers.
 //
 // The clock, the weather and the map are single squares and never resize: those
 // three with the mark button are the 2x2 block the rest of the grid is set
@@ -38,12 +45,12 @@ export const CARDS = [
   { id: "clock", label: "clock.title" },
   { id: "weather", label: "weather.title" },
   { id: "map", label: "map.title" },
-  { id: "posts", label: "posts.nearby", own: true },
-  { id: "people", label: "people.nearby", own: true },
-  { id: "warnings", label: "warnings.title" },
-  { id: "nearby", label: "news.title" },
-  { id: "events", label: "events.title" },
-  { id: "trends", label: "trends.title" },
+  { id: "posts", label: "posts.nearby", own: true, off: true },
+  { id: "people", label: "people.nearby", own: true, off: true },
+  { id: "warnings", label: "warnings.title", off: true },
+  { id: "nearby", label: "news.title", off: true },
+  { id: "events", label: "events.title", off: true },
+  { id: "trends", label: "trends.title", off: true },
 ];
 
 const BY_ID = new Map(CARDS.map((card) => [card.id, card]));
@@ -54,10 +61,9 @@ const BY_ID = new Map(CARDS.map((card) => [card.id, card]));
 const KEY = "lo:layout";
 
 // Only what the reader has actually decided about, never the whole list. A card
-// added to lo after a visit then arrives on the page like every other card
-// rather than missing from a remembered set: "I put that away" and "that did not
-// exist yet" are different answers and a bare list of ids cannot tell them
-// apart.
+// added to lo after a visit then arrives the way that card arrives rather than
+// missing from a remembered set: "I put that away" and "that did not exist yet"
+// are different answers and a bare list of ids cannot tell them apart.
 //
 // One record per card rather than one key per question, so a card the reader has
 // resized and never hidden reads back as exactly that.
@@ -92,8 +98,9 @@ function snapshot() {
   return decided;
 }
 
+// The reader's own answer where there is one, and the card's where there is not.
 function isOn(choices, id) {
-  return choices[id]?.on ?? true;
+  return choices[id]?.on ?? !BY_ID.get(id)?.off;
 }
 
 function sizeOf(choices, id) {

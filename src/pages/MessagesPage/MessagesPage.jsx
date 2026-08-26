@@ -20,6 +20,11 @@ const ZOOMED = 1.01;
 // stands the difference above the keys. Long enough to outlast the slide, short
 // enough that nobody watches it happen.
 const SETTLE_MS = 300;
+// Below this much of the window gone, whatever took it was not a keyboard.
+// Safari's own bottom bar sliding in or out is worth a few tens of pixels, and a
+// keyboard's height remembered off one of those would shorten the page by a bar
+// — which is the composer under the keys the next time somebody types.
+const KEYBOARD_MIN = 120;
 // Which phone this is does not change while the page is open, so it is asked
 // once at import rather than on every paint. It decides how much room the
 // composer keeps under it — see .curved in the stylesheet beside this.
@@ -76,10 +81,13 @@ export default function MessagesPage({ username = null }) {
   // does not do the zooming itself — see .mark-field in styles.css — which is the
   // braces to this belt.)
   //
-  // Nothing here touches the room under the composer. Whether the keys are up is
-  // something the page can see for itself — the field has the focus — and CSS
-  // reads that off the document rather than off a measurement: see :focus-within
-  // in the stylesheet beside this.
+  // Nothing here touches the room under the composer. That the keys are up is
+  // something the page can see for itself — the field has the focus — and the
+  // gap the composer keeps over them is read off the document rather than off
+  // any measurement: see :focus-within in the stylesheet beside this. The same
+  // fact is read here too, and for the same reason, but only ever to know which
+  // window to cut the page to; how far the composer then stands off the floor of
+  // it stays the stylesheet's alone.
   //
   // Written as custom properties, so what is left when they are dropped is the
   // stylesheet's own answer rather than a number this had to remember.
@@ -88,42 +96,111 @@ export default function MessagesPage({ username = null }) {
   // is drawn at, and an effect that ran afterwards would draw it on the floor of
   // the wrong window first and move it in the next frame.
   //
-  // And asked again once the movement stops. Every answer here is measured off a
-  // window two things are still moving in — the keyboard sliding up, and Safari's
-  // own bottom bar sliding out from under it — and an answer taken mid-slide
-  // leaves the page short by whatever had not finished moving, which is a band of
-  // empty paper between the composer and the keys. The last word the browser says
-  // is not always the true one, so the true one is asked for after the talking
-  // has stopped.
+  // And measured only when the window has stopped moving, never while it is
+  // still on its way. Every number here is read off a window two things are
+  // sliding in — the keyboard coming up, and Safari's own bottom bar coming out
+  // from under it — and iOS narrates the whole slide, a fresh height and a fresh
+  // offset on every frame of it. A page redrawn on each of those does not follow
+  // the movement, it fights it: the browser has shifted what can be seen down
+  // the window and the page is a step behind on its way after it, so the page
+  // walks off the top of the screen and then comes back up from the bottom once
+  // the talking stops. Which is the whole of the bug this is written against.
+  //
+  // So the page is cut to size on the news it can trust, and the movement itself
+  // is sat out. The news is the tap: the caret landing in the field is the
+  // keyboard coming up, and how much room the keys took the last time is how
+  // much they will take this time. Cutting the page then — in the same frame as
+  // the tap, before Safari has begun to slide anything — leaves a composer
+  // already standing above where the keys are going to be, which is a field
+  // Safari has no reason to scroll into sight. It scrolls nothing, the page is
+  // never shifted, and the keys come up underneath a page that has not moved.
   useLayoutEffect(() => {
     const viewport = window.visualViewport;
     const page = pageRef.current;
     if (!viewport || !page) return undefined;
-    const sync = () => {
+
+    // The window with nothing over it, and what a keyboard takes out of it. The
+    // first is what the page goes back to when the keys go; the second is what
+    // lets it be cut at the tap rather than after the sliding is over. Both are
+    // learned from the browser — how tall a keyboard is is the phone's business
+    // and no number this page could know — and both are only ever this device's.
+    let rest = viewport.height;
+    let keys = 0;
+
+    // Somebody is typing if the caret is in a field, which on a touchscreen is
+    // the same fact as the keys being up. The same fact :focus-within reads for
+    // the room under the composer — see the stylesheet beside this.
+    const typing = () => page.querySelector("input:focus, textarea:focus") !== null;
+
+    const cut = (height, top) => {
+      page.style.setProperty("--view-height", `${height}px`);
+      page.style.setProperty("--view-top", `${top}px`);
+    };
+
+    // What the browser says, taken as true — called on arrival, where nothing is
+    // moving yet, and once the movement has stopped every time after that. It is
+    // also where the two numbers above are learned: whatever the window is while
+    // nobody is typing is the window at rest, and whatever it is short by while
+    // somebody is is the keys.
+    const settled = () => {
       if (viewport.scale > ZOOMED) {
         page.style.removeProperty("--view-height");
         page.style.removeProperty("--view-top");
         return;
       }
-      page.style.setProperty("--view-height", `${viewport.height}px`);
-      page.style.setProperty("--view-top", `${viewport.offsetTop}px`);
+      if (typing()) {
+        const taken = rest - viewport.height;
+        if (taken > KEYBOARD_MIN) keys = taken;
+      } else {
+        rest = viewport.height;
+      }
+      cut(viewport.height, viewport.offsetTop);
     };
+
     let settle = 0;
-    const answer = () => {
-      sync();
+    const after = () => {
       window.clearTimeout(settle);
-      settle = window.setTimeout(sync, SETTLE_MS);
+      settle = window.setTimeout(settled, SETTLE_MS);
     };
+
+    // The caret arriving in the field and leaving it, which is the keys coming
+    // and going. Answered from what is already known rather than from anything
+    // measured now — there is nothing to measure yet, the keyboard has not begun
+    // to move — and confirmed against the browser once it has.
+    const hand = () => {
+      if (viewport.scale > ZOOMED) return;
+      cut(typing() ? rest - keys : rest, 0);
+      after();
+    };
+
+    // And the window moving of its own accord: a turn of the phone, a bar
+    // sliding out, the arrival on this page — every one of which is a slide to be
+    // let go by and answered at its end. Except the first tap of a visit, which
+    // has no keyboard height to have gone on and so reaches here instead: a page
+    // left alone through that one is a page Safari has scrolled half off the
+    // top, and a guess taken mid-slide is worth more than the wait. It is also
+    // the guess that teaches `keys`, so it happens once and no tap after it
+    // comes through here again.
+    const moved = () => {
+      if (typing() && !keys) settled();
+      after();
+    };
+
     // The arrival is a slide of its own on iOS, where walking to this page hides
-    // the browser's bottom bar: the first measurement is taken while that is
-    // still on its way out, so it gets the settle the resizes get.
-    answer();
-    viewport.addEventListener("resize", answer);
-    viewport.addEventListener("scroll", answer);
+    // the browser's bottom bar: the page is drawn on the window it has now, and
+    // asked again once that has finished going.
+    settled();
+    after();
+    page.addEventListener("focusin", hand);
+    page.addEventListener("focusout", hand);
+    viewport.addEventListener("resize", moved);
+    viewport.addEventListener("scroll", moved);
     return () => {
       window.clearTimeout(settle);
-      viewport.removeEventListener("resize", answer);
-      viewport.removeEventListener("scroll", answer);
+      page.removeEventListener("focusin", hand);
+      page.removeEventListener("focusout", hand);
+      viewport.removeEventListener("resize", moved);
+      viewport.removeEventListener("scroll", moved);
     };
   }, []);
 
