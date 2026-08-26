@@ -30,3 +30,19 @@ function subscribe(onChange) {
 export function useHandheld() {
   return useSyncExternalStore(subscribe, () => list().matches);
 }
+
+// Which phone, which is a different question from the one above and asked for a
+// different reason: what the bottom edge of the window is made of. On iOS it is
+// the edge of the phone, curved, with a home bar over it; on Android the keys
+// and the browser's chrome take their own room and leave a straight one. There
+// is no media query for this — the insets and the corner both describe the
+// window, not the glass — so it is the user agent or nothing.
+//
+// iPadOS has called itself a Mac since 13, and the touch points are the only
+// thing left that gives it away (see utils/maps, which asks its own version of
+// this question about handing a link to an app).
+export function isIOS() {
+  if (typeof navigator === "undefined") return false;
+  if (/iPad|iPhone|iPod/.test(navigator.userAgent)) return true;
+  return /Mac/.test(navigator.userAgent) && navigator.maxTouchPoints > 1;
+}

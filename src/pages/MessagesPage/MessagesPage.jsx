@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { formatUsername } from "../../utils/format.js";
+import { isIOS } from "../../utils/device.js";
 import Header from "../../components/Header/index.js";
 import Messages from "../../components/Messages/index.js";
 // The module rather than the barrel beside it: this only needs the way in, and
@@ -19,6 +20,10 @@ const ZOOMED = 1.01;
 // stands the difference above the keys. Long enough to outlast the slide, short
 // enough that nobody watches it happen.
 const SETTLE_MS = 300;
+// Which phone this is does not change while the page is open, so it is asked
+// once at import rather than on every paint. It decides how much room the
+// composer keeps under it — see .curved in the stylesheet beside this.
+const CURVED = isIOS();
 
 // The phone's frame around a conversation: a page of its own, at /messages for
 // the mailbox and /messages/<name> for one of the threads in it.
@@ -128,7 +133,7 @@ export default function MessagesPage({ username = null }) {
     // is the dashboard.
     <div className="page-shell messages-page" ref={pageRef}>
       <Header back backTo={username ? "/messages" : "/"} />
-      <main className={styles.main}>
+      <main className={`${styles.main}${CURVED ? ` ${styles.curved}` : ""}`}>
         {/* Who you are talking to, or that this is the mailbox — what the sheet
             says in its own title bar and a page has to say for itself. No count
             beside it the way the two list pages carry one: those are lists of

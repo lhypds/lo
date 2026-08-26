@@ -6,24 +6,52 @@
    itself is sized against — see components/Messages, which is the half of this
    screen the desktop's sheet is holding too.
 
-   The foot is 26px, and it is 26px whatever is under it — the home bar, the
-   screen's own corner, the top of a keyboard. The number is read off the corner,
-   which is the worst of the three: a phone's bottom edge is rounded and the
-   composer's is not, so the last band of the window is a strip the picture
-   narrows through, and a box run down into it loses its two bottom corners to
-   the curve. The column already holds the field 12px in from the side of the
-   window, and 12px in is the point where a corner of about 55px stops reaching
-   more than 21px up. One number, held through the keyboard coming and going,
-   rather than a floor that moves under the composer while somebody types. */
+   The foot is the 12px the sides keep: the composer stands the same distance off
+   the bottom edge of the window as it does off the left and right ones. That is
+   the floor everywhere, and on Android it is the floor always — the keys there
+   take their room out of the window, so what is under the composer is the top of
+   the keyboard or the bottom of the browser and both are straight edges with
+   nothing to keep clear of. iOS is the exception, and it is the one below. */
 .main {
   flex: 1;
   min-height: 0;
   width: min(100%, 600px);
   margin: 0 auto;
   padding: 16px 12px;
-  padding-bottom: 26px;
   display: flex;
   flex-direction: column;
+}
+
+/* On an iPhone the bottom of the window is the bottom of the phone, and the
+   phone's edge is rounded where the composer's is not: the last band of the
+   window is a strip the picture narrows through, and a box run down into it
+   loses its two bottom corners to the curve. There is a home bar across that
+   band as well in standalone mode. 32px clears both — the column already holds
+   the field 12px in from the side of the window, and 12px in is where a corner
+   of about 55px stops reaching more than about 21px up.
+
+   Only iOS gets it, and only from JS: no media query asks what phone this is,
+   and the ones that come close (the inset, the corner) answer for the window
+   rather than for the glass. See utils/device. */
+.main.curved {
+  padding-bottom: 32px;
+}
+
+/* …and it goes while somebody is typing. What the composer is sitting on then is
+   the top of the keyboard, which is a straight edge in the middle of the screen
+   with no curve in it and no home bar on it — the glass is not under the
+   composer any more, so the rent stops. 32px of paper between the composer and
+   the keys reads as the composer having floated up off them.
+
+   The field having the focus is the keyboard being up, so the page reads it
+   there rather than measuring anything: no number to be taken mid-slide, and
+   nothing to put back afterwards. That holds only for as long as nothing puts
+   the caret in the field that a keyboard does not come with — on a touchscreen
+   the two are the same event and there is nothing else that gives a field the
+   focus, which is why the composer is not focused on arrival there. See
+   components/Messages, where this rule is the reason for that one. */
+.main.curved:focus-within {
+  padding-bottom: 12px;
 }
 
 /* The name gives up no height to the thing under it: what scrolls is the
