@@ -196,10 +196,12 @@ export default function Messages({ to = null, onOpen, link = null }) {
   if (to) {
     return (
       <>
-        {/* Nothing above the lines but the lines. Whoever is being written to is
-            named at the top of whichever frame this is in, and that name is the
-            way through to them — a strip here saying so a second time was a row
-            of chrome over every conversation to answer a question asked once. */}
+        {/* Nothing above the lines but the lines. The sheet names the person in
+            its own title bar and hands you the way through to them there; the page
+            names nobody and holds nothing at all over the conversation. Neither
+            wants a strip here saying it again — that was a row of chrome over
+            every conversation to answer a question asked once, and the handles on
+            the lines themselves answer it now for both frames. */}
         <div className={styles.scroll} ref={scrollRef}>
           {messages.length === 0 ? (
             <p className={styles.empty}>{t("messages.emptyThread", { name: formatUsername(to) })}</p>
@@ -214,6 +216,15 @@ export default function Messages({ to = null, onOpen, link = null }) {
                       : styles.message
                   }
                 >
+                  {/* Whose line it is, on the line itself and on both sides of
+                      the thread. The side a bubble sits on says the same thing
+                      and says it faster, but only to somebody who already knows
+                      which side is theirs — and on the phone the name at the top
+                      of the page is gone now (see pages/MessagesPage), so this is
+                      the only place either handle appears. Both sides carry one
+                      rather than only theirs: a column where every line but yours
+                      is signed reads as a list of quotations. */}
+                  <span className={styles.who}>{formatUsername(message.fromUser)}</span>
                   <span className={styles.body}>{message.body}</span>
                   <time dateTime={message.time}>{relativeTime(message.time, i18n.language, t)}</time>
                 </li>

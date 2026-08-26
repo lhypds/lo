@@ -1,12 +1,8 @@
 import { useLayoutEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { formatUsername } from "../../utils/format.js";
 import { isIOS } from "../../utils/device.js";
 import Header from "../../components/Header/index.js";
 import Messages from "../../components/Messages/index.js";
-// The module rather than the barrel beside it: this only needs the way in, and
-// the barrel would pull the profile sheet itself in behind it.
-import { openProfile } from "../../components/UserModal/userApi.js";
 import styles from "./messages.module.css";
 
 // Past this much magnification the window is not a smaller window at all — it is
@@ -91,8 +87,9 @@ function keepKeys(height) {
 // at, which is what makes leaving the dashboard behind the right trade here and
 // the wrong one on a desktop.
 //
-// The two frames share everything below the name — see components/Messages. What
-// is here is the window's height, the way back, and the keyboard.
+// The two frames share the conversation itself — see components/Messages. What is
+// here is the window's height and the keyboard; the sheet keeps a title bar over
+// its copy where this page, in a thread, keeps nothing at all.
 export default function MessagesPage({ username = null }) {
   const { t } = useTranslation();
   const pageRef = useRef(null);
@@ -315,41 +312,33 @@ export default function MessagesPage({ username = null }) {
   }, []);
 
   return (
-    // The top bar's arrow is the way out of both views, and it is the only one
-    // either of them needs: out of a thread is the list of them, out of the list
-    // is the dashboard.
+    // A thread on a phone is the conversation and nothing else: no bar over it
+    // and no name above it, only the lines and the field to answer them in. Who
+    // each line is from is said on the line itself now — see components/Messages —
+    // which is what leaves the name at the top with nothing left to say that the
+    // thread was not already saying twice.
+    //
+    // The mailbox keeps both. It is a list rather than a conversation, it needs a
+    // word to say which list it is, and the bar's arrow is the way back out to the
+    // dashboard.
+    //
+    // Which does leave a thread with no way out of itself but the browser's own
+    // back — the swipe from the left edge, and the arrow in Safari's chrome. There
+    // is nothing else on this page that goes anywhere, the profile sheet the name
+    // used to open included.
     <div className="page-shell messages-page" ref={pageRef}>
-      <Header back backTo={username ? "/messages" : "/"} />
+      {!username && <Header back backTo="/" />}
       <main className={`${styles.main}${CURVED ? ` ${styles.curved}` : ""}`}>
-        {/* Who you are talking to, or that this is the mailbox — what the sheet
-            says in its own title bar and a page has to say for itself. No count
-            beside it the way the two list pages carry one: those are lists of
-            things, this is a list of people, and how many people you have ever
-            spoken to is not a number anybody is keeping.
-
-            The name is also the way through to whoever it belongs to, which is
-            why the conversation under it has no button of its own for that: a
-            name is the plainest thing to press to find out whose it is. It opens
-            the profile over this page rather than walking to it — a glance aside
-            in the middle of writing to somebody, who is this again, and closing
-            it puts the thread and the half-written line back exactly as they
-            were. */}
-        <div className={`section-heading ${styles.heading}${username ? ` ${styles.ruled}` : ""}`}>
-          <h1>
-            {username ? (
-              <button
-                type="button"
-                className={styles.name}
-                onClick={() => openProfile(username)}
-                title={t("messages.profile")}
-              >
-                {formatUsername(username)}
-              </button>
-            ) : (
-              t("messages.title")
-            )}
-          </h1>
-        </div>
+        {/* That this is the mailbox, which a page has to say for itself and the
+            sheet says in its own title bar. No count beside it the way the two
+            list pages carry one: those are lists of things, this is a list of
+            people, and how many people you have ever spoken to is not a number
+            anybody is keeping. */}
+        {!username && (
+          <div className={`section-heading ${styles.heading}`}>
+            <h1>{t("messages.title")}</h1>
+          </div>
+        )}
         {/* Threads have addresses here, so their rows are links: one of them can
             be opened in a tab of its own like anything else with a URL. */}
         <Messages to={username} link={(name) => `/messages/${encodeURIComponent(name)}`} />

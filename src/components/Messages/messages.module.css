@@ -152,6 +152,24 @@
   color: var(--paper);
 }
 
+/* The handle over the line, in the mono face every other name in lo is set in
+   and at the size the timestamp under it keeps: the two of them are the bubble's
+   own margin notes, and a name that outweighed the words it introduces would be
+   a heading on every line of the conversation. */
+.who {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+}
+
+/* Against the ink, the grey the paper bubbles use is all but gone — the same
+   trade the timestamp makes below, and the same replacement. */
+.mine .who {
+  color: var(--line);
+}
+
 .body {
   display: block;
   font-size: 12px;

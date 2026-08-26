@@ -1,10 +1,10 @@
 /* The page's column, the same 600px every other list on the site keeps, and a
-   column rather than a scroll: the top of it is the name, the middle is the only
-   thing that scrolls, and the foot is the composer. That is what keeps the
-   composer on the floor of the window instead of at the end of a conversation
-   the reader would have to scroll to reach. It is also the box the conversation
-   itself is sized against — see components/Messages, which is the half of this
-   screen the desktop's sheet is holding too.
+   column rather than a scroll: in a thread the whole of it is the conversation,
+   the lines are the only thing that scrolls, and the foot is the composer. That
+   is what keeps the composer on the floor of the window instead of at the end of
+   a conversation the reader would have to scroll to reach. It is also the box the
+   conversation itself is sized against — see components/Messages, which is the
+   half of this screen the desktop's sheet is holding too.
 
    The foot is the 12px the sides keep: the composer stands the same distance off
    the bottom edge of the window as it does off the left and right ones. That is
@@ -54,42 +54,9 @@
   padding-bottom: 12px;
 }
 
-/* The name gives up no height to the thing under it: what scrolls is the
-   conversation, and who it is with stays where it is. */
+/* The mailbox's own word for itself, which gives up no height to the list under
+   it: what scrolls is the rows, and which list this is stays where it is. A
+   thread has no heading to hold — the lines say who they are from themselves. */
 .heading {
   flex: 0 0 auto;
-}
-
-/* And in a thread it is ruled off, in the grey the rest of the site draws its
-   lines in: the conversation below used to start on bare paper, so the first
-   line of it sat under the name with nothing between them, and once there were
-   enough lines to scroll they ran up past the name and touched it.
-
-   The 8px is what makes it the name's own rule rather than a ceiling over the
-   thread — it hangs off the name, and nothing hangs off it. The conversation
-   starts at the line, so it gives up no room at all.
-
-   Only in a thread. The mailbox draws its own lid over the first row (see
-   components/Messages), and a second grey line a heading's gap above that one
-   is a stripe rather than a rule. */
-.heading.ruled {
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--line);
-}
-
-/* The name is a button and does not look like one — it wears the heading's own
-   face, and what it does is the only thing that says it can be pressed. */
-.name {
-  padding: 0;
-  border: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-}
-
-@media (hover: hover) {
-  .name:hover {
-    text-decoration: underline;
-  }
 }
