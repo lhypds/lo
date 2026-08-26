@@ -79,6 +79,16 @@
   -webkit-touch-callout: none;
 }
 
+/* Held long enough that letting go opens the album: the same inversion the
+   pointer gets on hover, doing the job the buzz does on a phone that has one —
+   iOS has none, and a hold with no answer at all reads as a hold that does
+   nothing. The second line stays the quieter of the two here because it is
+   dimmed rather than coloured. */
+.photoArmed {
+  background: var(--ink);
+  color: var(--paper);
+}
+
 .camera {
   width: 20px;
   height: 20px;

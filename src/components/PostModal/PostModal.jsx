@@ -45,6 +45,8 @@ export default function PostModal({ isOpen, coords, place, post = null, onClose,
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [dragging, setDragging] = useState(false);
+  // The shutter, held long enough that letting go now opens the album
+  const [armed, setArmed] = useState(false);
   // Two ways to the same photo, because they are two different requests to the
   // phone: `capture` asks for the camera itself, and without it the same input
   // asks for what is already in the album. One input cannot be both — the
@@ -53,12 +55,12 @@ export default function PostModal({ isOpen, coords, place, post = null, onClose,
   const cameraRef = useRef(null);
   const albumRef = useRef(null);
   const textRef = useRef(null);
-  // The hold on the camera button: the timer that turns a press into one, where
-  // the finger went down, and whether it fired — read by the click the same press
-  // sends afterwards, which would otherwise open the camera on top of the album.
-  const holdRef = useRef(null);
-  const originRef = useRef(null);
+  // The hold on the shutter: whether the press has become one, where it landed,
+  // and the timer that decides. Which picker it means is read off `heldRef` by
+  // the click that ends the press — see `tap`.
   const heldRef = useRef(false);
+  const originRef = useRef(null);
+  const holdRef = useRef(null);
   // Every element the pointer crosses fires its own dragenter and dragleave, so
   // the ones on the way in are counted rather than any single event believed —
   // otherwise crossing from the sheet onto the textarea inside it reads as
@@ -88,6 +90,7 @@ export default function PostModal({ isOpen, coords, place, post = null, onClose,
     setError("");
     setSubmitting(false);
     setDragging(false);
+    setArmed(false);
     dragDepthRef.current = 0;
     // The keyboard should already be up on a phone by the time the sheet lands.
     const timer = window.setTimeout(() => textRef.current?.focus(), 30);
@@ -136,55 +139,66 @@ export default function PostModal({ isOpen, coords, place, post = null, onClose,
     }
   }
 
-  // The hold is timed here and acted on when the finger lifts, not when the timer
-  // fires. A file picker is only allowed out of a gesture, and a timeout 500ms
-  // after one is not a gesture — Safari refuses it outright — so the timer only
-  // marks the press as a hold and says so through the phone, and the pointerup
-  // that follows, which is a gesture, is what opens the album.
+  // The press is only timed here. Both pickers are opened from the click that
+  // ends it, and that is the whole of why this is not simpler: a file dialog is
+  // allowed out of a user gesture and nothing else, and a click is the one
+  // context every engine agrees is one. A timeout 500ms into the press is not,
+  // and neither is the pointerup just before the click — WebKit refuses the
+  // dialog in both, and it refuses silently, which on a phone is indistinguishable
+  // from a hold that was never noticed.
   useEffect(() => () => window.clearTimeout(holdRef.current), []);
 
-  function cancelHold() {
+  // The press is over — or was never going to be a hold. `heldRef` is left
+  // standing on purpose: it is what the click reads, and it is set by the timer
+  // rather than measured on the lift, so a press iOS takes away mid-gesture — a
+  // pointercancel, after which no pointerup and no lift ever arrive — has still
+  // said what it was by the time the click comes.
+  function endPress() {
     window.clearTimeout(holdRef.current);
     holdRef.current = null;
     originRef.current = null;
+    setArmed(false);
   }
 
-  function startHold(event) {
+  function startPress(event) {
     if (busy || event.button > 0) return;
     heldRef.current = false;
     originRef.current = { x: event.clientX, y: event.clientY };
     holdRef.current = window.setTimeout(() => {
       holdRef.current = null;
       heldRef.current = true;
-      // The only signal a hold has landed on a phone, where the finger is
-      // covering the button it just changed.
+      // Halfway through a gesture with nothing to show for it yet, so the button
+      // says so itself: it inverts under the finger, and letting go now opens the
+      // album. A buzz says the same thing where there is one to give — iOS has
+      // none, which is exactly where the drawing has to do the talking.
+      setArmed(true);
       if (navigator.vibrate) navigator.vibrate(30);
     }, LONG_PRESS_MS);
   }
 
-  function moveHold(event) {
+  // A press that wanders was the start of a scroll, and the hold is called off
+  // before it fires: the click that may still follow reads as a plain tap. Once
+  // it has fired there is nothing left to call off — the button has already said
+  // it is armed, and taking that back under a thumb that only rolled a little
+  // would be the sheet changing its mind after the fact.
+  function movePress(event) {
     const origin = originRef.current;
-    if (!origin) return;
+    if (!origin || !holdRef.current) return;
     if (
       Math.abs(event.clientX - origin.x) > LONG_PRESS_SLOP ||
       Math.abs(event.clientY - origin.y) > LONG_PRESS_SLOP
     ) {
-      cancelHold();
+      endPress();
     }
   }
 
-  function endHold() {
-    cancelHold();
-    if (heldRef.current) albumRef.current?.click();
-  }
-
-  // A hold ends in a click as well, and that one has already been answered.
+  // The one place either picker is opened: a press long enough to have armed the
+  // button is the album, and anything else — a tap, a press called off, a button
+  // reached by the keyboard rather than pressed at all — is the camera.
   function tap() {
-    if (heldRef.current) {
-      heldRef.current = false;
-      return;
-    }
-    cameraRef.current?.click();
+    const held = heldRef.current;
+    heldRef.current = false;
+    (held ? albumRef : cameraRef).current?.click();
   }
 
   function handleChange(event) {
@@ -338,13 +352,13 @@ export default function PostModal({ isOpen, coords, place, post = null, onClose,
           // nothing on the sheet is a caption on something else.
           <button
             type="button"
-            className={styles.photo}
+            className={armed ? `${styles.photo} ${styles.photoArmed}` : styles.photo}
             onClick={tap}
-            onPointerDown={startHold}
-            onPointerMove={moveHold}
-            onPointerUp={endHold}
-            onPointerCancel={cancelHold}
-            onPointerLeave={cancelHold}
+            onPointerDown={startPress}
+            onPointerMove={movePress}
+            onPointerUp={endPress}
+            onPointerCancel={endPress}
+            onPointerLeave={endPress}
             // Android raises its own menu on a hold, over the album this one is
             // about to open
             onContextMenu={(event) => event.preventDefault()}
