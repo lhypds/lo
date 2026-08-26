@@ -1,3 +1,11 @@
+/* Place on the left, readout hard right, at every width — a phone included. The
+   two are one line of type read in one glance: where you are, and how well the
+   phone knows it. Stacked, the readout stopped being a footnote to the name and
+   became a second line of the heading, which is not what it is.
+
+   Aligned on the bottom, so a name that wraps to two lines pushes the readout
+   down with it and the last line of the name and the last line of the readout
+   still sit on the same rule. */
 .strip {
   display: flex;
   align-items: flex-end;
@@ -45,14 +53,12 @@
   white-space: nowrap;
 }
 
+/* The readout is nowrap and never gives ground, so on a narrow screen the width
+   it takes comes out of the name — which wraps, and can afford to. All the phone
+   needs is a smaller gutter between the two, so the name gets those pixels back
+   rather than spending them on air. */
 @media (max-width: 420px) {
   .strip {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 6px;
-  }
-
-  .readout {
-    text-align: left;
+    gap: 8px;
   }
 }

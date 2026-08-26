@@ -49,8 +49,18 @@
   font-size: 12px;
 }
 
+/* Laid out, and a point wide. `display: none` would be the plainer way to put
+   the two file inputs out of sight, and it is what this was — but the picker is
+   opened through `showPicker`, which is specified against an element that is
+   being rendered, so the inputs stay in the layout and are taken out of the
+   flow instead. Deaf to the pointer, since the button in front of them is what
+   is pressed. */
 .file {
-  display: none;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
 }
 
 /* Squared off and the full width of the sheet, so choosing a photo is the same

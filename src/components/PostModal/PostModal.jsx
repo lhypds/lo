@@ -57,10 +57,13 @@ export default function PostModal({ isOpen, coords, place, post = null, onClose,
   const textRef = useRef(null);
   // The hold on the shutter: whether the press has become one, where it landed,
   // and the timer that decides. Which picker it means is read off `heldRef` by
-  // the click that ends the press — see `tap`.
+  // the gestures that end the press — see `openAlbum`.
   const heldRef = useRef(false);
   const originRef = useRef(null);
   const holdRef = useRef(null);
+  // And whether this press has already got the album open, since more than one
+  // of those gestures asks for it.
+  const openedRef = useRef(false);
   // Every element the pointer crosses fires its own dragenter and dragleave, so
   // the ones on the way in are counted rather than any single event believed —
   // otherwise crossing from the sheet onto the textarea inside it reads as
@@ -139,20 +142,43 @@ export default function PostModal({ isOpen, coords, place, post = null, onClose,
     }
   }
 
-  // The press is only timed here. Both pickers are opened from the click that
-  // ends it, and that is the whole of why this is not simpler: a file dialog is
-  // allowed out of a user gesture and nothing else, and a click is the one
-  // context every engine agrees is one. A timeout 500ms into the press is not,
-  // and neither is the pointerup just before the click — WebKit refuses the
-  // dialog in both, and it refuses silently, which on a phone is indistinguishable
-  // from a hold that was never noticed.
+  // The press is only timed here, and that is the whole of why this is not
+  // simpler: a file dialog is allowed out of a user gesture and nothing else, so
+  // the timer can mark a press as a hold but cannot act on one. A timeout 500ms
+  // into a press is not a gesture, whatever it knows about the press.
+  //
+  // Which gesture is the one to open the album from is not something the engines
+  // agree on. WebKit refuses the dialog anywhere before the click that ends the
+  // press — the pointerup included — so the click has to be tried. Blink takes a
+  // long press to be its own gesture and sends no click after one at all, which
+  // is why the hold did nothing on Android, so the lift has to be tried too.
+  // Both are, earliest first.
   useEffect(() => () => window.clearTimeout(holdRef.current), []);
 
+  // Asked at every gesture that might be the end of a hold, and answered at most
+  // once. `showPicker` is what makes asking more than once safe: it throws where
+  // the engine will not take the gesture it was called from, where `click()` on
+  // the input fails the same way in silence — so a refusal is something this can
+  // read and hand on to the next gesture rather than guess at.
+  function openAlbum() {
+    const input = albumRef.current;
+    if (!input || openedRef.current) return;
+    try {
+      // NotAllowedError where the gesture is not counted, TypeError on an engine
+      // old enough not to have it at all. The plain click is the floor for both.
+      input.showPicker();
+      openedRef.current = true;
+    } catch {
+      // Nothing to say to the reader: another gesture is still coming, and the
+      // click that ends the press has the last word.
+    }
+  }
+
   // The press is over — or was never going to be a hold. `heldRef` is left
-  // standing on purpose: it is what the click reads, and it is set by the timer
-  // rather than measured on the lift, so a press iOS takes away mid-gesture — a
-  // pointercancel, after which no pointerup and no lift ever arrive — has still
-  // said what it was by the time the click comes.
+  // standing on purpose: it is what the lift and the click read, and it is set by
+  // the timer rather than measured on the lift, so a press an engine takes away
+  // mid-gesture — a pointercancel, after which no pointerup and no lift ever
+  // arrive — has still said what it was by the time the click comes.
   function endPress() {
     window.clearTimeout(holdRef.current);
     holdRef.current = null;
@@ -160,9 +186,20 @@ export default function PostModal({ isOpen, coords, place, post = null, onClose,
     setArmed(false);
   }
 
+  // The lift, which on Blink is the last word on a hold: its own long-press
+  // gesture has already eaten the click that would otherwise have ended the
+  // press. `heldRef` is left standing for the click that may yet come, and
+  // `openedRef` is what stops the two of them opening two pickers.
+  function liftPress() {
+    const held = heldRef.current;
+    endPress();
+    if (held) openAlbum();
+  }
+
   function startPress(event) {
     if (busy || event.button > 0) return;
     heldRef.current = false;
+    openedRef.current = false;
     originRef.current = { x: event.clientX, y: event.clientY };
     holdRef.current = window.setTimeout(() => {
       holdRef.current = null;
@@ -192,13 +229,25 @@ export default function PostModal({ isOpen, coords, place, post = null, onClose,
     }
   }
 
-  // The one place either picker is opened: a press long enough to have armed the
-  // button is the album, and anything else — a tap, a press called off, a button
-  // reached by the keyboard rather than pressed at all — is the camera.
+  // Where the press ends on the engines that end it in a click: a press long
+  // enough to have armed the button is the album, and anything else — a tap, a
+  // press called off, a button reached by the keyboard rather than pressed at
+  // all — is the camera. A click is the one context every engine agrees is a
+  // gesture, so this is also the floor under the album: if `showPicker` is
+  // refused even here, or the engine has not got it, the input is clicked the
+  // way it always was.
   function tap() {
     const held = heldRef.current;
     heldRef.current = false;
-    (held ? albumRef : cameraRef).current?.click();
+    if (!held) {
+      cameraRef.current?.click();
+      return;
+    }
+    openAlbum();
+    if (!openedRef.current) {
+      albumRef.current?.click();
+      openedRef.current = true;
+    }
   }
 
   function handleChange(event) {
@@ -319,6 +368,12 @@ export default function PostModal({ isOpen, coords, place, post = null, onClose,
         {/* The photo above the words, which is the order a post is made in as
             often as not: the picture is the reason there is something to say
             about this spot, and the words are the caption on it. */}
+        {/* Both are hidden by being shrunk to a point rather than by
+            `display: none`: `showPicker` is specified against an element that is
+            being rendered, and an input that is not laid out at all is the kind
+            of thing an engine is entitled to refuse. They are out of the tab
+            order and out of the tree the reader is told about — the button in
+            front of them is the control, and these are how it asks. */}
         <input
           ref={cameraRef}
           type="file"
@@ -328,8 +383,18 @@ export default function PostModal({ isOpen, coords, place, post = null, onClose,
           capture="environment"
           className={styles.file}
           onChange={handleChange}
+          tabIndex={-1}
+          aria-hidden="true"
         />
-        <input ref={albumRef} type="file" accept="image/*" className={styles.file} onChange={handleChange} />
+        <input
+          ref={albumRef}
+          type="file"
+          accept="image/*"
+          className={styles.file}
+          onChange={handleChange}
+          tabIndex={-1}
+          aria-hidden="true"
+        />
 
         {image ? (
           <div className={styles.frame}>
@@ -356,12 +421,22 @@ export default function PostModal({ isOpen, coords, place, post = null, onClose,
             onClick={tap}
             onPointerDown={startPress}
             onPointerMove={movePress}
-            onPointerUp={endPress}
+            onPointerUp={liftPress}
+            // The touchend just behind the lift, which Blink counts as a gesture
+            // where it may not count the pointerup — a second chance at the album
+            // on the platform that has no third one.
+            onTouchEnd={liftPress}
             onPointerCancel={endPress}
             onPointerLeave={endPress}
             // Android raises its own menu on a hold, over the album this one is
-            // about to open
-            onContextMenu={(event) => event.preventDefault()}
+            // about to open. It is also the one word some builds give before
+            // taking the rest of the gesture away, so the album is asked for
+            // here too — most likely refused, since a context menu is not a
+            // gesture the engines count, and it costs nothing to be told so.
+            onContextMenu={(event) => {
+              event.preventDefault();
+              if (heldRef.current) openAlbum();
+            }}
             disabled={busy}
             aria-busy={busy}
           >
