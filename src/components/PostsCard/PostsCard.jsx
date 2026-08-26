@@ -27,23 +27,21 @@ export default function PostsCard() {
   // the pair of buttons in the heading is for.
   const size = useCardSize("posts");
 
-  // How far the nearest one is, where a count used to be. How many there are is
-  // something the list answers by being scrolled; how close the closest is, is
-  // the thing the panel can say and the list cannot — a post 30 m away is worth
-  // looking up from the screen for, one 4 km away is somebody else's street.
-  // It is not the first row either: the list is in the order the posts were
-  // written, so the nearest can be anywhere in it.
-  const nearest = coords
-    ? posts.reduce((least, post) => Math.min(least, distanceMeters(coords, post)), Infinity)
-    : Infinity;
-
   return (
     <Card
       // "nearby", not the page's bare "posts": the dashboard is a page of
       // answers about where you are standing, and this one is only the posts
       // within reach of it — the page it leads to is the whole list.
       title={t("posts.nearby")}
-      meta={Number.isFinite(nearest) ? formatDistance(nearest) : null}
+      // How many there are. The panel is a window onto a list that scrolls, so
+      // the figure is the thing the rows on screen cannot say for themselves:
+      // whether there are four posts around here or forty. The distance that
+      // stood here before was already on every row — how close a post is, is
+      // about one post, and it belongs beside the one it is about.
+      //
+      // Nothing rather than a nought, as on the people panel: the line under the
+      // heading is about to say there is nothing around here in words.
+      meta={posts.length || null}
       action={<CardSize id="posts" />}
       wide
       half={size !== LARGE}

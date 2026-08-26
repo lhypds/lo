@@ -70,11 +70,10 @@ export default function PeopleCard() {
       // here" as a tile on this page can be. The phrase comes back with the
       // width to hold it, and the menu lists the card under the phrase.
       title={size === TINY ? t("people.short") : t("people.nearby")}
-      // A count, where the posts panel puts a distance. Presence is a handful of
-      // open tabs and the nearest one is the first row, so the distance would
-      // only say twice what the list already says; how many there are at all is
-      // the thing worth knowing before the list is read — and the answer is
-      // often none.
+      // A count, as on the posts panel. Presence is a handful of open tabs and
+      // the nearest one is the first row, so a distance up here would only say
+      // twice what the list already says; how many there are at all is the thing
+      // worth knowing before the list is read — and the answer is often none.
       //
       // Everyone the list holds, your own row included: a figure that counted
       // the rows differently from the way they are drawn would be the panel
