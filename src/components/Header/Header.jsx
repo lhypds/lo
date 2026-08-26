@@ -6,37 +6,34 @@ import { MARK_PIN_EYE, MARK_PIN_PATH } from "../../utils/icons.js";
 import { useAuth } from "../AuthProvider/index.js";
 import { useHere } from "../LocationProvider/index.js";
 import AccountModal from "../AccountModal/index.js";
+import AddCard from "../AddCard/index.js";
 import LanguageSwitcher from "../LanguageSwitcher/index.js";
 import MessagesModal, { useOpenMessages } from "../MessagesModal/index.js";
 import UserModal from "../UserModal/index.js";
 
-export default function Header({ back = false, backTo = "/" }) {
+// `cards` is the dashboard asking for its own contents page in the bar. Only the
+// dashboard has one: it is the only page made of cards, and a menu of them over
+// the marks list would be a list of things that are somewhere else.
+export default function Header({ back = false, backTo = "/", cards = false }) {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const { coords, refresh, unread } = useHere();
+  const { unread } = useHere();
   const navigate = useNavigate();
   // Which frame messages open in here — the sheet below, or the page — and
   // whether there is a sheet to mount at all.
   const openMessages = useOpenMessages();
   const handheld = useHandheld();
-  const [refreshing, setRefreshing] = useState(false);
   // The account sheet is the only one of the three opened from here and nowhere
   // else, so it is held open by the bar rather than by a module the way the
   // messages and profile sheets are.
   const [accountOpen, setAccountOpen] = useState(false);
 
-  // Everything on the page, asked again. Not the position — that keeps itself
-  // current on its own beat, and a button that only re-read the sensor would be
-  // the one thing on the dashboard the reader never needs to press.
-  async function handleRefresh() {
-    if (refreshing) return;
-    setRefreshing(true);
-    try {
-      await refresh();
-    } finally {
-      setRefreshing(false);
-    }
-  }
+  // There is no refresh button. The dashboard keeps itself current — the fix
+  // every thirty seconds, the weather and the place name behind it, who else is
+  // out there every minute — and the readings that do not, the news and what is
+  // on and what is being searched for, are hourly answers to a question about a
+  // whole city. A button that asked them again would nearly always come back
+  // with the page that is already on screen.
 
   return (
     <>
@@ -58,14 +55,10 @@ export default function Header({ back = false, backTo = "/" }) {
           )}
         </span>
         <span className="topbar-action-slot topbar-action-slot-right">
-          {coords && (
-            <ActionButton tooltip={t("header.refresh")} onClick={handleRefresh} disabled={refreshing}>
-              <svg viewBox="0 0 24 24" className={refreshing ? "spinning" : undefined}>
-                <path d="M21 12a9 9 0 1 1-2.64-6.36" />
-                <path d="M21 3v6h-6" />
-              </svg>
-            </ActionButton>
-          )}
+          {/* First of the right-hand buttons: the only one that is about the page
+              under the bar rather than about somewhere else in lo. Its list opens
+              rightwards over its own row (see add.module.css). */}
+          {cards && <AddCard />}
           {/* A letter rather than a drawing, because the thing it opens is drawn
               as a letter: the squares on the map say p, and so does this. */}
           {user && (

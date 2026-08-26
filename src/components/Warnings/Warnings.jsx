@@ -2,8 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
 import { Card, Skeleton } from "../../ui/index.js";
+import { LARGE, useCardSize } from "../../utils/cards.js";
 import { relativeTime } from "../../utils/format.js";
 import { formatWarningWindow, warningKindKey, warningLevel } from "../../utils/warnings.js";
+import CardSize from "../CardSize/index.js";
 import { useHere } from "../LocationProvider/index.js";
 import styles from "./warnings.module.css";
 
@@ -22,6 +24,7 @@ function coordKey(coords) {
 export default function Warnings() {
   const { t, i18n } = useTranslation();
   const { coords, reloadToken } = useHere();
+  const size = useCardSize("warnings");
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   // True from the first render rather than from the first effect — see the
@@ -152,8 +155,10 @@ export default function Warnings() {
     <Card
       title={t("warnings.title")}
       meta={result?.area}
+      action={<CardSize id="warnings" />}
       wide
-      half
+      half={size !== LARGE}
+      square={size === LARGE}
       flush
       // `panel-aside` is the page's hook for the panels that carry the
       // country's own reading of the place — on a wide screen they take the

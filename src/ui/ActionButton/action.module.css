@@ -1,11 +1,24 @@
+/* Two sizes, and neither is set here: the box comes off the tokens in
+   styles.css, so where a button stands is what decides how big it is. The small
+   one is the default and is what a card's heading carries — a pair of them next
+   to a title, in a page of hairline type, where the old larger box was the
+   loudest thing on the tile. The top bar overrides the tokens and every button
+   in there comes out the larger size, this one and the two controls drawn to
+   match it.
+
+   Both are under the 44px a touch guideline would ask for, which was already
+   true of the one size there used to be: lo is a page of small type read at
+   arm's length, and a bar of thumb-sized boxes would be the page. Nothing here
+   is destructive on a mis-hit — every one of them opens a sheet or changes the
+   height of a tile. */
 .actionButton {
   position: relative;
-  width: 26px;
-  height: 22px;
+  width: var(--action-w);
+  height: var(--action-h);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 4px 6px;
+  padding: 2px;
   border: 1px solid var(--ink);
   background: var(--paper);
   color: var(--ink);
@@ -22,8 +35,8 @@
 }
 
 .icon {
-  width: 14px;
-  height: 14px;
+  width: var(--action-icon);
+  height: var(--action-icon);
   fill: none;
   stroke: currentColor;
   stroke-width: 2;
@@ -32,14 +45,14 @@
 }
 
 /* A letter in place of an icon. Sized to sit at the same optical density as the
-   14px hairline drawings beside it rather than at the same height — a capital at
-   14px would shout next to them — and set at the regular weight for the same
-   reason: the icons it stands among are drawn in a single hairline, and a
+   hairline drawings beside it rather than at the same height — a capital as tall
+   as the drawing would shout next to it — and set at the regular weight for the
+   same reason: the icons it stands among are drawn in a single hairline, and a
    semibold letter is the one thing in the bar with a heavy stroke. */
 .glyph {
   display: block;
   font-family: var(--display);
-  font-size: 12px;
+  font-size: var(--action-glyph);
   font-weight: 400;
   line-height: 1;
 }

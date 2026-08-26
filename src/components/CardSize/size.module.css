@@ -1,0 +1,7 @@
+/* Tighter than the top bar's own gap: these two are one control, and read as a
+   pair rather than as two of the buttons the heading happens to be carrying. */
+.pair {
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 4px;
+}

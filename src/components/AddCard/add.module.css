@@ -1,0 +1,102 @@
+/* Built on the language switcher's shape — same trigger box as the buttons it
+   sits among in the top bar, same list hung off its bottom edge — with rows wide
+   enough for a card's name instead of two letters. Anchored left, because this is
+   the first of the buttons at the right of the bar and the list is wider than
+   it: opening rightwards it lies over its own row, and there is always room
+   there. Off the right edge there would not be. */
+.wrapper {
+  position: relative;
+  display: inline-flex;
+}
+
+/* The action button's box again, off the same tokens (see styles.css) — same
+   square and the same drawing in it, at whichever of the two sizes the bar it is
+   standing in asks for. */
+.trigger {
+  width: var(--action-w);
+  height: var(--action-h);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--ink);
+  background: var(--paper);
+  color: var(--ink);
+  padding: 2px;
+  font: inherit;
+  cursor: pointer;
+  line-height: 1;
+  user-select: none;
+}
+
+.icon {
+  width: var(--action-icon);
+  height: var(--action-icon);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.dropdown {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 999;
+  flex-direction: column;
+}
+
+.wrapper[data-open="true"] .dropdown {
+  display: flex;
+}
+
+.option {
+  min-width: 132px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  border: 1px solid var(--ink);
+  border-top: none;
+  background: var(--paper);
+  color: var(--ink);
+  padding: 4px 8px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  line-height: 1;
+  white-space: nowrap;
+  text-align: left;
+}
+
+.option:first-child {
+  border-top: 1px solid var(--ink);
+}
+
+/* A card that is already on the page, set grey on the same paper: it is a row
+   with nothing left to add, and the menu reads as the list of what is still
+   missing without spending a column on a mark that is absent from most rows.
+   Black is what a press would put on the page. */
+.on {
+  color: var(--muted);
+}
+
+@media (hover: hover) {
+  .wrapper:hover .trigger {
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  .wrapper:hover .dropdown {
+    display: flex;
+  }
+
+  /* Under the pointer both read the same way — filled, like every other row in
+     lo — since what the press does is the row's own business and the state of it
+     is still legible on every row the pointer is not on. */
+  .option:hover {
+    background: var(--ink);
+    color: var(--paper);
+  }
+}

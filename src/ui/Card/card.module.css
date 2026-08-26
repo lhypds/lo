@@ -51,6 +51,9 @@
   }
 }
 
+/* Full ink, on every card there is: the line under the title is what says the
+   heading is a heading, and a grid where some tiles have it and some do not
+   reads as a grid where some of the tiles have not finished loading. */
 .head {
   display: flex;
   align-items: center;
@@ -59,19 +62,6 @@
   flex: 0 0 auto;
   padding: 0 10px;
   border-bottom: 1px solid var(--ink);
-}
-
-/* For a tile whose content already reads as one column under its title — the
-   rule under the header only adds a line the eye has to cross */
-.openHead {
-  border-bottom: 0;
-}
-
-/* For a tile whose content is a picture rather than type. Against the map, full
-   ink under the title reads as a second frame drawn inside the card's own; the
-   hairline grey still parts the title from the canvas without doing that. */
-.quietHead {
-  border-bottom-color: var(--line);
 }
 
 .title {
@@ -83,25 +73,28 @@
   white-space: nowrap;
 }
 
-.meta {
+/* The right end of the heading, hard against the edge. The meta is the only part
+   of it that gives way — a long place name is cut short, a button is not. */
+.tail {
   min-width: 0;
   margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tail > :not(.meta) {
+  flex: 0 0 auto;
+}
+
+.meta {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--muted);
   font-family: var(--mono);
   font-size: 10px;
-}
-
-/* Anything in `action` sits hard right; a meta line before it keeps its own space */
-.head > :last-child:not(.title):not(.meta) {
-  margin-left: auto;
-  flex: 0 0 auto;
-}
-
-.head > .meta + * {
-  margin-left: 8px;
 }
 
 .body {

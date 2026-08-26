@@ -1,6 +1,8 @@
 import { useTranslation } from "react-i18next";
 import { Card, Link, Skeleton } from "../../ui/index.js";
+import { LARGE, useCardSize } from "../../utils/cards.js";
 import { distanceMeters, formatCoords, formatDistance, formatUsername, relativeTime } from "../../utils/format.js";
+import CardSize from "../CardSize/index.js";
 import { useHere } from "../LocationProvider/index.js";
 import styles from "./posts.module.css";
 
@@ -20,6 +22,10 @@ import styles from "./posts.module.css";
 export default function PostsCard() {
   const { t, i18n } = useTranslation();
   const { coords, posts, loadingPosts } = useHere();
+  // How tall the reader has left it. A list panel is the kind of tile that is
+  // worth the extra two squares on some days and not on others, which is what
+  // the pair of buttons in the heading is for.
+  const size = useCardSize("posts");
 
   // How far the nearest one is, where a count used to be. How many there are is
   // something the list answers by being scrolled; how close the closest is, is
@@ -38,8 +44,10 @@ export default function PostsCard() {
       // within reach of it — the page it leads to is the whole list.
       title={t("posts.nearby")}
       meta={Number.isFinite(nearest) ? formatDistance(nearest) : null}
+      action={<CardSize id="posts" />}
       wide
-      half
+      half={size !== LARGE}
+      square={size === LARGE}
       flush
     >
       <div className={styles.scroll}>

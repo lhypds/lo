@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
 import { Card, Skeleton } from "../../ui/index.js";
+import { LARGE, useCardSize } from "../../utils/cards.js";
+import CardSize from "../CardSize/index.js";
 import { useHere } from "../LocationProvider/index.js";
 import styles from "./trends.module.css";
 
@@ -15,6 +17,7 @@ function coordKey(coords) {
 export default function TrendsCard() {
   const { t, i18n } = useTranslation();
   const { coords, reloadToken } = useHere();
+  const size = useCardSize("trends");
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   // True from the first render rather than from the first effect — see the
@@ -94,8 +97,10 @@ export default function TrendsCard() {
     <Card
       title={t("trends.title")}
       meta={where}
+      action={<CardSize id="trends" />}
       wide
-      half
+      half={size !== LARGE}
+      square={size === LARGE}
       flush
       // Right half of the grid on a wide screen, under the warnings — the other
       // half of what the country says about this place (see .card-grid in

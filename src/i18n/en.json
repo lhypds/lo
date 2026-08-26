@@ -12,7 +12,11 @@
     "posts": "posts",
     "marks": "Marks",
     "account": "Account",
-    "refresh": "Refresh"
+    "cards": "Cards"
+  },
+  "cards": {
+    "bigger": "Taller",
+    "smaller": "Shorter"
   },
   "auth": {
     "tagline": "Where you are, right now.",
@@ -75,10 +79,13 @@
     "places": "Around you",
     "empty": "Nothing to report around here",
     "unavailable": "Could not reach the news service",
-    "loading": "Reading the neighbourhood",
-    "tags": {
-      "events": "Events"
-    }
+    "loading": "Reading the neighbourhood"
+  },
+  "events": {
+    "title": "Events",
+    "empty": "Nothing on around here this fortnight",
+    "unavailable": "Could not reach the events service",
+    "loading": "Looking for what is on"
   },
   "warnings": {
     "title": "Warnings",

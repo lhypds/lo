@@ -12,7 +12,11 @@
     "posts": "posts",
     "marks": "記録",
     "account": "アカウント",
-    "refresh": "更新"
+    "cards": "カード"
+  },
+  "cards": {
+    "bigger": "高くする",
+    "smaller": "低くする"
   },
   "auth": {
     "tagline": "いま、あなたのいる場所。",
@@ -75,10 +79,13 @@
     "places": "あなたの周り",
     "empty": "この辺りに伝えることはありません",
     "unavailable": "ニュースサービスに接続できません",
-    "loading": "周辺を読み込み中",
-    "tags": {
-      "events": "イベント"
-    }
+    "loading": "周辺を読み込み中"
+  },
+  "events": {
+    "title": "イベント",
+    "empty": "この2週間、この辺りに開催情報はありません",
+    "unavailable": "イベント情報に接続できません",
+    "loading": "イベントを探しています"
   },
   "warnings": {
     "title": "警報・注意報",

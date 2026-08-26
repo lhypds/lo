@@ -2,8 +2,10 @@ import { Suspense, lazy, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
 import { Card, Skeleton, showToast } from "../../ui/index.js";
+import { useCards } from "../../utils/cards.js";
 import { getLocationState, refreshLocation } from "../../utils/location.js";
 import ClockCard from "../../components/ClockCard/index.js";
+import EventsCard from "../../components/EventsCard/index.js";
 import Header from "../../components/Header/index.js";
 import HereStrip from "../../components/HereStrip/index.js";
 import LocationGate from "../../components/LocationGate/index.js";
@@ -28,6 +30,11 @@ export default function HomePage() {
   // the fix, like the place name is, and the refresh in the top bar has to be
   // able to reach them without knowing which page it is sitting on.
   const { coords, place, posts, addPost, supports, reloadToken } = useHere();
+  // Which cards are on the page. Both halves of that in one question — what this
+  // country can feed and what the reader has kept — so the grid below asks once
+  // per card rather than twice (see utils/cards.js). The plus in the top bar is
+  // the other end of it.
+  const { shown } = useCards(supports);
   // Held here, not in the map: expanding it hides the rest of the dashboard.
   const [mapExpanded, setMapExpanded] = useState(false);
   const [marks, setMarks] = useState([]);
@@ -89,12 +96,13 @@ export default function HomePage() {
   if (!coords) return <LocationGate />;
 
   // A fix that has crossed into a country with no map must not leave the page
-  // expanded onto one — the expanded layout empties out everything else.
-  const expanded = mapExpanded && supports("map");
+  // expanded onto one, and neither must a reader who has just taken the map off
+  // the page — the expanded layout empties out everything else.
+  const expanded = mapExpanded && shown("map");
 
   return (
     <div className="page-shell home-page">
-      <Header />
+      <Header cards />
       {/* Everything but the map is hidden rather than unmounted while it is
           expanded, so collapsing back does not refetch the news or reset what
           the mark button knows about this spot. */}
@@ -105,13 +113,16 @@ export default function HomePage() {
         <HereStrip />
         {/* Which of these the country can feed is the server's answer, and a card
             it cannot feed is left out rather than left empty: an empty Trends
-            card would read as "nobody here is searching for anything". Only the
-            mark button is unconditional — it is lo's own, and standing somewhere
-            is not a thing any country can fail to support. */}
+            card would read as "nobody here is searching for anything". Which of
+            the rest are worth the room is the reader's, through the plus in the
+            top bar — `shown` is both answers at once. Only the mark button is
+            unconditional: it is lo's own, standing somewhere is not a thing any
+            country can fail to support, and a dashboard you can take every tile
+            off should still let you keep where you are. */}
         <div className="card-grid">
-          {supports("clock") && <ClockCard />}
-          {supports("weather") && <WeatherCard />}
-          {supports("map") && (
+          {shown("clock") && <ClockCard />}
+          {shown("weather") && <WeatherCard />}
+          {shown("map") && (
             <Suspense
               fallback={
                 // The map's own card, drawn by the page while mapbox-gl is
@@ -119,7 +130,7 @@ export default function HomePage() {
                 // square, so the thing holding its place has to be one too or
                 // the grid rearranges itself around the heaviest thing it is
                 // waiting for.
-                <Card title={t("map.title")} square flush quietHead>
+                <Card title={t("map.title")} square flush>
                   <Skeleton fill label={t("common.loading")} />
                 </Card>
               }
@@ -161,16 +172,16 @@ export default function HomePage() {
               column and everything the country says keeps the right, whichever
               way round they are written here (see .card-grid in styles.css).
 
-              Posts are lo's own and belong to no country, so this one is
-              unconditional — the same reason the mark button is. It reads the
-              list the map above it is already drawing. */}
-          <PostsCard />
+              Posts are lo's own and belong to no country, so no country is asked
+              about this one — the same reason the mark button is unconditional.
+              It reads the list the map above it is already drawing. */}
+          {shown("posts") && <PostsCard />}
           {/* Who else is around, under the list of what people left. The map
               draws the posts but not the people — presence is the half of it
-              that reads as type, a name with how far off and how long ago.
-              Unconditional for the same reason the posts are: presence is lo's
-              own and stops at no border. */}
-          <PeopleCard />
+              that reads as type, a name with how far off and how long ago. No
+              country is asked about this one either: presence is lo's own and
+              stops at no border. */}
+          {shown("people") && <PeopleCard />}
           {/* Still under the map, which is the half of the page a warning is
               about: it reads as a caption on that ground once you have seen
               where you are standing. Under lo's own panels as well now, which is
@@ -180,12 +191,14 @@ export default function HomePage() {
               pinned to the right half regardless, beneath the news and above the
               trends: everything the country itself has to say, in one column
               (see .card-grid in styles.css). */}
-          {supports("warnings") && <Warnings />}
-          {/* One panel off both feeds now, and it stands if either of them can
-              be fed: an edition that covers the news but has no event listing
-              still has something to say about the place. */}
-          {(supports("nearby") || supports("events")) && <NewsCard />}
-          {supports("trends") && <TrendsCard />}
+          {shown("warnings") && <Warnings />}
+          {/* Then the two readings of the wider place, each its own panel again
+              and each its own line in the menu: what is being said around here,
+              and what is on. Two questions, so two panels — read as one list, the
+              rows answering either one were most of the answer to the other. */}
+          {shown("nearby") && <NewsCard />}
+          {shown("events") && <EventsCard />}
+          {shown("trends") && <TrendsCard />}
         </div>
       </main>
 

@@ -24,7 +24,7 @@ export default function WeatherCard() {
   // still no weather in it.
   if (!weather) {
     return (
-      <Card title={t("weather.title")} openHead square>
+      <Card title={t("weather.title")} square>
         {loadingLocal ? (
           <Skeleton fill label={t("common.loading")} />
         ) : (
@@ -44,7 +44,7 @@ export default function WeatherCard() {
   const range = today ? `${round(today.tempMax)}° / ${round(today.tempMin)}°` : null;
 
   return (
-    <Card title={t("weather.title")} openHead meta={range} square>
+    <Card title={t("weather.title")} meta={range} square>
       <div className={styles.inner}>
         <div className={styles.top}>
           <div className={styles.now}>

@@ -1,7 +1,9 @@
 import { useTranslation } from "react-i18next";
 import { Card, Link, Skeleton } from "../../ui/index.js";
+import { LARGE, useCardSize } from "../../utils/cards.js";
 import { distanceMeters, formatDistance, formatUsername, relativeTime } from "../../utils/format.js";
 import { useAuth } from "../AuthProvider/index.js";
+import CardSize from "../CardSize/index.js";
 import { useHere } from "../LocationProvider/index.js";
 import { openProfile } from "../UserModal/userApi.js";
 import styles from "./people.module.css";
@@ -34,6 +36,7 @@ export default function PeopleCard() {
   const { t, i18n } = useTranslation();
   const { coords, people, loadingPeople } = useHere();
   const { user } = useAuth();
+  const size = useCardSize("people");
 
   // Nearest first, and with the distance each row shows in hand. Without a fix
   // of our own there is no distance to sort on, and the order the server sent —
@@ -72,8 +75,10 @@ export default function PeopleCard() {
       // the rows differently from the way they are drawn would be the panel
       // arguing with itself.
       meta={rows.length + (me ? 1 : 0) || null}
+      action={<CardSize id="people" />}
       wide
-      half
+      half={size !== LARGE}
+      square={size === LARGE}
       flush
     >
       <div className={styles.scroll}>

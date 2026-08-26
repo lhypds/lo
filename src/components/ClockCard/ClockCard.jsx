@@ -61,7 +61,7 @@ export default function ClockCard() {
   const offset = weather?.timezone ? t("clock.offset", { offset: formatOffset(weather.timezone.offsetSeconds) }) : "";
 
   return (
-    <Card title={t("clock.title")} meta={offset} square openHead>
+    <Card title={t("clock.title")} meta={offset} square>
       <div className={styles.inner}>
         <div className={styles.top}>
           <div className={styles.face}>

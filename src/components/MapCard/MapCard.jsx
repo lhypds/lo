@@ -815,7 +815,6 @@ export default function MapCard({
       square={!expanded}
       wide={expanded}
       flush
-      quietHead
       className={expanded ? `map-full ${styles.cardExpanded}` : undefined}
     >
       {body}
