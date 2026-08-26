@@ -293,58 +293,37 @@ export default function PostModal({ isOpen, coords, place, post = null, onClose,
             </button>
           </div>
         ) : (
-          // A shutter, with what the two gestures on it do written inside it: the
-          // drawing says what the button is for, and the two lines under it say
-          // how to work it — all three inside the one thing they are about, so
-          // nothing on the sheet is a caption on something else.
-          <button
-            type="button"
-            className={armed ? `${styles.photo} ${styles.photoArmed}` : styles.photo}
-            onClick={tap}
-            onPointerDown={startPress}
-            onPointerMove={movePress}
-            onPointerUp={liftPress}
-            // The touchend just behind the lift, which Blink counts as a gesture
-            // where it may not count the pointerup — a second chance at the album
-            // on the platform that has no third one.
-            onTouchEnd={liftPress}
-            onPointerCancel={endPress}
-            onPointerLeave={endPress}
-            // Android raises its own menu on a hold, over the album this one is
-            // about to open. It is also the one word some builds give before
-            // taking the rest of the gesture away, so the album is asked for
-            // here too — most likely refused, since a context menu is not a
-            // gesture the engines count, and it costs nothing to be told so.
-            onContextMenu={(event) => {
-              event.preventDefault();
-              if (heldRef.current) openAlbum();
-            }}
-            disabled={busy}
-            aria-busy={busy}
-          >
-            <svg viewBox="0 0 24 24" className={styles.camera} aria-hidden="true">
-              <path d="M3 8h4l1.5-2.5h7L17 8h4v11H3z" />
-              <circle cx="12" cy="13.5" r="3.2" />
-            </svg>
-            {/* Two lines that belong together: what a tap does, and under it
-                what a hold does. While a photo is on its way in the first line
-                says where it has got to instead — the button is disabled by
-                then, so it is also the only way that progress is announced, and
-                the second line keeps its space rather than unmounting and
-                letting the drawing above hop as it goes. */}
-            <span className={styles.copy}>
-              <span className={styles.tap} aria-live="polite">
-                {stage === "uploading"
-                  ? t("post.uploading")
-                  : stage === "compressing"
-                    ? t("post.compressing")
-                    : t("post.photoTap")}
-              </span>
-              <span className={stage ? `${styles.hold} ${styles.holdHidden}` : styles.hold}>
-                {t("post.photoHold")}
-              </span>
-            </span>
-          </button>
+          // The two ways to a photo, side by side and the same size: a camera and
+          // an album are not a main way and a lesser one — which of them a post
+          // wants depends only on whether the picture has been taken yet.
+          <div className={styles.picker}>
+            <div className={styles.ways}>
+              <button type="button" className={styles.way} onClick={openCamera} disabled={busy}>
+                <svg viewBox="0 0 24 24" className={styles.glyph} aria-hidden="true">
+                  <path d="M3 8h4l1.5-2.5h7L17 8h4v11H3z" />
+                  <circle cx="12" cy="13.5" r="3.2" />
+                </svg>
+                {t("post.photoCamera")}
+              </button>
+              <button type="button" className={styles.way} onClick={openAlbum} disabled={busy}>
+                {/* A picture rather than a lens: a frame with something in it,
+                    which is what an album holds. */}
+                <svg viewBox="0 0 24 24" className={styles.glyph} aria-hidden="true">
+                  <path d="M3.5 5.5h17v13h-17z" />
+                  <path d="m6 15.5 3.5-4 3 3.5 2.5-3 3 3.5" />
+                  <circle cx="8" cy="9.5" r="1.3" />
+                </svg>
+                {t("post.photoAlbum")}
+              </button>
+            </div>
+            {/* Where the photo has got to. Both buttons are disabled while it is
+                on its way, so this line is the only word the sheet gives on it —
+                and it keeps its space when there is nothing to say, or the two
+                buttons above would hop as it comes and goes. */}
+            <p className={styles.stage} aria-live="polite">
+              {stage === "uploading" ? t("post.uploading") : stage === "compressing" ? t("post.compressing") : ""}
+            </p>
+          </div>
         )}
 
         <TextArea
