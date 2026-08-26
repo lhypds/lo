@@ -1,20 +1,26 @@
 import { useTranslation } from "react-i18next";
-import { Card } from "../../ui/index.js";
+import { Card, Link } from "../../ui/index.js";
 import { distanceMeters, formatDistance, formatUsername, relativeTime } from "../../utils/format.js";
 import { useHere } from "../LocationProvider/index.js";
 import styles from "./people.module.css";
 
-// Who else has a tab open around here, as a list — the ringed dots on the map
-// above, read rather than looked at. The map says where each of them is; this
-// says who they are and how far off, in the order that matters when the question
-// is "is anybody near me" — nearest first, which is the one order a map of
-// scattered dots cannot put them in.
+// Who else has a tab open around here, as a list — and the only place they are
+// shown at all: the map draws the ground and the reader standing on it, not
+// everyone else. Type answers "is anybody near me" better than a scatter of
+// dots did anyway, because it can be ordered — nearest first, with a name and a
+// distance on every row.
 //
 // The list is the provider's, traded for our own fix on the minute loop, so the
 // panel costs no request of its own.
 //
-// Rows lead nowhere: there is no page for a person in lo, and the dot on the map
-// is already the whole of what is known about one. So this is type, not links.
+// There is still no page for a person in lo, but there is one question a row can
+// answer that the row itself cannot: what have they left around here. So a row
+// presses through to the posts page with @them already in the search field,
+// which is the same filter a reader could have typed there by hand — the panel
+// only saves them the typing, and the field it lands in says so.
+//
+// An anchor rather than a button, so a row opens in its own tab like every other
+// pressable row on the dashboard.
 export default function PeopleCard() {
   const { t, i18n } = useTranslation();
   const { coords, people } = useHere();
@@ -55,18 +61,22 @@ export default function PeopleCard() {
         ) : (
           <ul className={styles.list}>
             {rows.map(({ person, away }) => (
-              <li key={person.username} className={styles.item}>
-                {/* The dot the map draws them with, off the map: grey, ringed,
-                    and the same size, so a row and its marker read as the same
-                    person without a legend saying so. */}
-                <span className={styles.dot} aria-hidden="true" />
-                <span className={styles.who}>{formatUsername(person.username)}</span>
-                <span className={styles.itemMeta}>
-                  {Number.isFinite(away) && <span>{formatDistance(away)}</span>}
-                  {/* A position is only worth as much as its age — a dot ten
-                      minutes old is somebody who has already walked off. */}
-                  <time dateTime={person.time}>{relativeTime(person.time, i18n.language, t)}</time>
-                </span>
+              <li key={person.username}>
+                <Link
+                  to={`/posts?author=${encodeURIComponent(person.username)}`}
+                  className={styles.item}
+                >
+                  {/* A bullet for the row — a person is somewhere, and a small
+                      grey disc says that before the name is read. */}
+                  <span className={styles.dot} aria-hidden="true" />
+                  <span className={styles.who}>{formatUsername(person.username)}</span>
+                  <span className={styles.itemMeta}>
+                    {Number.isFinite(away) && <span>{formatDistance(away)}</span>}
+                    {/* A position is only worth as much as its age — a dot ten
+                        minutes old is somebody who has already walked off. */}
+                    <time dateTime={person.time}>{relativeTime(person.time, i18n.language, t)}</time>
+                  </span>
+                </Link>
               </li>
             ))}
           </ul>

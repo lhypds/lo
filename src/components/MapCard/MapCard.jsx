@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { ActionButton, Card } from "../../ui/index.js";
-import { formatCoords, formatDateTime, formatUsername, relativeTime } from "../../utils/format.js";
+import { formatCoords, formatDateTime, formatUsername } from "../../utils/format.js";
 import { MARK_PIN_EYE, MARK_PIN_PATH, MARK_PIN_TIP_Y } from "../../utils/icons.js";
 import { useAuth } from "../AuthProvider/index.js";
 import { useHere } from "../LocationProvider/index.js";
@@ -74,13 +74,14 @@ function haloDiameter(map, latitude, longitude, meters) {
 // createElement is an unknown HTML element that draws nothing.
 const SVG_NS = "http://www.w3.org/2000/svg";
 
-// One dot per person, with the name hanging under it. The wrapper is exactly
-// the size of the dot so the marker's own centring puts the dot on the
-// coordinate; the name is lifted out of the flow underneath it, which keeps a
-// long name from dragging the dot off the spot it is reporting.
-function personElement(username, self = false) {
+// The reader's own dot, with their name hanging under it — the one person the
+// map draws. The wrapper is exactly the size of the dot so the marker's own
+// centring puts the dot on the coordinate; the name is lifted out of the flow
+// underneath it, which keeps a long name from dragging the dot off the spot it
+// is reporting.
+function personElement(username) {
   const wrapper = document.createElement("div");
-  wrapper.className = self ? `${styles.person} ${styles.personSelf}` : styles.person;
+  wrapper.className = styles.person;
   const dot = document.createElement("div");
   dot.className = styles.personDot;
   const name = document.createElement("span");
@@ -253,13 +254,12 @@ export default function MapCard({
   onSelectPin,
 }) {
   const { t, i18n } = useTranslation();
-  const { coords, people = [] } = useHere();
+  const { coords } = useHere();
   const { user } = useAuth();
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const hereMarkerRef = useRef(null);
   const haloMarkerRef = useRef(null);
-  const peopleMarkersRef = useRef([]);
   const markMarkersRef = useRef([]);
   const postMarkersRef = useRef([]);
   // Read by the marker handlers, which are attached to DOM nodes the map owns
@@ -364,8 +364,8 @@ export default function MapCard({
   // clicking one, so the bubble follows the pointer — and a click holds it.
   //
   // The id is what the page is told, so a list beside the map can light up the
-  // row the pin belongs to and show it as chosen. The people's dots have no row
-  // to point at and pass none.
+  // row the pin belongs to and show it as chosen. A pin with no row to point at
+  // passes none.
   const preview = useCallback(
     (marker, id = null) => {
       if (!HOVERS) return marker;
@@ -454,7 +454,6 @@ export default function MapCard({
       mapRef.current = null;
       hereMarkerRef.current = null;
       haloMarkerRef.current = null;
-      peopleMarkersRef.current = [];
       markMarkersRef.current = [];
       postMarkersRef.current = [];
     };
@@ -467,17 +466,18 @@ export default function MapCard({
     if (map) map.setLanguage(mapLanguage(i18n.language));
   }, [i18n.language]);
 
-  // The blue-dot equivalent: one marker that follows the fix, plus the halo of
-  // however sure the device is about it. It carries the reader's own name for
-  // the same reason everyone else's does — on a map with several dots on it,
-  // "you are here" is only useful if the others say who they are too.
+  // The blue-dot equivalent, and now the only person on the map: one marker that
+  // follows the fix, plus the halo of however sure the device is about it. It
+  // still wears the reader's own name — a dot among pins reads as one more thing
+  // dropped on the ground until something on it says whose it is, and the name
+  // is also the plainest sign of which account this tab is signed in as.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !coords) return undefined;
     const name = user?.username ?? "";
     const position = [coords.longitude, coords.latitude];
     if (!hereMarkerRef.current) {
-      hereMarkerRef.current = new mapboxgl.Marker({ element: personElement(name, true) })
+      hereMarkerRef.current = new mapboxgl.Marker({ element: personElement(name) })
         .setLngLat(position)
         .addTo(map);
     } else {
@@ -519,28 +519,12 @@ export default function MapCard({
     return () => map.off("zoom", size);
   }, [coords, user]);
 
-  // Everyone else, redrawn wholesale on each round of the minute loop. The list
-  // is only ever the handful of people whose tabs are open, and it arrives as a
-  // new array every time, so diffing it would cost more than replacing it.
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
-    peopleMarkersRef.current.forEach((marker) => marker.remove());
-    peopleMarkersRef.current = people.map((person) =>
-      preview(
-        new mapboxgl.Marker({ element: personElement(person.username) })
-          .setLngLat([person.longitude, person.latitude])
-          .setPopup(
-            // The name is already on the label; what the label cannot say is how
-            // long ago the dot was true, which is the whole question here.
-            previewPopup(14).setText(
-              t("map.seen", { time: relativeTime(person.time, i18n.language, t) }),
-            ),
-          )
-          .addTo(map),
-      ),
-    );
-  }, [people, t, i18n.language, preview]);
+  // Everyone else is not drawn here. The minute loop still trades our fix for
+  // the list of who is around — the panel under the map reads it, nearest first,
+  // with a distance and an age on every row. What the map was adding to that was
+  // a scatter of dots which say who far less well than a line of type does, and
+  // which put other people's whereabouts on the same picture as the reader's
+  // own; the map is left to the ground and to what was left on it.
 
   // Saved marks are redrawn wholesale — the list is short, and diffing markers
   // costs more than replacing them.

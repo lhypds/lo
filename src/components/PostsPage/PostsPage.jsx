@@ -26,7 +26,17 @@ export default function PostsPage() {
   // which this page is in a position to notice.
   const { coords, posts, postsError, dropPost, replacePost } = useHere();
   const { user } = useAuth();
-  const [query, setQuery] = useState("");
+  const [searchParams] = useSearchParams();
+  // Arriving from the dashboard's list of people with one person in mind: the
+  // name comes over on the URL and the field opens with @them in it. A starting
+  // value and not a filter of its own — the query is the reader's from the first
+  // keystroke, so they can widen it, narrow it, or clear it like any other, and
+  // what the page is showing them is written where they can see it rather than
+  // held somewhere off screen.
+  const [query, setQuery] = useState(() => {
+    const author = searchParams.get("author");
+    return author ? formatUsername(author) : "";
+  });
   const [focus, setFocus] = useState(null);
   // The post the pointer is resting on, from whichever half of the page it is
   // resting on it — the same two-way pairing the marks page makes, for the same
@@ -59,7 +69,6 @@ export default function PostsPage() {
   // presses through to here, and the map opens on the post it was. Once only —
   // the list is asked for again whenever the ground moves, and a page that
   // re-panned on every answer would keep taking the view back off the reader.
-  const [searchParams] = useSearchParams();
   const wanted = searchParams.get("post");
   const arrivedRef = useRef(false);
   useEffect(() => {
@@ -73,9 +82,17 @@ export default function PostsPage() {
   // The words, where they were left, and who left them — the three things a
   // row says, and the three a post is remembered by. The name is folded in as
   // it is written on the row, @ and all, so searching for @someone finds them
-  // the way they were read.
+  // the way they were read; and handed over on its own besides, which is what
+  // makes a query that starts with @ a question about the author rather than
+  // about anyone who happened to be named in the words.
   const shown = useMemo(
-    () => filterBy(posts, query, (post) => [post.body, post.place, formatUsername(post.username)]),
+    () =>
+      filterBy(
+        posts,
+        query,
+        (post) => [post.body, post.place, formatUsername(post.username)],
+        (post) => post.username,
+      ),
     [posts, query],
   );
 

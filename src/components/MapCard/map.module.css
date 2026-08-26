@@ -42,7 +42,7 @@
   font-size: 12px;
 }
 
-/* A person on the map: the dot sits on the coordinate and the name hangs off
+/* The reader on the map: the dot sits on the coordinate and the name hangs off
    the bottom of it, out of the flow so it cannot move the dot. Colours here are
    fixed rather than themed — they have to read against road fill and satellite
    imagery, neither of which knows about light and dark mode. */
@@ -52,30 +52,18 @@
   height: 14px;
 }
 
+/* A plain black disc, with no ring: a ring is what lifts a grey dot off road
+   fill and imagery, and ink this solid is already off both — on it, the ring
+   only makes the dot look like a badge. The margin keeps the smaller disc
+   centred in the wrapper the marker is positioned by, so the dot stays over the
+   coordinate and the name stays under the dot. */
 .personDot {
-  width: 100%;
-  height: 100%;
-  border: 2px solid #fff;
-  border-radius: 50%;
-  background: #666;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5);
-  cursor: pointer;
-}
-
-/* The reader's own dot is a plain black disc — on a map of several people,
-   which one is you should not take a second look. The white ring the others
-   wear is what lifts a grey dot off road fill and imagery; ink that solid is
-   already off it, and the ring only makes the dot look like a badge. */
-.personSelf .personDot {
-  /* Smaller than the ringed dots, and the margin keeps it centred in the
-     wrapper the marker is positioned by — the dot has to stay over the
-     coordinate, and the name hanging under it has to stay under the dot. */
   width: 10px;
   height: 10px;
   margin: 2px;
-  border: 0;
+  border-radius: 50%;
   background: #000;
-  box-shadow: none;
+  cursor: pointer;
 }
 
 .personName {
@@ -85,8 +73,8 @@
   transform: translateX(-50%);
   padding: 1px 4px;
   border: 1px solid #000;
-  background: #fff;
-  color: #000;
+  background: #000;
+  color: #fff;
   font-family: var(--mono);
   font-size: 10px;
   line-height: 1.4;
@@ -94,12 +82,6 @@
   /* The label can be wider than the dot by some way; letting it swallow clicks
      would take a bite out of the map for every name on screen */
   pointer-events: none;
-}
-
-.personSelf .personName {
-  border-color: #000;
-  background: #000;
-  color: #fff;
 }
 
 /* A post is a square with a p in it, held close to the letter: 14px around a
@@ -233,9 +215,8 @@
    happened to be added — and the reader's own position, which is the one thing
    on the map that is about them, ends up under whichever pin was drawn last.
    The order runs by how alive a thing is: ground that was left here, then the
-   doubt about where the reader is standing, then the people standing on it,
-   then the reader. The popup clears all of them, or opening one would put it
-   behind the pin it belongs to. */
+   doubt about where the reader is standing, then the reader. The popup clears
+   all of them, or opening one would put it behind the pin it belongs to. */
 .postDot,
 .markPin {
   z-index: 1;
@@ -247,10 +228,6 @@
 
 .person {
   z-index: 3;
-}
-
-.personSelf {
-  z-index: 4;
 }
 
 /* Deaf to the pointer, which is what opens it: nothing in one of these bubbles

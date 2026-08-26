@@ -17,8 +17,22 @@ function fold(text) {
 // Substring rather than prefix, because Japanese and Chinese rows have no spaces
 // to start a word at — and because "shibuya" should find "near Shibuya station"
 // in English too.
-export function filterBy(items, query, fields) {
-  const needle = fold(query.trim());
-  if (!needle) return items;
+//
+// `author`, where a list has one, is the exception to reading every row as one
+// string. A query that opens with an @ is asking after a person and not after
+// words, so it is matched against the name alone: @sam is what Sam left, not
+// every post that mentions them. The @ is a way of being precise rather than a
+// requirement — "sam" still finds the same rows, along with anything that says
+// sam in its own words, because the name is one of the fields as well.
+export function filterBy(items, query, fields, author) {
+  const trimmed = query.trim();
+  if (!trimmed) return items;
+  if (author && trimmed.startsWith("@")) {
+    // A lone @ is somebody a keystroke into a name: still everyone, for now.
+    const name = fold(trimmed.slice(1));
+    if (!name) return items;
+    return items.filter((item) => fold(author(item) || "").includes(name));
+  }
+  const needle = fold(trimmed);
   return items.filter((item) => fold(fields(item).filter(Boolean).join(" ")).includes(needle));
 }

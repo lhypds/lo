@@ -132,10 +132,11 @@ export default function HomePage() {
               unconditional — the same reason the mark button is. It reads the
               list the map above it is already drawing. */}
           <PostsCard />
-          {/* The other half of what the map is drawing, under the half that
-              reads its squares: the ringed dots are people, and who they are is
-              a list as much as the posts are. Unconditional for the same reason
-              — presence is lo's own and stops at no border. */}
+          {/* Who else is around, under the list of what people left. The map
+              draws the posts but not the people — presence is the half of it
+              that reads as type, a name with how far off and how long ago.
+              Unconditional for the same reason the posts are: presence is lo's
+              own and stops at no border. */}
           <PeopleCard />
           {supports("trends") && <TrendsCard />}
         </div>

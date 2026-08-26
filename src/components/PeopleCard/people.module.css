@@ -18,25 +18,26 @@
   border-top: 1px solid var(--line);
 }
 
-/* One line: the name takes what it needs, the reading of it sits hard right, and
-   nothing here is pressable — so no hover state, unlike the rows of posts and
-   headlines that go somewhere. */
+/* One line: the name takes what it needs, and the reading of it sits hard right.
+   A link, like the rows of posts and headlines that go somewhere — so it takes
+   their hover state too, and their underline removed. */
 .item {
   display: flex;
   align-items: baseline;
   gap: 8px;
   padding: 8px 10px;
+  text-decoration: none;
 }
 
-/* The grey disc the map marks a person with, at the size it draws it. Without
-   the map's white ring: that ring is there to lift the dot off road fill and
-   satellite imagery, and against paper it only makes the dot look like a badge.
-   The row is aligned on the baseline, so an empty box of this height stands on
-   it — 10px against the name's 9px of x-height, which is a bullet. */
+/* A bullet, and no more than that: the row's own reading is the name and the
+   distance, and a disc big enough to look like a marker promises a legend the
+   panel does not have. The row is aligned on the baseline, so an empty box of
+   this height stands on it — 6px against the name's 9px of x-height sits low in
+   the line, where a bullet belongs. */
 .dot {
   flex: none;
-  width: 10px;
-  height: 10px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: #666;
 }
@@ -73,4 +74,21 @@
   color: var(--muted);
   text-align: center;
   font-size: 11px;
+}
+
+@media (hover: hover) {
+  .item:hover {
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  .item:hover .itemMeta {
+    color: var(--paper);
+  }
+
+  /* The bullet inverts with the row. A grey disc that reads as a quiet marker on
+     paper all but disappears against the ink. */
+  .item:hover .dot {
+    background: var(--paper);
+  }
 }

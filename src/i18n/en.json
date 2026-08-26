@@ -131,7 +131,6 @@
     "title": "Map",
     "noToken": "Add VITE_MAPBOX_TOKEN to .env to display the map.",
     "recenter": "Back to my position",
-    "seen": "Seen {{time}}",
     "expand": "Full map",
     "collapse": "Close map",
     "unavailable": "The map needs WebGL, which this browser will not give it."
@@ -202,7 +201,7 @@
   },
   "search": {
     "marks": "Search your marks",
-    "posts": "Search these posts",
+    "posts": "Search these posts or @someone",
     "clear": "Clear search",
     "empty": "Nothing matches “{{query}}”"
   },
