@@ -152,15 +152,11 @@ export default function Messages({ to = null, onOpen, link = null }) {
   // Arriving from a profile, the composer is the whole reason this opened — so
   // the caret is put in it, on a pointer that has a keyboard of its own already.
   //
-  // Never where the pointer is a finger. There the keyboard is on the screen, and
-  // iOS will not raise one for a focus no hand asked for: the field took the
-  // caret, no keys came up, and the page was left in the one state its floor
-  // cannot read — :focus-within saying somebody is typing while what is actually
-  // under the composer is the bottom edge of the phone. The floor closed to the
-  // gap it keeps over a keyboard (see pages/MessagesPage), and the composer spent
-  // the whole visit sitting in the curve of the corner, until the field was
-  // tapped once for real and let go of again. A thumb can find a field it can
-  // see; what it cannot do is get the composer back out of that corner.
+  // Never where the pointer is a finger. There the keyboard is on the screen,
+  // and iOS will not raise one for a focus no hand asked for: the field takes
+  // the caret, no keys come up, and the page is showing a conversation being
+  // typed into that nobody has touched. Nothing is gained by it either — a thumb
+  // can find a field it can see, and tapping the field is what brings the keys.
   useEffect(() => {
     if (!to) return undefined;
     if (window.matchMedia("(pointer: coarse)").matches) return undefined;

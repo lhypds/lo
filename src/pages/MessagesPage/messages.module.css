@@ -6,49 +6,18 @@
    itself is sized against — see components/Messages, which is the half of this
    screen the desktop's sheet is holding too.
 
-   The inset under it is for the home bar in standalone mode, where there is no
-   browser chrome to hold the composer off the bottom of the screen.
-
-   The 26px over it is for the screen's own corner. A phone's bottom edge is
-   rounded and the composer's is not, so the last band of the window is a strip
-   the picture narrows through — a box run down into it loses its two bottom
-   corners to the curve. The inset does not cover this: it measures the home bar,
-   which is a thing to keep clear of rather than the shape of the glass. 26px is
-   read off the curve — the column already holds the field 12px in from the side
-   of the window, and 12px in is the point where a corner of about 55px stops
-   reaching more than 21px up. */
+   The foot is the 12px the sides keep and nothing more, whatever is under it —
+   the home bar, the screen's own corner, the top of a keyboard. The composer
+   sits the same distance off the bottom edge as it does off the left and right
+   ones, which is the one number that looks right against all three. */
 .main {
   flex: 1;
   min-height: 0;
   width: min(100%, 600px);
   margin: 0 auto;
   padding: 16px 12px;
-  padding-bottom: calc(26px + env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
-}
-
-/* …and the inset goes while somebody is typing. The home bar it holds the
-   composer off is under the keyboard by then, and a bar's worth of paper between
-   the composer and the keys reads as the composer having floated up off them.
-   The keeper of that 34px is iOS, which goes on reporting the shape of the
-   screen while the keyboard covers the bottom of it.
-
-   The field having the focus is the keyboard being up, so the page reads it
-   there rather than measuring anything: no number to be taken mid-slide, and
-   nothing to put back afterwards. That holds only for as long as nothing puts
-   the caret in the field that a keyboard does not come with — on a touchscreen
-   the two are the same event and there is nothing else that gives a field the
-   focus, which is why the composer is not focused on arrival there. See
-   components/Messages, where this rule is the reason for that one.
-
-   And the corner goes with it, for the same reason the bar does: what the
-   composer is sitting on while somebody is typing is the top of the keyboard,
-   which is a straight edge in the middle of the screen and has no curve in it.
-   12px is the composer's own margin from whatever that edge belongs to; the
-   26px above is rent paid to the glass, and there is no glass under it now. */
-.main:focus-within {
-  padding-bottom: 12px;
 }
 
 /* The name gives up no height to the thing under it: what scrolls is the
@@ -62,10 +31,9 @@
    line of it sat under the name with nothing between them, and once there were
    enough lines to scroll they ran up past the name and touched it.
 
-   Closer to the name than to the lines under it, which is what makes it the
-   name's own rule rather than a ceiling over the thread. Both numbers together
-   come to about the 14px the heading would have kept on its own, so the
-   conversation gives up no room worth speaking of.
+   The 8px is what makes it the name's own rule rather than a ceiling over the
+   thread — it hangs off the name, and nothing hangs off it. The conversation
+   starts at the line, so it gives up no room at all.
 
    Only in a thread. The mailbox draws its own lid over the first row (see
    components/Messages), and a second grey line a heading's gap above that one
@@ -73,7 +41,6 @@
 .heading.ruled {
   padding-bottom: 8px;
   border-bottom: 1px solid var(--line);
-  margin-bottom: 12px;
 }
 
 /* The name is a button and does not look like one — it wears the heading's own
