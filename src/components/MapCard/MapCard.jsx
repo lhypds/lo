@@ -215,8 +215,17 @@ const HOVERS = window.matchMedia("(hover: hover)").matches;
 // and a clicked one is kept, neither of which mapbox is in a position to know
 // about. Left on, closeOnClick would fire on the click that keeps one — the click
 // falls through the bubble onto the map — and shut the very thing it was holding.
+// Always above the pin, never flipped under it. Left to itself mapbox picks the
+// side with room on it, which means a pin near the top of the tile gets its
+// bubble underneath — where it covers the ground the pin is standing on, points
+// the wrong way at it, and reads as a different kind of thing than the same
+// bubble did a moment ago on the pin below. One side, always, is worth more than
+// the few rows of pixels the flip was buying: the pins are 16 and 18px tall and
+// the offset clears both, so the bubble sits on top of its own pin wherever that
+// pin happens to be. Near the top edge it is cropped by the tile instead, which
+// is at least the truth about where the pin is.
 function previewPopup(offset) {
-  return new mapboxgl.Popup({ closeButton: false, offset, closeOnClick: !HOVERS });
+  return new mapboxgl.Popup({ closeButton: false, offset, anchor: "bottom", closeOnClick: !HOVERS });
 }
 
 // Whether the bubble under the pointer is open at all, asked of the popup rather
