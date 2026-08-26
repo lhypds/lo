@@ -149,7 +149,17 @@ export default function Warnings() {
   }
 
   return (
-    <Card title={t("warnings.title")} meta={result?.area} wide half flush>
+    <Card
+      title={t("warnings.title")}
+      meta={result?.area}
+      wide
+      half
+      flush
+      // `panel-aside` is the page's hook for the panels that carry the
+      // country's own reading of the place — on a wide screen they take the
+      // right half of the grid, under the news (see .card-grid in styles.css).
+      className="panel-aside"
+    >
       <div className={styles.inner}>
         <div className={styles.scroll}>{body}</div>
         {/* When it was said, which on this card is half the answer: an hour-old

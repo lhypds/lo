@@ -1,13 +1,29 @@
-/* The name of the thread, which is also the way back to the list of them. It
-   sits in the sheet's own title slot, so it wears the title's face and is a
-   button only in what it does. */
-.back {
+/* The sheet's title in a thread: the way back, then the name of whoever is on
+   the other end of it. Both are buttons and neither looks like one — they wear
+   the title's own face, and what they do is the only thing that says they can be
+   pressed. */
+.crumbs {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.back,
+.name {
   padding: 0;
   border: 0;
   background: none;
   color: inherit;
   font: inherit;
   cursor: pointer;
+}
+
+/* The chevron carries the way back on its own now that the name beside it has
+   somewhere else to go, so it is drawn a size up: it is the smaller of the two
+   things to press and the only one that is not a word. */
+.back {
+  font-size: 20px;
+  line-height: 1;
 }
 
 /* What the conversation is sized against — see MessagesModal. Short enough to
@@ -20,7 +36,8 @@
 }
 
 @media (hover: hover) {
-  .back:hover {
+  .back:hover,
+  .name:hover {
     text-decoration: underline;
   }
 }

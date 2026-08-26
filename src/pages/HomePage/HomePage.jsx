@@ -146,9 +146,12 @@ export default function HomePage() {
           />
           {/* Under the map rather than over it: a warning is about the ground
               the map is drawing, and it reads as a caption on that ground once
-              you have seen where you are standing. It is the full width of the
-              grid, so it lands on the row below the map's own — the four
-              squares stay a block, and the panels start here. */}
+              you have seen where you are standing. It is half the grid wide, so
+              on a phone it lands on the row below the map's own — the four
+              squares stay a block, and the panels start here. On a wide screen
+              it is pinned to the right half instead, beneath the news and above
+              the trends: everything the country itself has to say, in one
+              column (see .card-grid in styles.css). */}
           {supports("warnings") && <Warnings />}
           {/* One panel off both feeds now, and it stands if either of them can
               be fed: an edition that covers the news but has no event listing

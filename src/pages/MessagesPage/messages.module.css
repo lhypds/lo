@@ -28,3 +28,20 @@
 .heading {
   flex: 0 0 auto;
 }
+
+/* The name is a button and does not look like one — it wears the heading's own
+   face, and what it does is the only thing that says it can be pressed. */
+.name {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+@media (hover: hover) {
+  .name:hover {
+    text-decoration: underline;
+  }
+}

@@ -14,8 +14,13 @@
   list-style: none;
 }
 
-.list li + li {
-  border-top: 1px solid var(--line);
+/* Under every row rather than between them, so the run ends on a line instead of
+   fading into the paper: the last name and the space under it were parted by
+   nothing, which read as a list still going — and this one is short far more
+   often than the posts panel above it is. Nothing needed above the first: that
+   is the card's own rule under its title. */
+.list li {
+  border-bottom: 1px solid var(--line);
 }
 
 /* One line: the name takes what it needs, and the reading of it sits hard right.
@@ -75,11 +80,12 @@
   margin-right: 8px;
 }
 
-/* The bars that stand where everyone else will, under your own row — the rule
-   is the one the list draws between its own rows, which this is a continuation
-   of rather than a block after it */
+/* The bars that stand where everyone else will, under your own row — ruled
+   underneath like the rows they are standing in for, which makes this a
+   continuation of the list rather than a block after it. The line above them is
+   the one your own row already draws. */
 .waiting {
-  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
 }
 
 .empty {

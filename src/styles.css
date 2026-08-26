@@ -203,6 +203,21 @@ a {
   font-size: 12px;
 }
 
+/* …except where the pointer is a finger. iOS reads a field whose type is under
+   16px as one the reader cannot be expected to read, and answers by zooming the
+   whole page into it on focus — which throws the layout about, carries the
+   field up the screen, and leaves the page zoomed after the keyboard has gone.
+   16px is the line it stops at, and it is a better size to type a message at
+   with a thumb anyway; the row grows to keep the type off its own edges. The
+   fields this reaches are the two a sheet asks for a line of text in: naming a
+   spot, and sending a message. */
+@media (pointer: coarse) {
+  .mark-field input {
+    height: 36px;
+    font-size: 16px;
+  }
+}
+
 /* Sending a line in a thread, drawn as the key that already sends it: the field
    carries enterKeyHint="send" and Enter is how a message actually goes, so the
    button says the same thing the keyboard does rather than spelling out a word
@@ -377,11 +392,11 @@ a {
    window: the grid doubles to four columns, the panels take half of it each,
    and the page stops growing there so every tile keeps the size it had.
 
-   Only the first panel is placed by hand. Pinning it to the third column keeps
-   the three square tiles that would have filled the top row out of it, and
-   normal auto-placement folds them into a 2x2 block on the left instead — the
-   same four squares, beside the panel rather than above it. The panels after it
-   then fill the rows below, two to a row. */
+   The news panel is placed by hand. Pinning it to the third column keeps the
+   three square tiles that would have filled the top row out of it, and normal
+   auto-placement folds them into a 2x2 block on the left instead — the same
+   four squares, beside the panel rather than above it. The panels after it then
+   fill the rows below, two to a row. */
 @media (min-width: 1200px) {
   .home-main {
     width: min(100%, 1200px);
@@ -391,6 +406,14 @@ a {
     grid-template-columns: repeat(4, minmax(0, 1fr));
     /* Four columns, so three gaps to take out of the width before it is split */
     --tile: calc((100cqw - 30px) / 4);
+    /* Dense, because the panels below are placed by column rather than in a
+       queue: a panel sent to the right half leaves the left half of that row
+       standing empty, and sparse packing will not go back for it — the panel
+       after it would land a row lower, and the two columns would walk down the
+       page in steps. Nothing can be pulled out of order by it: the squares fill
+       their own block, and every panel is half the grid wide, so the only holes
+       dense has to fill are the ones the pins below open. */
+    grid-auto-flow: row dense;
   }
 
   .home-main .card-grid > .panel-lead {
@@ -398,19 +421,25 @@ a {
     grid-row: 1 / span 2;
   }
 
-  /* And the last one is placed by hand too, in the weaker way: not pinned to a
-     cell, only sent to the end of the queue the auto-placement works through.
-     Two panels to a row means the one after the trends list lands to its right,
-     which is also the slot directly under the posts panel — so the two readings
-     of the same map end up in one column, and the trends list keeps the left.
+  /* What the country says about the place — the warnings and what it is
+     searching for — is pinned to the right half of the rows under the news
+     panel, which is the rest of that same reading. That leaves the left half to
+     the posts and the people: lo's own two panels, both of them readings of the
+     ground you are standing on, one under the other.
+
+     Pinned to a column and not to a cell, and only that side is pinned at all.
+     Which of these panels the country can feed is not known until it answers,
+     and a page that named rows would leave a hole wherever the answer was no.
+     Leaving the left pair to auto-place is the same care: where neither warning
+     nor trend can be fed, the posts and the people spread across both halves
+     instead of stacking down one side of an empty grid.
 
      In one column there is no left or right and this does nothing: the panels
-     read in the order they are written, which is the posts and then the people
-     on the same ground. Same trick as the pinned panel above, for the same
-     reason — where a panel belongs on a wide grid is not the order it belongs
-     in on a phone. */
-  .home-main .card-grid > .panel-trail {
-    order: 1;
+     read in the order they are written. Same as the pinned panel above, for the
+     same reason — where a panel belongs on a wide grid is not the order it
+     belongs in on a phone. */
+  .home-main .card-grid > .panel-aside {
+    grid-column: 3 / span 2;
   }
 }
 
@@ -515,17 +544,19 @@ a {
    one the rest of the app measures the window by (index.html sets --vh), the
    same as the two list pages above take.
 
-   --view-* are the visual viewport, set by the page itself and only while a
-   keyboard is up (see pages/MessagesPage): the window minus whatever the keys
-   have taken, and where on screen that part of it now is. The fallbacks are the
-   whole window standing still, which is what this comes to on a desktop and on
-   any browser that cannot say.
+   --view-* are the visual viewport, set by the page itself and only while an
+   older phone's keyboard is over the window (see pages/MessagesPage): the window
+   minus whatever the keys have taken, and where on screen that part of it now
+   is. The fallbacks are the whole window standing still, which is what this
+   comes to on a desktop, on any browser that cannot say, and on every browser
+   that shortens the window itself when the keyboard opens rather than sliding
+   it over the top.
 
-   Fixed to the window rather than moved within it, so that shift down can never
-   grow the document under it and leave the page draggable over a strip of
-   nothing. `top` rather than a transform for the same kind of reason: a
-   transformed box would become the containing block for the sheets the top bar
-   opens over this page, which are fixed to the window on purpose. */
+   Fixed to the window rather than laid in it, so that shift down can never grow
+   the document under it and leave the page draggable over a strip of nothing.
+   `top` rather than a transform for a second reason: a transformed box would
+   become the containing block for the sheets the top bar opens over this page,
+   which are fixed to the window on purpose. */
 .messages-page {
   position: fixed;
   top: var(--view-top, 0px);

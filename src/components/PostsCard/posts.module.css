@@ -15,8 +15,13 @@
   list-style: none;
 }
 
-.list li + li {
-  border-top: 1px solid var(--line);
+/* Under every row rather than between them, so the run ends on a line instead of
+   fading into the paper: the last post and the space under it were parted by
+   nothing, which on a list short enough to leave space read as one still going.
+   Nothing needed above the first — that is the card's own rule under its
+   title. */
+.list li {
+  border-bottom: 1px solid var(--line);
 }
 
 .item {

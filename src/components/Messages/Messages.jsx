@@ -5,9 +5,6 @@ import { Link } from "../../ui/index.js";
 import { formatUsername, relativeTime } from "../../utils/format.js";
 import { useAuth } from "../AuthProvider/index.js";
 import { useHere } from "../LocationProvider/index.js";
-// The module rather than the barrel beside it: this only needs the way in, and
-// the barrel would pull the profile sheet itself in behind it.
-import { openProfile } from "../UserModal/userApi.js";
 import styles from "./messages.module.css";
 
 // A thread on screen is the one thing in lo that somebody else can change while
@@ -183,21 +180,10 @@ export default function Messages({ to = null, onOpen, link = null }) {
   if (to) {
     return (
       <>
-        {/* Through to the whole of whoever is being written to. A thread says
-            what somebody has said and nothing about who they are, and that is
-            the question a name at the top of a conversation raises — so the
-            answer is one press from the top of it.
-            It opens over the conversation rather than in place of it, in both
-            frames: this is a glance aside in the middle of writing to somebody —
-            who is this, again — and closing it should put the thread and the
-            half-written line back exactly as they were, which handing the frame
-            over would not. The profile's own "send a message" still closes onto
-            this conversation from the other side, so the two ways in agree. */}
-        <div className={styles.who}>
-          <button type="button" className={styles.profile} onClick={() => openProfile(to)}>
-            {t("messages.profile")}
-          </button>
-        </div>
+        {/* Nothing above the lines but the lines. Whoever is being written to is
+            named at the top of whichever frame this is in, and that name is the
+            way through to them — a strip here saying so a second time was a row
+            of chrome over every conversation to answer a question asked once. */}
         <div className={styles.scroll} ref={scrollRef}>
           {messages.length === 0 ? (
             <p className={styles.empty}>{t("messages.emptyThread", { name: formatUsername(to) })}</p>

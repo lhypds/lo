@@ -91,7 +91,17 @@ export default function TrendsCard() {
   const where = result?.name || null;
 
   return (
-    <Card title={t("trends.title")} meta={where} wide half flush>
+    <Card
+      title={t("trends.title")}
+      meta={where}
+      wide
+      half
+      flush
+      // Right half of the grid on a wide screen, under the warnings — the other
+      // half of what the country says about this place (see .card-grid in
+      // styles.css).
+      className="panel-aside"
+    >
       <div className={styles.scroll}>{body}</div>
     </Card>
   );

@@ -3,11 +3,18 @@ import { useTranslation } from "react-i18next";
 import { formatUsername } from "../../utils/format.js";
 import Header from "../../components/Header/index.js";
 import Messages from "../../components/Messages/index.js";
+// The module rather than the barrel beside it: this only needs the way in, and
+// the barrel would pull the profile sheet itself in behind it.
+import { openProfile } from "../../components/UserModal/userApi.js";
 import styles from "./messages.module.css";
 
 // Below this much of the window missing, whatever has taken the space is the
 // keyboard rather than a browser's own chrome sliding in or out.
 const KEYBOARD_MIN = 120;
+// And past this much magnification the window is not missing anything at all —
+// it is the same window seen closer up, and nothing on this page should answer.
+// A hair over 1 rather than 1 flat: a browser at rest does not always say 1.0000.
+const ZOOMED = 1.01;
 
 // The phone's frame around a conversation: a page of its own, at /messages for
 // the mailbox and /messages/<name> for one of the threads in it.
@@ -26,23 +33,31 @@ export default function MessagesPage({ username = null }) {
   const { t } = useTranslation();
   const pageRef = useRef(null);
 
-  // A phone's keyboard does not take its room out of the window: on iOS it
-  // slides up over the page, `innerHeight` never moves, and the browser scrolls
-  // what it calls the visual viewport to keep the focused field in sight. This
-  // page is the window's own height with a composer on its floor, so what that
-  // scroll carries off the top of the screen is the top bar — the way back and
-  // everything else up there — while the floor the composer sits on is somewhere
-  // under the keys.
+  // An older phone's keyboard does not take its room out of the window: it
+  // slides up over the page, `innerHeight` never moves, and the browser is left
+  // to scroll the focused field into sight itself — it scrolls what it calls the
+  // visual viewport, the part of the window that can actually be seen, down the
+  // window to where the field is. A page fixed to that window does not move with
+  // it: what is left on screen is a strip of the middle of this page, the top bar
+  // gone off the top and paper below the composer where the keyboard should be.
   //
-  // So while the keyboard is up the page is measured against that visual
-  // viewport rather than the window: as tall as the part of the screen that can
-  // actually be seen, and moved down to wherever the browser has scrolled that
-  // part to. The bar stays at the top of it, the composer sits on the keyboard,
-  // and the browser has nothing left to scroll out of the way. Written as custom
-  // properties so the page's own rules keep the plain window height whenever
-  // there is no keyboard — and dropped again the moment it goes, rather than
-  // tracked all the time, so a tab nobody is typing in is laid out by CSS alone.
+  // index.html asks for the modern behaviour instead — interactive-widget=
+  // resizes-content, where the window simply becomes the room above the keys and
+  // nothing is scrolled anywhere. This is for the browsers that do not know that
+  // yet: the page is measured against the visual viewport and moved to sit on
+  // it, which puts the bar back at the top, the composer on the keys, and leaves
+  // the browser nothing it still wants to scroll.
   //
+  // Only where the window is being covered rather than merely magnified. A field
+  // whose type iOS thinks too small to read is answered by zooming the page into
+  // it, which shrinks the visual viewport the same way a keyboard does and means
+  // nothing of the sort — measuring against it then drags the page around under
+  // a reader who has only pinched at it. (The composer's own field is 16px on a
+  // touchscreen for that reason — see .mark-field in styles.css — which is the
+  // size iOS stops doing it at. This is the belt to that pair of braces.)
+  //
+  // Written as custom properties so the page's own rules keep the plain window
+  // height whenever there is no keyboard, and dropped again the moment it goes.
   // The home bar's inset goes with them: it is there to keep the composer off a
   // bar that the keyboard is now covering, and left in it would read as a gap
   // between the two.
@@ -51,7 +66,8 @@ export default function MessagesPage({ username = null }) {
     const page = pageRef.current;
     if (!viewport || !page) return undefined;
     const sync = () => {
-      if (window.innerHeight - viewport.height <= KEYBOARD_MIN) {
+      const covered = window.innerHeight - viewport.height > KEYBOARD_MIN;
+      if (!covered || viewport.scale > ZOOMED) {
         page.style.removeProperty("--view-height");
         page.style.removeProperty("--view-top");
         page.style.removeProperty("--view-foot");
@@ -81,9 +97,30 @@ export default function MessagesPage({ username = null }) {
             says in its own title bar and a page has to say for itself. No count
             beside it the way the two list pages carry one: those are lists of
             things, this is a list of people, and how many people you have ever
-            spoken to is not a number anybody is keeping. */}
+            spoken to is not a number anybody is keeping.
+
+            The name is also the way through to whoever it belongs to, which is
+            why the conversation under it has no button of its own for that: a
+            name is the plainest thing to press to find out whose it is. It opens
+            the profile over this page rather than walking to it — a glance aside
+            in the middle of writing to somebody, who is this again, and closing
+            it puts the thread and the half-written line back exactly as they
+            were. */}
         <div className={`section-heading ${styles.heading}`}>
-          <h1>{username ? formatUsername(username) : t("messages.title")}</h1>
+          <h1>
+            {username ? (
+              <button
+                type="button"
+                className={styles.name}
+                onClick={() => openProfile(username)}
+                title={t("messages.profile")}
+              >
+                {formatUsername(username)}
+              </button>
+            ) : (
+              t("messages.title")
+            )}
+          </h1>
         </div>
         {/* Threads have addresses here, so their rows are links: one of them can
             be opened in a tab of its own like anything else with a URL. */}

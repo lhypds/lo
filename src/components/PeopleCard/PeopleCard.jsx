@@ -75,10 +75,6 @@ export default function PeopleCard() {
       wide
       half
       flush
-      // `panel-trail` is the page's hook for the last of the panels — on a wide
-      // screen it goes to the end of the run, which puts it right of the trends
-      // list and under the posts panel (see .card-grid in styles.css).
-      className="panel-trail"
     >
       <div className={styles.scroll}>
         <ul className={styles.list}>

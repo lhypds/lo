@@ -103,27 +103,6 @@
   text-align: center;
 }
 
-/* The strip over the conversation, holding the one thing there is to do about
-   the person on the other end of it. Right-aligned and in the same small mono
-   the timestamps wear: the name is already at the top of the frame, and this is
-   a way through rather than a heading of its own. It keeps its height whatever
-   happens below it, so the lines scroll under it rather than push it away. */
-.who {
-  flex: 0 0 auto;
-  display: flex;
-  justify-content: flex-end;
-  padding-bottom: 8px;
-}
-
-.profile {
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--muted);
-  font-family: var(--mono);
-  font-size: 10px;
-}
-
 /* A column, so a short conversation can be pushed down to the composer rather
    than left hanging at the top of a mostly empty frame — see the auto margin
    below, which is the way to do that without breaking the scroll.
@@ -212,11 +191,6 @@
 }
 
 @media (hover: hover) {
-  .profile:hover {
-    color: var(--ink);
-    text-decoration: underline;
-  }
-
   .row:hover {
     background: var(--soft);
   }

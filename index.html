@@ -2,7 +2,17 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+    <!-- interactive-widget says what the on-screen keyboard is allowed to do to
+         the page: take its room out of the window, the way a smaller window
+         would, rather than slide up over the top of it and leave the browser to
+         scroll whatever was underneath into sight. That scroll is the thing a
+         page with a composer on its floor cannot survive — see MessagesPage,
+         which measures itself against the visual viewport for the browsers that
+         do not know this yet. -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, interactive-widget=resizes-content"
+    />
     <meta name="theme-color" content="#ffffff" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
