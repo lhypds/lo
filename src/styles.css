@@ -540,17 +540,21 @@ a {
 
 /* The conversation page is the same split from the other direction: a window's
    worth of height that never scrolls as a whole, with one scroller inside it —
-   the thread — and the composer standing on the floor below. The height is the
-   one the rest of the app measures the window by (index.html sets --vh), the
-   same as the two list pages above take.
+   the thread — and the composer standing on the floor below.
 
-   --view-* are the visual viewport, set by the page itself and only while an
-   older phone's keyboard is over the window (see pages/MessagesPage): the window
-   minus whatever the keys have taken, and where on screen that part of it now
-   is. The fallbacks are the whole window standing still, which is what this
-   comes to on a desktop, on any browser that cannot say, and on every browser
-   that shortens the window itself when the keyboard opens rather than sliding
-   it over the top.
+   Unlike the two list pages above, the unit of choice here is dvh rather than
+   the --vh index.html keeps: dvh is the browser's own answer about how much
+   window there is, and on a browser that shortens the window for the keyboard
+   (index.html asks it to, with interactive-widget) it is the answer that follows
+   the keys down. --vh is a number JavaScript last wrote, and a page whose foot
+   is a composer cannot wait a frame for it. It stays as the fallback for engines
+   that do not know dvh.
+
+   --view-* are the visual viewport, set by the page itself and only where the
+   keyboard is over the window instead of taking room out of it — the older
+   phones (see pages/MessagesPage): the window minus whatever the keys have
+   taken, and where on screen that part of it now is. The fallbacks are the whole
+   window standing still, which is what this comes to everywhere else.
 
    Fixed to the window rather than laid in it, so that shift down can never grow
    the document under it and leave the page draggable over a strip of nothing.
@@ -563,7 +567,6 @@ a {
   left: 0;
   right: 0;
   height: 100vh;
-  height: 100dvh;
   height: calc(var(--vh, 1vh) * 100);
   height: var(--view-height, calc(var(--vh, 1vh) * 100));
   /* .page-shell's floor is a window's worth, and a floor beats a height: with
@@ -573,6 +576,12 @@ a {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+@supports (height: 100dvh) {
+  .messages-page {
+    height: var(--view-height, 100dvh);
+  }
 }
 
 /* Once the window is twice the map's own column, stacking them wastes it: the

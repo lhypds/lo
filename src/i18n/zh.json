@@ -144,7 +144,6 @@
     "nameTitle": "为这个位置命名",
     "removed": "已删除",
     "needsLocation": "请先开启定位",
-    "namePlaceholder": "为这个位置命名（可选）",
     "title": "记录当前位置",
     "submit": "记录"
   },

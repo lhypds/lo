@@ -15,6 +15,13 @@ const KEYBOARD_MIN = 120;
 // it is the same window seen closer up, and nothing on this page should answer.
 // A hair over 1 rather than 1 flat: a browser at rest does not always say 1.0000.
 const ZOOMED = 1.01;
+// How long after the last word from the browser the window is taken to have
+// stopped moving. iOS says how big the window is while the keyboard is still
+// sliding up and while its own toolbar is still sliding out, and the number it
+// gives mid-slide is not the one it settles on — a page sized from that one
+// stands the difference above the keys. Long enough to outlast the slide, short
+// enough that nobody watches it happen.
+const SETTLE_MS = 300;
 
 // The phone's frame around a conversation: a page of its own, at /messages for
 // the mailbox and /messages/<name> for one of the threads in it.
@@ -56,11 +63,21 @@ export default function MessagesPage({ username = null }) {
   // touchscreen for that reason — see .mark-field in styles.css — which is the
   // size iOS stops doing it at. This is the belt to that pair of braces.)
   //
+  // Nothing here touches the room under the composer. Whether the keys are up is
+  // something the page can see for itself — the field has the focus — and CSS
+  // reads that off the document rather than off a measurement: see :focus-within
+  // in the stylesheet beside this.
+  //
   // Written as custom properties so the page's own rules keep the plain window
   // height whenever there is no keyboard, and dropped again the moment it goes.
-  // The home bar's inset goes with them: it is there to keep the composer off a
-  // bar that the keyboard is now covering, and left in it would read as a gap
-  // between the two.
+  //
+  // And asked again once the movement stops. Every answer here is measured off a
+  // window two things are still moving in — the keyboard sliding up, and Safari's
+  // own bottom bar sliding out from under it — and an answer taken mid-slide
+  // leaves the page short by whatever had not finished moving, which is a band of
+  // empty paper between the composer and the keys. The last word the browser says
+  // is not always the true one, so the true one is asked for after the talking
+  // has stopped.
   useEffect(() => {
     const viewport = window.visualViewport;
     const page = pageRef.current;
@@ -70,19 +87,24 @@ export default function MessagesPage({ username = null }) {
       if (!covered || viewport.scale > ZOOMED) {
         page.style.removeProperty("--view-height");
         page.style.removeProperty("--view-top");
-        page.style.removeProperty("--view-foot");
         return;
       }
       page.style.setProperty("--view-height", `${viewport.height}px`);
       page.style.setProperty("--view-top", `${viewport.offsetTop}px`);
-      page.style.setProperty("--view-foot", "0px");
+    };
+    let settle = 0;
+    const answer = () => {
+      sync();
+      window.clearTimeout(settle);
+      settle = window.setTimeout(sync, SETTLE_MS);
     };
     sync();
-    viewport.addEventListener("resize", sync);
-    viewport.addEventListener("scroll", sync);
+    viewport.addEventListener("resize", answer);
+    viewport.addEventListener("scroll", answer);
     return () => {
-      viewport.removeEventListener("resize", sync);
-      viewport.removeEventListener("scroll", sync);
+      window.clearTimeout(settle);
+      viewport.removeEventListener("resize", answer);
+      viewport.removeEventListener("scroll", answer);
     };
   }, []);
 
@@ -106,7 +128,7 @@ export default function MessagesPage({ username = null }) {
             in the middle of writing to somebody, who is this again, and closing
             it puts the thread and the half-written line back exactly as they
             were. */}
-        <div className={`section-heading ${styles.heading}`}>
+        <div className={`section-heading ${styles.heading}${username ? ` ${styles.ruled}` : ""}`}>
           <h1>
             {username ? (
               <button

@@ -6,27 +6,56 @@
    itself is sized against — see components/Messages, which is the half of this
    screen the desktop's sheet is holding too.
 
-   --view-foot is the room under it, given up while the keyboard is up (see
-   MessagesPage): with the keys on screen there is no bottom edge to hold clear
-   — the page ends where the keyboard begins — and the room would read as a gap
-   between the composer and the keys rather than as a margin. The inset is for
-   the home bar in standalone mode, where there is no browser chrome to sit
-   above. */
+   The inset under it is for the home bar in standalone mode, where there is no
+   browser chrome to hold the composer off the bottom of the screen. */
 .main {
   flex: 1;
   min-height: 0;
   width: min(100%, 600px);
   margin: 0 auto;
   padding: 16px 12px;
-  padding-bottom: var(--view-foot, calc(12px + env(safe-area-inset-bottom)));
+  padding-bottom: calc(12px + env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
+}
+
+/* …and the inset goes while somebody is typing. The home bar it holds the
+   composer off is under the keyboard by then, and a bar's worth of paper between
+   the composer and the keys reads as the composer having floated up off them.
+   The keeper of that 34px is iOS, which goes on reporting the shape of the
+   screen while the keyboard covers the bottom of it.
+
+   The field having the focus is the keyboard being up, so the page reads it
+   there rather than measuring anything: no number to be taken mid-slide, and
+   nothing to put back afterwards. The 12px stays either way — that is the
+   composer's own margin from whatever is below it, keys or bar. */
+.main:focus-within {
+  padding-bottom: 12px;
 }
 
 /* The name gives up no height to the thing under it: what scrolls is the
    conversation, and who it is with stays where it is. */
 .heading {
   flex: 0 0 auto;
+}
+
+/* And in a thread it is ruled off, in the grey the rest of the site draws its
+   lines in: the conversation below used to start on bare paper, so the first
+   line of it sat under the name with nothing between them, and once there were
+   enough lines to scroll they ran up past the name and touched it.
+
+   Closer to the name than to the lines under it, which is what makes it the
+   name's own rule rather than a ceiling over the thread. Both numbers together
+   come to about the 14px the heading would have kept on its own, so the
+   conversation gives up no room worth speaking of.
+
+   Only in a thread. The mailbox draws its own lid over the first row (see
+   components/Messages), and a second grey line a heading's gap above that one
+   is a stripe rather than a rule. */
+.heading.ruled {
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 12px;
 }
 
 /* The name is a button and does not look like one — it wears the heading's own

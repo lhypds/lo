@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-import { useTranslation } from "react-i18next";
 import { Modal } from "../../ui/index.js";
 
 // Naming a mark after the fact. The field starts on whatever it is called now,
 // and an empty value is allowed — a spot may simply not need a name.
+//
+// No placeholder in the box: the sheet's own title says what is being typed, and
+// a grey copy of it inside the field said it a second time on a sheet that is
+// one line tall. The empty field is the answer to "what is it called" — there is
+// nothing to prompt for.
 export default function MarkModal({ isOpen, title, submitLabel, initialValue = "", onClose, onSubmit }) {
-  const { t } = useTranslation();
   const [value, setValue] = useState(initialValue);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -47,7 +50,6 @@ export default function MarkModal({ isOpen, title, submitLabel, initialValue = "
                 setValue(event.target.value);
                 setError("");
               }}
-              placeholder={t("mark.namePlaceholder")}
               maxLength={48}
               enterKeyHint="done"
               autoComplete="off"

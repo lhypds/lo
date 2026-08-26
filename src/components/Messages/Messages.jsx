@@ -127,22 +127,26 @@ export default function Messages({ to = null, onOpen, link = null }) {
     return () => scroller.removeEventListener("scroll", note);
   }, [to]);
 
-  // A phone's keyboard coming up shortens the frame under the thread — the page
-  // measures itself against the visual viewport for exactly that reason, see
-  // pages/MessagesPage — and the lines it shortens away are the newest ones: the
-  // half of the conversation somebody reaching for the field is in the middle
-  // of. So the thread is put back on its floor as the room for it changes. Only
-  // if it was already there: someone who has scrolled up to find something older
-  // and then starts to type has not asked to be sent back to the end.
+  // A phone's keyboard coming up shortens the room the thread has, and the lines
+  // it shortens away are the newest ones: the half of the conversation somebody
+  // reaching for the field is in the middle of. So the thread is put back on its
+  // floor whenever that room changes. Only if it was already there: someone who
+  // has scrolled up to find something older and then starts to type has not
+  // asked to be sent back to the end.
+  //
+  // Watched on the box itself rather than on the window it is in, because the
+  // window is not the only thing that moves it: the page correcting its own
+  // height after the keyboard has settled (see pages/MessagesPage) changes this
+  // box and nothing else, and a thread pinned to the window's news would have sat
+  // out that one with its last line just off the bottom.
   useEffect(() => {
-    const viewport = window.visualViewport;
-    if (!to || !viewport) return undefined;
-    const pin = () => {
-      const scroller = scrollRef.current;
-      if (scroller && atBottomRef.current) scroller.scrollTop = scroller.scrollHeight;
-    };
-    viewport.addEventListener("resize", pin);
-    return () => viewport.removeEventListener("resize", pin);
+    const scroller = scrollRef.current;
+    if (!scroller || typeof ResizeObserver === "undefined") return undefined;
+    const observer = new ResizeObserver(() => {
+      if (atBottomRef.current) scroller.scrollTop = scroller.scrollHeight;
+    });
+    observer.observe(scroller);
+    return () => observer.disconnect();
   }, [to]);
 
   // Arriving from a profile, the composer is the whole reason this opened
