@@ -113,5 +113,12 @@
   .full .content {
     display: flex;
     flex-direction: column;
+    /* The room a sheet keeps under its body is for its own bottom edge. With
+       the keyboard up there is no bottom edge — the sheet ends where the keys
+       begin — so that room reads as a gap between the composer and the keyboard
+       instead, and the composer should sit on the keys the way it does in every
+       app a phone came with. It goes with the home bar's inset above, on the
+       same flag, and comes back with it. */
+    padding-bottom: var(--sheet-foot, 16px);
   }
 }

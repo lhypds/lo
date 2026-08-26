@@ -186,6 +186,11 @@ export default function MessagesModal() {
       setError(requestError.message);
     } finally {
       setSending(false);
+      // Sending a line is not finishing with the field: the answer to it is
+      // usually the next thing typed. The press itself is kept off the field's
+      // focus below, so on a phone this is only insurance — and it is a no-op
+      // whenever the field never lost it, which is the case it is guarding.
+      inputRef.current?.focus();
     }
   }
 
@@ -281,6 +286,17 @@ export default function MessagesModal() {
                 className="send-key"
                 aria-label={sending ? t("messages.sending") : t("messages.send")}
                 disabled={sending || !body.trim()}
+                // Pressing this must not take the field's focus with it: on a
+                // phone, focus leaving the field puts the keyboard away, and the
+                // sheet then grows back to the whole screen under the thumb that
+                // has just sent a line and is about to write another. Moving the
+                // focus is what a press does by default, and refusing that is
+                // what keeps it where it is — the press still lands, and the form
+                // still submits, since that is the click's own business. Here
+                // rather than on pointerdown: cancelling a press that early takes
+                // the whole compatibility chain with it, and Safari has not always
+                // agreed that the click is meant to survive it.
+                onMouseDown={(event) => event.preventDefault()}
               >
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M20 5v6a4 4 0 0 1-4 4H4" />
