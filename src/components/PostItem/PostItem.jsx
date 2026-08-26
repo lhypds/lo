@@ -7,11 +7,13 @@ import {
   formatDistance,
   formatUsername,
 } from "../../utils/format.js";
+import { directionsLink } from "../../utils/maps.js";
 
 // The marks row, carrying a post. What differs is what the text is for: a mark
 // has only a name, so pressing it sends the map there, but a post has something
 // to say and pressing it opens it. Sending the map is a button on the right
-// instead, beside the delete that only your own posts get.
+// instead — first of the three, ahead of the directions the marks row also
+// offers and the delete that only your own posts get.
 export default function PostItem({ post, from, mine = false, onOpen, onShowOnMap, onDelete }) {
   const { t, i18n } = useTranslation();
 
@@ -41,16 +43,33 @@ export default function PostItem({ post, from, mine = false, onOpen, onShowOnMap
             <time dateTime={post.time}>{formatDateTime(post.time, i18n.language)}</time>
           </span>
         </button>
-        {/* Two of the strings here are the marks page's. They say the same
+        {/* Three of the strings here are the marks page's. They say the same
             thing in the same words on both — a second copy under posts.* would
-            be two keys to keep in step for no gain. */}
+            be three keys to keep in step for no gain. */}
         <div className="post-side">
           {away && <span className="post-distance">{t("marks.distance", { distance: away })}</span>}
           <span className="post-actions">
+            {/* A ring on a spot rather than the marks row's paper plane: this
+                row has both actions where that one has only the second, and the
+                plane has to stay with the one that leaves lo. */}
             <ActionButton
               tooltip={t("marks.showOnMap")}
               aria-label={`${t("marks.showOnMap")} ${headline}`}
               onClick={() => onShowOnMap(post)}
+            >
+              <svg viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="7" />
+                <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
+              </svg>
+            </ActionButton>
+            {/* The same hand-off the marks row makes, for the same reason: a
+                post is somewhere you can walk to, and walking there is Google
+                Maps' job — the app on a handheld, the directions page
+                elsewhere. */}
+            <ActionButton
+              tooltip={t("marks.navigate")}
+              aria-label={`${t("marks.navigate")} ${headline}`}
+              {...directionsLink(post, from)}
             >
               <svg viewBox="0 0 24 24">
                 <path d="M3 11 22 2l-9 19-2-8z" />
