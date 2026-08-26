@@ -440,9 +440,25 @@ a {
      In one column there is no left or right and this does nothing: the panels
      read in the order they are written. Same as the pinned panel above, for the
      same reason — where a panel belongs on a wide grid is not the order it
-     belongs in on a phone. */
+     belongs in on a phone.
+
+     …which is what `order` is for. The page writes lo's own panels first, so a
+     phone reads them first; a column is claimed in the order the panels are
+     placed, though, and left to that order the right half of the posts' own row
+     was still standing empty when the people panel came looking for somewhere to
+     go — dense packing put it there, beside the posts instead of under them, and
+     shoved the warnings and the trending list a row further down the right with
+     a hole under the posts. Sending these two to the front of the placement puts
+     the right half in the country's hands before lo's own two are dealt: the
+     warnings take the row under the news, the trends the row under that, and the
+     left half is what is left for the posts and the people, one under the other.
+
+     It reorders nothing a reader meets in one column, where `order` does not
+     apply, and nothing a screen reader or the tab key walks — both follow the
+     page, and the page is written in the order it is meant to be read. */
   .home-main .card-grid > .panel-aside {
     grid-column: 3 / span 2;
+    order: -1;
   }
 }
 
@@ -545,19 +561,21 @@ a {
    worth of height that never scrolls as a whole, with one scroller inside it —
    the thread — and the composer standing on the floor below.
 
-   Unlike the two list pages above, the unit of choice here is dvh rather than
-   the --vh index.html keeps: dvh is the browser's own answer about how much
-   window there is, and on a browser that shortens the window for the keyboard
-   (index.html asks it to, with interactive-widget) it is the answer that follows
-   the keys down. --vh is a number JavaScript last wrote, and a page whose foot
-   is a composer cannot wait a frame for it. It stays as the fallback for engines
-   that do not know dvh.
+   --view-* are the visual viewport — how much of the window can actually be
+   seen, and where on screen that part of it is — measured by the page itself and
+   set on it (see pages/MessagesPage). They win wherever they are set, which is
+   everywhere but under a pinch.
 
-   --view-* are the visual viewport, set by the page itself and only where the
-   keyboard is over the window instead of taking room out of it — the older
-   phones (see pages/MessagesPage): the window minus whatever the keys have
-   taken, and where on screen that part of it now is. The fallbacks are the whole
-   window standing still, which is what this comes to everywhere else.
+   Three deep, because the two units under them are each right about something
+   and wrong on their own. dvh is the browser's own answer about how much window
+   there is, and on a browser that shortens the window for the keyboard
+   (index.html asks it to, with interactive-widget) it is the answer that follows
+   the keys down — but on iOS it is a bar too tall on this page's first paint and
+   stays that way until something resizes it, which sank the composer into the
+   curve at the bottom of the screen until a keyboard had been up once. --vh, the
+   number index.html keeps, is written before the first paint but is a frame
+   behind from then on. So the measurement leads, dvh is what a pinch and the
+   first paint fall back to, and --vh is for engines that do not know dvh.
 
    Fixed to the window rather than laid in it, so that shift down can never grow
    the document under it and leave the page draggable over a strip of nothing.
