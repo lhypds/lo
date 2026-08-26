@@ -692,21 +692,40 @@ export default function MapCard({
     const map = mapRef.current;
     if (!map || !focus) return;
     followRef.current = false;
-    map.easeTo({ center: [focus.longitude, focus.latitude], zoom: 16, duration: 700 });
 
     const marker = [...markMarkersRef.current, ...postMarkersRef.current].find(
       (pin) => pin.id === focus.id,
     )?.marker;
-    if (!marker) return;
-    if (keptRef.current === marker) {
-      const held = hoveredPropRef.current === focus.id;
-      release(!held);
-      // Handed back to the hover that is holding it, which is what closes it when
-      // the pointer finally leaves the row.
-      if (held) openedRef.current = focus.id;
-      return;
+    if (marker) {
+      if (keptRef.current === marker) {
+        const held = hoveredPropRef.current === focus.id;
+        release(!held);
+        // Handed back to the hover that is holding it, which is what closes it
+        // when the pointer finally leaves the row.
+        if (held) openedRef.current = focus.id;
+      } else {
+        keep(marker, focus.id);
+      }
     }
-    keep(marker, focus.id);
+
+    // The pan is aimed under the middle of the map rather than at it, because the
+    // pin is not the whole of what has to be looked at: the bubble stands on top
+    // of it, so a pin put dead centre hangs its preview over the top half of the
+    // tile and, on the small square, off the top of it. Half the bubble's height
+    // below centre lands the pair of them on the middle instead — the pin low,
+    // the preview filling the room above it.
+    //
+    // Measured off the bubble that is now up rather than guessed at: a post
+    // carrying a photo is three times the height of a mark's three lines, and the
+    // photo's own box is a fixed 96px, so this is a true number before the
+    // picture itself has arrived.
+    const bubble = marker && showing(marker) ? marker.getPopup().getElement() : null;
+    map.easeTo({
+      center: [focus.longitude, focus.latitude],
+      zoom: 16,
+      offset: [0, (bubble?.offsetHeight ?? 0) / 2],
+      duration: 700,
+    });
   }, [focus, keep, release]);
 
   function recenter() {
