@@ -7,14 +7,23 @@
    screen the desktop's sheet is holding too.
 
    The inset under it is for the home bar in standalone mode, where there is no
-   browser chrome to hold the composer off the bottom of the screen. */
+   browser chrome to hold the composer off the bottom of the screen.
+
+   The 26px over it is for the screen's own corner. A phone's bottom edge is
+   rounded and the composer's is not, so the last band of the window is a strip
+   the picture narrows through — a box run down into it loses its two bottom
+   corners to the curve. The inset does not cover this: it measures the home bar,
+   which is a thing to keep clear of rather than the shape of the glass. 26px is
+   read off the curve — the column already holds the field 12px in from the side
+   of the window, and 12px in is the point where a corner of about 55px stops
+   reaching more than 21px up. */
 .main {
   flex: 1;
   min-height: 0;
   width: min(100%, 600px);
   margin: 0 auto;
   padding: 16px 12px;
-  padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  padding-bottom: calc(26px + env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
 }
@@ -27,8 +36,13 @@
 
    The field having the focus is the keyboard being up, so the page reads it
    there rather than measuring anything: no number to be taken mid-slide, and
-   nothing to put back afterwards. The 12px stays either way — that is the
-   composer's own margin from whatever is below it, keys or bar. */
+   nothing to put back afterwards.
+
+   And the corner goes with it, for the same reason the bar does: what the
+   composer is sitting on while somebody is typing is the top of the keyboard,
+   which is a straight edge in the middle of the screen and has no curve in it.
+   12px is the composer's own margin from whatever that edge belongs to; the
+   26px above is rent paid to the glass, and there is no glass under it now. */
 .main:focus-within {
   padding-bottom: 12px;
 }

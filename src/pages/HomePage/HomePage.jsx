@@ -144,21 +144,17 @@ export default function HomePage() {
               setMarks((current) => current.map((item) => (item.id === mark.id ? mark : item)))
             }
           />
-          {/* Under the map rather than over it: a warning is about the ground
-              the map is drawing, and it reads as a caption on that ground once
-              you have seen where you are standing. It is half the grid wide, so
-              on a phone it lands on the row below the map's own — the four
-              squares stay a block, and the panels start here. On a wide screen
-              it is pinned to the right half instead, beneath the news and above
-              the trends: everything the country itself has to say, in one
-              column (see .card-grid in styles.css). */}
-          {supports("warnings") && <Warnings />}
-          {/* Then lo's own two, ahead of anything the country has to say. What
-              somebody left on this street and who is standing on it are the
+          {/* Then lo's own two, ahead of everything the country has to say —
+              the warnings, the news and the trending list all come after them.
+              What somebody left on this street and who is standing on it are the
               nearest things on the page, and the only two that can change while
-              it is open; the news is a slower reading of a wider place. Somebody
+              it is open; the rest is a slower reading of a wider place. Somebody
               who opened lo to see where they are should not have to scroll past
               a headline to find out who is next to them.
+
+              These are also half the grid wide, so on a phone the panels start
+              here, on the row below the map's own — the four squares stay a
+              block above them.
 
               A phone reads this as the order it is written in. A wide screen
               does not read it as an order at all — these two keep the left
@@ -175,6 +171,16 @@ export default function HomePage() {
               Unconditional for the same reason the posts are: presence is lo's
               own and stops at no border. */}
           <PeopleCard />
+          {/* Still under the map, which is the half of the page a warning is
+              about: it reads as a caption on that ground once you have seen
+              where you are standing. Under lo's own panels as well now, which is
+              a judgement about distance rather than about weight — what is on
+              this street is nearer than what is being said about the region, and
+              a phone shows the two together anyway. On a wide screen it is
+              pinned to the right half regardless, beneath the news and above the
+              trends: everything the country itself has to say, in one column
+              (see .card-grid in styles.css). */}
+          {supports("warnings") && <Warnings />}
           {/* One panel off both feeds now, and it stands if either of them can
               be fed: an edition that covers the news but has no event listing
               still has something to say about the place. */}
