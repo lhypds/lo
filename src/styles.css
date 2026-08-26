@@ -414,13 +414,6 @@ a {
   }
 }
 
-/* Holds the map's slot in the grid while mapbox-gl is still on the wire, so the
-   tiles around it do not jump once it arrives */
-.card-placeholder {
-  aspect-ratio: 1;
-  border: 1px solid var(--ink);
-}
-
 /* Expanded, the map is the page: the strip and the other tiles are hidden and
    the grid hands its whole height to the one card left, so the map fills the
    window under the topbar instead of floating above a blank half-screen */

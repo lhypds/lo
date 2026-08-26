@@ -32,16 +32,61 @@ const PRESENCE_REFRESH_MS = 60 * 1000;
 // ever been without. Anything that stops at a border waits to be named.
 const WORLDWIDE_COMPONENTS = ["clock", "weather", "map", "nearby", "events"];
 
+// …unless we have stood somewhere before. The last answer is kept beside the
+// last fix (see restoreLastFix in utils/location.js) and for the same reason: a
+// reload should put the dashboard back the way it was left, whole, rather than
+// build it a tile at a time as the requests come back. Every card the country
+// has is then framed on the first paint and only its content is waited for.
+//
+// The two are remembered together, so what is assumed here is the answer for
+// the place the restored fix is in. Crossing a border between visits is the one
+// case this gets wrong, and it is the same thing the restored fix itself is
+// wrong about for the second or so before the sensor answers.
+const COMPONENTS_KEY = "lo:lastComponents";
+
+function restoreComponents() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(COMPONENTS_KEY));
+    if (!Array.isArray(parsed) || parsed.some((item) => typeof item !== "string")) return null;
+    return parsed;
+  } catch {
+    // Nothing remembered, nothing readable, or storage walled off
+    return null;
+  }
+}
+
+function rememberComponents(components) {
+  try {
+    localStorage.setItem(COMPONENTS_KEY, JSON.stringify(components));
+  } catch {
+    // best effort — the dashboard just builds itself up again next time
+  }
+}
+
+const REMEMBERED_COMPONENTS = restoreComponents();
+
 export function LocationProvider({ children }) {
   const { i18n } = useTranslation();
   const { user } = useAuth();
   const position = useSyncExternalStore(subscribeLocation, getLocationState);
   const [local, setLocal] = useState(null);
   const [localError, setLocalError] = useState(null);
-  const [loadingLocal, setLoadingLocal] = useState(false);
+  // True from the first render when there is already a fix to ask about — a
+  // reload starts with the last one restored from storage, so the request below
+  // is as good as sent by the time anything is drawn. Starting at false would
+  // give the weather tile one frame in which nothing had been asked and nothing
+  // had arrived, which it would have to read as a failure.
+  const [loadingLocal, setLoadingLocal] = useState(() => Boolean(position.coords));
   const [people, setPeople] = useState([]);
   const [posts, setPosts] = useState([]);
   const [postsError, setPostsError] = useState(null);
+  // Both lists live here, so whether they have been answered yet has to as
+  // well: the panels that draw them cannot otherwise tell an empty street from
+  // one they have not heard about, and "nobody else out here right now" is a
+  // claim, not a way of saying nothing has arrived. Both start out true — the
+  // requests go out on mount — so the first paint is a panel that is waiting.
+  const [loadingPosts, setLoadingPosts] = useState(true);
+  const [loadingPeople, setLoadingPeople] = useState(true);
   // How many messages are waiting, which is nothing to do with where anybody is
   // standing and lives here anyway: it comes back on the presence trade, so the
   // badge in the top bar keeps itself current on a loop that was already running
@@ -79,6 +124,7 @@ export function LocationProvider({ children }) {
         if (ticket !== requestRef.current) return;
         setLocal(data);
         setLocalError(null);
+        if (Array.isArray(data.components)) rememberComponents(data.components);
       } catch (error) {
         if (ticket !== requestRef.current) return;
         setLocalError(error);
@@ -132,6 +178,11 @@ export function LocationProvider({ children }) {
       setUnread(data.unread ?? 0);
     } catch {
       // Losing sight of the others is no reason to lose your own position
+    } finally {
+      // Answered or not, the panel has waited as long as it usefully can: a
+      // trade that failed leaves the list as it is, and an empty one then
+      // means what it says.
+      setLoadingPeople(false);
     }
   }, []);
 
@@ -145,6 +196,7 @@ export function LocationProvider({ children }) {
   // the server falls back to the newest posts anywhere.
   const loadPosts = useCallback(async (coords) => {
     const ticket = ++postsRequestRef.current;
+    setLoadingPosts(true);
     try {
       const data = await api.getPosts(coords);
       // A slower earlier request must not overwrite a newer answer — two
@@ -157,11 +209,18 @@ export function LocationProvider({ children }) {
       // Kept rather than swallowed: a page that says "nothing around here" when
       // the request actually failed is telling the reader something untrue.
       setPostsError(error);
+    } finally {
+      if (ticket === postsRequestRef.current) setLoadingPosts(false);
     }
   }, []);
 
   useEffect(() => {
-    if (!username) return;
+    // Signed out there is nothing to ask for, and the panel is done waiting
+    // rather than left on a request that is never going to be made.
+    if (!username) {
+      setLoadingPosts(false);
+      return;
+    }
     loadPosts(getLocationState().coords);
   }, [key, username, loadPosts]);
 
@@ -178,7 +237,12 @@ export function LocationProvider({ children }) {
   // Signed out there is nobody to be on the map with, and the server would only
   // answer with a 401 anyway.
   useEffect(() => {
-    if (!username) return;
+    // As with the posts above: nobody to be on the map with means the panel has
+    // nothing to wait for either.
+    if (!username) {
+      setLoadingPeople(false);
+      return;
+    }
     syncPeople(getLocationState().coords);
   }, [key, username, syncPeople]);
 
@@ -225,7 +289,7 @@ export function LocationProvider({ children }) {
   // nowhere else does, half the world's countries have no trending list to show.
   // Every card that reads this asks the same way, so a component that turns out
   // to stop at a border is a line in the server's table and nothing here.
-  const components = local?.components ?? WORLDWIDE_COMPONENTS;
+  const components = local?.components ?? REMEMBERED_COMPONENTS ?? WORLDWIDE_COMPONENTS;
 
   const value = {
     ...position,
@@ -244,6 +308,8 @@ export function LocationProvider({ children }) {
     postsError,
     localError,
     loadingLocal,
+    loadingPosts,
+    loadingPeople,
     enable: enableLocation,
     disable: disableLocation,
     refresh,

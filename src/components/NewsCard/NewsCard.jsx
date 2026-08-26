@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
-import { Card } from "../../ui/index.js";
+import { Card, Skeleton } from "../../ui/index.js";
 import { formatDistance, relativeTime } from "../../utils/format.js";
 import { useHere } from "../LocationProvider/index.js";
 import styles from "./news.module.css";
@@ -66,7 +66,11 @@ export default function NewsCard() {
   const { coords, supports, reloadToken } = useHere();
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
-  const [loading, setLoading] = useState(false);
+  // Waiting from the first render, not from the first effect: with a fix in
+  // hand the request below is already as good as sent, and starting at false
+  // would show "nothing to report" for the frame in between — a card that
+  // answers before it has asked.
+  const [loading, setLoading] = useState(() => Boolean(coords));
   const requestRef = useRef(0);
 
   const key = coordKey(coords);
@@ -121,7 +125,7 @@ export default function NewsCard() {
 
   let body;
   if (loading && items.length === 0) {
-    body = <p className={styles.empty}>{t("news.loading")}</p>;
+    body = <Skeleton rows={5} label={t("news.loading")} />;
   } else if (error) {
     body = <p className={styles.empty}>{t("news.unavailable")}</p>;
   } else if (items.length === 0) {

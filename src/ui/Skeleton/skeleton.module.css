@@ -1,0 +1,74 @@
+/* The rows a list is about to have, parted by the same hairline and set on the
+   same gutter the real ones use (see any of the panels' .item), so the bars
+   stand roughly where the words will and the list settles rather than
+   rearranges itself when they arrive. */
+.rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 10px;
+}
+
+/* A list whose rows are one line — a name and a number — rather than a title
+   with its meta underneath */
+.tight {
+  padding: 10px;
+}
+
+.row + .row {
+  border-top: 1px solid var(--line);
+}
+
+.bar {
+  height: 8px;
+  background: var(--line);
+}
+
+/* The meta line every row carries under its title: shorter, and lighter than
+   the line above it, because that is what it turns into */
+.under {
+  width: 34%;
+  height: 6px;
+  background: var(--soft);
+}
+
+/* One block the size of the tile, for content that is a picture rather than a
+   list. It takes the whole body, padding and all — a map fills its card. */
+.fill {
+  display: flex;
+  height: 100%;
+}
+
+.block {
+  flex: 1;
+  background: var(--soft);
+}
+
+/* Alive, but barely: a dashboard of tiles all breathing at once is a lot of
+   movement for something that is only saying "not yet". */
+@keyframes breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.bar,
+.block {
+  animation: breathe 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bar,
+  .block {
+    animation: none;
+  }
+}

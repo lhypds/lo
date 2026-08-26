@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Card, Link } from "../../ui/index.js";
+import { Card, Link, Skeleton } from "../../ui/index.js";
 import { distanceMeters, formatCoords, formatDistance, formatUsername, relativeTime } from "../../utils/format.js";
 import { useHere } from "../LocationProvider/index.js";
 import styles from "./posts.module.css";
@@ -19,7 +19,7 @@ import styles from "./posts.module.css";
 // any other link on the dashboard.
 export default function PostsCard() {
   const { t, i18n } = useTranslation();
-  const { coords, posts } = useHere();
+  const { coords, posts, loadingPosts } = useHere();
 
   // How far the nearest one is, where a count used to be. How many there are is
   // something the list answers by being scrolled; how close the closest is, is
@@ -43,8 +43,16 @@ export default function PostsCard() {
       flush
     >
       <div className={styles.scroll}>
+        {/* Waiting is not the same answer as none: the list belongs to the
+            provider and arrives a moment after the tile does, and "no posts
+            around here yet" said in that moment would be a claim about the
+            street rather than about the request. */}
         {posts.length === 0 ? (
-          <p className={styles.empty}>{t("posts.empty")}</p>
+          loadingPosts ? (
+            <Skeleton rows={4} label={t("common.loading")} />
+          ) : (
+            <p className={styles.empty}>{t("posts.empty")}</p>
+          )
         ) : (
           <ul className={styles.list}>
             {posts.map((post) => (

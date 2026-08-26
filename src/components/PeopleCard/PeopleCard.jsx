@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Card, Link } from "../../ui/index.js";
+import { Card, Link, Skeleton } from "../../ui/index.js";
 import { distanceMeters, formatDistance, formatUsername, relativeTime } from "../../utils/format.js";
 import { useAuth } from "../AuthProvider/index.js";
 import { useHere } from "../LocationProvider/index.js";
@@ -32,7 +32,7 @@ import styles from "./people.module.css";
 // would be centred in a 175px tile.
 export default function PeopleCard() {
   const { t, i18n } = useTranslation();
-  const { coords, people } = useHere();
+  const { coords, people, loadingPeople } = useHere();
   const { user } = useAuth();
 
   // Nearest first, and with the distance each row shows in hand. Without a fix
@@ -135,8 +135,16 @@ export default function PeopleCard() {
         {/* Under your own row rather than instead of the list, which is never
             empty now that you are on it. It is still worth saying: a panel
             showing one name could be read as one that failed to load the rest,
-            and "who else is around" is the question this is here to answer. */}
-        {rows.length === 0 && <p className={styles.empty}>{t("people.empty")}</p>}
+            and "who else is around" is the question this is here to answer.
+            Until the first trade comes back that is exactly what a panel
+            showing one name would be, so the bars stand in the meantime and
+            the sentence waits until it is true. */}
+        {rows.length === 0 &&
+          (loadingPeople ? (
+            <Skeleton rows={3} lines={1} label={t("common.loading")} className={styles.waiting} />
+          ) : (
+            <p className={styles.empty}>{t("people.empty")}</p>
+          ))}
       </div>
     </Card>
   );

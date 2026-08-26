@@ -28,10 +28,44 @@
   overflow-wrap: anywhere;
 }
 
+/* Held to one line's height even while it is empty — see the note in the strip
+   itself. Flex so the bar that stands in for the words sits on the line rather
+   than at the top of the space kept for them. */
 .detail {
+  display: flex;
+  align-items: center;
+  min-height: 14px;
   margin: 3px 0 0;
   color: var(--muted);
   font-size: 11px;
+  line-height: 14px;
+}
+
+/* About as wide as a locality and a region come out at, so the line settles
+   into the name instead of growing into it. */
+.pending {
+  width: 96px;
+  height: 8px;
+  background: var(--line);
+  animation: breathe 1.6s ease-in-out infinite;
+}
+
+/* The dashboard's waiting bars all breathe on this beat (see ui/Skeleton) —
+   module scoping is why the keyframes are stated again here rather than shared. */
+@keyframes breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pending {
+    animation: none;
+  }
 }
 
 .readout {

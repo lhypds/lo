@@ -225,7 +225,8 @@
     "emptyThread": "{{name}} とのやり取りはまだありません",
     "placeholder": "何か書く",
     "send": "送信",
-    "sending": "送信中"
+    "sending": "送信中",
+    "profile": "プロフィールを見る"
   },
   "search": {
     "marks": "記録を検索",

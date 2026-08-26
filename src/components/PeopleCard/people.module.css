@@ -75,6 +75,13 @@
   margin-right: 8px;
 }
 
+/* The bars that stand where everyone else will, under your own row — the rule
+   is the one the list draws between its own rows, which this is a continuation
+   of rather than a block after it */
+.waiting {
+  border-top: 1px solid var(--line);
+}
+
 .empty {
   margin: 0;
   padding: 34px 12px;

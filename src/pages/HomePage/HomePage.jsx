@@ -1,7 +1,7 @@
 import { Suspense, lazy, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
-import { showToast } from "../../ui/index.js";
+import { Card, Skeleton, showToast } from "../../ui/index.js";
 import { getLocationState, refreshLocation } from "../../utils/location.js";
 import ClockCard from "../../components/ClockCard/index.js";
 import Header from "../../components/Header/index.js";
@@ -97,7 +97,18 @@ export default function HomePage() {
           {supports("clock") && <ClockCard />}
           {supports("weather") && <WeatherCard />}
           {supports("map") && (
-            <Suspense fallback={<div className="card-placeholder" />}>
+            <Suspense
+              fallback={
+                // The map's own card, drawn by the page while mapbox-gl is
+                // still on the wire: the tile that lands here is a titled
+                // square, so the thing holding its place has to be one too or
+                // the grid rearranges itself around the heaviest thing it is
+                // waiting for.
+                <Card title={t("map.title")} square flush quietHead>
+                  <Skeleton fill label={t("common.loading")} />
+                </Card>
+              }
+            >
               {/* Everything that is here: the posts whoever came past left, the
                   spots you kept, and you standing among them. The marks page
                   answers a different question — where have I been, in order —

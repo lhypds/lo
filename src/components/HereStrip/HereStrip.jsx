@@ -7,7 +7,7 @@ import styles from "./here.module.css";
 // top so no card has to repeat it.
 export default function HereStrip() {
   const { t, i18n } = useTranslation();
-  const { coords, place, status, stale, at } = useHere();
+  const { coords, place, status, stale, at, loadingLocal } = useHere();
   if (!coords) return null;
 
   const name = place?.name || t("location.title");
@@ -19,7 +19,18 @@ export default function HereStrip() {
     <section className={styles.strip} aria-label={t("location.title")}>
       <div className={styles.names}>
         <h1 className={styles.place}>{name}</h1>
-        {detail && <p className={styles.detail}>{detail}</p>}
+        {/* This line stands whether or not there is anything on it. It is the
+            top of the page and the entire dashboard hangs off its bottom edge,
+            so a line that only appeared once the server had named the place
+            would push the whole grid down a notch under the reader's eye. While
+            that answer is in the air it holds a bar, the same as the cards
+            below; answered by a place with nothing to add — a locality that is
+            its own name, no region — or not answered at all, it is an empty
+            line of the height it would have had. */}
+        <p className={styles.detail}>
+          {detail ||
+            (loadingLocal && !place ? <span className={styles.pending} aria-hidden="true" /> : null)}
+        </p>
       </div>
       <dl className={styles.readout}>
         <div>

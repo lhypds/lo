@@ -225,7 +225,8 @@
     "emptyThread": "Nothing said to {{name}} yet",
     "placeholder": "Say something",
     "send": "Send",
-    "sending": "Sending"
+    "sending": "Sending",
+    "profile": "View Profile"
   },
   "search": {
     "marks": "Search your marks",

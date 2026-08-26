@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
-import { Card } from "../../ui/index.js";
+import { Card, Skeleton } from "../../ui/index.js";
 import { useHere } from "../LocationProvider/index.js";
 import styles from "./trends.module.css";
 
@@ -17,7 +17,10 @@ export default function TrendsCard() {
   const { coords, reloadToken } = useHere();
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
-  const [loading, setLoading] = useState(false);
+  // True from the first render rather than from the first effect — see the
+  // same line in NewsCard: an empty list a frame before the request goes out
+  // would read as "no trends here".
+  const [loading, setLoading] = useState(() => Boolean(coords));
   const requestRef = useRef(0);
 
   const key = coordKey(coords);
@@ -55,7 +58,7 @@ export default function TrendsCard() {
 
   let body;
   if (loading && items.length === 0) {
-    body = <p className={styles.empty}>{t("trends.loading")}</p>;
+    body = <Skeleton rows={5} label={t("trends.loading")} />;
   } else if (error) {
     body = <p className={styles.empty}>{t("trends.unavailable")}</p>;
   } else if (items.length === 0) {

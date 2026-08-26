@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Card } from "../../ui/index.js";
+import { Card, Skeleton } from "../../ui/index.js";
 import { weatherIcon, weatherLabelKey } from "../../utils/weather.js";
 import { useHere } from "../LocationProvider/index.js";
 import WeatherGlyph from "./WeatherGlyph.jsx";
@@ -19,10 +19,17 @@ export default function WeatherCard() {
   const { t, i18n } = useTranslation();
   const { weather, loadingLocal } = useHere();
 
+  // The tile stands either way — only what is in it waits. Bars while the
+  // reading is on its way, and the sentence only once it is in and there is
+  // still no weather in it.
   if (!weather) {
     return (
       <Card title={t("weather.title")} openHead square>
-        <p className={styles.empty}>{loadingLocal ? t("common.loading") : t("weather.unavailable")}</p>
+        {loadingLocal ? (
+          <Skeleton fill label={t("common.loading")} />
+        ) : (
+          <p className={styles.empty}>{t("weather.unavailable")}</p>
+        )}
       </Card>
     );
   }

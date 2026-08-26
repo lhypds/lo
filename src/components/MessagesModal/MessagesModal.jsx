@@ -5,6 +5,7 @@ import { Modal } from "../../ui/index.js";
 import { formatUsername, relativeTime } from "../../utils/format.js";
 import { useAuth } from "../AuthProvider/index.js";
 import { useHere } from "../LocationProvider/index.js";
+import { openProfile } from "../UserModal/userApi.js";
 import { register } from "./messagesApi.js";
 import styles from "./messages.module.css";
 
@@ -174,6 +175,26 @@ export default function MessagesModal() {
     >
       {to ? (
         <div className={styles.thread}>
+          {/* Through to the whole of whoever is being written to. A thread says
+              what somebody has said and nothing about who they are, and that is
+              the question a name at the top of a conversation raises — so the
+              answer is one press from the top of it.
+              It hands the sheet over rather than stacking a second one on top:
+              the same swap the profile makes in the other direction, where "send
+              a message" closes the profile and opens this. One sheet at a time,
+              and the row back is always on the other side. */}
+          <div className={styles.who}>
+            <button
+              type="button"
+              className={styles.profile}
+              onClick={() => {
+                setOpen(false);
+                openProfile(to);
+              }}
+            >
+              {t("messages.profile")}
+            </button>
+          </div>
           <div className={styles.scroll} ref={scrollRef}>
             {messages.length === 0 ? (
               <p className={styles.empty}>

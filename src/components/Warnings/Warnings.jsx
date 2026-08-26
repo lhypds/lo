@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
-import { Card } from "../../ui/index.js";
+import { Card, Skeleton } from "../../ui/index.js";
 import { relativeTime } from "../../utils/format.js";
 import { formatWarningWindow, warningKindKey, warningLevel } from "../../utils/warnings.js";
 import { useHere } from "../LocationProvider/index.js";
@@ -24,7 +24,10 @@ export default function Warnings() {
   const { coords, reloadToken } = useHere();
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
-  const [loading, setLoading] = useState(false);
+  // True from the first render rather than from the first effect — see the
+  // same line in NewsCard. It matters most here: "nothing in force" is the one
+  // sentence on the dashboard nobody should read before it has been asked.
+  const [loading, setLoading] = useState(() => Boolean(coords));
   const requestRef = useRef(0);
 
   const key = coordKey(coords);
@@ -62,7 +65,7 @@ export default function Warnings() {
 
   let body;
   if (loading && !result) {
-    body = <p className={styles.note}>{t("warnings.loading")}</p>;
+    body = <Skeleton rows={3} label={t("warnings.loading")} />;
   } else if (error) {
     body = <p className={styles.note}>{t("warnings.unavailable")}</p>;
   } else if (items.length === 0) {
