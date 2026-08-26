@@ -1,13 +1,15 @@
 import { useSyncExternalStore } from "react";
 
-// How much of the grid a panel covers, counted in squares. Two is the width of
-// the panel column — the whole grid on a phone, half of it on a laptop — one
-// tile tall; four is that same width and twice the height, which is the largest
-// tile the grid has. Nothing in between, because anything in between is off the
-// module the whole page is drawn on (see .card-grid in styles.css).
+// How much of the grid a panel covers, counted in squares. One is the square the
+// clock and the weather stand in, the smallest tile there is; two is the width of
+// the panel column — the whole grid on a phone, half of it on a laptop — one tile
+// tall; four is that same width and twice the height, which is the largest tile
+// the grid has. Nothing in between, because anything in between is off the module
+// the whole page is drawn on (see .card-grid in styles.css).
+export const TINY = 1;
 export const SMALL = 2;
 export const LARGE = 4;
-const SIZES = [SMALL, LARGE];
+const SIZES = [TINY, SMALL, LARGE];
 
 // Which cards the dashboard is carrying. Two questions decide it and only one of
 // them is the reader's: whether the place can feed a card at all is the server's
@@ -24,30 +26,39 @@ const SIZES = [SMALL, LARGE];
 // the menu is a list of the things on the page, and a second name for a tile the
 // reader can already see would be a second thing to learn.
 //
-// `off` is a card that arrives off the page. What lo opens as is the 2x2 block
-// and nothing else: the clock, the weather, the map, and the button that keeps
-// where you are standing — the time here, the sky here, the ground here, and the
-// one thing you can do about any of it. Everything under that block is a reading
-// of a wider place than the one you are in, and which of those readings are
-// worth the room is not a question lo can answer for a reader it has not met:
-// the plus in the top bar is where they answer it, and a dashboard that starts
-// at four squares is a page that asks rather than one that has to be cleared.
+// `off` is a card that arrives off the page. What lo opens as is squares: the
+// clock, the weather, the map and the button that keeps where you are standing —
+// the time here, the sky here, the ground here, and the one thing you can do
+// about any of it — and under them the two questions a page about where you are
+// standing should not have to be asked for, who is around and what is in force.
+// Those two are squares as well, which is what lets them arrive at all: at the
+// width of the panel column they would have been two more rows to scroll past on
+// a phone, and at a square each they are one row that answers both.
 //
-// Nothing here says how tall a panel stands, because every panel still starts at
-// two squares; one that should arrive taller can say so when there is one. What
-// the reader does from either default — a card added, a panel given four squares
-// — is the only thing the layout below remembers.
+// Everything still off the page is a reading of a wider place than the one you
+// are in, and which of those readings are worth the room is not a question lo can
+// answer for a reader it has not met: the plus in the top bar is where they
+// answer it, and a dashboard that starts as a block of squares — six of them
+// where the country can feed the warnings, five where it cannot — is a page that
+// asks rather than one that has to be cleared.
+//
+// `min` is the smallest a panel can be cut to, and also the size it arrives at: a
+// panel is offered at its smallest and grows if the reader wants it to. Two
+// squares unless a card says otherwise, because most of these panels are lists
+// that need the width of a line to read; the two that answer at a glance — a
+// count of people, a warning or none — say `min: TINY` and can stand in a single
+// square. What the reader does from either default — a card added, a panel given
+// more room — is the only thing the layout below remembers.
 //
 // The clock, the weather and the map are single squares and never resize: those
-// three with the mark button are the 2x2 block the rest of the grid is set
-// against.
+// three with the mark button are the block the rest of the grid is set against.
 export const CARDS = [
   { id: "clock", label: "clock.title" },
   { id: "weather", label: "weather.title" },
   { id: "map", label: "map.title" },
   { id: "posts", label: "posts.nearby", own: true, off: true },
-  { id: "people", label: "people.nearby", own: true, off: true },
-  { id: "warnings", label: "warnings.title", off: true },
+  { id: "people", label: "people.nearby", own: true, min: TINY },
+  { id: "warnings", label: "warnings.title", min: TINY },
   { id: "nearby", label: "news.title", off: true },
   { id: "events", label: "events.title", off: true },
   { id: "trends", label: "trends.title", off: true },
@@ -103,8 +114,22 @@ function isOn(choices, id) {
   return choices[id]?.on ?? !BY_ID.get(id)?.off;
 }
 
+// Every size a panel is offered at, smallest first — the ladder the pair of
+// buttons in its heading walks (see CardSize). Where it starts is the card's own
+// `min`, and the top is the same for all of them.
+export function cardSizes(id) {
+  const min = BY_ID.get(id)?.min ?? SMALL;
+  return SIZES.filter((size) => size >= min);
+}
+
+// The reader's answer where there is one and the card's smallest where there is
+// not — and the card's smallest, too, where the remembered size is one this panel
+// does not offer: a size stored before the card's own ladder changed is answering
+// a question that is no longer being asked.
 function sizeOf(choices, id) {
-  return choices[id]?.size ?? SMALL;
+  const sizes = cardSizes(id);
+  const chosen = choices[id]?.size;
+  return sizes.includes(chosen) ? chosen : sizes[0];
 }
 
 // A new object when something changes and the same one in between, which is the
@@ -125,13 +150,13 @@ export function toggleCard(id) {
 }
 
 export function resizeCard(id, size) {
-  if (SIZES.includes(size)) decide(id, { size });
+  if (cardSizes(id).includes(size)) decide(id, { size });
 }
 
-// One panel's own height, for the panel and for the pair of buttons in its
-// heading. Asked by id rather than handed down through the page, so how tall a
-// panel stands is between it and the layout — nothing above it has to hold a
-// size for it, and the buttons that change it need no route back up.
+// One panel's own size, for the panel and for the pair of buttons in its heading.
+// Asked by id rather than handed down through the page, so how much room a panel
+// takes is between it and the layout — nothing above it has to hold a size for
+// it, and the buttons that change it need no route back up.
 export function useCardSize(id) {
   const choices = useSyncExternalStore(subscribe, snapshot);
   return sizeOf(choices, id);

@@ -15,8 +15,8 @@
     "cards": "卡片"
   },
   "cards": {
-    "bigger": "变高",
-    "smaller": "变矮"
+    "bigger": "变大",
+    "smaller": "变小"
   },
   "auth": {
     "tagline": "此刻，你在哪里。",
@@ -203,6 +203,7 @@
   },
   "people": {
     "nearby": "附近的人",
+    "short": "附近的人",
     "you": "我",
     "empty": "附近暂时没有其他人"
   },

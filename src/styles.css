@@ -354,9 +354,12 @@ a {
    and the page stops growing there so every tile keeps the size it had.
 
    The news panel is placed by hand. Pinning it to the third column keeps the
-   three square tiles that would have filled the top row out of it, and normal
-   auto-placement folds them into a 2x2 block on the left instead — the same
-   four squares, beside the panel rather than above it. The other panels then
+   square tiles that would have filled the top row out of it, and normal
+   auto-placement folds them into a block two columns wide on the left instead —
+   the same squares, beside the panel rather than above it, however many of them
+   the reader is carrying: four is the fewest, and the two panels that can be cut
+   to a square each stand in the same block when they are (see utils/cards.js).
+   The other panels then
    fill the rows below it, two to a row, wherever in the page's own order they
    are written: the pin is a place on the grid and not a place in the queue,
    which is what lets the page put lo's own panels first without moving the news
@@ -375,8 +378,9 @@ a {
        standing empty, and sparse packing will not go back for it — the panel
        after it would land a row lower, and the two columns would walk down the
        page in steps. Nothing can be pulled out of order by it: the squares fill
-       their own block, and every panel is half the grid wide, so the only holes
-       dense has to fill are the ones the pins below open. */
+       their own block, and a panel is either half the grid wide or one of those
+       squares, so the only holes dense has to fill are the ones the pins below
+       open. */
     grid-auto-flow: row dense;
   }
 
@@ -389,7 +393,10 @@ a {
      searching for — is pinned to the right half of the rows under the news
      panel, which is the rest of that same reading. That leaves the left half to
      the posts and the people: lo's own two panels, both of them readings of the
-     ground you are standing on, one under the other.
+     ground you are standing on, one under the other. A card cut to a single
+     square carries none of this and asks for none of it: a square cannot be
+     pinned to a half, and one is small enough to belong to the block of tiles
+     rather than to either column (see Warnings.jsx).
 
      Pinned to a column and not to a cell, and only that side is pinned at all.
      Which of these panels the country can feed is not known until it answers,

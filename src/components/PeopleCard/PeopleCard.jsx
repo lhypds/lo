@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Card, Link, Skeleton } from "../../ui/index.js";
-import { LARGE, useCardSize } from "../../utils/cards.js";
+import { SMALL, TINY, useCardSize } from "../../utils/cards.js";
 import { distanceMeters, formatDistance, formatUsername, relativeTime } from "../../utils/format.js";
 import { useAuth } from "../AuthProvider/index.js";
 import CardSize from "../CardSize/index.js";
@@ -64,7 +64,17 @@ export default function PeopleCard() {
       // "nearby", as on the posts panel above it: the dashboard answers about
       // the ground you are standing on, and these are the people within reach
       // of it — not everyone who has ever signed in.
-      title={t("people.nearby")}
+      //
+      // The one word on its own at a square, where the phrase does not fit: a
+      // heading is 12px of monospace, so it costs what its characters cost, and
+      // three words plus the pair of size buttons are wider than the narrowest
+      // phone's tile — the count would have been squeezed out of the heading to
+      // make room for a name the tile was going to cut short anyway. Which word
+      // to keep is not a close call: the rows are names, and a square of them
+      // sitting in the block of tiles beside the map is about as plainly "near
+      // here" as a tile on this page can be. The phrase comes back with the
+      // width to hold it, and the menu lists the card under the phrase.
+      title={size === TINY ? t("people.short") : t("people.nearby")}
       // A count, where the posts panel puts a distance. Presence is a handful of
       // open tabs and the nearest one is the first row, so the distance would
       // only say twice what the list already says; how many there are at all is
@@ -76,10 +86,17 @@ export default function PeopleCard() {
       // arguing with itself.
       meta={rows.length + (me ? 1 : 0) || null}
       action={<CardSize id="people" />}
-      wide
-      half={size !== LARGE}
-      square={size === LARGE}
+      // The three sizes as the card sees them: a single square, the panel column
+      // one tile tall, and that column twice as tall (see utils/cards.js). A
+      // square is where this one starts, and at a square it is a list of names
+      // beside the block of tiles rather than a panel under it — which is the
+      // whole reason it can be on the page before anybody asks for it.
+      wide={size !== TINY}
+      half={size === SMALL}
+      square={size !== SMALL}
       flush
+      // At a square the rows are trimmed to what fits one (see people.module.css)
+      className={size === TINY ? styles.square : undefined}
     >
       <div className={styles.scroll}>
         <ul className={styles.list}>

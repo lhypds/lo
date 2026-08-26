@@ -15,8 +15,8 @@
     "cards": "Cards"
   },
   "cards": {
-    "bigger": "Taller",
-    "smaller": "Shorter"
+    "bigger": "Bigger",
+    "smaller": "Smaller"
   },
   "auth": {
     "tagline": "Where you are, right now.",
@@ -203,6 +203,7 @@
   },
   "people": {
     "nearby": "Nearby people",
+    "short": "People",
     "you": "you",
     "empty": "Nobody else out here right now"
   },

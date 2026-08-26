@@ -1,5 +1,7 @@
-/* Two tiles across and one tall, like the trends panel under it — the rows are
-   three words each, so the height a news panel needs would be mostly air */
+/* The rows are three words each, so the height a news panel needs would be
+   mostly air: at the panel column's width this stands one tile tall like the
+   trends panel under it, and it starts smaller still — a single square, where
+   what it has to say is usually that there is nothing to say */
 .inner {
   display: flex;
   height: 100%;
@@ -160,6 +162,36 @@
   color: var(--muted);
   font-family: var(--mono);
   font-size: 10px;
+}
+
+/* Cut to a single square, the card keeps the claim and drops the reading around
+   it: a mark, what was issued and at what strength, which is the sentence the
+   tile exists to say. The hours it runs for, how much of the prefecture it covers
+   and where the number sits on the evacuation scale are all still one press away
+   in the bulletin, and a row carrying them in this much width was the words
+   themselves squeezed to an ellipsis — the one thing on the card nothing else can
+   say. At the panel column's width every row is whole again.
+
+   Said as a class the card hands down rather than as a container query, which is
+   how the tiles beside it trim themselves (see the clock and the weather). Those
+   are squares at every width, so what they measure and what they mean are the
+   same question. This card is a square or a panel by the reader's own answer, and
+   the two widths all but touch: a square is at most 287 pixels across, on the
+   widest grid there is, and a panel is 296 on the narrowest phone — a threshold
+   between them sits a handful of pixels from being wrong at one end or the other,
+   and would go wrong silently the day the grid's gap or its 1200 cap moved. The
+   card knows which size it was given; it does not have to guess from its own
+   width. */
+.square .areas,
+.square .level,
+.square .detail {
+  display: none;
+}
+
+/* The row is the whole of a row now, so it is spaced like one: the 2px under it
+   was the gap before a detail line that is no longer there */
+.square .row {
+  padding: 8px 10px;
 }
 
 @media (hover: hover) {

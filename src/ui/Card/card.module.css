@@ -71,10 +71,21 @@
   font-weight: 700;
   letter-spacing: 0.02em;
   white-space: nowrap;
+  /* Able to give way, which shortens nothing that fits: it is only reached where
+     the heading is wider than the tile it is on. Without it such a heading does
+     not shorten at all — a nowrap flex item will not go below its own text — and
+     the buttons at the right end are pushed out through the card's border
+     instead. Each card is meant to carry a name its own smallest size can hold
+     and not lean on this (see the two that swap heading with size — PeopleCard,
+     Warnings); it is here so that a translation nobody measured is a name cut
+     short rather than a control off the edge of the page. */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* The right end of the heading, hard against the edge. The meta is the only part
-   of it that gives way — a long place name is cut short, a button is not. */
+/* The right end of the heading, hard against the edge. The meta is the part of it
+   that gives way — a long place name is cut short — and a button never. */
 .tail {
   min-width: 0;
   margin-left: auto;

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
 import { Card, Skeleton } from "../../ui/index.js";
-import { LARGE, useCardSize } from "../../utils/cards.js";
+import { SMALL, TINY, useCardSize } from "../../utils/cards.js";
 import { relativeTime } from "../../utils/format.js";
 import { formatWarningWindow, warningKindKey, warningLevel } from "../../utils/warnings.js";
 import CardSize from "../CardSize/index.js";
@@ -154,16 +154,30 @@ export default function Warnings() {
   return (
     <Card
       title={t("warnings.title")}
-      meta={result?.area}
+      // Which municipality Yahoo answered for, and not at a square: the heading
+      // there is 警報・注意報 and a pair of buttons, which is the whole of the
+      // room — the name would arrive cut to its first character. Nothing is lost
+      // by dropping it. The strip at the top of the page says where you are
+      // standing, and the fix is rounded onto one municipality before it is
+      // asked, so at this size the answer is about here and says so by being
+      // here. At the panel column's width the name fits and every row under it
+      // carries the areas it covers as well.
+      meta={size === TINY ? null : result?.area}
       action={<CardSize id="warnings" />}
-      wide
-      half={size !== LARGE}
-      square={size === LARGE}
+      // The three sizes as the card sees them: a single square, the panel column
+      // one tile tall, and that column twice as tall (see utils/cards.js).
+      wide={size !== TINY}
+      half={size === SMALL}
+      square={size !== SMALL}
       flush
       // `panel-aside` is the page's hook for the panels that carry the
       // country's own reading of the place — on a wide screen they take the
       // right half of the grid, under the news (see .card-grid in styles.css).
-      className="panel-aside"
+      // Not at a single square: that hook is half the grid wide, which is the
+      // one thing a square is not. Cut this far down the card stops being a
+      // panel and joins the block of squares the dashboard opens as — and says
+      // so to its own rows, which have more in them than a square can hold.
+      className={size === TINY ? styles.square : "panel-aside"}
     >
       <div className={styles.inner}>
         <div className={styles.scroll}>{body}</div>

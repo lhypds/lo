@@ -122,6 +122,19 @@ export default function HomePage() {
         <div className="card-grid">
           {shown("clock") && <ClockCard />}
           {shown("weather") && <WeatherCard />}
+          {/* Before the map rather than after it, which on a two-column grid is
+              the square to its left: the button is the one thing here you press,
+              and the map is what it writes on. Read in that order — keep this
+              spot, then see where it landed — the pin appears on the tile beside
+              the finger that made it instead of behind it. */}
+          <MarkButton
+            onLongPress={compose}
+            onMarked={(mark) => setMarks((current) => [mark, ...current])}
+            onUnmarked={(mark) => setMarks((current) => current.filter((item) => item.id !== mark.id))}
+            onRenamed={(mark) =>
+              setMarks((current) => current.map((item) => (item.id === mark.id ? mark : item)))
+            }
+          />
           {shown("map") && (
             <Suspense
               fallback={
@@ -147,14 +160,6 @@ export default function HomePage() {
               />
             </Suspense>
           )}
-          <MarkButton
-            onLongPress={compose}
-            onMarked={(mark) => setMarks((current) => [mark, ...current])}
-            onUnmarked={(mark) => setMarks((current) => current.filter((item) => item.id !== mark.id))}
-            onRenamed={(mark) =>
-              setMarks((current) => current.map((item) => (item.id === mark.id ? mark : item)))
-            }
-          />
           {/* Then lo's own two, ahead of everything the country has to say —
               the warnings, the news and the trending list all come after them.
               What somebody left on this street and who is standing on it are the
@@ -163,14 +168,16 @@ export default function HomePage() {
               who opened lo to see where they are should not have to scroll past
               a headline to find out who is next to them.
 
-              These are also half the grid wide, so on a phone the panels start
-              here, on the row below the map's own — the four squares stay a
-              block above them.
-
               A phone reads this as the order it is written in. A wide screen
               does not read it as an order at all — these two keep the left
               column and everything the country says keeps the right, whichever
               way round they are written here (see .card-grid in styles.css).
+
+              How much room each of them takes is the reader's and is asked for
+              by the card itself, not decided here: the people card starts at a
+              single square and joins the block of tiles above, and the posts
+              panel starts at the width of the panel column and begins a row of
+              its own under it (see utils/cards.js).
 
               Posts are lo's own and belong to no country, so no country is asked
               about this one — the same reason the mark button is unconditional.
@@ -180,17 +187,23 @@ export default function HomePage() {
               draws the posts but not the people — presence is the half of it
               that reads as type, a name with how far off and how long ago. No
               country is asked about this one either: presence is lo's own and
-              stops at no border. */}
+              stops at no border, which is also why it can be on the page from
+              the first visit: a square of names is the answer to "is anybody
+              near me", and there is nowhere lo runs where that has no answer. */}
           {shown("people") && <PeopleCard />}
           {/* Still under the map, which is the half of the page a warning is
               about: it reads as a caption on that ground once you have seen
               where you are standing. Under lo's own panels as well now, which is
               a judgement about distance rather than about weight — what is on
               this street is nearer than what is being said about the region, and
-              a phone shows the two together anyway. On a wide screen it is
-              pinned to the right half regardless, beneath the news and above the
-              trends: everything the country itself has to say, in one column
-              (see .card-grid in styles.css). */}
+              a phone shows the two together anyway. Given the width of the panel
+              column it is pinned, on a wide screen, to the right half regardless,
+              beneath the news and above the trends: everything the country itself
+              has to say, in one column (see .card-grid in styles.css). At the
+              square it starts as it is too narrow to be pinned to a half and
+              stands in the block of tiles instead — where "nothing in force
+              here", which is what it says almost every day, is one square rather
+              than a row across the page. */}
           {shown("warnings") && <Warnings />}
           {/* Then the two readings of the wider place, each its own panel again
               and each its own line in the menu: what is being said around here,

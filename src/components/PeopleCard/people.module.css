@@ -1,8 +1,10 @@
-/* The posts panel's width and half its height, sitting directly under it: a
-   person is one line where a post is two or three, so the same tile holds more
-   of them than it would posts. Scroll chaining is left on for the reason it is
-   left on there — this is a small window inside a page that scrolls, and
-   containing the gesture strands a thumb that has run the list to its end. */
+/* A person is one line where a post is two or three, so the same tile holds more
+   of them than it would posts — which is why this one starts at a single square,
+   where four names still fit under the heading, and grows to the posts panel's
+   width and height only if the reader wants the rest of the list in view. Scroll
+   chaining is left on for the reason it is left on there — this is a small window
+   inside a page that scrolls, and containing the gesture strands a thumb that has
+   run the list to its end. */
 .scroll {
   height: 100%;
   overflow-y: auto;
@@ -94,6 +96,29 @@
   color: var(--muted);
   text-align: center;
   font-size: 11px;
+}
+
+/* On a single square the row keeps the name and how far off, and drops how long
+   ago: a name squeezed to two letters and an ellipsis is a row that has stopped
+   answering, and of the two readings beside it the distance is the one the list is
+   ordered by — nearest first, which is the question the tile is here for. The age
+   comes back the moment the panel is given the width of a line.
+   The separator goes with it: it is drawn by the age's own ::before, so there is
+   no dot left hanging off the end of the distance.
+
+   A class the card hands down rather than a container query, for the reason the
+   warnings card gives at length: a square and a panel are within ten pixels of
+   each other at the extremes, and the card already knows which of the two it
+   is. */
+.square .itemMeta time {
+  display: none;
+}
+
+/* Said in less room, so the sentence is not the only thing in view: at a square
+   it stands under your own row, and the pair of them should not need a scroll to
+   be read */
+.square .empty {
+  padding: 18px 10px;
 }
 
 @media (hover: hover) {

@@ -15,8 +15,8 @@
     "cards": "カード"
   },
   "cards": {
-    "bigger": "高くする",
-    "smaller": "低くする"
+    "bigger": "大きく",
+    "smaller": "小さく"
   },
   "auth": {
     "tagline": "いま、あなたのいる場所。",
@@ -203,6 +203,7 @@
   },
   "people": {
     "nearby": "近くの人",
+    "short": "近くの人",
     "you": "自分",
     "empty": "いま近くに他の人はいません"
   },
