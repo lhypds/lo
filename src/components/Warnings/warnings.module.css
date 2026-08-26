@@ -86,6 +86,25 @@
   font-size: 12px;
 }
 
+/* What the bulletin says about the weather named to its left — how much of the
+   prefecture, at what strength, how far up the scale — held together at the right
+   end of the row. Hard right by its own margin rather than by the kind stretching
+   into the space, which is the same thing at the panel column's width and not at
+   a square: there the row can wrap, and the group has to stay a group and stay
+   right on whichever line it lands on.
+   Able to wrap inside itself as the last resort, right-aligned when it does, for
+   a heading no line can hold whole — "Emergency warning" is 17 characters of
+   monospace and a square is not much more. */
+.said {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  /* Down the group and across it: a wrapped line belongs to the one above it */
+  gap: 2px 8px;
+  margin-left: auto;
+}
+
 /* How much of the prefecture the warning covers, on the rows that are answering
    for a prefecture rather than for one municipality */
 .areas {
@@ -164,13 +183,28 @@
   font-size: 10px;
 }
 
-/* Cut to a single square, the card keeps the claim and drops the reading around
-   it: a mark, what was issued and at what strength, which is the sentence the
-   tile exists to say. The hours it runs for, how much of the prefecture it covers
-   and where the number sits on the evacuation scale are all still one press away
-   in the bulletin, and a row carrying them in this much width was the words
-   themselves squeezed to an ellipsis — the one thing on the card nothing else can
-   say. At the panel column's width every row is whole again.
+/* Cut to a single square, the card keeps the whole claim — the mark, the kind of
+   weather, what was issued and how far up the evacuation scale it is — and drops
+   only the reading around it: the hours it runs for and how much of the
+   prefecture it covers, both of them still one press away in the bulletin. The
+   claim itself is not something a square gets an abridged version of. 大雨 注意報
+   レベル2 is three facts and none of them says another: the weather, the strength,
+   and the number the country's own advice is written against.
+
+   What gives way instead is the line. A row here is allowed to wrap, so the three
+   sit side by side while the tile has the width for them — which in Japanese and
+   in Chinese is nearly always, four rows to a square — and the pair drops under
+   the weather when it does not, which is where a heading like "Emergency warning"
+   puts them. Wrapped rather than shortened: a row of two short lines can still be
+   read, and 大雨 cut to 大 cannot. Either way they are hard right, which is where
+   they are at every other size — see .said, which is what keeps them together and
+   keeps them there.
+
+   The kind takes what it needs at this size instead of all there is, which is
+   what leaves the other two on its line at all — stretched to fill, it would push
+   them onto a second line even where the three of them fit on one. The space it
+   is no longer taking goes to the margin that holds the pair right, so nothing
+   about where they sit changes with it.
 
    Said as a class the card hands down rather than as a container query, which is
    how the tiles beside it trim themselves (see the clock and the weather). Those
@@ -183,15 +217,23 @@
    card knows which size it was given; it does not have to guess from its own
    width. */
 .square .areas,
-.square .level,
 .square .detail {
   display: none;
 }
 
-/* The row is the whole of a row now, so it is spaced like one: the 2px under it
-   was the gap before a detail line that is no longer there */
 .square .row {
+  flex-wrap: wrap;
+  /* Only across the row, not down it: a wrapped second line belongs to the line
+     above it, and the 8px that reads as a gap between words reads as a gap
+     between rows once it is standing between them */
+  row-gap: 2px;
+  /* The row is the whole of a row now, so it is spaced like one: the 2px under it
+     was the gap before a detail line that is no longer there */
   padding: 8px 10px;
+}
+
+.square .kind {
+  flex: 0 1 auto;
 }
 
 @media (hover: hover) {

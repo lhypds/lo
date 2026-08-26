@@ -109,20 +109,32 @@ export default function Warnings() {
                     aria-hidden="true"
                   />
                   <span className={styles.kind}>{kindKey ? t(kindKey) : item.name}</span>
-                  {/* A wider answer, because the fix had no local warning — so
-                      each row says how much of that wider area it covers. */}
-                  {item.areas != null && (
-                    <span className={styles.areas}>
-                      {item.areas}/{result.areaCount}
+                  {/* What is said about the weather named to the left of it, as
+                      one group at the right end of the row rather than three
+                      things each finding their own way there. A group because on
+                      a square the row is allowed to wrap: sent separately, the
+                      level was the one that went over, and a number alone on a
+                      second line reads as a row of its own rather than as the end
+                      of this one. Together they go over together, and stay hard
+                      right wherever they land. */}
+                  <span className={styles.said}>
+                    {/* A wider answer, because the fix had no local warning — so
+                        each row says how much of that wider area it covers. */}
+                    {item.areas != null && (
+                      <span className={styles.areas}>
+                        {item.areas}/{result.areaCount}
+                      </span>
+                    )}
+                    <span className={styles.severity}>
+                      {t(`warnings.severity.${item.severity}`)}
                     </span>
-                  )}
-                  <span className={styles.severity}>{t(`warnings.severity.${item.severity}`)}</span>
-                  {/* 警戒レベル, the number the country's evacuation advice is
-                      written against — the word beside it says what was issued,
-                      this says how far up the scale it is. */}
-                  {level != null && (
-                    <span className={styles.level}>{t("warnings.level", { level })}</span>
-                  )}
+                    {/* 警戒レベル, the number the country's evacuation advice is
+                        written against — the word beside it says what was issued,
+                        this says how far up the scale it is. */}
+                    {level != null && (
+                      <span className={styles.level}>{t("warnings.level", { level })}</span>
+                    )}
+                  </span>
                 </span>
                 <span className={styles.detail}>
                   {/* From when until when it is forecast to stay this strong, on
