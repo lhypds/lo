@@ -8,12 +8,6 @@ import styles from "./post.module.css";
 
 const BODY_MAX = 500;
 
-// The same pair the mark button holds to: long enough not to fire on a slow tap,
-// short enough that holding it feels answered rather than stuck, and a press that
-// wanders more than a few pixels was the start of a scroll.
-const LONG_PRESS_MS = 500;
-const LONG_PRESS_SLOP = 10;
-
 // A stored photo comes back on the post as the URL that serves it, and what
 // writing a post takes is the bare name — the file is content-addressed, so the
 // last segment is it. Pulled apart here rather than carried as a second field on
@@ -45,25 +39,14 @@ export default function PostModal({ isOpen, coords, place, post = null, onClose,
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [dragging, setDragging] = useState(false);
-  // The shutter, held long enough that letting go now opens the album
-  const [armed, setArmed] = useState(false);
   // Two ways to the same photo, because they are two different requests to the
   // phone: `capture` asks for the camera itself, and without it the same input
   // asks for what is already in the album. One input cannot be both — the
-  // attribute is read when the picker opens — so the button carries one of each
-  // and the gesture decides which one is asked.
+  // attribute is read when the picker opens — so there is one of each, and a
+  // button in front of each of them.
   const cameraRef = useRef(null);
   const albumRef = useRef(null);
   const textRef = useRef(null);
-  // The hold on the shutter: whether the press has become one, where it landed,
-  // and the timer that decides. Which picker it means is read off `heldRef` by
-  // the gestures that end the press — see `openAlbum`.
-  const heldRef = useRef(false);
-  const originRef = useRef(null);
-  const holdRef = useRef(null);
-  // And whether this press has already got the album open, since more than one
-  // of those gestures asks for it.
-  const openedRef = useRef(false);
   // Every element the pointer crosses fires its own dragenter and dragleave, so
   // the ones on the way in are counted rather than any single event believed —
   // otherwise crossing from the sheet onto the textarea inside it reads as
@@ -93,7 +76,6 @@ export default function PostModal({ isOpen, coords, place, post = null, onClose,
     setError("");
     setSubmitting(false);
     setDragging(false);
-    setArmed(false);
     dragDepthRef.current = 0;
     // The keyboard should already be up on a phone by the time the sheet lands.
     const timer = window.setTimeout(() => textRef.current?.focus(), 30);
@@ -142,112 +124,26 @@ export default function PostModal({ isOpen, coords, place, post = null, onClose,
     }
   }
 
-  // The press is only timed here, and that is the whole of why this is not
-  // simpler: a file dialog is allowed out of a user gesture and nothing else, so
-  // the timer can mark a press as a hold but cannot act on one. A timeout 500ms
-  // into a press is not a gesture, whatever it knows about the press.
+  // Two buttons, one gesture: a plain tap on each, which is the only thing every
+  // engine agrees is a gesture a file dialog may come out of.
   //
-  // Which gesture is the one to open the album from is not something the engines
-  // agree on. WebKit refuses the dialog anywhere before the click that ends the
-  // press — the pointerup included — so the click has to be tried. Blink takes a
-  // long press to be its own gesture and sends no click after one at all, which
-  // is why the hold did nothing on Android, so the lift has to be tried too.
-  // Both are, earliest first.
-  useEffect(() => () => window.clearTimeout(holdRef.current), []);
+  // It used to be one button that took a tap for the camera and a hold for the
+  // album, and the hold could not be made to work on Android at any price. A
+  // file dialog is allowed out of a user gesture and nothing else; Blink treats a
+  // long press as its own gesture and sends nothing afterwards that it will
+  // count — not the click that WebKit sends, and not the pointerup or the
+  // touchend before it. The engine had already decided what that press was for.
+  //
+  // So the second way to a photo is a second button rather than a second gesture
+  // on the first one. It is the plainer thing to draw as well: a hold has no
+  // affordance of its own and had to be written out underneath in words, and one
+  // of the two ways in was reachable only by reading that line first.
+  function openCamera() {
+    cameraRef.current?.click();
+  }
 
-  // Asked at every gesture that might be the end of a hold, and answered at most
-  // once. `showPicker` is what makes asking more than once safe: it throws where
-  // the engine will not take the gesture it was called from, where `click()` on
-  // the input fails the same way in silence — so a refusal is something this can
-  // read and hand on to the next gesture rather than guess at.
   function openAlbum() {
-    const input = albumRef.current;
-    if (!input || openedRef.current) return;
-    try {
-      // NotAllowedError where the gesture is not counted, TypeError on an engine
-      // old enough not to have it at all. The plain click is the floor for both.
-      input.showPicker();
-      openedRef.current = true;
-    } catch {
-      // Nothing to say to the reader: another gesture is still coming, and the
-      // click that ends the press has the last word.
-    }
-  }
-
-  // The press is over — or was never going to be a hold. `heldRef` is left
-  // standing on purpose: it is what the lift and the click read, and it is set by
-  // the timer rather than measured on the lift, so a press an engine takes away
-  // mid-gesture — a pointercancel, after which no pointerup and no lift ever
-  // arrive — has still said what it was by the time the click comes.
-  function endPress() {
-    window.clearTimeout(holdRef.current);
-    holdRef.current = null;
-    originRef.current = null;
-    setArmed(false);
-  }
-
-  // The lift, which on Blink is the last word on a hold: its own long-press
-  // gesture has already eaten the click that would otherwise have ended the
-  // press. `heldRef` is left standing for the click that may yet come, and
-  // `openedRef` is what stops the two of them opening two pickers.
-  function liftPress() {
-    const held = heldRef.current;
-    endPress();
-    if (held) openAlbum();
-  }
-
-  function startPress(event) {
-    if (busy || event.button > 0) return;
-    heldRef.current = false;
-    openedRef.current = false;
-    originRef.current = { x: event.clientX, y: event.clientY };
-    holdRef.current = window.setTimeout(() => {
-      holdRef.current = null;
-      heldRef.current = true;
-      // Halfway through a gesture with nothing to show for it yet, so the button
-      // says so itself: it inverts under the finger, and letting go now opens the
-      // album. A buzz says the same thing where there is one to give — iOS has
-      // none, which is exactly where the drawing has to do the talking.
-      setArmed(true);
-      if (navigator.vibrate) navigator.vibrate(30);
-    }, LONG_PRESS_MS);
-  }
-
-  // A press that wanders was the start of a scroll, and the hold is called off
-  // before it fires: the click that may still follow reads as a plain tap. Once
-  // it has fired there is nothing left to call off — the button has already said
-  // it is armed, and taking that back under a thumb that only rolled a little
-  // would be the sheet changing its mind after the fact.
-  function movePress(event) {
-    const origin = originRef.current;
-    if (!origin || !holdRef.current) return;
-    if (
-      Math.abs(event.clientX - origin.x) > LONG_PRESS_SLOP ||
-      Math.abs(event.clientY - origin.y) > LONG_PRESS_SLOP
-    ) {
-      endPress();
-    }
-  }
-
-  // Where the press ends on the engines that end it in a click: a press long
-  // enough to have armed the button is the album, and anything else — a tap, a
-  // press called off, a button reached by the keyboard rather than pressed at
-  // all — is the camera. A click is the one context every engine agrees is a
-  // gesture, so this is also the floor under the album: if `showPicker` is
-  // refused even here, or the engine has not got it, the input is clicked the
-  // way it always was.
-  function tap() {
-    const held = heldRef.current;
-    heldRef.current = false;
-    if (!held) {
-      cameraRef.current?.click();
-      return;
-    }
-    openAlbum();
-    if (!openedRef.current) {
-      albumRef.current?.click();
-      openedRef.current = true;
-    }
+    albumRef.current?.click();
   }
 
   function handleChange(event) {
@@ -368,12 +264,8 @@ export default function PostModal({ isOpen, coords, place, post = null, onClose,
         {/* The photo above the words, which is the order a post is made in as
             often as not: the picture is the reason there is something to say
             about this spot, and the words are the caption on it. */}
-        {/* Both are hidden by being shrunk to a point rather than by
-            `display: none`: `showPicker` is specified against an element that is
-            being rendered, and an input that is not laid out at all is the kind
-            of thing an engine is entitled to refuse. They are out of the tab
-            order and out of the tree the reader is told about — the button in
-            front of them is the control, and these are how it asks. */}
+        {/* Out of sight and out of the tab order: the two buttons below are the
+            controls, and these are how they ask. */}
         <input
           ref={cameraRef}
           type="file"
@@ -383,18 +275,8 @@ export default function PostModal({ isOpen, coords, place, post = null, onClose,
           capture="environment"
           className={styles.file}
           onChange={handleChange}
-          tabIndex={-1}
-          aria-hidden="true"
         />
-        <input
-          ref={albumRef}
-          type="file"
-          accept="image/*"
-          className={styles.file}
-          onChange={handleChange}
-          tabIndex={-1}
-          aria-hidden="true"
-        />
+        <input ref={albumRef} type="file" accept="image/*" className={styles.file} onChange={handleChange} />
 
         {image ? (
           <div className={styles.frame}>
