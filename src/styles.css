@@ -347,6 +347,21 @@ a {
     grid-column: 3 / span 2;
     grid-row: 1 / span 2;
   }
+
+  /* And the last one is placed by hand too, in the weaker way: not pinned to a
+     cell, only sent to the end of the queue the auto-placement works through.
+     Two panels to a row means the one after the trends list lands to its right,
+     which is also the slot directly under the posts panel — so the two readings
+     of the same map end up in one column, and the trends list keeps the left.
+
+     In one column there is no left or right and this does nothing: the panels
+     read in the order they are written, which is the posts and then the people
+     on the same ground. Same trick as the pinned panel above, for the same
+     reason — where a panel belongs on a wide grid is not the order it belongs
+     in on a phone. */
+  .home-main .card-grid > .panel-trail {
+    order: 1;
+  }
 }
 
 /* Holds the map's slot in the grid while mapbox-gl is still on the wire, so the

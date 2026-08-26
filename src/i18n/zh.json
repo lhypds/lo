@@ -76,7 +76,10 @@
     "places": "你的周边",
     "empty": "附近暂无可报道的内容",
     "unavailable": "无法连接新闻服务",
-    "loading": "正在读取周边"
+    "loading": "正在读取周边",
+    "tags": {
+      "events": "活动"
+    }
   },
   "warnings": {
     "title": "预警",
@@ -192,6 +195,10 @@
     "nearby": "附近的 posts",
     "subtitle": "附近的 posts",
     "empty": "附近还没有 post"
+  },
+  "people": {
+    "nearby": "附近的人",
+    "empty": "附近暂时没有其他人"
   },
   "search": {
     "marks": "搜索你的记录",

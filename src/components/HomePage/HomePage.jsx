@@ -9,6 +9,7 @@ import HereStrip from "../HereStrip/index.js";
 import LocationGate from "../LocationGate/index.js";
 import MarkButton from "../MarkButton/index.js";
 import NewsCard from "../NewsCard/index.js";
+import PeopleCard from "../PeopleCard/index.js";
 import PostModal from "../PostModal/index.js";
 import PostsCard from "../PostsCard/index.js";
 import TrendsCard from "../TrendsCard/index.js";
@@ -131,6 +132,11 @@ export default function HomePage() {
               unconditional — the same reason the mark button is. It reads the
               list the map above it is already drawing. */}
           <PostsCard />
+          {/* The other half of what the map is drawing, under the half that
+              reads its squares: the ringed dots are people, and who they are is
+              a list as much as the posts are. Unconditional for the same reason
+              — presence is lo's own and stops at no border. */}
+          <PeopleCard />
           {supports("trends") && <TrendsCard />}
         </div>
       </main>

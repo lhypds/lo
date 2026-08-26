@@ -76,7 +76,10 @@
     "places": "Around you",
     "empty": "Nothing to report around here",
     "unavailable": "Could not reach the news service",
-    "loading": "Reading the neighbourhood"
+    "loading": "Reading the neighbourhood",
+    "tags": {
+      "events": "Events"
+    }
   },
   "warnings": {
     "title": "Warnings",
@@ -192,6 +195,10 @@
     "nearby": "Nearby posts",
     "subtitle": "what is around you",
     "empty": "No posts around here yet"
+  },
+  "people": {
+    "nearby": "Nearby people",
+    "empty": "Nobody else out here right now"
   },
   "search": {
     "marks": "Search your marks",

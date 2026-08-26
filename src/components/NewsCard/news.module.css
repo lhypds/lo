@@ -60,6 +60,24 @@
   margin-right: 8px;
 }
 
+/* What the row is, rather than one more thing about it, so it is set as a
+   filled slab instead of another word in the grey run of source and time. The
+   box is its own separator — the middot the rule above would put in front of it
+   reads as a third item in the list, so it is dropped for this one. */
+.tag {
+  flex: none;
+  padding: 0 4px;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  line-height: 1.6;
+}
+
+.itemMeta > .tag::before {
+  content: none;
+}
+
 .empty {
   margin: 0;
   padding: 34px 12px;
@@ -76,5 +94,12 @@
 
   .item:hover .itemMeta {
     color: var(--paper);
+  }
+
+  /* The row goes black under the pointer, which would swallow a black box
+     whole; the slab keeps its weight by turning over with it. */
+  .item:hover .tag {
+    background: var(--paper);
+    color: var(--ink);
   }
 }

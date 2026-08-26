@@ -76,7 +76,10 @@
     "places": "あなたの周り",
     "empty": "この辺りに伝えることはありません",
     "unavailable": "ニュースサービスに接続できません",
-    "loading": "周辺を読み込み中"
+    "loading": "周辺を読み込み中",
+    "tags": {
+      "events": "イベント"
+    }
   },
   "warnings": {
     "title": "警報・注意報",
@@ -192,6 +195,10 @@
     "nearby": "近くの posts",
     "subtitle": "近くの posts",
     "empty": "近くにまだ post はありません"
+  },
+  "people": {
+    "nearby": "近くの人",
+    "empty": "いま近くに他の人はいません"
   },
   "search": {
     "marks": "記録を検索",

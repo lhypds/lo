@@ -39,7 +39,7 @@ export default function PostsCard() {
       title={t("posts.nearby")}
       meta={Number.isFinite(nearest) ? formatDistance(nearest) : null}
       wide
-      square
+      half
       flush
     >
       <div className={styles.scroll}>

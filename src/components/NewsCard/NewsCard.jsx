@@ -23,22 +23,35 @@ function coordKey(coords) {
 // Which of them a country has is still the server's answer, so an edition that
 // only covers one of the two is read for that one alone rather than counted as
 // half a failure.
+//
+// Merging the two cost the reader the one thing the split did tell them: which
+// rows were the answer to "what is on". A feed with a `tag` puts that back as a
+// word on the row itself — the plain newswire has none, because "news" is what
+// the card is called and a label saying so would be on every row.
 const FEEDS = [
   { component: "nearby", fetch: api.getNearby },
-  { component: "events", fetch: api.getEvents },
+  { component: "events", fetch: api.getEvents, tag: "events" },
 ];
 
 // The same story from both feeds is one story — an article about a festival is
 // news as well as an event, and the newswire hands it over twice. The server
 // dedupes within a feed; across the two, the URL is the same article.
-function merge(answers) {
-  const seen = new Set();
+function merge(replies) {
+  const byUrl = new Map();
   const items = [];
-  for (const answer of answers) {
+  for (const { feed, answer } of replies) {
     for (const item of answer?.items ?? []) {
-      if (seen.has(item.url)) continue;
-      seen.add(item.url);
-      items.push(item);
+      const kept = byUrl.get(item.url);
+      // A story the plain feed got to first is still an event if the events
+      // feed also carries it — the label follows the story, not the order the
+      // two answers happened to arrive in.
+      if (kept) {
+        if (feed.tag) kept.tag = feed.tag;
+        continue;
+      }
+      const tagged = { ...item, tag: feed.tag ?? null };
+      byUrl.set(item.url, tagged);
+      items.push(tagged);
     }
   }
   // Newest first, which is the order each feed already arrives in and the only
@@ -74,17 +87,23 @@ export default function NewsCard() {
     // nothing at all to show says so.
     Promise.all(
       feedsRef.current.map((feed) =>
-        feed.fetch(coords).catch((requestError) => ({ failed: requestError })),
+        feed.fetch(coords).then(
+          (answer) => ({ feed, answer }),
+          (requestError) => ({ feed, failed: requestError }),
+        ),
       ),
-    ).then((answers) => {
+    ).then((replies) => {
       if (ticket !== requestRef.current) return;
-      const answered = answers.filter((answer) => !answer.failed);
+      const answered = replies.filter((reply) => !reply.failed);
       setResult(
         answered.length > 0
-          ? { items: merge(answered), place: answered.find((answer) => answer.place)?.place ?? null }
+          ? {
+              items: merge(answered),
+              place: answered.find((reply) => reply.answer?.place)?.answer.place ?? null,
+            }
           : null,
       );
-      setError(answered.length > 0 ? null : (answers[0]?.failed ?? null));
+      setError(answered.length > 0 ? null : (replies[0]?.failed ?? null));
       setLoading(false);
     });
     // The fix jitters constantly; the rounded key and the language are the only
@@ -117,6 +136,7 @@ export default function NewsCard() {
               <span className={styles.itemMeta}>
                 <span className={styles.source}>{item.source}</span>
                 {item.time && <time dateTime={item.time}>{relativeTime(item.time, language, t)}</time>}
+                {item.tag && <span className={styles.tag}>{t(`news.tags.${item.tag}`)}</span>}
                 {Number.isFinite(item.distance) && <span>{formatDistance(item.distance)}</span>}
               </span>
             </a>

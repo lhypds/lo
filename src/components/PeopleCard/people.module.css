@@ -1,0 +1,76 @@
+/* The posts panel's width and half its height, sitting directly under it: a
+   person is one line where a post is two or three, so the same tile holds more
+   of them than it would posts. Scroll chaining is left on for the reason it is
+   left on there — this is a small window inside a page that scrolls, and
+   containing the gesture strands a thumb that has run the list to its end. */
+.scroll {
+  height: 100%;
+  overflow-y: auto;
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.list li + li {
+  border-top: 1px solid var(--line);
+}
+
+/* One line: the name takes what it needs, the reading of it sits hard right, and
+   nothing here is pressable — so no hover state, unlike the rows of posts and
+   headlines that go somewhere. */
+.item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 10px;
+}
+
+/* The grey disc the map marks a person with, at the size it draws it. Without
+   the map's white ring: that ring is there to lift the dot off road fill and
+   satellite imagery, and against paper it only makes the dot look like a badge.
+   The row is aligned on the baseline, so an empty box of this height stands on
+   it — 10px against the name's 9px of x-height, which is a bullet. */
+.dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #666;
+}
+
+.who {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.itemMeta {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-left: auto;
+  padding-left: 8px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.itemMeta > * + *::before {
+  content: "·";
+  margin-right: 8px;
+}
+
+.empty {
+  margin: 0;
+  padding: 34px 12px;
+  color: var(--muted);
+  text-align: center;
+  font-size: 11px;
+}

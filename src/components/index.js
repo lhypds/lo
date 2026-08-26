@@ -16,6 +16,7 @@ export { default as MarkItem } from "./MarkItem/index.js";
 export { default as MarkModal } from "./MarkModal/index.js";
 export { default as MarksPage } from "./MarksPage/index.js";
 export { default as NewsCard } from "./NewsCard/index.js";
+export { default as PeopleCard } from "./PeopleCard/index.js";
 export { default as PostItem } from "./PostItem/index.js";
 export { default as PostModal } from "./PostModal/index.js";
 export { default as PostsCard } from "./PostsCard/index.js";
