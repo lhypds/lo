@@ -141,6 +141,7 @@
    pin has to read against road fill and park green, and neither of those knows
    about dark mode. */
 .markPin {
+  position: relative;
   width: 20px;
   height: 18px;
   cursor: pointer;
@@ -166,6 +167,37 @@
 .postDot:hover {
   background: #000;
   color: #fff;
+}
+
+/* The name on a mark somebody renamed, drawn as the people's names are drawn —
+   same mono, same hairline box, same fixed black and white, and fixed for the
+   same reason: it has to read against road fill and park green, neither of which
+   knows about dark mode.
+
+   Lifted out of the pin's flow and hung under its point, so a long name cannot
+   drag the pin off the spot it is reporting. 96px of it at most — a third of the
+   square tile — and the rest is a hover away in the bubble, which is where the
+   whole name, the coordinates and the time are anyway. */
+.markName {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 50%;
+  max-width: 96px;
+  transform: translateX(-50%);
+  padding: 1px 4px;
+  border: 1px solid #000;
+  background: #fff;
+  color: #000;
+  font-family: var(--mono);
+  font-size: 10px;
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  /* Wider than the pin by some way. Letting it take the pointer would put a bite
+     out of the map under every named spot, and would open the bubble from a
+     sticker rather than from the pin the bubble is about. */
+  pointer-events: none;
 }
 
 /* However sure the device is about the fix: a wash and a hairline, sized in
@@ -221,8 +253,14 @@
   z-index: 4;
 }
 
+/* Deaf to the pointer, which is what opens it: nothing in one of these bubbles
+   is to be pressed, and one that took the pointer would sit between the pin and
+   the reader — entered, the pin is left and the bubble closes; closed, the pin
+   is entered again and it opens, over and over. It is out of the way of a drag
+   across the map for the same reason. */
 .wrapper :global(.mapboxgl-popup) {
   z-index: 5;
+  pointer-events: none;
 }
 
 /* Mapbox's own chrome, squared off to match everything around it */
@@ -307,4 +345,39 @@
   font-family: var(--mono);
   font-size: 10px;
   color: var(--muted);
+}
+
+/* A post's popup is the mark's with a picture on top of it, and it is given a
+   width to work with: a mark's bubble is a name and two short numbers, where
+   this one is somebody's sentence and has to be told where to wrap. */
+.postPopup {
+  width: 180px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Wide as the bubble and cropped rather than fitted: what it is here to answer
+   is "which post is this", and a picture letterboxed down to a strip answers it
+   worse than a crop of the middle of it does. */
+.postPopupImage {
+  width: 100%;
+  height: 96px;
+  margin-bottom: 4px;
+  display: block;
+  border: 1px solid var(--ink);
+  object-fit: cover;
+}
+
+/* Three lines of it, then the rest is what opening it is for */
+.postPopupText {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.4;
+  /* The words are the reader's own, wrapped at 180px: a pasted link with no
+     spaces in it would otherwise push the bubble off the side of the tile. */
+  overflow-wrap: anywhere;
 }

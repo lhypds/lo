@@ -560,6 +560,207 @@ function fetchWarnPage(page) {
   });
 }
 
+// A warning says nothing about when it lifts — the JMA issues it and later
+// cancels it, and neither the prefecture page nor the agency's own feed carries
+// an end time. What the municipality's page does carry is 今後の推移: the next day
+// and a half, in three-hour columns, one row per hazard, each cell shaded with
+// the strength forecast for it. The run of cells at the warning's own strength is
+// the closest thing to "from when, until when" that exists — a forecast window
+// rather than a validity period, which is why the card labels it as the outlook.
+const TIME_TABLE_RE = /<table class="warnDetail_timeTable">([\s\S]*?)<\/table>/;
+const DAY_ROW_RE = /<tr class="warnDetail_timeTable_row-day">([\s\S]*?)<\/tr>/;
+const HOUR_ROW_RE = /<tr class="warnDetail_timeTable_row-time">([\s\S]*?)<\/tr>/;
+const HAZARD_ROW_RE = /<tr class="warnDetail_timeTable_row-hazard">([\s\S]*?)<\/tr>/g;
+const HEAD_CELL_RE = /<th(?:\s+colspan="(\d+)")?[^>]*>([\s\S]*?)<\/th>/g;
+const BODY_CELL_RE = /<td\s+class="([^"]*)"(?:\s+colspan="(\d+)")?/g;
+const HAZARD_NAME_RE = /<em>([^<]*)<\/em>/;
+// Every cell carries its strength in its class name. The four bands are the four
+// severities; 通常 and 予報期間外 are the two ways of being no warning at all, and
+// they are kept apart because a run that ends at the edge of the forecast has not
+// been forecast to end. Anything else — the rainfall row, which is millimetres
+// rather than a strength — reads as nothing.
+const CELL_KINDS = {
+  emgWarning: "emergency",
+  urgentWarning: "urgent",
+  warning: "warning",
+  advisory: "advisory",
+  normal: "normal",
+  outside: "outside",
+};
+const CELL_KIND_RE = /warnDetail_timeTable_cell-(\w+)/;
+const CELL_MS = 3 * 60 * 60 * 1000;
+// Weakest last: strongest() folds a hazard split across rows — 陸上 and 海上 wind
+// — into the one series a reader standing in the municipality is under.
+const KIND_STRENGTH = [...WARN_SEVERITIES, "normal", "outside"];
+
+// The 日付 and 時間 rows both lead with a label cell, which is not a column.
+function headCells(row) {
+  return [...row.matchAll(HEAD_CELL_RE)]
+    .map((cell) => ({ span: Number(cell[1] ?? 1), text: cell[2] }))
+    .slice(1);
+}
+
+// A day spans four columns and a hazard's quiet spell may span several: colspan
+// is undone so every row is one entry per column, aligned with every other.
+function expandCells(cells, value) {
+  const out = [];
+  for (const cell of cells) {
+    for (let i = 0; i < cell.span; i += 1) out.push(value(cell));
+  }
+  return out;
+}
+
+// The table gives days and hours, never a month — the bulletin time supplies
+// that, and a column whose day has gone backwards has crossed into the next one.
+function tableColumns(dayRow, hourRow, issuedAt) {
+  const base = /^(\d{4})-(\d{2})-(\d{2})/.exec(firstString(issuedAt));
+  if (!base) return null;
+  const days = expandCells(headCells(dayRow), (cell) => Number(/(\d+)日/.exec(cell.text)?.[1]));
+  const hours = headCells(hourRow).map((cell) => Number(/(\d+)/.exec(cell.text)?.[1]));
+  if (days.length === 0 || days.length !== hours.length) return null;
+  if ([...days, ...hours].some((value) => !Number.isFinite(value))) return null;
+
+  let year = Number(base[1]);
+  let month = Number(base[2]);
+  const pad = (value) => String(value).padStart(2, "0");
+  const columns = hours.map((hour, index) => {
+    if (index > 0 && days[index] < days[index - 1]) {
+      month += 1;
+      if (month > 12) {
+        month = 1;
+        year += 1;
+      }
+    }
+    // JST is written out rather than assumed: the times go back as instants, and
+    // the card is free to show them in whatever zone it is read in.
+    return Date.parse(`${year}-${pad(month)}-${pad(days[index])}T${pad(hour)}:00:00+09:00`);
+  });
+  return columns.some(Number.isNaN) ? null : columns;
+}
+
+function parseTimeTable(html, issuedAt) {
+  const table = TIME_TABLE_RE.exec(html);
+  const dayRow = table && DAY_ROW_RE.exec(table[1]);
+  const hourRow = table && HOUR_ROW_RE.exec(table[1]);
+  if (!dayRow || !hourRow) return null;
+  const columns = tableColumns(dayRow[1], hourRow[1], issuedAt);
+  if (!columns) return null;
+
+  const rows = [];
+  for (const row of table[1].matchAll(HAZARD_ROW_RE)) {
+    const name = HAZARD_NAME_RE.exec(row[1])?.[1]?.trim();
+    const cells = [...row[1].matchAll(BODY_CELL_RE)].map((cell) => ({
+      span: Number(cell[2] ?? 1),
+      kind: CELL_KINDS[CELL_KIND_RE.exec(cell[1])?.[1]] ?? null,
+    }));
+    const kinds = expandCells(cells, (cell) => cell.kind);
+    // A row that is the wrong length is a row this code has misread, and a row
+    // with no strength in it — 1時間最大雨量 — is not a hazard's row at all.
+    if (!name || kinds.length !== columns.length) continue;
+    if (kinds.some((kind) => WARN_SEVERITIES.includes(kind))) rows.push({ name, kinds });
+  }
+  return rows.length > 0 ? { columns, rows } : null;
+}
+
+// The timetable files a hazard under the name of the thing forecast, which is not
+// always the name of the warning: 大雨 is 大雨浸水 with the rain beside it, 波浪 is
+// 波, and wind comes as 陸上 and 海上 rows under one heading. Tried in order, and
+// a hazard with no row of its own — 洪水, which the JMA times nowhere — is left
+// without a window rather than given the rain's.
+const WARN_ROW_NAMES = {
+  大雨: ["大雨"],
+  洪水: ["洪水"],
+  暴風: ["暴風", "強風", "風"],
+  強風: ["強風", "暴風", "風"],
+  暴風雪: ["暴風雪", "風雪", "暴風", "強風"],
+  風雪: ["風雪", "暴風雪", "強風", "暴風"],
+  大雪: ["大雪", "降雪", "雪"],
+  波浪: ["波"],
+  高潮: ["高潮", "潮位"],
+  雷: ["雷"],
+  融雪: ["融雪"],
+  濃霧: ["濃霧", "霧"],
+  乾燥: ["乾燥"],
+  なだれ: ["なだれ"],
+  低温: ["低温", "気温"],
+  霜: ["霜", "最低気温"],
+  着氷: ["着氷"],
+  着雪: ["着雪"],
+  土砂災害: ["土砂災害"],
+};
+
+function hazardRows(rows, name) {
+  const candidates = WARN_ROW_NAMES[name] ?? [name];
+  for (const candidate of candidates) {
+    const exact = rows.filter((row) => row.name === candidate);
+    if (exact.length > 0) return exact;
+  }
+  // 大雨 filed as 大雨浸水, 強風 as 強風陸上 — the warning's name leads the row's.
+  for (const candidate of candidates) {
+    const inside = rows.filter((row) => row.name.startsWith(candidate));
+    if (inside.length > 0) return inside;
+  }
+  return [];
+}
+
+function strongest(a, b) {
+  if (a == null) return b;
+  if (b == null) return a;
+  return KIND_STRENGTH.indexOf(a) <= KIND_STRENGTH.indexOf(b) ? a : b;
+}
+
+// The stretch the hazard is forecast to spend at this warning's own strength —
+// the one covering now if the table reaches that far, otherwise the next one.
+// Weaker cells are not part of it: a 警報 that softens to a 注意報 at nine has
+// stopped being the thing the row is announcing.
+function warningWindow(table, item) {
+  const rows = hazardRows(table.rows, item.name);
+  if (rows.length === 0) return null;
+  const rank = WARN_SEVERITIES.indexOf(item.severity);
+  const merged = table.columns.map((_, index) =>
+    rows.reduce((kind, row) => strongest(kind, row.kinds[index]), null),
+  );
+
+  const runs = [];
+  merged.forEach((kind, index) => {
+    const strength = WARN_SEVERITIES.indexOf(kind);
+    if (strength < 0 || strength > rank) return;
+    const last = runs[runs.length - 1];
+    if (last && last.end === index - 1) last.end = index;
+    else runs.push({ start: index, end: index });
+  });
+  if (runs.length === 0) return null;
+
+  const now = Date.now();
+  const run = runs.find((candidate) => table.columns[candidate.end] + CELL_MS > now) ?? runs[0];
+  // The forecast running out is not the warning ending: an open window says the
+  // outlook stops here, which is a different claim from "lifts at nine".
+  const open = run.end === merged.length - 1 || merged[run.end + 1] === "outside";
+  return {
+    from: new Date(table.columns[run.start]).toISOString(),
+    to: open ? null : new Date(table.columns[run.end] + CELL_MS).toISOString(),
+  };
+}
+
+// One extra request, for the municipality already matched — and the reason the
+// card can say more than the prefecture page knows. A page that will not parse
+// costs the rows their times and nothing else, so the failure is cached like any
+// other answer rather than retried on every reader.
+function fetchTimeTable(url, issuedAt) {
+  return cached(`warn-times:${url}`, WARN_TTL_MS, async () =>
+    parseTimeTable(await getText(url, "text/html"), issuedAt),
+  );
+}
+
+async function withWindows(url, items, issuedAt) {
+  if (items.length === 0) return items;
+  const table = await fetchTimeTable(url, issuedAt).catch(() => null);
+  if (!table) return items;
+  // Copied rather than written into: these items are the cached prefecture
+  // page's own objects, shared with every other fix inside it.
+  return items.map((item) => ({ ...item, ...(warningWindow(table, item) ?? {}) }));
+}
+
 function warnPages(subdivisionCode) {
   const match = /^JP-(\d{2})$/.exec(firstString(subdivisionCode).toUpperCase());
   if (!match) return [];
@@ -688,18 +889,21 @@ export function lookupWarnings(latitude, longitude) {
       const area = matchArea(areas, names);
       if (!area) continue;
       if (area.items.length === 0 && region) return regionWarningResult(region, searched);
+      // The municipality's own page, which is the reading behind the row: the
+      // JIS code Yahoo puts on a warning is the town code with two digits of
+      // detail after it, and the page is filed under the town — as a number,
+      // so Hokkaido's leading zero has to go (0110000 → 1100, not 01100).
+      const url = `${WARN_HOST}/${page}/${Number(area.code.slice(0, 5))}/`;
       return {
         covered: true,
         scope: "municipality",
         area: area.name,
         prefecture,
         issuedAt: area.issuedAt,
-        // The municipality's own page, which is the reading behind the row: the
-        // JIS code Yahoo puts on a warning is the town code with two digits of
-        // detail after it, and the page is filed under the town — as a number,
-        // so Hokkaido's leading zero has to go (0110000 → 1100, not 01100).
-        url: `${WARN_HOST}/${page}/${Number(area.code.slice(0, 5))}/`,
-        items: area.items,
+        url,
+        // The one place a from-and-until can be had: 今後の推移 is per
+        // municipality, so the wider answers below go without it.
+        items: await withWindows(url, area.items, area.issuedAt),
       };
     }
 

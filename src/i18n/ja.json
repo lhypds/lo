@@ -90,7 +90,9 @@
     "unavailable": "Yahoo!天気・災害に接続できません",
     "loading": "警報を確認中",
     "issued": "{{time}}発表",
-    "source": "Yahoo!天気・災害",
+    "level": "レベル{{level}}",
+    "window": "推移 {{from}}〜{{to}}",
+    "windowOpen": "推移 {{from}}〜",
     "severity": {
       "emergency": "特別警報",
       "urgent": "危険警報",

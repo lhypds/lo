@@ -30,12 +30,22 @@
   border-top: 1px solid var(--line);
 }
 
+/* The whole row is the link to the bulletin — the words, the clock and the
+   ground under them, so there is nothing small to aim at */
+.item {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Tight underneath: the detail below is the same warning continued, not the next
+   thing, so the space between them is smaller than the space around the pair */
 .row {
   display: flex;
   width: 100%;
   align-items: center;
   gap: 8px;
-  padding: 7px 10px;
+  padding: 8px 10px 2px;
   color: inherit;
   text-align: left;
 }
@@ -86,6 +96,7 @@
 
 .gravest .areas,
 .gravest .severity,
+.gravest .level,
 .gravest .detail {
   color: var(--paper);
 }
@@ -99,20 +110,34 @@
   font-size: 10px;
 }
 
+/* 警戒レベル, boxed: it is a position on a five-step scale, and a number loose in
+   a row of words reads as neither */
+.level {
+  flex: none;
+  padding: 0 4px;
+  border: 1px solid currentColor;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.4;
+}
+
+/* Under the row and indented past the mark: when it runs from and until, then
+   where — the two things the three words above leave out */
 .detail {
+  display: flex;
+  flex-direction: column;
   padding: 0 10px 8px 25px;
   color: var(--muted);
   font-size: 10px;
   line-height: 1.5;
 }
 
-.detail p {
-  margin: 0 0 3px;
-}
-
-.detail a {
-  color: inherit;
+/* The hours, set in the mono face the rest of the card's numbers are in */
+.outlook {
   font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
 }
 
 /* Nothing in force, still checking, or unreachable — all three are one quiet
@@ -125,29 +150,43 @@
   font-size: 11px;
 }
 
-/* Where it came from, pinned to the bottom edge: also the way through to the
-   bulletin, which has the detail three words cannot carry */
-.source {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
+/* When the bulletin was issued, pinned to the bottom edge: on a card whose
+   answer expires, how old the answer is belongs in view */
+.issued {
   flex: none;
+  margin: 0;
   padding: 7px 10px;
   border-top: 1px solid var(--line);
   color: var(--muted);
   font-family: var(--mono);
   font-size: 10px;
-  text-decoration: none;
-}
-
-.source time {
-  flex: none;
 }
 
 @media (hover: hover) {
-  .source:hover {
+  /* Inverted under the pointer, the way every other list of links on the
+     dashboard answers — and inverted back on the 特別警報 row, which is already
+     the other way up */
+  .item:hover {
     background: var(--ink);
     color: var(--paper);
+  }
+
+  .item:hover .areas,
+  .item:hover .severity,
+  .item:hover .level,
+  .item:hover .detail {
+    color: var(--paper);
+  }
+
+  .gravest .item:hover {
+    background: var(--paper);
+    color: var(--ink);
+  }
+
+  .gravest .item:hover .areas,
+  .gravest .item:hover .severity,
+  .gravest .item:hover .level,
+  .gravest .item:hover .detail {
+    color: var(--muted);
   }
 }

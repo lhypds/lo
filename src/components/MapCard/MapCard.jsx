@@ -110,7 +110,7 @@ function personElement(username, self = false) {
 const STROKE_UNITS = 1.2;
 const MARK_VIEWBOX = `0 0 24 ${MARK_PIN_TIP_Y + STROKE_UNITS / 2}`;
 
-function markElement() {
+function markElement(label = "") {
   const pin = document.createElement("div");
   pin.className = styles.markPin;
   const glyph = document.createElementNS(SVG_NS, "svg");
@@ -124,6 +124,18 @@ function markElement() {
   for (const [name, value] of Object.entries(MARK_PIN_EYE)) eye.setAttribute(name, value);
   glyph.append(body, eye);
   pin.append(glyph);
+  // A name the reader typed stays on the map, the way the people's do: a spot
+  // they chose and named is not one they should have to hover to tell from the
+  // pin beside it. Only a typed one — a mark left as it was found is wearing the
+  // place name the server guessed, and a map already saying "Shinjuku" in its
+  // own type does not need lo repeating it on a sticker. That one, and the
+  // coordinates and the time with it, is what the bubble is for.
+  if (label) {
+    const name = document.createElement("span");
+    name.className = styles.markName;
+    name.textContent = label;
+    pin.append(name);
+  }
   return pin;
 }
 
@@ -152,6 +164,58 @@ function markPopupElement(name, coords, iso, when) {
   time.textContent = when;
   wrapper.append(label, position, time);
   return wrapper;
+}
+
+// A post's bubble is the row from the list, in the order a passer-by reads it:
+// the picture first, since on the map the square was standing in for it, then
+// what was written and by whom. It is a preview and not the post — the words
+// are clamped and the picture is small — and the click that opens it properly
+// is still there underneath.
+function postPopupElement(post, headline, byline, iso, when) {
+  const wrapper = document.createElement("div");
+  wrapper.className = styles.postPopup;
+  if (post.image) {
+    const image = document.createElement("img");
+    image.className = styles.postPopupImage;
+    image.src = post.image;
+    // The picture is the post's own content, and the lines under it already say
+    // everything about it there is to read out.
+    image.alt = "";
+    image.loading = "lazy";
+    wrapper.append(image);
+  }
+  const label = document.createElement("strong");
+  label.className = styles.postPopupText;
+  label.textContent = headline;
+  const who = document.createElement("span");
+  who.className = styles.markPopupMeta;
+  who.textContent = byline;
+  const time = document.createElement("time");
+  time.className = styles.markPopupMeta;
+  time.dateTime = iso;
+  time.textContent = when;
+  wrapper.append(label, who, time);
+  return wrapper;
+}
+
+// Everything on the map that carries a bubble opens it on a click, which is
+// Mapbox's own doing and is the only answer a touchscreen has — there is no
+// hover there to open anything with. Where there is a pointer, resting it on a
+// pin is a cheaper question than clicking one, so the bubble follows the pointer
+// instead and the click is left to mean what it means elsewhere: on a post it
+// opens the post. It is also stopped short of the map, which would otherwise
+// read it as a second toggle and shut the bubble the pointer is holding open.
+function previewOnHover(marker) {
+  if (!window.matchMedia("(hover: hover)").matches) return marker;
+  const element = marker.getElement();
+  element.addEventListener("mouseenter", () => {
+    if (!marker.getPopup()?.isOpen()) marker.togglePopup();
+  });
+  element.addEventListener("mouseleave", () => {
+    if (marker.getPopup()?.isOpen()) marker.togglePopup();
+  });
+  element.addEventListener("click", (event) => event.stopPropagation());
+  return marker;
 }
 
 // `expanded` is owned by the page rather than by the map: expanding hides the
@@ -306,16 +370,18 @@ export default function MapCard({
     if (!map) return;
     peopleMarkersRef.current.forEach((marker) => marker.remove());
     peopleMarkersRef.current = people.map((person) =>
-      new mapboxgl.Marker({ element: personElement(person.username) })
-        .setLngLat([person.longitude, person.latitude])
-        .setPopup(
-          // The name is already on the label; what the label cannot say is how
-          // long ago the dot was true, which is the whole question here.
-          new mapboxgl.Popup({ closeButton: false, offset: 14 }).setText(
-            t("map.seen", { time: relativeTime(person.time, i18n.language, t) }),
-          ),
-        )
-        .addTo(map),
+      previewOnHover(
+        new mapboxgl.Marker({ element: personElement(person.username) })
+          .setLngLat([person.longitude, person.latitude])
+          .setPopup(
+            // The name is already on the label; what the label cannot say is how
+            // long ago the dot was true, which is the whole question here.
+            new mapboxgl.Popup({ closeButton: false, offset: 14 }).setText(
+              t("map.seen", { time: relativeTime(person.time, i18n.language, t) }),
+            ),
+          )
+          .addTo(map),
+      ),
     );
   }, [people, t, i18n.language]);
 
@@ -327,19 +393,22 @@ export default function MapCard({
     markMarkersRef.current.forEach((marker) => marker.remove());
     markMarkersRef.current = marks.map((mark) => {
       const name = mark.label || mark.place || t("marks.unnamed");
-      return new mapboxgl.Marker({ element: markElement(), anchor: "bottom" })
-        .setLngLat([mark.longitude, mark.latitude])
-        .setPopup(
-          new mapboxgl.Popup({ closeButton: false, offset: 16 }).setDOMContent(
-            markPopupElement(
-              name,
-              formatCoords(mark.latitude, mark.longitude),
-              mark.time,
-              formatDateTime(mark.time, i18n.language),
+      return previewOnHover(
+        // The label, not `name`: the pin wears only what somebody wrote on it.
+        new mapboxgl.Marker({ element: markElement(mark.label || ""), anchor: "bottom" })
+          .setLngLat([mark.longitude, mark.latitude])
+          .setPopup(
+            new mapboxgl.Popup({ closeButton: false, offset: 16 }).setDOMContent(
+              markPopupElement(
+                name,
+                formatCoords(mark.latitude, mark.longitude),
+                mark.time,
+                formatDateTime(mark.time, i18n.language),
+              ),
             ),
-          ),
-        )
-        .addTo(map);
+          )
+          .addTo(map),
+      );
     });
   }, [marks, t, i18n.language]);
 
@@ -347,9 +416,10 @@ export default function MapCard({
     selectPostRef.current = onSelectPost;
   }, [onSelectPost]);
 
-  // Posts, drawn the same wholesale way and for the same reason. There is no
-  // popup on these: a post is words and a photo, which is more than a bubble on
-  // a 300px tile can hold, so pressing one opens it properly instead.
+  // Posts, drawn the same wholesale way and for the same reason. The bubble on
+  // these is a preview and nothing more — a post is words and a photo, which is
+  // more than a bubble on a 300px tile can hold — so it says enough to tell one
+  // square from the next, and pressing one still opens it properly.
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -357,11 +427,31 @@ export default function MapCard({
     postMarkersRef.current = posts.map((post) => {
       const element = postElement();
       element.addEventListener("click", () => selectPostRef.current?.(post));
-      return new mapboxgl.Marker({ element, anchor: "bottom" })
-        .setLngLat([post.longitude, post.latitude])
-        .addTo(map);
+      // The same three things the row in the list carries, chosen the same way:
+      // a photo with no words is a whole post, and the line that would have held
+      // the words holds where it was taken instead.
+      const headline = post.body || post.place || formatCoords(post.latitude, post.longitude);
+      const byline = [formatUsername(post.username), post.body ? post.place : ""]
+        .filter(Boolean)
+        .join(" · ");
+      return previewOnHover(
+        new mapboxgl.Marker({ element, anchor: "bottom" })
+          .setLngLat([post.longitude, post.latitude])
+          .setPopup(
+            new mapboxgl.Popup({ closeButton: false, offset: 16 }).setDOMContent(
+              postPopupElement(
+                post,
+                headline,
+                byline,
+                post.time,
+                formatDateTime(post.time, i18n.language),
+              ),
+            ),
+          )
+          .addTo(map),
+      );
     });
-  }, [posts]);
+  }, [posts, i18n.language]);
 
   // A list map opens on the whole list: one fit over every pin it was given, so
   // a mark left in another city — or a post two suburbs over — is on screen

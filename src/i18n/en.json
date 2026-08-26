@@ -90,7 +90,9 @@
     "unavailable": "Could not reach Yahoo! 天気・災害",
     "loading": "Reading the warnings",
     "issued": "issued {{time}}",
-    "source": "Yahoo! 天気・災害",
+    "level": "Level {{level}}",
+    "window": "Outlook {{from}} – {{to}}",
+    "windowOpen": "Outlook from {{from}}",
     "severity": {
       "emergency": "Emergency warning",
       "urgent": "Danger warning",

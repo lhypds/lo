@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
 import { Card } from "../../ui/index.js";
 import { relativeTime } from "../../utils/format.js";
-import { warningKindKey } from "../../utils/warnings.js";
+import { formatWarningWindow, warningKindKey, warningLevel } from "../../utils/warnings.js";
 import { useHere } from "../LocationProvider/index.js";
 import styles from "./warnings.module.css";
 
@@ -76,42 +76,68 @@ export default function Warnings() {
           const areaNames = item.areaNames?.length ? item.areaNames : [result.area].filter(Boolean);
           const areaPreview = areaNames.slice(0, 8).join("、");
           const remainingAreas = areaNames.length - 8;
+          const level = warningLevel(item.severity);
+          // Only the municipality answer carries a window, and only for a hazard
+          // the outlook table has a row for — the rest of the rows go without.
+          const outlook = formatWarningWindow(item.from, item.to, i18n.language);
           return (
             <li
               key={itemKey}
               className={item.severity === "emergency" ? styles.gravest : undefined}
             >
-              <div
-                className={styles.row}
+              {/* The row itself is the way through to the bulletin: three words
+                  and a clock cannot carry what the page behind them says, and a
+                  warning is not the place to make a reader hunt for the link. */}
+              <a
+                className={styles.item}
+                href={result.url}
+                target="_blank"
+                rel="noreferrer noopener"
               >
-                {/* Filled for anything at warning strength, hollow for an
-                    advisory: the word beside it is the claim, this is only what
-                    the eye catches first. */}
-                <span
-                  className={item.severity === "advisory" ? styles.markHollow : styles.mark}
-                  aria-hidden="true"
-                />
-                <span className={styles.kind}>{kindKey ? t(kindKey) : item.name}</span>
-                {/* A wider answer, because the fix had no local warning — so each
-                    row says how much of that wider area it actually covers. */}
-                {item.areas != null && (
-                  <span className={styles.areas}>
-                    {item.areas}/{result.areaCount}
-                  </span>
-                )}
-                <span className={styles.severity}>{t(`warnings.severity.${item.severity}`)}</span>
-              </div>
-              <div className={styles.detail}>
-                {areaPreview && (
-                  <p>
-                    {areaPreview}
-                    {remainingAreas > 0 ? ` +${remainingAreas}` : ""}
-                  </p>
-                )}
-                <a href={result.url} target="_blank" rel="noreferrer noopener">
-                  {t("warnings.source")}
-                </a>
-              </div>
+                <span className={styles.row}>
+                  {/* Filled for anything at warning strength, hollow for an
+                      advisory: the word beside it is the claim, this is only what
+                      the eye catches first. */}
+                  <span
+                    className={item.severity === "advisory" ? styles.markHollow : styles.mark}
+                    aria-hidden="true"
+                  />
+                  <span className={styles.kind}>{kindKey ? t(kindKey) : item.name}</span>
+                  {/* A wider answer, because the fix had no local warning — so
+                      each row says how much of that wider area it covers. */}
+                  {item.areas != null && (
+                    <span className={styles.areas}>
+                      {item.areas}/{result.areaCount}
+                    </span>
+                  )}
+                  <span className={styles.severity}>{t(`warnings.severity.${item.severity}`)}</span>
+                  {/* 警戒レベル, the number the country's evacuation advice is
+                      written against — the word beside it says what was issued,
+                      this says how far up the scale it is. */}
+                  {level != null && (
+                    <span className={styles.level}>{t("warnings.level", { level })}</span>
+                  )}
+                </span>
+                <span className={styles.detail}>
+                  {/* From when until when it is forecast to stay this strong, on
+                      Tokyo's clock. An end the forecast never reaches is left
+                      open, because the outlook running out is not the warning
+                      lifting. */}
+                  {outlook && (
+                    <time className={styles.outlook} dateTime={item.from}>
+                      {outlook.to
+                        ? t("warnings.window", { from: outlook.from, to: outlook.to })
+                        : t("warnings.windowOpen", { from: outlook.from })}
+                    </time>
+                  )}
+                  {areaPreview && (
+                    <span>
+                      {areaPreview}
+                      {remainingAreas > 0 ? ` +${remainingAreas}` : ""}
+                    </span>
+                  )}
+                </span>
+              </a>
             </li>
           );
         })}
@@ -123,22 +149,16 @@ export default function Warnings() {
     <Card title={t("warnings.title")} meta={result?.area} wide half flush>
       <div className={styles.inner}>
         <div className={styles.scroll}>{body}</div>
-        {/* Where it came from and when it was said, in one line that is also the
-            way through to the bulletin itself — a warning in three words wants
-            somewhere to read the rest. */}
-        <a
-          className={styles.source}
-          href={result?.url ?? "https://typhoon.yahoo.co.jp/weather/jp/warn/"}
-          target="_blank"
-          rel="noreferrer noopener"
-        >
-          <span>{t("warnings.source")}</span>
-          {result?.issuedAt && (
+        {/* When it was said, which on this card is half the answer: an hour-old
+            bulletin may have been lifted since. The way through to the reading
+            behind it is the row itself. */}
+        {result?.issuedAt && (
+          <p className={styles.issued}>
             <time dateTime={result.issuedAt}>
               {t("warnings.issued", { time: relativeTime(result.issuedAt, i18n.language, t) })}
             </time>
-          )}
-        </a>
+          </p>
+        )}
       </div>
     </Card>
   );
