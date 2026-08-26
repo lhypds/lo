@@ -50,15 +50,30 @@ export default function HomePage() {
 
   // A hold is also a request for a current position, the same way a tap on the
   // same button is: the post is pinned to the freshest fix the device can give.
-  // That fix is read back from the store, since `coords` here is the one this
-  // render closed over — exactly the position just superseded.
+  //
+  // But the sheet does not wait on it. That request is high-accuracy and refuses
+  // a cached fix, so it is a live reading of the sensor: iOS keeps its radio warm
+  // and answers in about the time it takes to lift a finger, and Android has to
+  // start the GPS and takes seconds over it. Waiting on it before opening made
+  // the hold look broken on Android — the sheet arrived so long after the press
+  // that it read as having been opened by letting go.
+  //
+  // So the sheet opens on the fix already in hand and the fresh one lands under
+  // it. Nothing is lost by that: what the post is filed under is read at submit,
+  // which is minutes of writing away, and the line at the top settles to the
+  // better fix while the first words are still being typed.
   async function compose() {
     if (!coords) {
       showToast(t("mark.needsLocation"));
       return;
     }
+    setComposing(coords);
     await refreshLocation().catch(() => {});
-    setComposing(getLocationState().coords ?? coords);
+    // Read back from the store, since `coords` here is the one this render
+    // closed over — exactly the position just superseded. A sheet already closed
+    // again is left closed: this answer belongs to a press that is over.
+    const fresh = getLocationState().coords;
+    if (fresh) setComposing((open) => (open ? fresh : open));
   }
 
   function created(post) {
