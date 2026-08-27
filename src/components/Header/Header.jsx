@@ -49,10 +49,7 @@ export default function Header({ back = false, backTo = "/", cards = false }) {
       <header className="topbar">
         <span className="topbar-brand">
           {back ? (
-            <ActionButton
-              tooltip={t(backTo === "/" ? "header.backHome" : "header.back")}
-              onClick={() => navigate(backTo)}
-            >
+            <ActionButton tooltip={t(backTo === "/" ? "header.backHome" : "header.back")} onClick={() => navigate(backTo)}>
               <svg viewBox="0 0 24 24">
                 <path d="m15 18-6-6 6-6" />
               </svg>
