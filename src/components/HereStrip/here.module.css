@@ -87,6 +87,24 @@
   white-space: nowrap;
 }
 
+.coordinates {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-variant-numeric: inherit;
+  white-space: inherit;
+}
+
+.coordinates:hover,
+.coordinates:focus-visible {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 /* The readout is nowrap and never gives ground, so on a narrow screen the width
    it takes comes out of the name — which wraps, and can afford to. All the phone
    needs is a smaller gutter between the two, so the name gets those pixels back

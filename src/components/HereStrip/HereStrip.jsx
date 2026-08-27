@@ -1,4 +1,6 @@
 import { useTranslation } from "react-i18next";
+import { showToast } from "../../ui/index.js";
+import { copyText } from "../../utils/clipboard.js";
 import { formatAccuracy, formatCoords, relativeTime } from "../../utils/format.js";
 import { useHere } from "../LocationProvider/index.js";
 import styles from "./here.module.css";
@@ -14,6 +16,12 @@ export default function HereStrip() {
   const detail = [place?.locality && place.locality !== place?.name ? place.locality : null, place?.region]
     .filter(Boolean)
     .join(" · ");
+  const coordinateText = formatCoords(coords.latitude, coords.longitude);
+
+  async function copyCoordinates() {
+    const copied = await copyText(coordinateText);
+    showToast(t(copied ? "location.coordinatesCopied" : "location.coordinatesCopyFailed"), 1800);
+  }
 
   return (
     <section className={styles.strip} aria-label={t("location.title")}>
@@ -35,7 +43,17 @@ export default function HereStrip() {
       <dl className={styles.readout}>
         <div>
           <dt className="sr-only">{t("location.title")}</dt>
-          <dd>{formatCoords(coords.latitude, coords.longitude)}</dd>
+          <dd>
+            <button
+              type="button"
+              className={styles.coordinates}
+              title={t("location.copyCoordinates")}
+              aria-label={t("location.copyCoordinates")}
+              onClick={copyCoordinates}
+            >
+              {coordinateText}
+            </button>
+          </dd>
         </div>
         <div>
           <dt className="sr-only">{t("location.accuracy")}</dt>

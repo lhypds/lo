@@ -56,6 +56,9 @@
     "stale": "最後に確認した位置",
     "updated": "{{time}}に更新",
     "locating": "測位中",
+    "copyCoordinates": "座標をコピー",
+    "coordinatesCopied": "座標をコピーしました",
+    "coordinatesCopyFailed": "座標をコピーできませんでした",
     "page": "{{total}} ページ中 {{number}} ページ目"
   },
   "clock": {

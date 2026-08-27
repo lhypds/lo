@@ -56,6 +56,9 @@
     "stale": "上次已知位置",
     "updated": "更新于 {{time}}",
     "locating": "定位中",
+    "copyCoordinates": "复制坐标",
+    "coordinatesCopied": "坐标已复制",
+    "coordinatesCopyFailed": "无法复制坐标",
     "page": "第 {{number}} 页，共 {{total}} 页"
   },
   "clock": {

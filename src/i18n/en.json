@@ -56,6 +56,9 @@
     "stale": "Last known position",
     "updated": "Updated {{time}}",
     "locating": "Locating",
+    "copyCoordinates": "Copy coordinates",
+    "coordinatesCopied": "Coordinates copied",
+    "coordinatesCopyFailed": "Could not copy coordinates",
     "page": "Page {{number}} of {{total}}"
   },
   "clock": {
