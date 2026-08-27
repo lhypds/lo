@@ -10,7 +10,7 @@ async function request(path, options = {}) {
   if (response.status === 204) return null;
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const error = new Error(data.error || "请求失败");
+    const error = new Error(data.error || "Request failed");
     error.status = response.status;
     error.code = data.code;
     throw error;

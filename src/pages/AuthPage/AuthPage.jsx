@@ -152,7 +152,7 @@ export default function AuthPage() {
   const message = error || hint;
   // Whether the words on that line need a space before the way out of the step at
   // the end of them. A sentence brings its own separation — the stop is the space —
-  // but a line like "密码为 4–64 个字符" ends in a character that would otherwise run
+  // but a line like "密码错误" ends in a character that would otherwise run
   // straight into the word after it. Where there are no words there is nothing to
   // separate, and an en space is not the space bar's: it would not be dropped at
   // the start of a line, and would sit there pushing the pair off centre.

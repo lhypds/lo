@@ -65,7 +65,7 @@ const isProduction = process.env.NODE_ENV === "production";
 
 const USERNAME_RE =
   /^[a-z0-9_\p{Script_Extensions=Han}\p{Script_Extensions=Hiragana}\p{Script_Extensions=Katakana}\p{Script_Extensions=Hangul}-]{1,32}$/u;
-const USERNAME_HINT = "用户名为 1–32 个字符，可使用中日韩文字、字母、数字、- 和 _";
+const USERNAME_HINT = "A username is 1–32 characters: letters, digits, CJK characters, - and _";
 // And one of those characters has to be a letter. Digits, dashes and underscores
 // on their own make an account number rather than a name: a purely numeric one
 // would be read as an id everywhere it turns up — in a path, in a search box,
@@ -74,7 +74,7 @@ const USERNAME_HINT = "用户名为 1–32 个字符，可使用中日韩文字�
 // ruling out 李明.
 const USERNAME_LETTER_RE =
   /[a-z\p{Script_Extensions=Han}\p{Script_Extensions=Hiragana}\p{Script_Extensions=Katakana}\p{Script_Extensions=Hangul}]/u;
-const USERNAME_LETTER_HINT = "用户名需包含至少一个字母";
+const USERNAME_LETTER_HINT = "A username needs at least one letter";
 // A password, unlike a username, is nobody's address and nothing links to it, so
 // the only rules are the two that stop it being a mistake: long enough to be a
 // choice, short enough to have been typed on purpose. Whatever was typed is kept
@@ -82,7 +82,7 @@ const USERNAME_LETTER_HINT = "用户名需包含至少一个字母";
 // a password is a character of it.
 const PASSWORD_MIN = 4;
 const PASSWORD_MAX = 64;
-const PASSWORD_HINT = `密码为 ${PASSWORD_MIN}–${PASSWORD_MAX} 个字符`;
+const PASSWORD_HINT = `A password is ${PASSWORD_MIN}–${PASSWORD_MAX} characters`;
 // A profile lives at /<name>, so lo's own paths are names nobody can have: an
 // account called "posts" would be one the router sends to the posts page and
 // nothing could ever link to. Kept in step with RESERVED in src/App.jsx.
@@ -163,8 +163,21 @@ function cookieValue(req, name) {
   }
 }
 
+// Where the session is: the browser sends it back in the cookie it was set in,
+// and an Even Hub package sends it in a header. A package runs on a foreign
+// origin and cannot be given the cookie at all — SameSite is what stops it — so
+// it keeps the token itself and presents it. One session either way; only the
+// way it travels differs.
+function sessionToken(req) {
+  return (
+    cookieValue(req, sessionCookie) ??
+    /^Bearer\s+([^\s]+)$/i.exec(String(req.headers.authorization ?? ""))?.[1] ??
+    null
+  );
+}
+
 function currentSession(req) {
-  const token = cookieValue(req, sessionCookie);
+  const token = sessionToken(req);
   const session = token ? sessions.get(token) : null;
   if (!session) return null;
   if (session.expiresAt <= Date.now()) {
@@ -174,6 +187,9 @@ function currentSession(req) {
   return { token, ...session };
 }
 
+// Hands the token back as well as setting the cookie. A browser is already signed
+// in by the cookie and ignores it; a package has no cookie to read and this is the
+// only place it can learn the token it will be presenting from here on.
 function startSession(user, req, res) {
   const token = crypto.randomBytes(32).toString("base64url");
   sessions.set(token, { userId: user.id, username: user.username, expiresAt: Date.now() + sessionAgeMs });
@@ -184,6 +200,7 @@ function startSession(user, req, res) {
     maxAge: sessionAgeMs,
     path: "/",
   });
+  return token;
 }
 
 function clearSession(req, res) {
@@ -194,11 +211,11 @@ function clearSession(req, res) {
 
 function requireSession(req, res, next) {
   const session = currentSession(req);
-  if (!session) return res.status(401).json({ error: "请先登录", code: "LOGIN_REQUIRED" });
+  if (!session) return res.status(401).json({ error: "Please sign in", code: "LOGIN_REQUIRED" });
   const user = getUser(session.username);
   if (!user) {
     clearSession(req, res);
-    return res.status(401).json({ error: "请重新登录", code: "LOGIN_REQUIRED" });
+    return res.status(401).json({ error: "Please sign in again", code: "LOGIN_REQUIRED" });
   }
   req.user = user;
   next();
@@ -206,12 +223,26 @@ function requireSession(req, res, next) {
 
 const app = express();
 app.set("trust proxy", true);
+// The API answers foreign origins, because an Even Hub package is one. The
+// wildcard is safe here only because nothing is authenticated by something a
+// browser attaches on its own: SameSite=Lax keeps lo_session off cross-site
+// requests entirely, so a hostile page cannot spend a reader's session, and a
+// wildcard origin makes a credentialed response unreadable in any case. Pairing
+// this with Access-Control-Allow-Credentials is what would undo both at once.
+app.use("/api", (req, res, next) => {
+  res.set("Access-Control-Allow-Origin", "*");
+  res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.set("Access-Control-Allow-Methods", "GET, POST, PATCH, PUT, DELETE, OPTIONS");
+  res.set("Access-Control-Max-Age", "86400");
+  if (req.method === "OPTIONS") return res.status(204).end();
+  next();
+});
 app.use(express.json({ limit: "32kb" }));
 
 app.get("/api/session", (req, res) => {
   const session = currentSession(req);
   const user = session ? getUser(session.username) : null;
-  if (!user) return res.status(401).json({ error: "未登录", code: "LOGIN_REQUIRED" });
+  if (!user) return res.status(401).json({ error: "Not signed in", code: "LOGIN_REQUIRED" });
   res.json({ user });
 });
 
@@ -228,7 +259,7 @@ app.post("/api/username", (req, res) => {
   const fault = usernameFault(username);
   if (fault) return res.status(400).json(fault);
   const user = getUser(username);
-  if (!user) return res.status(404).json({ error: "用户不存在", code: "USER_NOT_FOUND" });
+  if (!user) return res.status(404).json({ error: "No such user", code: "USER_NOT_FOUND" });
   res.json({ username: user.username, hasPassword: getPassword(username) !== null });
 });
 
@@ -241,7 +272,7 @@ app.post("/api/login", (req, res) => {
     return res.status(400).json({ error: USERNAME_HINT });
   }
   const user = getUser(username);
-  if (!user) return res.status(404).json({ error: "用户不存在", code: "USER_NOT_FOUND" });
+  if (!user) return res.status(404).json({ error: "No such user", code: "USER_NOT_FOUND" });
 
   const stored = getPassword(username);
   if (stored === null) {
@@ -253,11 +284,10 @@ app.post("/api/login", (req, res) => {
     if (!password) return res.status(400).json({ error: PASSWORD_HINT, code: "PASSWORD_INVALID" });
     setPassword(user.id, password);
   } else if (String(req.body?.password ?? "") !== stored) {
-    return res.status(401).json({ error: "密码错误", code: "PASSWORD_WRONG" });
+    return res.status(401).json({ error: "Wrong password", code: "PASSWORD_WRONG" });
   }
 
-  startSession(user, req, res);
-  res.json({ user });
+  res.json({ user, token: startSession(user, req, res) });
 });
 
 app.post("/api/logout", (req, res) => {
@@ -274,16 +304,15 @@ app.post("/api/users", (req, res) => {
   if (fault) return res.status(400).json(fault);
   const password = usablePassword(req.body?.password);
   if (!password) return res.status(400).json({ error: PASSWORD_HINT, code: "PASSWORD_INVALID" });
-  if (RESERVED_NAMES.has(username)) return res.status(409).json({ error: "用户名不可用" });
-  if (getUser(username)) return res.status(409).json({ error: "用户名已存在", code: "USER_EXISTS" });
+  if (RESERVED_NAMES.has(username)) return res.status(409).json({ error: "That username is not available" });
+  if (getUser(username)) return res.status(409).json({ error: "That username is taken", code: "USER_EXISTS" });
 
   try {
     const user = createUser(username, password);
-    startSession(user, req, res);
-    res.status(201).json({ user });
+    res.status(201).json({ user, token: startSession(user, req, res) });
   } catch (error) {
     console.error("create user failed", error);
-    res.status(500).json({ error: "创建用户失败" });
+    res.status(500).json({ error: "Could not create the account" });
   }
 });
 
@@ -320,17 +349,17 @@ const LINK_KIND_RE = /^[a-z0-9-]{1,24}$/;
 function readLinks(payload) {
   const sent = payload?.links;
   if (sent == null) return { links: [] };
-  if (!Array.isArray(sent)) return { error: "链接无效" };
+  if (!Array.isArray(sent)) return { error: "Invalid link" };
   const links = [];
   for (const item of sent) {
     const kind = String(item?.kind ?? "").trim().toLowerCase();
     const value = String(item?.value ?? "").trim().normalize("NFKC");
     if (!value) continue;
-    if (!LINK_KIND_RE.test(kind)) return { error: "链接无效" };
-    if (value.length > LINK_VALUE_MAX) return { error: `链接最多 ${LINK_VALUE_MAX} 个字符` };
+    if (!LINK_KIND_RE.test(kind)) return { error: "Invalid link" };
+    if (value.length > LINK_VALUE_MAX) return { error: `A link is at most ${LINK_VALUE_MAX} characters` };
     links.push({ kind, value });
   }
-  if (links.length > LINKS_MAX) return { error: `最多 ${LINKS_MAX} 个链接` };
+  if (links.length > LINKS_MAX) return { error: `At most ${LINKS_MAX} links` };
   return { links };
 }
 // How much of somebody's own writing their page carries. Enough to say what they
@@ -344,14 +373,14 @@ function readProfile(payload) {
   const fields = {};
   for (const [field, limit] of Object.entries(PROFILE_LIMITS)) {
     const value = String(payload?.[field] ?? "").trim().normalize("NFKC");
-    if (value.length > limit) return { error: `${field} 最多 ${limit} 个字符` };
+    if (value.length > limit) return { error: `${field} is at most ${limit} characters` };
     fields[field] = value;
   }
   // The two fields lo can say anything about the shape of. Everything else is a
   // handle in an app lo cannot ask, so a name that looks wrong here is still the
   // only name its owner has.
   if (fields.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fields.email)) {
-    return { error: "邮箱地址无效" };
+    return { error: "Invalid email address" };
   }
   if (fields.website) {
     // Nobody types the scheme, so a bare host is read as one asking for https —
@@ -367,12 +396,12 @@ function readProfile(payload) {
     try {
       url = new URL(site);
     } catch {
-      return { error: "网址无效" };
+      return { error: "Invalid web address" };
     }
     // A hostname with a dot in it, so a single word is a typo rather than a
     // machine name nobody outside this network could reach.
     if (!/^https?:$/.test(url.protocol) || !/[^.]\.[^.]/.test(url.hostname)) {
-      return { error: "网址无效" };
+      return { error: "Invalid web address" };
     }
     // The reader's own text with the scheme put back on the front, not the URL
     // object's idea of it: new URL adds a trailing slash to a bare host, and a
@@ -384,7 +413,7 @@ function readProfile(payload) {
   // the same rule a post's photo is held to, and for the same reason: anything
   // else would let this endpoint name a file of its own choosing.
   const avatar = String(payload?.avatar ?? "").trim();
-  if (avatar && !isStoredName(avatar)) return { error: "头像无效" };
+  if (avatar && !isStoredName(avatar)) return { error: "Invalid avatar" };
   fields.avatar = avatar;
 
   const { links, error } = readLinks(payload);
@@ -409,7 +438,7 @@ app.get("/api/users/:username", requireSession, (req, res) => {
   const username = normalizeUsername(req.params.username);
   if (!USERNAME_RE.test(username)) return res.status(400).json({ error: USERNAME_HINT });
   const user = getProfile(username);
-  if (!user) return res.status(404).json({ error: "用户不存在", code: "USER_NOT_FOUND" });
+  if (!user) return res.status(404).json({ error: "No such user", code: "USER_NOT_FOUND" });
   // Who reads them, who they read, and whether the reader asking is one of the
   // first — part of the same answer as the bio and the posts, because it is
   // drawn as one page and a second request for it would let the row of figures
@@ -441,7 +470,7 @@ function namedUser(req, res) {
   }
   const user = getUser(username);
   if (!user) {
-    res.status(404).json({ error: "用户不存在", code: "USER_NOT_FOUND" });
+    res.status(404).json({ error: "No such user", code: "USER_NOT_FOUND" });
     return null;
   }
   return user;
@@ -461,7 +490,7 @@ app.put("/api/users/:username/follow", requireSession, (req, res) => {
   // Your own page has no button on it, so this is a request nobody's browser
   // sends; the table would refuse the row anyway, and a name in its own list is
   // worth saying no to in words rather than as a constraint failing.
-  if (target.id === req.user.id) return res.status(400).json({ error: "不能关注自己" });
+  if (target.id === req.user.id) return res.status(400).json({ error: "You cannot follow yourself" });
   followUser(req.user.id, target.id);
   res.json({ follows: getFollowStats(req.user.id, target.username) });
 });
@@ -499,7 +528,7 @@ app.get("/api/users/:username/following", requireSession, (req, res) => {
 // show, and the page should not have to ask a second time to find that out.
 app.get("/api/local", async (req, res, next) => {
   const coords = parseCoords(req.query);
-  if (!coords) return res.status(400).json({ error: "坐标无效" });
+  if (!coords) return res.status(400).json({ error: "Invalid coordinates" });
   const lang = requestedLang(req);
   try {
     const [place, weather] = await Promise.allSettled([
@@ -534,33 +563,33 @@ app.get("/api/countries", (req, res) => {
 
 app.get("/api/nearby", async (req, res, next) => {
   const coords = parseCoords(req.query);
-  if (!coords) return res.status(400).json({ error: "坐标无效" });
+  if (!coords) return res.status(400).json({ error: "Invalid coordinates" });
   try {
     res.json(await lookupNearby(coords.latitude, coords.longitude, requestedLang(req)));
   } catch (error) {
-    if (error.name === "TimeoutError") return res.status(504).json({ error: "获取周围事件超时" });
+    if (error.name === "TimeoutError") return res.status(504).json({ error: "Timed out looking up what is nearby" });
     next(error);
   }
 });
 
 app.get("/api/events", async (req, res, next) => {
   const coords = parseCoords(req.query);
-  if (!coords) return res.status(400).json({ error: "坐标无效" });
+  if (!coords) return res.status(400).json({ error: "Invalid coordinates" });
   try {
     res.json(await lookupEvents(coords.latitude, coords.longitude, requestedLang(req)));
   } catch (error) {
-    if (error.name === "TimeoutError") return res.status(504).json({ error: "获取活动信息超时" });
+    if (error.name === "TimeoutError") return res.status(504).json({ error: "Timed out looking up events" });
     next(error);
   }
 });
 
 app.get("/api/trends", async (req, res, next) => {
   const coords = parseCoords(req.query);
-  if (!coords) return res.status(400).json({ error: "坐标无效" });
+  if (!coords) return res.status(400).json({ error: "Invalid coordinates" });
   try {
     res.json(await lookupTrends(coords.latitude, coords.longitude, requestedLang(req)));
   } catch (error) {
-    if (error.name === "TimeoutError") return res.status(504).json({ error: "获取趋势超时" });
+    if (error.name === "TimeoutError") return res.status(504).json({ error: "Timed out looking up trends" });
     next(error);
   }
 });
@@ -569,11 +598,11 @@ app.get("/api/trends", async (req, res, next) => {
 // the reader's own words back on what it can name.
 app.get("/api/warnings", async (req, res, next) => {
   const coords = parseCoords(req.query);
-  if (!coords) return res.status(400).json({ error: "坐标无效" });
+  if (!coords) return res.status(400).json({ error: "Invalid coordinates" });
   try {
     res.json(await lookupWarnings(coords.latitude, coords.longitude));
   } catch (error) {
-    if (error.name === "TimeoutError") return res.status(504).json({ error: "获取警报信息超时" });
+    if (error.name === "TimeoutError") return res.status(504).json({ error: "Timed out looking up warnings" });
     next(error);
   }
 });
@@ -588,11 +617,11 @@ app.get("/api/marks", requireSession, (req, res) => {
 
 app.post("/api/marks", requireSession, async (req, res, next) => {
   const location = parseLocation(req.body);
-  if (!location) return res.status(400).json({ error: "坐标无效" });
+  if (!location) return res.status(400).json({ error: "Invalid coordinates" });
   const label = String(req.body?.label ?? "").trim().normalize("NFKC");
-  if (label.length > 48) return res.status(400).json({ error: "名称最多 48 个字符" });
+  if (label.length > 48) return res.status(400).json({ error: "A name is at most 48 characters" });
   const suppliedTime = req.body?.time ? new Date(req.body.time) : new Date();
-  if (Number.isNaN(suppliedTime.getTime())) return res.status(400).json({ error: "记录时间无效" });
+  if (Number.isNaN(suppliedTime.getTime())) return res.status(400).json({ error: "Invalid time" });
 
   try {
     // The name of the spot is looked up here rather than trusted from the
@@ -612,19 +641,19 @@ app.post("/api/marks", requireSession, async (req, res, next) => {
 
 app.patch("/api/marks/:markId", requireSession, (req, res) => {
   const markId = Number(req.params.markId);
-  if (!Number.isInteger(markId) || markId < 1) return res.status(400).json({ error: "记录 ID 无效" });
+  if (!Number.isInteger(markId) || markId < 1) return res.status(400).json({ error: "Invalid mark ID" });
   const label = String(req.body?.label ?? "").trim().normalize("NFKC");
-  if (label.length > 48) return res.status(400).json({ error: "名称最多 48 个字符" });
+  if (label.length > 48) return res.status(400).json({ error: "A name is at most 48 characters" });
   const mark = renameMark(req.user.id, markId, label || null);
-  if (!mark) return res.status(404).json({ error: "记录不存在", code: "MARK_NOT_FOUND" });
+  if (!mark) return res.status(404).json({ error: "No such mark", code: "MARK_NOT_FOUND" });
   res.json({ mark });
 });
 
 app.delete("/api/marks/:markId", requireSession, (req, res) => {
   const markId = Number(req.params.markId);
-  if (!Number.isInteger(markId) || markId < 1) return res.status(400).json({ error: "记录 ID 无效" });
+  if (!Number.isInteger(markId) || markId < 1) return res.status(400).json({ error: "Invalid mark ID" });
   if (!deleteMark(req.user.id, markId)) {
-    return res.status(404).json({ error: "记录不存在", code: "MARK_NOT_FOUND" });
+    return res.status(404).json({ error: "No such mark", code: "MARK_NOT_FOUND" });
   }
   res.status(204).end();
 });
@@ -653,13 +682,13 @@ app.get("/api/posts", requireSession, (req, res) => {
 // of that is for there to be one reading of it.
 function readPostContent(payload) {
   const body = String(payload?.body ?? "").trim().normalize("NFKC");
-  if (body.length > POST_BODY_MAX) return { error: `内容最多 ${POST_BODY_MAX} 个字符` };
+  if (body.length > POST_BODY_MAX) return { error: `A post is at most ${POST_BODY_MAX} characters` };
 
   // The photo arrives as a name /api/images already wrote, never as bytes —
   // anything else would let this endpoint name a file of its own choosing.
   const image = payload?.image ? String(payload.image) : null;
-  if (image && !isStoredName(image)) return { error: "图片无效" };
-  if (!body && !image) return { error: "请写点什么，或者添加一张图片" };
+  if (image && !isStoredName(image)) return { error: "Invalid image" };
+  if (!body && !image) return { error: "Write something, or add a picture" };
 
   const dimension = (value) => {
     const number = Number(value);
@@ -677,12 +706,12 @@ function readPostContent(payload) {
 
 app.post("/api/posts", requireSession, async (req, res, next) => {
   const location = parseLocation(req.body);
-  if (!location) return res.status(400).json({ error: "坐标无效" });
+  if (!location) return res.status(400).json({ error: "Invalid coordinates" });
   const { content, error } = readPostContent(req.body);
   if (error) return res.status(400).json({ error });
 
   const suppliedTime = req.body?.time ? new Date(req.body.time) : new Date();
-  if (Number.isNaN(suppliedTime.getTime())) return res.status(400).json({ error: "记录时间无效" });
+  if (Number.isNaN(suppliedTime.getTime())) return res.status(400).json({ error: "Invalid time" });
 
   try {
     // Looked up here rather than trusted from the client, for the same reason a
@@ -712,7 +741,7 @@ app.post("/api/posts", requireSession, async (req, res, next) => {
 // that is not there are the same row count coming back.
 app.patch("/api/posts/:postId", requireSession, (req, res) => {
   const postId = Number(req.params.postId);
-  if (!Number.isInteger(postId) || postId < 1) return res.status(400).json({ error: "帖子 ID 无效" });
+  if (!Number.isInteger(postId) || postId < 1) return res.status(400).json({ error: "Invalid post ID" });
   const { content, error } = readPostContent(req.body);
   if (error) return res.status(400).json({ error });
 
@@ -720,17 +749,17 @@ app.patch("/api/posts/:postId", requireSession, (req, res) => {
   // another post may be pointing at the same file — the same reason deleting a
   // post leaves it alone.
   const post = updatePost(req.user.id, postId, content);
-  if (!post) return res.status(404).json({ error: "帖子不存在", code: "POST_NOT_FOUND" });
+  if (!post) return res.status(404).json({ error: "No such post", code: "POST_NOT_FOUND" });
   res.json({ post });
 });
 
 app.delete("/api/posts/:postId", requireSession, (req, res) => {
   const postId = Number(req.params.postId);
-  if (!Number.isInteger(postId) || postId < 1) return res.status(400).json({ error: "帖子 ID 无效" });
+  if (!Number.isInteger(postId) || postId < 1) return res.status(400).json({ error: "Invalid post ID" });
   // The image file stays: it is named after its own bytes, so another post may
   // be pointing at the same one.
   if (!deletePost(req.user.id, postId)) {
-    return res.status(404).json({ error: "帖子不存在", code: "POST_NOT_FOUND" });
+    return res.status(404).json({ error: "No such post", code: "POST_NOT_FOUND" });
   }
   res.status(204).end();
 });
@@ -753,12 +782,12 @@ const COMMENTS_MAX = 200;
 function commentTarget(req, res) {
   const postId = Number(req.params.postId);
   if (!Number.isInteger(postId) || postId < 1) {
-    res.status(400).json({ error: "帖子 ID 无效" });
+    res.status(400).json({ error: "Invalid post ID" });
     return null;
   }
   const post = getPost(postId);
   if (!post) {
-    res.status(404).json({ error: "帖子不存在", code: "POST_NOT_FOUND" });
+    res.status(404).json({ error: "No such post", code: "POST_NOT_FOUND" });
     return null;
   }
   return post;
@@ -781,9 +810,9 @@ app.post("/api/posts/:postId/comments", requireSession, (req, res) => {
   const body = String(req.body?.body ?? "").trim().normalize("NFKC");
   // No photo and so nothing to stand in for the words: an empty comment is
   // somebody pressing the button twice, not a post with a picture in it.
-  if (!body) return res.status(400).json({ error: "请写点什么" });
+  if (!body) return res.status(400).json({ error: "Write something" });
   if (body.length > COMMENT_BODY_MAX) {
-    return res.status(400).json({ error: `内容最多 ${COMMENT_BODY_MAX} 个字符` });
+    return res.status(400).json({ error: `A comment is at most ${COMMENT_BODY_MAX} characters` });
   }
   // The row and the figure it has just changed, because they are read by two
   // different things on screen — the column in the sheet and the count in the
@@ -823,7 +852,7 @@ function messageTarget(req, res) {
   const target = namedUser(req, res);
   if (!target) return null;
   if (target.id === req.user.id) {
-    res.status(400).json({ error: "不能给自己发消息" });
+    res.status(400).json({ error: "You cannot message yourself" });
     return null;
   }
   return target;
@@ -861,9 +890,9 @@ app.post("/api/messages/:username", requireSession, (req, res) => {
   const target = messageTarget(req, res);
   if (!target) return;
   const body = String(req.body?.body ?? "").trim().normalize("NFKC");
-  if (!body) return res.status(400).json({ error: "请写点什么" });
+  if (!body) return res.status(400).json({ error: "Write something" });
   if (body.length > MESSAGE_BODY_MAX) {
-    return res.status(400).json({ error: `内容最多 ${MESSAGE_BODY_MAX} 个字符` });
+    return res.status(400).json({ error: `A message is at most ${MESSAGE_BODY_MAX} characters` });
   }
   // The line as the sheet will draw it, which is the row plus which side of the
   // conversation it hangs on — so a sent message lands in the column without the
@@ -894,11 +923,11 @@ app.post(
   express.raw({ type: () => true, limit: MAX_IMAGE_BYTES }),
   async (req, res, next) => {
     if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
-      return res.status(400).json({ error: "图片为空" });
+      return res.status(400).json({ error: "The image is empty" });
     }
     try {
       const stored = await storeImage(req.body);
-      if (!stored) return res.status(415).json({ error: "不支持的图片格式" });
+      if (!stored) return res.status(415).json({ error: "Unsupported image format" });
       res.json(stored);
     } catch (error) {
       next(error);
@@ -908,7 +937,7 @@ app.post(
 
 app.get("/api/images/:name", requireSession, (req, res) => {
   const file = imageFile(req.params.name);
-  if (!file) return res.status(400).json({ error: "图片名称无效" });
+  if (!file) return res.status(400).json({ error: "Invalid image name" });
   res.sendFile(
     file.path,
     {
@@ -921,8 +950,8 @@ app.get("/api/images/:name", requireSession, (req, res) => {
     },
     (error) => {
       if (!error || res.headersSent) return;
-      if (error.code === "ENOENT") return res.status(404).json({ error: "图片不存在" });
-      res.status(500).json({ error: "服务器错误" });
+      if (error.code === "ENOENT") return res.status(404).json({ error: "No such image" });
+      res.status(500).json({ error: "Server error" });
     },
   );
 });
@@ -952,9 +981,62 @@ app.get("/api/people", requireSession, (req, res) => {
 // question a minute apart, so they are one round trip rather than two.
 app.put("/api/position", requireSession, (req, res) => {
   const location = parseLocation(req.body);
-  if (!location) return res.status(400).json({ error: "坐标无效" });
+  if (!location) return res.status(400).json({ error: "Invalid coordinates" });
   savePosition(req.user.id, location);
   res.json({ people: livePeople(req.user.id), unread: countUnread(req.user.id) });
+});
+
+// Everything a screen standing at one spot opens with, in one answer: where this
+// is, its weather, whichever of the regional components that country has, the
+// posts within reach and who else is about. The parts are all readable one at a
+// time above, and the website reads them that way because its cards arrive
+// separately; this is for a reader that cannot afford the round trips. It takes a
+// fix in the body rather than the query because it also files one — the same
+// trade PUT /api/position makes, a position given for the positions back.
+app.post("/api/dashboard", requireSession, async (req, res, next) => {
+  const location = parseLocation(req.body);
+  if (!location) return res.status(400).json({ error: "Invalid coordinates" });
+  const lang = requestedLang(req);
+  try {
+    savePosition(req.user.id, location);
+    const [placeAnswer, weatherAnswer] = await Promise.allSettled([
+      lookupPlace(location.latitude, location.longitude, lang),
+      lookupWeather(location.latitude, location.longitude),
+    ]);
+    const place = placeAnswer.status === "fulfilled" ? placeAnswer.value : null;
+    const components = componentsFor(place?.countryCode);
+
+    const [nearbyAnswer, eventsAnswer, trendsAnswer] = await Promise.allSettled([
+      components.includes("nearby")
+        ? lookupNearby(location.latitude, location.longitude, lang)
+        : Promise.resolve({ items: [] }),
+      components.includes("events")
+        ? lookupEvents(location.latitude, location.longitude, lang)
+        : Promise.resolve({ items: [] }),
+      components.includes("trends")
+        ? lookupTrends(location.latitude, location.longitude, lang)
+        : Promise.resolve({ items: [] }),
+    ]);
+
+    res.json({
+      local: {
+        place,
+        weather: weatherAnswer.status === "fulfilled" ? weatherAnswer.value : null,
+        components,
+        failed: [
+          placeAnswer.status === "rejected" ? "place" : null,
+          weatherAnswer.status === "rejected" ? "weather" : null,
+        ].filter(Boolean),
+      },
+      nearby: nearbyAnswer.status === "fulfilled" ? nearbyAnswer.value?.items ?? [] : [],
+      events: eventsAnswer.status === "fulfilled" ? eventsAnswer.value?.items ?? [] : [],
+      trends: trendsAnswer.status === "fulfilled" ? trendsAnswer.value?.items ?? [] : [],
+      posts: getPostsNear(location, POSTS_RADIUS_M, 20),
+      people: livePeople(req.user.id),
+    });
+  } catch (error) {
+    next(error);
+  }
 });
 
 if (isProduction) {
@@ -975,10 +1057,10 @@ app.use((error, req, res, _next) => {
   // stack trace in the log — a phone photo that failed to compress is the usual
   // way one gets here.
   if (error?.type === "entity.too.large") {
-    return res.status(413).json({ error: "文件过大" });
+    return res.status(413).json({ error: "File too large" });
   }
   console.error(error);
-  res.status(500).json({ error: "服务器错误" });
+  res.status(500).json({ error: "Server error" });
 });
 
 app.listen(port, "0.0.0.0", () => {

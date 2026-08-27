@@ -170,7 +170,7 @@ export async function uploadImage(blob) {
   });
   if (!response.ok) {
     const data = await response.json().catch(() => null);
-    throw new Error(data?.error || "上传失败");
+    throw new Error(data?.error || "Upload failed");
   }
   return response.json();
 }
