@@ -145,8 +145,8 @@
     "collapse": "关闭地图",
     "unavailable": "地图需要 WebGL，当前浏览器未提供。"
   },
-  "compass": {
-    "title": "指南针",
+  "direction": {
+    "title": "方位",
     "enable": "打开传感器",
     "asking": "请求中",
     "denied": "运动传感器已被阻止",

@@ -145,8 +145,8 @@
     "collapse": "地図を閉じる",
     "unavailable": "地図の表示には WebGL が必要ですが、このブラウザでは利用できません。"
   },
-  "compass": {
-    "title": "コンパス",
+  "direction": {
+    "title": "方位",
     "enable": "センサーをオンにする",
     "asking": "確認中",
     "denied": "モーションセンサーがブロックされています",

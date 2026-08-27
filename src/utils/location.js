@@ -99,7 +99,7 @@ function readPosition(highAccuracy) {
             // device with a GPS worth the name answers this, and a browser
             // placing itself off wifi has nothing to say about height at all.
             // Carried here rather than read for itself, because it is part of
-            // the same fix — see CompassCard, which is where it is read.
+            // the same fix — see DirectionCard, which is where it is read.
             altitude: Number.isFinite(position.coords.altitude) ? round(position.coords.altitude, 1) : null,
             // Metres a second, over the ground, and the one figure here that no
             // amount of arithmetic elsewhere can stand in for: an accelerometer

@@ -81,7 +81,7 @@ let state = {
 // sample's error for ever. Tuned as well as it goes, a real two metres a second
 // reads about one, and coasting reads nothing at all.
 //
-// So the speed on the compass card comes off the GPS instead, which measures it
+// So the speed on the direction card comes off the GPS instead, which measures it
 // over the ground and is the only thing here that does (see utils/location.js).
 
 const listeners = new Set();

@@ -271,8 +271,22 @@ const HOVERS = window.matchMedia("(hover: hover)").matches;
 // more pair of numbers to keep in step with the stylesheet.
 const POPUP_OFFSET = 26;
 
+// An opened bubble is left where it is put rather than being handed the focus.
+// Mapbox's own doing otherwise: on open it looks inside for something focusable
+// and focuses the first it finds — `a[href]` heads the list it looks for, and in
+// a post's bubble that is the byline — so the name came up already focused and
+// wearing the browser's ring for it, which is the box around it. A bubble opens
+// because a pointer crossed a pin, and that is not somebody asking to be taken
+// to the name; with it off the ring is left to mean what it is for, which is a
+// reader who tabbed there.
 function previewPopup(offset = POPUP_OFFSET) {
-  return new mapboxgl.Popup({ closeButton: false, offset, anchor: "bottom", closeOnClick: !HOVERS });
+  return new mapboxgl.Popup({
+    closeButton: false,
+    offset,
+    anchor: "bottom",
+    closeOnClick: !HOVERS,
+    focusAfterOpen: false,
+  });
 }
 
 // Whether the bubble under the pointer is open at all, asked of the popup rather

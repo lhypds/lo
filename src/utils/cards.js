@@ -21,7 +21,7 @@ const SIZES = [TINY, SMALL, LARGE, TALL];
 // The ids are the server's own words for the same things, so the two questions
 // are asked in one vocabulary. That is why the news card answers to `nearby`
 // here: that is the name of the feed behind it. The three marked `own` are lo's
-// own — posts and people stop at no border, and the compass is a reading of the
+// own — posts and people stop at no border, and the bearing is a reading of the
 // handset rather than of the ground — so there is nothing on the server to ask
 // about them.
 //
@@ -67,8 +67,8 @@ const SIZES = [TINY, SMALL, LARGE, TALL];
 // none, the time, the sky, the ground, a needle and three readings off the
 // handset. Each of those is a face rather than a window — read at a glance and
 // finished — and a second tile under a finished thing is air. The clock, the
-// weather and the map are that by nature, and so is the compass, which stands
-// outside their block on the grid and is the same kind of thing on it.
+// weather and the map are that by nature, and so is the direction tile, which
+// stands outside their block on the grid and is the same kind of thing on it.
 //
 // Such a card says so as a ladder with one rung rather than by leaving the pair
 // out: the page has to know how much of the grid every card covers to work out
@@ -84,7 +84,7 @@ export const CARDS = [
   { id: "nearby", label: "news.title", off: true },
   { id: "events", label: "events.title", off: true },
   { id: "trends", label: "trends.title", off: true },
-  { id: "compass", label: "compass.title", own: true, off: true, min: TINY, max: TINY },
+  { id: "direction", label: "direction.title", own: true, off: true, min: TINY, max: TINY },
 ];
 
 const BY_ID = new Map(CARDS.map((card) => [card.id, card]));

@@ -145,8 +145,8 @@
     "collapse": "Close map",
     "unavailable": "The map needs WebGL, which this browser will not give it."
   },
-  "compass": {
-    "title": "Compass",
+  "direction": {
+    "title": "Direction",
     "enable": "Turn on sensors",
     "asking": "Asking",
     "denied": "Motion access is blocked",

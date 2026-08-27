@@ -1,10 +1,8 @@
-import { useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Card } from "../../ui/index.js";
 import { startSensors, useSensors } from "../../utils/sensors.js";
 import { useHere } from "../LocationProvider/index.js";
-import CompassRose from "./CompassRose.jsx";
-import styles from "./compass.module.css";
+import styles from "./direction.module.css";
 
 // What stands where an instrument has not answered: a dash, rather than a zero
 // that would read as a reading.
@@ -18,49 +16,39 @@ function pointKey(heading) {
   return POINTS[Math.round(heading / 45) % 8];
 }
 
-// The dial turns the short way round. Handed 359° and then 1°, a transform would
-// draw two degrees of movement as a 358° spin backwards, so the angle is carried
-// forward instead of reset — the same reading, counted on from wherever the dial
-// already stands.
-function useTurn(heading) {
-  const turn = useRef(0);
-  if (heading != null) {
-    turn.current += ((heading - (turn.current % 360) + 540) % 360) - 180;
-  }
-  return turn.current;
-}
-
 // Which way the thing in your hand is pointing, and where the hand is standing.
 //
-// One square, and unlike the clock and the weather beside it the answer here is a
-// drawing rather than a figure: the dial takes the middle of the tile at whatever
-// size the tile can give it, and the degrees and the point are set small alongside
-// as its caption. So this is the one of the three squares whose reading does not
-// sit on the shared figure line — a compass says which way round it is by being
-// turned, and a number saying the same thing twice is worth less than the room it
-// takes off the dial. It does not resize either, because a face is a face (see
-// utils/cards.js).
+// One square, built exactly as the clock and the weather beside it are built: the
+// figure on the top edge, the readings pinned to the bottom, and the slack between
+// them. Read across, the three tiles are one line of figures — which is why the
+// degrees are set in --figure rather than in a size of this tile's own, and why
+// they sit at the top rather than in the middle where they would land wherever
+// this tile's own rows happened to end. It does not resize, because a face is a
+// face (see utils/cards.js).
 //
-// The tile is in two halves and the halves fail separately, which is the whole of
-// its layout. Above the rule is the handset: the dial, or — where the instruments
-// are off, refused, or simply not in the device — the button and the sentence
-// that stand in its place, in the same middle of the same space. Below the rule
-// are the readings, and they want none of the permission this card asks for: two
-// of the three come off the fix and are drawn whether the instruments answered or
+// There was a dial here and there is not now. A drawn compass rose has to be
+// small enough to leave the readings their room and big enough to read as a
+// drawing, and on one square it cannot be both.
+//
+// The tile is in two halves and the halves fail separately, which is the rest of
+// its layout. Above the rule is the handset: the bearing, or - where the
+// instruments are off, refused, or simply not in the device - the button and the
+// sentence that stand in its place, centred in the same space. Below the rule are
+// the readings, and they want none of the permission this card asks for: two of
+// the three come off the fix and are drawn whether the instruments answered or
 // not. A phone that will not give up its gyroscope still knows where it is, and a
 // tile going blank over the half it lacks would be hiding the half it has.
 //
 // So of the three readings only the turn rate is an instrument's. Speed is the
-// fix's, straight off the GPS. Altitude is the fix's too and is the odd one — the
+// fix's, straight off the GPS. Altitude is the fix's too and is the odd one - the
 // fix carries it where the device has a GPS good enough to claim it (see
 // utils/location.js), and where it does not, the ground here is a number the
 // weather already came back with. Both are metres above sea level and only one of
 // them is about the phone, so the card says which it is showing.
-export default function CompassCard() {
+export default function DirectionCard() {
   const { t } = useTranslation();
   const { coords, weather } = useHere();
   const { status, heading, headingAccuracy, turnRate } = useSensors();
-  const turn = useTurn(heading);
   const live = status === "on";
 
   // The device's own altitude first and the ground under it second: a GPS that
@@ -81,19 +69,17 @@ export default function CompassCard() {
 
   let handset;
   if (live) {
-    // The dial is the reading, and the figures are its caption. Beside it rather
-    // than under it, and the two of them stacked, because a dial wants to be as
-    // round and as big as the tile can make it and text set under it would be
-    // taking the height that makes it so.
+    // The degrees and the word for them, on one line: the clock's arrangement of
+    // its time and its seconds, at the clock's two sizes, because across the three
+    // squares this is the same reading in the same place. The word is the smaller
+    // half — the figure beside it has already said which way — and grey, so that
+    // what the eye lands on first is the number.
     handset = (
       <div className={styles.now}>
-        <CompassRose className={styles.glyph} turn={turn} unknown={heading == null} />
-        <div className={styles.reading}>
-          <span className={styles.figure}>{heading == null ? NONE : `${Math.round(heading)}°`}</span>
-          {heading != null && (
-            <span className={styles.point}>{t(`compass.point.${pointKey(heading)}`)}</span>
-          )}
-        </div>
+        <span className={styles.figure}>{heading == null ? NONE : `${Math.round(heading)}°`}</span>
+        {heading != null && (
+          <span className={styles.point}>{t(`direction.point.${pointKey(heading)}`)}</span>
+        )}
       </div>
     );
   } else if (status === "listening") {
@@ -113,30 +99,30 @@ export default function CompassCard() {
           onClick={startSensors}
           disabled={status === "asking"}
         >
-          {status === "asking" ? t("compass.asking") : t("compass.enable")}
+          {status === "asking" ? t("direction.asking") : t("direction.enable")}
         </button>
       ) : (
         <p className={styles.noticeText}>
-          {status === "denied" ? t("compass.denied") : t("compass.unsupported")}
+          {status === "denied" ? t("direction.denied") : t("direction.unsupported")}
         </p>
       );
   }
 
-  // How sure the compass is of itself, which is the one thing about the heading
-  // the dial cannot draw. Only iOS gives a figure for it; where none comes, the
+  // How sure the instrument is of itself, which is the one thing about a bearing
+  // the bearing cannot say. Only iOS gives a figure for it; where none comes, the
   // heading is the whole answer and the heading is on the tile.
   const meta =
     live && Number.isFinite(headingAccuracy)
-      ? t("compass.accuracy", { degrees: Math.round(headingAccuracy) })
+      ? t("direction.accuracy", { degrees: Math.round(headingAccuracy) })
       : null;
 
   return (
-    <Card title={t("compass.title")} meta={meta} square>
+    <Card title={t("direction.title")} meta={meta} square>
       <div className={styles.inner}>
         <div className={styles.handset}>{handset}</div>
         <dl className={styles.rows}>
           <div>
-            <dt>{altitude?.ground ? t("compass.ground") : t("compass.altitude")}</dt>
+            <dt>{altitude?.ground ? t("direction.ground") : t("direction.altitude")}</dt>
             <dd>{altitude ? `${Math.round(altitude.metres)} m` : NONE}</dd>
           </div>
           {/* Off the GPS and so on the tile whatever the handset's own
@@ -145,7 +131,7 @@ export default function CompassCard() {
               than not, mind: only a device actually tracking on GPS answers this
               at all, and one placing itself off wifi never does. */}
           <div>
-            <dt>{t("compass.speed")}</dt>
+            <dt>{t("direction.speed")}</dt>
             <dd>
               {speed == null ? NONE : speed.toFixed(1)}
               {speed != null && <span className={styles.unit}>m/s</span>}
@@ -156,7 +142,7 @@ export default function CompassCard() {
               draw instead, and this row's worth of dashes is the space it needs. */}
           {live && (
             <div>
-              <dt>{t("compass.gyroscope")}</dt>
+              <dt>{t("direction.gyroscope")}</dt>
               <dd>
                 {turnRate == null ? NONE : Math.round(turnRate)}
                 {turnRate != null && <span className={styles.unit}>°/s</span>}

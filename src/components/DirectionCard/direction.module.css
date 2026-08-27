@@ -1,0 +1,164 @@
+/* The same shape as the clock and the weather tiles, because it is the same kind
+   of tile: a figure on the top edge, the readings pinned to the bottom, and the
+   slack between them. Read across a row of the three, the three figures sit on
+   one line. */
+.inner {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Everything above the rule, holding whichever of the three things the sensors
+   have left to say: the bearing, the button, or the sentence. Two of those three
+   centre in it, and the bearing does not - see the auto margin below. */
+.handset {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+/* The reading itself, on the top edge and hard against the left, where the clock
+   puts its time and the weather its temperature. The auto margin is what tells
+   the slack which way to fall: centred, this line would sit wherever this tile's
+   own rows happened to end, and three tiles read as one row of figures want the
+   three figures on one line. The button and the sentence that stand in the same
+   place when the instruments are off are not figures, and centre instead. */
+.now {
+  align-self: stretch;
+  margin-bottom: auto;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+/* The shared figure size: the clock's time, the weather's temperature and this
+   are one reading across three tiles (see --figure in styles.css). */
+.figure {
+  font-family: var(--display);
+  font-size: var(--figure);
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The word for the same number, beside it and grey, at the size and in the face
+   the clock gives its seconds. Clipped never — "西北" cut short is "西", which is
+   a different direction — so on a tile with no room for it the word goes rather
+   than shortens (see the query below). The figure beside it has already said
+   which way. */
+.point {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: clamp(8px, 6cqi, 14px);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Three readings under a figure on one square is a tight budget, and this is
+   where it is kept: the rule, the row padding and the gap above are all as small
+   as they can be and still read as separate lines, because every pixel they give
+   back is a pixel the figure needs to come out at the size the two tiles beside
+   it draw theirs. */
+.rows {
+  flex: 0 0 auto;
+  margin: 6px 0 0;
+  border-top: 1px solid var(--line);
+}
+
+.rows div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.rows div:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+/* The name of the row is what gives way on a tile too narrow for both, and the
+   figure never: "Accelerome…" is still the accelerometer, where a reading cut
+   short is a number that is not the one the instrument said. */
+.rows dt {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.rows dd {
+  flex: 0 0 auto;
+  margin: 0;
+  white-space: nowrap;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The unit is the part of a reading that never changes, so it is set back from
+   the figure that does — the same weight as the row's own name. */
+.unit {
+  margin-left: 4px;
+  color: var(--muted);
+}
+
+/* On a genuinely tiny tile — a 320px phone — the square cannot hold all of this,
+   and two things go. The word beside the degrees, because the figure it is a name
+   for is right there and the two of them are sharing one line's width; and the
+   turn rate, because it is the one of the three readings that is nearly always
+   zero. Same line the clock draws at the same width, and drawn for the same
+   reason. */
+@container (max-width: 150px) {
+  .point {
+    display: none;
+  }
+
+  .rows div:nth-child(3) {
+    display: none;
+  }
+
+  /* The row above it inherits the last row's edge, since it is now the last one
+     the reader can see. */
+  .rows div:nth-child(2) {
+    border-bottom: 0;
+    padding-bottom: 0;
+  }
+}
+
+.noticeText {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+/* Allowed to wrap, which a button in this app otherwise is not: the words are a
+   sentence's worth and the tile is one square, so two lines of them is the shape
+   it takes rather than a label cut off at the border. */
+.enable {
+  padding: 7px 10px;
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  background: var(--paper);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+@media (hover: hover) {
+  .enable:hover:not(:disabled) {
+    background: var(--ink);
+    color: var(--paper);
+  }
+}
