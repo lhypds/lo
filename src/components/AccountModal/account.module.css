@@ -8,14 +8,13 @@
    the same one the composer and the message sheets are drawn in. The reason is at
    the foot of the sheet, where the profile is written.
 
-   The extra inset on top of the sheet's own 16px, which is liveboard's 24px: a
-   column of small type wants more air at its edges than a line of buttons does,
-   and the record's rules run the full width of whatever it is given. */
+   Flush with the modal's own 16px inset, so the record lines up with the title
+   and the close button above it rather than sitting further in than they do. */
 .account {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  padding: 0 8px;
+  padding: 0;
 }
 
 /* What lo knows about you, read down a pair of columns and ruled the way the
