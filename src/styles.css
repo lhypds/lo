@@ -742,10 +742,24 @@ html:has(.home-main:not(.home-main-map) .card-pager) {
   min-height: 0;
   width: min(100%, 600px);
   margin: 0 auto;
-  /* No top padding of its own: the gap above the heading is the sticky header's
-     own (see .list-sticky), so it is opaque and the header sits at the very top
-     of the scroller from the first frame rather than sliding up into place. */
-  padding: 0 12px calc(20px + env(safe-area-inset-bottom));
+  /* The column that holds the fixed header and the scroller under it. It does not
+     scroll itself — the header is meant to stay put — so its only padding is the
+     side gutter both share; the top gap is the header's and the bottom is the
+     scroller's. */
+  padding: 0 12px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* The rows, and the only thing on the page that scrolls. Kept a scroller of its
+   own rather than the whole column so the header above it stays out of the bounce
+   — contain keeps that bounce local (a run off the end is not handed to the
+   document) without letting it drag anything above the list. */
+.list-scroll {
+  flex: 1;
+  min-height: 0;
+  padding-bottom: calc(20px + env(safe-area-inset-bottom));
   overflow-y: auto;
   /* Naming one axis makes the other one auto, not visible — so a list that has
      nothing to show sideways would still take a sideways drag, and the tooltips
@@ -756,10 +770,7 @@ html:has(.home-main:not(.home-main-map) .card-pager) {
      making the type bigger is nobody's mistake. */
   overflow-x: hidden;
   touch-action: pan-y pinch-zoom;
-  /* The list is the only scroller on the page; none rather than contain so it
-     neither hands a run off its end to the document nor rubber-bands on its own
-     — that bounce is what dragged the sticky header down past the top edge. */
-  overscroll-behavior: none;
+  overscroll-behavior: contain;
 }
 
 /* Once the window is twice the map's own column, stacking them wastes it: the
@@ -821,16 +832,11 @@ html:has(.home-main:not(.home-main-map) .card-pager) {
   }
 }
 
-/* The heading and the search bar held at the top of the list while the rows
-   scroll under them. It carries the gap above itself as its own top padding, so
-   that gap is paper too — a row scrolling up disappears behind it rather than
-   showing through between the map and the title — and it rests at the very top of
-   the scroller from the first frame rather than sliding up into place. Above the
-   rows' own hover so nothing lights up under it. */
+/* The heading and the search bar, above the scroller rather than inside it (see
+   .list-scroll): held out of the list so its overscroll bounce cannot drag them,
+   and carrying the gap above themselves so the top of the column is paper. */
 .list-sticky {
-  position: sticky;
-  top: 0;
-  z-index: 5;
+  flex: 0 0 auto;
   padding-top: 16px;
   background: var(--paper);
 }
