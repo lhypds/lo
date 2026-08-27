@@ -145,6 +145,30 @@
     "collapse": "Close map",
     "unavailable": "The map needs WebGL, which this browser will not give it."
   },
+  "compass": {
+    "title": "Compass",
+    "body": "The compass, the accelerometer and the gyroscope are the handset's own readings.",
+    "enable": "Turn on sensors",
+    "asking": "Asking",
+    "denied": "Motion access is blocked",
+    "deniedHint": "Allow motion and orientation for this site in your browser settings, then try again.",
+    "unsupported": "This device has no motion sensors",
+    "accuracy": "±{{degrees}}°",
+    "altitude": "Altitude",
+    "ground": "Ground",
+    "accelerometer": "Accelerometer",
+    "gyroscope": "Gyroscope",
+    "point": {
+      "n": "N",
+      "ne": "NE",
+      "e": "E",
+      "se": "SE",
+      "s": "S",
+      "sw": "SW",
+      "w": "W",
+      "nw": "NW"
+    }
+  },
   "mark": {
     "button": "Mark this spot",
     "saving": "Saving",

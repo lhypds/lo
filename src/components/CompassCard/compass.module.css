@@ -1,0 +1,230 @@
+/* Two shapes for one card, and which one it is in is the reader's answer rather
+   than the tile's width: at two squares and at four this panel is exactly as wide
+   either way, so a container query — which can only ask about width — cannot tell
+   them apart. The card knows its own size (see utils/cards.js) and says so in the
+   class. */
+.inner {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  gap: 12px;
+}
+
+/* Two squares: the dial takes the height it is given and the readings take the
+   width left beside it. */
+.flat {
+  flex-direction: row;
+  align-items: stretch;
+}
+
+/* Four: the dial gets the room above and the readings sit on the bottom edge —
+   the same shape the clock and the weather tiles are in, so a dashboard with all
+   three on it reads down the same line. */
+.stack {
+  flex-direction: column;
+}
+
+.rose {
+  aspect-ratio: 1;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Sized off the width of the tile in both, rather than told to take the height
+   it is given: a square drawn to the room left over is a square whose size the
+   readings beside it decide, and the two of them then argue about it every time
+   a figure gains a digit. A third of the panel here, a little over half of it
+   under the stack — the same dial on the same module either way, and the height
+   only ever a cap on it. Nothing is distorted by that cap, since the drawing
+   keeps its own shape inside whatever box it lands in. */
+.flat .rose {
+  flex: 0 0 auto;
+  width: 30cqi;
+  height: auto;
+  max-height: 100%;
+  align-self: center;
+}
+
+.stack .rose {
+  flex: 0 0 auto;
+  width: 55cqi;
+  height: auto;
+  max-height: 100%;
+  /* The slack above the readings, split evenly over and under */
+  margin: auto 0;
+  align-self: center;
+}
+
+/* The mark the dial is read against: where the top of the phone is pointing,
+   which is the one part of a compass that cannot move. Heavier than the dial for
+   that reason — it is the question, and everything turning under it is the
+   answer. */
+.index {
+  stroke-width: 2;
+}
+
+/* A tenth of a second, which is the beat the readings arrive on (see
+   utils/sensors.js): long enough that the dial swings rather than jumps, short
+   enough that it is never showing a heading the phone has left. */
+.dial {
+  transition: transform 120ms linear;
+}
+
+/* No compass in this device — the plain orientation event without an absolute
+   heading in it. The dial stands still, and a dial standing still still says
+   north is up, so it is dimmed to say it is saying nothing. */
+.unknown {
+  opacity: 0.3;
+}
+
+.ring {
+  stroke: var(--line);
+}
+
+.tick {
+  stroke: var(--muted);
+  stroke-width: 1.2;
+}
+
+.north {
+  fill: currentColor;
+  stroke: none;
+}
+
+.mark {
+  fill: var(--muted);
+  stroke: none;
+  font-family: var(--mono);
+  font-size: 9px;
+}
+
+/* Set in the units of the drawing rather than in pixels, so the whole face —
+   ticks, letters and figure — grows and shrinks as one thing with the tile. */
+.figure {
+  fill: currentColor;
+  stroke: none;
+  font-family: var(--display);
+  font-size: 15px;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+.point {
+  fill: var(--muted);
+  stroke: none;
+  font-family: var(--mono);
+  font-size: 7.5px;
+}
+
+/* Spread down whatever height they are given beside the dial, and pinned to the
+   bottom edge under it — the rows are the same three rows either way, and where
+   the slack lands is the only difference. */
+.rows {
+  margin: 0;
+  border-top: 1px solid var(--line);
+}
+
+.flat .rows {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border-top: 0;
+}
+
+.stack .rows {
+  flex: 0 0 auto;
+  margin-top: 8px;
+}
+
+.rows div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.rows div:last-child {
+  border-bottom: 0;
+}
+
+/* The name of the row is what gives way on a tile too narrow for both, and the
+   three figures never: "Accelerome…" is still the accelerometer, where a reading
+   cut short is a number that is not the one the instrument said. The other way
+   round is the arrangement every other tile has — there the reading is a word or
+   two and the name of it is the short half — and this is the same rule, not a
+   different one: what is cut is whichever of the pair the reader can finish. */
+.rows dt {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.rows dd {
+  flex: 0 0 auto;
+  margin: 0;
+  white-space: nowrap;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The unit is the part of a reading that never changes, so it is set back from
+   the figures that do — the same weight the row's own name is. */
+.unit {
+  margin-left: 5px;
+  color: var(--muted);
+}
+
+/* Nothing to read yet: the permission this card needs, the refusal it got, or a
+   machine with no instruments in it at all. One block, centred, whichever it
+   is. */
+.notice {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-align: center;
+}
+
+.noticeText {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.hint {
+  font-size: 10px;
+}
+
+.enable {
+  flex: 0 0 auto;
+  padding: 7px 12px;
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  background: var(--paper);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+@media (hover: hover) {
+  .enable:hover:not(:disabled) {
+    background: var(--ink);
+    color: var(--paper);
+  }
+}

@@ -6,6 +6,7 @@ import { cardSpan, useCards } from "../../utils/cards.js";
 import { paginate } from "../../utils/pages.js";
 import { getLocationState, refreshLocation } from "../../utils/location.js";
 import ClockCard from "../../components/ClockCard/index.js";
+import CompassCard from "../../components/CompassCard/index.js";
 import EventsCard from "../../components/EventsCard/index.js";
 import Header from "../../components/Header/index.js";
 import HereStrip from "../../components/HereStrip/index.js";
@@ -255,6 +256,7 @@ export default function HomePage() {
       shown("nearby") && sized("nearby", <NewsCard />),
       shown("events") && sized("events", <EventsCard />),
       shown("trends") && sized("trends", <TrendsCard />),
+      shown("compass") && sized("compass", <CompassCard />),
     ].filter(Boolean),
   );
   const tiles = [...defaultTiles, ...addedTiles];

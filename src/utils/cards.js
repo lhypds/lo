@@ -20,9 +20,10 @@ const SIZES = [TINY, SMALL, LARGE, TALL];
 //
 // The ids are the server's own words for the same things, so the two questions
 // are asked in one vocabulary. That is why the news card answers to `nearby`
-// here: that is the name of the feed behind it. The two marked `own` are lo's
-// own — posts and people stop at no border — so there is nothing on the server
-// to ask about them.
+// here: that is the name of the feed behind it. The three marked `own` are lo's
+// own — posts and people stop at no border, and the compass is a reading of the
+// handset rather than of the ground — so there is nothing on the server to ask
+// about them.
 //
 // `label` is the card's own heading rather than a name invented for the menu:
 // the menu is a list of the things on the page, and a second name for a tile the
@@ -59,8 +60,13 @@ const SIZES = [TINY, SMALL, LARGE, TALL];
 // around here run to as many as the street has left, and the trending list is ten
 // by definition. Which of those readings is worth a third tile is the reader's
 // answer and not the feed's, so the rung is offered on all of them and none of
-// them opens at it. The squares say `max: TINY` instead: a count of people or a
-// warning is one line, and room under a line is air.
+// them opens at it.
+//
+// The two kinds of panel that are not lists say otherwise. The squares are
+// `max: TINY`: a count of people or a warning is one line, and room under a line
+// is air. The compass is `max: LARGE`, for the far end of the same thought — a
+// dial and three readings are a fixed drawing that a third tile would only put
+// more paper around.
 //
 // The clock, the weather and the map are single squares and never resize: those
 // three with the mark button are the block the rest of the grid is set against.
@@ -78,6 +84,7 @@ export const CARDS = [
   { id: "nearby", label: "news.title", off: true },
   { id: "events", label: "events.title", off: true },
   { id: "trends", label: "trends.title", off: true },
+  { id: "compass", label: "compass.title", own: true, off: true, max: LARGE },
 ];
 
 const BY_ID = new Map(CARDS.map((card) => [card.id, card]));

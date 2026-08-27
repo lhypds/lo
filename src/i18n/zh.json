@@ -145,6 +145,30 @@
     "collapse": "关闭地图",
     "unavailable": "地图需要 WebGL，当前浏览器未提供。"
   },
+  "compass": {
+    "title": "指南针",
+    "body": "指南针、加速度计和陀螺仪都是设备自身的读数。",
+    "enable": "打开传感器",
+    "asking": "请求中",
+    "denied": "运动传感器已被阻止",
+    "deniedHint": "请在浏览器设置中允许本站访问运动与方向权限，然后重试。",
+    "unsupported": "此设备没有运动传感器",
+    "accuracy": "±{{degrees}}°",
+    "altitude": "高度",
+    "ground": "地面",
+    "accelerometer": "加速度计",
+    "gyroscope": "陀螺仪",
+    "point": {
+      "n": "北",
+      "ne": "东北",
+      "e": "东",
+      "se": "东南",
+      "s": "南",
+      "sw": "西南",
+      "w": "西",
+      "nw": "西北"
+    }
+  },
   "mark": {
     "button": "记录当前位置",
     "saving": "保存中",

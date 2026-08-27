@@ -157,6 +157,13 @@ export function lookupWeather(latitude, longitude) {
         abbreviation: data.timezone_abbreviation ?? "",
         offsetSeconds: data.utc_offset_seconds ?? 0,
       },
+      // The height of the ground the forecast was made for, which comes back
+      // with every answer whether anyone asked or not. Passed along because a
+      // phone's own altitude is a reading only a GPS can give and most fixes
+      // have none: this is the terrain of a model cell kilometres wide, right
+      // about the valley and silent about the building, and the compass card
+      // says as much when it falls back to it.
+      elevation: Number.isFinite(data.elevation) ? data.elevation : null,
       current: {
         time: current.time ?? null,
         temperature: current.temperature_2m ?? null,

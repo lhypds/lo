@@ -92,6 +92,12 @@ function readPosition(highAccuracy) {
             latitude: round(position.coords.latitude, 6),
             longitude: round(position.coords.longitude, 6),
             accuracy: Number.isFinite(position.coords.accuracy) ? round(position.coords.accuracy, 1) : null,
+            // Metres above sea level, and null far more often than not: only a
+            // device with a GPS worth the name answers this, and a browser
+            // placing itself off wifi has nothing to say about height at all.
+            // Carried here rather than read for itself, because it is part of
+            // the same fix — see CompassCard, which is where it is read.
+            altitude: Number.isFinite(position.coords.altitude) ? round(position.coords.altitude, 1) : null,
             at: Date.now(),
           },
         }),
