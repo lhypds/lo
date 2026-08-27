@@ -12,24 +12,15 @@
    that is looked at rather than read, so it goes first and it goes whole, with
    the name underneath it the way a caption sits under what it names.
    Where there is no picture the column is the name's own line and nothing has
-   moved: the row below still holds both ends of it. */
+   moved.
+
+   The same 14px the figures under the name are held off it by, so the head of
+   the page is three things evenly spaced rather than two gaps that happen to be
+   near each other: picture, name, figures. */
 .head {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-}
-
-/* The name and the day, at the two ends of the line under the picture. Wrapping,
-   because this line is as wide as the column now rather than as wide as what is
-   left beside a square — a long name takes the line and the day drops under it
-   rather than squeezing it. */
-.headNames {
-  min-width: 0;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 4px 12px;
+  gap: 14px;
 }
 
 /* Square, ruled like every other box in lo, and cropped to fill rather than
@@ -37,8 +28,9 @@
    is a grid of squares.
    96 rather than the 64 it was: on its own line it is not being sized against a
    heading any more, and this is a picture of somebody rather than a marker
-   saying there is one. The sheet that uploads it keeps 320 (see ProfileForm),
-   which is this at three times the pixels. */
+   saying there is one. The sheet that uploads it stores a 192px square (see
+   ProfileForm), which is this at twice the pixels — and square, so what
+   object-fit crops away here is a rounding error rather than half the file. */
 .avatar {
   align-self: flex-start;
   width: 96px;
@@ -63,11 +55,66 @@
   white-space: nowrap;
 }
 
-.joined {
-  flex: 0 0 auto;
+/* The figures at one end and the button at the other, on the line under the
+   name. Wrapping, because both ends have their own width — two counts and a word
+   — and on the narrowest phone with a long enough word in the reader's language
+   the button drops under the figures rather than squeezing them. */
+.follows {
+  margin: 14px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+
+.figures {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+}
+
+/* A count and the word for it, read as one thing: the figure in the mono face
+   every other number in lo is set in, and the word beside it in grey — which is
+   the card headings' own arrangement, a heading and its meta on one line.
+   Underlined on the number alone, because the number is what is being offered:
+   pressing this opens the names behind it. */
+.figure {
+  padding: 0;
+  border: 0;
+  background: none;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
   color: var(--muted);
+  font-size: 12px;
+}
+
+.figure b {
+  color: var(--ink);
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+/* The one thing this page lets you do about a person, on the terms every other
+   control in lo is drawn on: white with a black rule, turning over under the
+   pointer, and as wide as its word. Never a black bar across the column — a
+   profile is a page you came to read, and the filled slab is for the sheet where
+   there is one thing to press.
+
+   What it says is what it does, following the labels everywhere else in lo:
+   "Follow" while you do not, "Unfollow" while you do. The state is in the word,
+   so nothing here has to be read twice. */
+.follow {
+  padding: 6px 16px;
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 1;
 }
 
 /* Somebody's own words about themselves, so they are set as words: the sans
@@ -230,6 +277,22 @@
 
   .contacts dd button:hover {
     text-decoration: none;
+  }
+
+  /* The whole of the count answers to the pointer, word and all: what is
+     pressed is the pair, and the underline coming off the figure is the same
+     turn the contact rows above take. */
+  .figure:hover {
+    color: var(--ink);
+  }
+
+  .figure:hover b {
+    text-decoration: none;
+  }
+
+  .follow:hover:not(:disabled) {
+    background: var(--ink);
+    color: var(--paper);
   }
 
   .post:hover {

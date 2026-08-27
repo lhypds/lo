@@ -228,7 +228,14 @@
     "saved": "已保存"
   },
   "user": {
-    "joined": "{{date}} 加入",
+    "follow": "关注",
+    "unfollow": "取消关注",
+    "followers": "关注者",
+    "following": "关注中",
+    "followersTitle": "关注者",
+    "followingTitle": "关注中",
+    "noFollowers": "还没有关注者",
+    "noFollowing": "还没有关注任何人",
     "contact": "联系方式",
     "copy": "复制",
     "copied": "已复制",

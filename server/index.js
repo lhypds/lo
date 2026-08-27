@@ -10,6 +10,10 @@ import {
   createUser,
   deleteMark,
   deletePost,
+  followUser,
+  getFollowStats,
+  getFollowers,
+  getFollowing,
   getMarks,
   getOtherPositions,
   getPostsByUser,
@@ -19,6 +23,7 @@ import {
   getUser,
   renameMark,
   savePosition,
+  unfollowUser,
   updatePost,
   updateProfile,
 } from "./db.js";
@@ -322,7 +327,81 @@ app.get("/api/users/:username", requireSession, (req, res) => {
   if (!USERNAME_RE.test(username)) return res.status(400).json({ error: USERNAME_HINT });
   const user = getProfile(username);
   if (!user) return res.status(404).json({ error: "用户不存在", code: "USER_NOT_FOUND" });
-  res.json({ user, posts: getPostsByUser(username, PROFILE_POSTS) });
+  // Who reads them, who they read, and whether the reader asking is one of the
+  // first — part of the same answer as the bio and the posts, because it is
+  // drawn as one page and a second request for it would let the row of figures
+  // arrive after the page it belongs to.
+  res.json({
+    user,
+    follows: getFollowStats(req.user.id, username),
+    posts: getPostsByUser(username, PROFILE_POSTS),
+  });
+});
+
+/* ----------------------------------------------------------------- follows */
+
+// How many names either sheet will draw. Far past what anybody scrolls, and
+// there for the same reason every other limit in here is: a list is answered in
+// one response, so it has to have an end.
+const FOLLOWS_MAX = 200;
+
+// The account a follow endpoint is about, or nothing — every one of the four
+// below starts by reading a name out of the path, and three of them answer with
+// the same figures afterwards.
+function followTarget(req, res) {
+  const username = normalizeUsername(req.params.username);
+  if (!USERNAME_RE.test(username)) {
+    res.status(400).json({ error: USERNAME_HINT });
+    return null;
+  }
+  const user = getUser(username);
+  if (!user) {
+    res.status(404).json({ error: "用户不存在", code: "USER_NOT_FOUND" });
+    return null;
+  }
+  return user;
+}
+
+// Following and unfollowing are the same request twice with a different verb,
+// and both answer with the state they left behind rather than with what they
+// did: the button that sent it needs to know which word it is showing now, and
+// the two figures beside it have just changed by one.
+//
+// Pressed twice — a second tab, a press that never came back — is not a mistake
+// anybody made, so neither is an error: both endpoints leave the same row there
+// or not there whatever they found (see followUser in db.js).
+app.put("/api/users/:username/follow", requireSession, (req, res) => {
+  const target = followTarget(req, res);
+  if (!target) return;
+  // Your own page has no button on it, so this is a request nobody's browser
+  // sends; the table would refuse the row anyway, and a name in its own list is
+  // worth saying no to in words rather than as a constraint failing.
+  if (target.id === req.user.id) return res.status(400).json({ error: "不能关注自己" });
+  followUser(req.user.id, target.id);
+  res.json({ follows: getFollowStats(req.user.id, target.username) });
+});
+
+app.delete("/api/users/:username/follow", requireSession, (req, res) => {
+  const target = followTarget(req, res);
+  if (!target) return;
+  unfollowUser(req.user.id, target.id);
+  res.json({ follows: getFollowStats(req.user.id, target.username) });
+});
+
+// The two lists behind the two figures. Anybody signed in may read either of
+// them about anybody: a follow is not a private act — it is already counted on
+// a page everyone can open, and a figure nobody may read the names behind would
+// be a number lo was asking to be taken on trust.
+app.get("/api/users/:username/followers", requireSession, (req, res) => {
+  const target = followTarget(req, res);
+  if (!target) return;
+  res.json({ people: getFollowers(target.id, FOLLOWS_MAX) });
+});
+
+app.get("/api/users/:username/following", requireSession, (req, res) => {
+  const target = followTarget(req, res);
+  if (!target) return;
+  res.json({ people: getFollowing(target.id, FOLLOWS_MAX) });
 });
 
 /* ------------------------------------------------------------- here and now */

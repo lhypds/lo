@@ -46,27 +46,80 @@ function toBlob(canvas, type, quality) {
   return new Promise((resolve) => canvas.toBlob(resolve, type, quality));
 }
 
-// The image as WebP, scaled so its longest edge is at most `maxSize`. Falls
-// back to the original file when the browser cannot encode WebP — toBlob
-// silently hands back a PNG in that case, and the original is both smaller and
-// truer than an unshrunk re-encode of itself.
-export async function compressToWebp(file, { quality = 0.82, maxSize = 1600 } = {}) {
+// What to take out of the picture, and how big to draw it. The whole frame,
+// scaled until its longest edge fits: a photo on a post is shown at whatever
+// shape it was taken in, so nothing may be cut off it.
+function whole(image, maxSize) {
+  const longest = Math.max(image.width, image.height);
+  const scale = maxSize > 0 && longest > maxSize ? maxSize / longest : 1;
+  return {
+    sx: 0,
+    sy: 0,
+    sw: image.width,
+    sh: image.height,
+    width: Math.max(1, Math.round(image.width * scale)),
+    height: Math.max(1, Math.round(image.height * scale)),
+  };
+}
+
+// And the other answer: the middle square of it, `size` on a side. For a picture
+// that is only ever drawn in a square box — a profile picture, which every page
+// showing one crops square anyway — fitting the whole frame is the wrong resize
+// twice over. Everything either side of the square travels the wire to be thrown
+// away by object-fit at the far end, and the edge that decides how sharp the
+// result looks is the short one, which fitting the long edge does not measure at
+// all: a landscape photo fitted to 320 arrives with 180 pixels on the side the
+// square is cut from, having spent nearly half its bytes on width nobody sees.
+// Cropping here is what makes `size` mean the thing that is drawn, so every
+// pixel stored is a pixel shown and the size can then be picked honestly against
+// the box.
+//
+// Never enlarged past what was handed over: a small picture blown up to `size`
+// is a bigger file with nothing more in it.
+function middleSquare(image, size) {
+  const edge = Math.min(image.width, image.height);
+  const side = Math.max(1, Math.min(size, edge));
+  return {
+    sx: Math.round((image.width - edge) / 2),
+    sy: Math.round((image.height - edge) / 2),
+    sw: edge,
+    sh: edge,
+    width: side,
+    height: side,
+  };
+}
+
+// The image as WebP: scaled whole so its longest edge is at most `maxSize`, or
+// — with `square` — cropped to its middle square at `maxSize` on a side.
+//
+// Where the browser cannot encode WebP, toBlob silently hands back a PNG, which
+// for a photo is several times the size of the thing it is standing in for; so
+// JPEG is asked for instead, which keeps the resize and loses only the
+// transparency. Nothing that can encode neither is a browser from this decade.
+// The original file is the last answer of all, and the only one that arrives
+// unshrunk.
+export async function compressToWebp(file, { quality = 0.82, maxSize = 1600, square = false } = {}) {
   const image = await decode(file);
   try {
-    const longest = Math.max(image.width, image.height);
-    const scale = maxSize > 0 && longest > maxSize ? maxSize / longest : 1;
-    const width = Math.max(1, Math.round(image.width * scale));
-    const height = Math.max(1, Math.round(image.height * scale));
+    const { sx, sy, sw, sh, width, height } = square
+      ? middleSquare(image, maxSize)
+      : whole(image, maxSize);
 
     const canvas = document.createElement("canvas");
     canvas.width = width;
     canvas.height = height;
     const context = canvas.getContext("2d");
     if (!context) throw new Error("could not draw that image");
-    context.drawImage(image.source, 0, 0, width, height);
+    // A phone photo arrives several times the size of anything drawn here, and
+    // the default resampling over a step that big is most of what makes a shrunk
+    // picture look shrunk.
+    context.imageSmoothingQuality = "high";
+    context.drawImage(image.source, sx, sy, sw, sh, 0, 0, width, height);
 
     const webp = await toBlob(canvas, "image/webp", quality);
     if (webp?.type === "image/webp") return { blob: webp, width, height };
+    const jpeg = await toBlob(canvas, "image/jpeg", quality);
+    if (jpeg?.type === "image/jpeg") return { blob: jpeg, width, height };
     return { blob: file, width: image.width, height: image.height };
   } finally {
     image.close();

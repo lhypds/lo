@@ -228,7 +228,14 @@
     "saved": "保存しました"
   },
   "user": {
-    "joined": "{{date}} から",
+    "follow": "フォロー",
+    "unfollow": "フォロー解除",
+    "followers": "フォロワー",
+    "following": "フォロー中",
+    "followersTitle": "フォロワー",
+    "followingTitle": "フォロー中",
+    "noFollowers": "まだフォロワーはいません",
+    "noFollowing": "まだ誰もフォローしていません",
     "contact": "連絡先",
     "copy": "コピー",
     "copied": "コピーしました",

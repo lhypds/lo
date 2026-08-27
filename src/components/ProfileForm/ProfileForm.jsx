@@ -13,11 +13,25 @@ import { LINK_KINDS } from "../../utils/links.js";
 const BIO_MAX = 280;
 const LINKS_MAX = 12;
 
-// A picture the size of the box it is shown in and no larger. A profile picture
-// is drawn at 96px on the page and 64px in this sheet, so 320 is three times what
-// the larger of them asks for — which covers the densest screen there is and
-// stops there, because this is one file every reader of the profile downloads.
-const AVATAR_SIZE = 320;
+// A picture the size of the box it is shown in and no larger, and square,
+// because square is the only shape a profile picture is ever drawn in — 96px on
+// the profile page, 64px in this sheet, both of them cropped square by
+// object-fit. So 192: twice the larger box, which is a retina screen's worth,
+// and three times the smaller one.
+//
+// It was 320 fitted whole, which is the same number meaning something else. A
+// landscape photo fitted that way stored 320x180 and drew the middle 180 of it,
+// so the honest reading of the old size was 180 — and the bytes for the width
+// either side were spent anyway. Cut to the square instead (see middleSquare)
+// and 192 is both the number stored and the number shown: a little sharper than
+// what a landscape photo used to arrive at, and between a third and two thirds
+// of the pixels. This is one file every reader of the profile downloads before
+// anything else on the page, so that is the trade worth making.
+const AVATAR_SIZE = 192;
+// And a shade under what a post photo is kept at. This one is drawn at half the
+// size it is stored at, and what does not survive that reduction is not worth
+// paying to send.
+const AVATAR_QUALITY = 0.75;
 // And the box it is drawn in here, which is also what the <img> is told it is:
 // a picture whose size is on the tag does not resize the form around it when it
 // arrives.
@@ -89,7 +103,11 @@ export default function ProfileForm({ user, onSaved }) {
     setUploading(true);
     setError("");
     try {
-      const { blob } = await compressToWebp(file, { maxSize: AVATAR_SIZE });
+      const { blob } = await compressToWebp(file, {
+        maxSize: AVATAR_SIZE,
+        square: true,
+        quality: AVATAR_QUALITY,
+      });
       const stored = await uploadImage(blob);
       // Held until the browser has the pixels, so the box fills with the picture
       // instead of going blank and then filling.

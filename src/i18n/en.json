@@ -228,7 +228,15 @@
     "saved": "Saved"
   },
   "user": {
-    "joined": "since {{date}}",
+    "follow": "Follow",
+    "unfollow": "Unfollow",
+    "followers_one": "follower",
+    "followers_other": "followers",
+    "following": "following",
+    "followersTitle": "Followers",
+    "followingTitle": "Following",
+    "noFollowers": "No followers yet",
+    "noFollowing": "Not following anyone yet",
     "contact": "Contact",
     "copy": "Copy",
     "copied": "Copied",

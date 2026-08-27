@@ -39,6 +39,19 @@ export const updateProfile = (profile) =>
 // around. One request, because a page about a person answers all three at once.
 export const getUser = (username) => request(`/api/users/${encodeURIComponent(username)}`);
 
+// Following somebody and stopping are the same address with a different verb,
+// and both answer with the two figures and the state the button should be
+// showing — so the row of them under a name never has to be asked for again.
+export const followUser = (username) =>
+  request(`/api/users/${encodeURIComponent(username)}/follow`, { method: "PUT" });
+export const unfollowUser = (username) =>
+  request(`/api/users/${encodeURIComponent(username)}/follow`, { method: "DELETE" });
+// The names behind the figures, one list each: asked for when a sheet is opened
+// on them rather than with the page, since most readings of a profile never open
+// either.
+export const getFollowers = (username) => request(`/api/users/${encodeURIComponent(username)}/followers`);
+export const getFollowing = (username) => request(`/api/users/${encodeURIComponent(username)}/following`);
+
 export const getLocal = (coords) => request(`/api/local?${geoQuery(coords)}`);
 export const getNearby = (coords) => request(`/api/nearby?${geoQuery(coords)}`);
 export const getEvents = (coords) => request(`/api/events?${geoQuery(coords)}`);

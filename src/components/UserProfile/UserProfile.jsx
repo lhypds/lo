@@ -6,6 +6,8 @@ import { copyText } from "../../utils/clipboard.js";
 import { CONTACTS } from "../../utils/contacts.js";
 import { formatCoords, formatUsername, relativeTime } from "../../utils/format.js";
 import { profileLinks } from "../../utils/links.js";
+import { useAuth } from "../AuthProvider/index.js";
+import FollowsModal from "../FollowsModal/index.js";
 
 // What the pictures on this page are drawn at, on the tag as well as in the
 // stylesheet: one that arrives without its size resizes the page around it as it
@@ -28,9 +30,23 @@ import styles from "./user.module.css";
 // be kept, shared, or opened in a tab.
 export default function UserProfile({ username }) {
   const { t, i18n } = useTranslation();
+  const { user } = useAuth();
   const [profile, setProfile] = useState(null);
   const [posts, setPosts] = useState([]);
   const [error, setError] = useState("");
+  // Who reads this account, who it reads, and whether the reader in front of it
+  // is one of the first — three facts that arrive together and change together,
+  // so they are held as one thing rather than as three states that could get out
+  // of step with each other.
+  const [follows, setFollows] = useState(null);
+  // Which of the two lists is open over the page, and nothing when neither is:
+  // the sheet is the figures' own, so what says it is up is which figure was
+  // pressed (see FollowsModal).
+  const [listing, setListing] = useState(null);
+  // A press is out. The button keeps its word while it is — what it says is
+  // still true until the server says otherwise — and only stops being pressable,
+  // which is what keeps a double press from asking the same thing twice.
+  const [working, setWorking] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -39,6 +55,8 @@ export default function UserProfile({ username }) {
     // person's name is the one thing this must never show.
     setProfile(null);
     setPosts([]);
+    setFollows(null);
+    setListing(null);
     setError("");
     api
       .getUser(username)
@@ -46,6 +64,7 @@ export default function UserProfile({ username }) {
         if (cancelled) return;
         setProfile(data.user);
         setPosts(data.posts ?? []);
+        setFollows(data.follows ?? null);
       })
       .catch((requestError) => {
         if (!cancelled) setError(requestError.message);
@@ -56,6 +75,50 @@ export default function UserProfile({ username }) {
   }, [username]);
 
   const name = formatUsername(username);
+  // Your own page, which is the one profile with nothing to press: following
+  // yourself would put your name in your own list and add one to both of your
+  // own figures, and the server refuses it too. The figures themselves stay —
+  // how many people read you is a thing worth knowing about your own account,
+  // and the lists behind them are the same two lists.
+  const isSelf = user?.username === username;
+
+  // Either figure, drawn the way a card draws its count: the number said plainly
+  // and the word after it saying which number it is. A button, because the
+  // figure is the way in to the names behind it — a count nobody can open is a
+  // number lo is asking to be taken on trust.
+  //
+  // Pressable even at nought, and deliberately: an empty sheet saying "nobody
+  // yet" is an answer, and a figure that stopped being a control at nought would
+  // read as one that had failed rather than as one that means none.
+  //
+  // The count goes to the word as well as into the figure: one follower is a
+  // follower, and English is the only one of the three languages that has an
+  // opinion about it — the other two answer with the one word they have,
+  // whatever number is standing in front of it.
+  const figure = (mode) => (
+    <button type="button" className={styles.figure} onClick={() => setListing(mode)}>
+      <b>{follows[mode]}</b>
+      <span>{t(`user.${mode}`, { count: follows[mode] })}</span>
+    </button>
+  );
+
+  // Following and stopping are one press with two words on it: what it says is
+  // what it will do, which is how every other control in lo is labelled. The
+  // answer carries the figures back, so the row above it changes by one at the
+  // same moment the word does — one reading of one account, rather than a button
+  // that knows one thing and a count that knows another.
+  async function toggleFollow() {
+    if (!follows) return;
+    setWorking(true);
+    try {
+      const data = follows.isFollowing ? await api.unfollowUser(username) : await api.followUser(username);
+      setFollows(data.follows);
+    } catch (requestError) {
+      showToast(requestError.message, 1800);
+    } finally {
+      setWorking(false);
+    }
+  }
 
   // How to reach this person, off lo: the ones with their own field, and then
   // whatever else they have added a row for. Only the filled ones — an empty row
@@ -122,20 +185,47 @@ export default function UserProfile({ username }) {
             height={AVATAR_BOX}
           />
         )}
-        <span className={styles.headNames}>
-          <h1 className={styles.name}>{name}</h1>
-          {profile && (
-            <span className={styles.joined}>
-              {t("user.joined", { date: new Date(profile.createdAt).toLocaleDateString(i18n.language) })}
-            </span>
-          )}
-        </span>
+        {/* The name, and nothing beside it. The day the account was opened stood
+            at the other end of this line for a while and has gone: when somebody
+            signed up is a fact about lo's records rather than about them, and
+            the line under the name now carries the two figures that are worth
+            reading — how many people follow them, and how many they follow. */}
+        <h1 className={styles.name}>{name}</h1>
       </div>
 
       {error && <p className="form-message error">{error}</p>}
 
       {profile && (
         <>
+          {/* The two figures at one end of a line and the one thing to do about
+              a person at the other, directly under the name they are about: how
+              many read this account and how many it reads are facts about who
+              somebody is, which is what this page is, and they belong with the
+              name rather than under the posts.
+
+              Nothing at all until the figures are in hand: they come back with
+              the profile in the one request the page makes, so the row lands
+              with the name it sits under rather than a moment after it. */}
+          {follows && (
+            <div className={styles.follows}>
+              <div className={styles.figures}>
+                {figure("followers")}
+                {figure("following")}
+              </div>
+              {/* Your own page has the figures and no button — see isSelf. */}
+              {!isSelf && (
+                <button
+                  type="button"
+                  className={styles.follow}
+                  onClick={toggleFollow}
+                  disabled={working}
+                >
+                  {t(follows.isFollowing ? "user.unfollow" : "user.follow")}
+                </button>
+              )}
+            </div>
+          )}
+
           {/* A bio is optional and most are empty, so the line is left out
               rather than stood in for: there is nothing to say on somebody's
               behalf about who they are. */}
@@ -229,6 +319,12 @@ export default function UserProfile({ username }) {
               answering a question nobody standing here is asking. */}
         </>
       )}
+
+      {/* The names behind whichever figure was pressed, over the page they were
+          pressed on. Mounted whether or not either is open — the sheet draws
+          nothing until it has a list to draw (see ui/Modal), and keeping it here
+          is what lets the two figures be the whole of the way in. */}
+      <FollowsModal username={username} mode={listing} onClose={() => setListing(null)} />
     </div>
   );
 }

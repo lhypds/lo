@@ -4,6 +4,7 @@ export { AuthProvider, useAuth } from "./AuthProvider/index.js";
 export { default as CardSize } from "./CardSize/index.js";
 export { default as ClockCard } from "./ClockCard/index.js";
 export { default as EventsCard } from "./EventsCard/index.js";
+export { default as FollowsModal } from "./FollowsModal/index.js";
 export { default as Header } from "./Header/index.js";
 export { default as HereStrip } from "./HereStrip/index.js";
 export { default as LanguageSwitcher } from "./LanguageSwitcher/index.js";

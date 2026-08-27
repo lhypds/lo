@@ -92,6 +92,33 @@ db.exec(`
   );
 
   CREATE INDEX IF NOT EXISTS positions_updated_idx ON positions(updated_at DESC);
+
+  -- Who is reading whom. The one thing in lo that is a relation between two
+  -- accounts rather than between an account and the ground, and it points one
+  -- way: following somebody is a thing you do, not a thing the two of you agree
+  -- to, so there is nothing here to accept and nothing to be turned down.
+  --
+  -- The pair is the key, which is what makes following twice the same as
+  -- following once — the INSERT below can be handed the same pair every time the
+  -- button is pressed and the table stays the answer it was. No rowid: every row
+  -- is its own two columns and a date, and nothing ever asks for one by number.
+  --
+  -- The CHECK is the one shape a row must not take. Following yourself would put
+  -- a name in its own list and add one to both figures on its own page, and the
+  -- endpoint refuses it too — this is the copy that holds whatever asks.
+  CREATE TABLE IF NOT EXISTS follows (
+    follower_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    followee_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    PRIMARY KEY (follower_id, followee_id),
+    CHECK (follower_id <> followee_id)
+  ) WITHOUT ROWID;
+
+  -- The key above answers everything asked of a follower — who they follow, and
+  -- whether they follow one particular account. This is the other direction,
+  -- which the key cannot answer: who follows this account, newest first, which
+  -- is the list the sheet on a profile page draws.
+  CREATE INDEX IF NOT EXISTS follows_followee_idx ON follows(followee_id, created_at DESC);
 `);
 
 // The account grew a profile after the first accounts were opened, so the
@@ -279,6 +306,70 @@ const deletePostById = db.prepare(`
   WHERE id = ? AND user_id = ?
 `);
 
+/* ------------------------------------------------------------------ follows */
+
+// Following twice is following once: the pair is the table's key, so a second
+// press of a button that never came back — or a second tab pressing the same
+// one — lands on the row that is already there rather than on an error.
+const insertFollow = db.prepare(`
+  INSERT OR IGNORE INTO follows (follower_id, followee_id)
+  VALUES (?, ?)
+`);
+
+const deleteFollow = db.prepare(`
+  DELETE FROM follows
+  WHERE follower_id = ? AND followee_id = ?
+`);
+
+// The three things a profile page has to say about following, in one reading of
+// it: how many read this account, how many it reads, and whether the reader
+// standing in front of it is one of the first. They are one answer because they
+// are drawn as one row — two figures and the button beside them — and asking in
+// three round trips would let the row disagree with itself.
+//
+// By name rather than by id, so this is the same question the page asks: the
+// account being read is a name in a path, and its id is nobody's business above
+// this file.
+const selectFollowStats = db.prepare(`
+  SELECT
+    (SELECT COUNT(*) FROM follows WHERE followee_id = u.id) AS followers,
+    (SELECT COUNT(*) FROM follows WHERE follower_id = u.id) AS following,
+    EXISTS (SELECT 1 FROM follows WHERE follower_id = ? AND followee_id = u.id) AS isFollowing
+  FROM users u
+  WHERE u.username = ?
+`);
+
+// A row of either list is a person, and a person in lo is a name and, where
+// they have put one up, a picture. The rest of who they are is on their page,
+// which the row is a way through to — a list of everyone who follows somebody
+// is not the place to read anybody's bio.
+const FOLLOW_COLUMNS = `
+  u.username,
+  CASE WHEN u.avatar IS NULL THEN NULL ELSE '/api/images/' || u.avatar END AS avatar,
+  f.created_at AS time
+`;
+
+// Newest first, which is the order these are read in: the list answers "who has
+// been turning up" as much as "who is here", and the name added this morning is
+// the one worth seeing without scrolling.
+const selectFollowers = db.prepare(`
+  SELECT ${FOLLOW_COLUMNS}
+  FROM follows f
+  JOIN users u ON u.id = f.follower_id
+  WHERE f.followee_id = ?
+  ORDER BY f.created_at DESC, u.id DESC
+  LIMIT ?
+`);
+
+const selectFollowing = db.prepare(`
+  SELECT ${FOLLOW_COLUMNS}
+  FROM follows f
+  JOIN users u ON u.id = f.followee_id
+  WHERE f.follower_id = ?
+  ORDER BY f.created_at DESC, u.id DESC
+  LIMIT ?
+`);
+
 const upsertPosition = db.prepare(`
   INSERT INTO positions (user_id, latitude, longitude, accuracy, updated_at)
   VALUES (?, ?, ?, ?, ?)
@@ -450,6 +541,34 @@ export function updatePost(userId, postId, post) {
 
 export function deletePost(userId, postId) {
   return deletePostById.run(postId, userId).changes > 0;
+}
+
+// Both presses answer with the state they left behind rather than with whether
+// they changed anything: what the button in front of the reader needs to know is
+// which word it should be showing now, and that is the same answer whether the
+// press did the work or found it already done.
+export function followUser(followerId, followeeId) {
+  insertFollow.run(followerId, followeeId);
+}
+
+export function unfollowUser(followerId, followeeId) {
+  deleteFollow.run(followerId, followeeId);
+}
+
+// EXISTS answers in SQLite's 0 and 1, and everything above this file reads it as
+// a yes or a no — the same turn the links column gets on its way out.
+export function getFollowStats(viewerId, username) {
+  const row = selectFollowStats.get(viewerId, username);
+  if (!row) return null;
+  return { followers: row.followers, following: row.following, isFollowing: row.isFollowing === 1 };
+}
+
+export function getFollowers(userId, limit = 200) {
+  return selectFollowers.all(userId, limit);
+}
+
+export function getFollowing(userId, limit = 200) {
+  return selectFollowing.all(userId, limit);
 }
 
 export function savePosition(userId, { latitude, longitude, accuracy }) {

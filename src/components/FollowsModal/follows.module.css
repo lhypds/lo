@@ -1,0 +1,83 @@
+/* A column of names in the house sheet, with the same inset the account sheet
+   takes on top of the modal's own: small type wants more air at its edges than a
+   row of buttons does, and every row in here is ruled the full width of it. */
+.sheet {
+  padding: 0 8px;
+}
+
+/* Capped rather than let run: two hundred names is a page and a half of scroll
+   inside a sheet that is already floating over one. The modal caps itself at
+   90vh, so this is the shorter of the two on a tall screen and the sheet's own
+   content box is on a short one. */
+.list {
+  margin: 0;
+  padding: 0;
+  max-height: 60vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  list-style: none;
+}
+
+.list li {
+  border-bottom: 1px solid var(--line);
+}
+
+/* The picture, the name, and when the row was made at the far end of it —
+   the same three-part row the people panel on the dashboard draws, which is the
+   shape a list of people has in lo. Centred rather than set on the baseline:
+   the picture is a 28px square and there is one line of type beside it, so what
+   lines the row up is the box rather than the words. */
+.item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  text-decoration: none;
+}
+
+/* Square and ruled like every other picture in lo, at the size a row can hold.
+   Nothing at all where somebody has not put one up — the row starts at the name
+   instead, which is the reading the profile page and the post lists already
+   take: a grey box saying there is no picture is a hole rather than an answer. */
+.avatar {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--ink);
+  background: var(--soft);
+  object-fit: cover;
+}
+
+/* The name takes the row and gives way first: it is the one thing here that can
+   be any length, and what is at the other end is four characters of grey. */
+.who {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.when {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+}
+
+.empty {
+  margin: 0;
+  padding: 18px 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* The row lights up past its own edges, which is how a pressable row reads
+   everywhere else in lo: the sheet's inset is what the shadow fills. */
+@media (hover: hover) {
+  .item:hover {
+    background: var(--soft);
+    box-shadow: -8px 0 var(--soft), 8px 0 var(--soft);
+  }
+}
