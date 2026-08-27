@@ -133,16 +133,19 @@ export default function PostsPage() {
         </Suspense>
       </div>
       <main className="posts-list">
-        <div className="section-heading">
-          <div className="section-heading-titles">
-            <h1>{t("posts.title")}</h1>
-            <p className="section-subtitle">{t("posts.subtitle")}</p>
+        {/* The heading and the search stay put while the list scrolls under them
+            — the title says which list this is and the field is how it is
+            narrowed, and both want to be in reach at the bottom of a long one. */}
+        <div className="list-sticky">
+          <div className="section-heading">
+            <div className="section-heading-titles">
+              <h1>{t("posts.title")}</h1>
+              <p className="section-subtitle">{t("posts.subtitle")}</p>
+            </div>
+            <span>{query.trim() ? `${shown.length}/${posts.length}` : posts.length}</span>
           </div>
-          <span>{query.trim() ? `${shown.length}/${posts.length}` : posts.length}</span>
+          {posts.length > 0 && <SearchField value={query} onChange={setQuery} placeholder={t("search.posts")} />}
         </div>
-        {posts.length > 0 && (
-          <SearchField value={query} onChange={setQuery} placeholder={t("search.posts")} />
-        )}
         {posts.length === 0 ? (
           <p className="empty-state">{t("posts.empty")}</p>
         ) : shown.length === 0 ? (
@@ -207,12 +210,7 @@ export default function PostsPage() {
         onAdded={(post, comments) => replacePost({ ...post, comments })}
       />
 
-      <Modal
-        isOpen={Boolean(deleting)}
-        title={t("post.deleteTitle")}
-        onClose={() => setDeleting(null)}
-        closeOnOverlay
-      >
+      <Modal isOpen={Boolean(deleting)} title={t("post.deleteTitle")} onClose={() => setDeleting(null)} closeOnOverlay>
         <p className="modal-text">{t("post.deleteConfirm")}</p>
         <div className="modal-actions">
           <button type="button" className="outline-button" onClick={() => setDeleting(null)} disabled={busy}>

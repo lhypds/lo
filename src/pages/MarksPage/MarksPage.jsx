@@ -77,12 +77,7 @@ export default function MarksPage() {
   // unnamed spot has nothing else written on it, and they are what the row is
   // wearing until somebody gives it a name.
   const shown = useMemo(
-    () =>
-      filterBy(marks, query, (mark) => [
-        mark.label,
-        mark.place,
-        formatCoords(mark.latitude, mark.longitude),
-      ]),
+    () => filterBy(marks, query, (mark) => [mark.label, mark.place, formatCoords(mark.latitude, mark.longitude)]),
     [marks, query],
   );
 
@@ -96,30 +91,26 @@ export default function MarksPage() {
               the list has just said are not the ones. The fit happens once, on
               the first list that had anything in it, so typing thins the pins
               out where they stand rather than throwing the view about. */}
-          <MapCard
-            fitMarks
-            marks={shown}
-            focus={focus}
-            hovered={hovered}
-            onHoverPin={setHovered}
-            onSelectPin={setChosen}
-          />
+          <MapCard fitMarks marks={shown} focus={focus} hovered={hovered} onHoverPin={setHovered} onSelectPin={setChosen} />
         </Suspense>
       </div>
       <main className="marks-list">
-        <div className="section-heading">
-          <div className="section-heading-titles">
-            <h1>{t("marks.title")}</h1>
-            <p className="section-subtitle">{t("marks.subtitle")}</p>
+        {/* The heading and the search stay put while the list scrolls under them
+            — the title says which list this is and the field is how it is
+            narrowed, and both want to be in reach at the bottom of a long one. */}
+        <div className="list-sticky">
+          <div className="section-heading">
+            <div className="section-heading-titles">
+              <h1>{t("marks.title")}</h1>
+              <p className="section-subtitle">{t("marks.subtitle")}</p>
+            </div>
+            {/* Both numbers while a search is running: how many answered it, out
+                of how many there are to answer it. */}
+            <span>{query.trim() ? `${shown.length}/${marks.length}` : marks.length}</span>
           </div>
-          {/* Both numbers while a search is running: how many answered it, out
-              of how many there are to answer it. */}
-          <span>{query.trim() ? `${shown.length}/${marks.length}` : marks.length}</span>
+          {/* Nothing to search until there is something to search through */}
+          {marks.length > 0 && <SearchField value={query} onChange={setQuery} placeholder={t("search.marks")} />}
         </div>
-        {/* Nothing to search until there is something to search through */}
-        {marks.length > 0 && (
-          <SearchField value={query} onChange={setQuery} placeholder={t("search.marks")} />
-        )}
         {marks.length === 0 ? (
           <p className="empty-state">{t("marks.empty")}</p>
         ) : shown.length === 0 ? (
@@ -156,12 +147,7 @@ export default function MarksPage() {
         onSubmit={rename}
       />
 
-      <Modal
-        isOpen={Boolean(deleting)}
-        title={t("marks.deleteTitle")}
-        onClose={() => setDeleting(null)}
-        closeOnOverlay
-      >
+      <Modal isOpen={Boolean(deleting)} title={t("marks.deleteTitle")} onClose={() => setDeleting(null)} closeOnOverlay>
         <p className="modal-text">{t("marks.deleteConfirm", { name: deletingName })}</p>
         <div className="modal-actions">
           <button type="button" className="outline-button" onClick={() => setDeleting(null)} disabled={busy}>

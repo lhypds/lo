@@ -817,6 +817,18 @@ html:has(.home-main:not(.home-main-map) .card-pager) {
   }
 }
 
+/* The heading and the search bar held at the top of the list while the rows
+   scroll under them. Paper behind, so a row disappears beneath the header rather
+   than through it, and above the rows' own hover so nothing lights up under it.
+   The list's own top padding scrolls off with the first rows; once it is gone the
+   header rests at the very top of the scroller. */
+.list-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--paper);
+}
+
 /* No rule of its own: the search field under it is a black box the full width of
    the list, and a line directly above that box was a second edge saying the same
    thing. The padding stays — it is the gap to whatever comes next. */
@@ -972,6 +984,7 @@ html:has(.home-main:not(.home-main-map) .card-pager) {
 }
 
 .post-row {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -980,7 +993,10 @@ html:has(.home-main:not(.home-main-map) .card-pager) {
 }
 
 /* The whole block is the button that opens the post, thumbnail included: on a
-   phone the picture is the biggest thing in the row and the easiest to hit */
+   phone the picture is the biggest thing in the row and the easiest to hit. Its
+   hit area is stretched over the whole row by the ::after below, so the empty
+   stretch on the right opens the post too — everything but the controls that sit
+   above it (see .post-actions). */
 .post-copy {
   flex: 1;
   min-width: 0;
@@ -991,6 +1007,12 @@ html:has(.home-main:not(.home-main-map) .card-pager) {
   border: 0;
   background: none;
   text-align: left;
+}
+
+.post-copy::after {
+  content: "";
+  position: absolute;
+  inset: 0;
 }
 
 .post-copy-lines {
@@ -1042,7 +1064,11 @@ html:has(.home-main:not(.home-main-map) .card-pager) {
   gap: 8px;
 }
 
+/* Above the stretched hit area of .post-copy, so the navigate/edit/delete
+   controls stay pressable while the empty stretch around them opens the post. */
 .post-actions {
+  position: relative;
+  z-index: 1;
   display: flex;
   gap: 6px;
 }
