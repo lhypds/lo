@@ -38,7 +38,7 @@
     "locationOn": "On",
     "locationOff": "Off",
     "logout": "Logout"
-  },
+  },In the plus button list, move the nearby posts under the warnings.
   "gate": {
     "title": "lo",
     "body": "lo starts from where you are. Turn on location and the time, the weather, what is happening nearby and the map all follow.",

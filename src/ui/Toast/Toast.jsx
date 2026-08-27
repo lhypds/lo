@@ -5,7 +5,12 @@ import { register } from "./toastApi";
 const POSITION_STYLES = {
   top: { top: 24, bottom: "auto" },
   center: { top: "50%", bottom: "auto", transform: "translate(-50%, -50%)" },
-  bottom: { bottom: 24, top: "auto" },
+  // The dashboard raises this token above its page dots; other pages keep the
+  // original 24px placement, now with the device safe area included.
+  bottom: {
+    bottom: "var(--toast-bottom, calc(24px + env(safe-area-inset-bottom)))",
+    top: "auto",
+  },
 };
 
 const Toast = () => {
