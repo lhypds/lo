@@ -118,6 +118,15 @@ a {
   color: inherit;
 }
 
+/* No grey flash on tap: iOS paints its own over the box of whatever was pressed,
+   which on a row split into a button and the controls beside it lands on only
+   the one segment and reads as the row lighting up in halves. The app says what
+   a press did in its own terms (see .row-hovered); it does not need the browser's. */
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
 #root,
 .page-shell {
   min-height: 100vh;
