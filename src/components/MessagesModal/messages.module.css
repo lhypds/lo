@@ -1,17 +1,21 @@
-/* A column of people in the house sheet, with the same inset the follows sheet
-   takes on top of the modal's own: small type wants more air at its edges than a
-   row of buttons does, and every row in here is ruled the full width of it. */
+/* A column of people in the house sheet, flush with the modal's own inset so the
+   rows line up with the title and the close button above them. The row's hover
+   still bleeds 8px past the text (see .item), into that inset rather than into a
+   margin of its own. */
 .sheet {
-  padding: 0 8px;
+  padding: 0;
 }
 
-/* Capped rather than let run: the modal stops at 90vh, so this is the shorter of
-   the two on a tall screen and the sheet's own content box is on a short one —
-   the same bargain the list of followers makes. */
+/* The same height the chat sheet stands at, so opening a row does not resize the
+   sheet under the pointer. That sheet is its thread (40vh, 180–360px) with the
+   composer under it — textarea 64px, footer 30px, and the two gaps of 8 and 12 —
+   so this list takes the thread's height plus that 114px the composer adds. */
 .list {
   margin: 0;
   padding: 0;
-  max-height: 60vh;
+  height: calc(40vh + 114px);
+  min-height: 294px;
+  max-height: 474px;
   overflow-y: auto;
   overscroll-behavior: contain;
   list-style: none;
@@ -136,6 +140,8 @@
 @media (hover: hover) {
   .item:hover {
     background: var(--soft);
-    box-shadow: -8px 0 var(--soft), 8px 0 var(--soft);
+    box-shadow:
+      -8px 0 var(--soft),
+      8px 0 var(--soft);
   }
 }

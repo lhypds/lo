@@ -349,13 +349,16 @@
 
 /* Wide as the bubble and cropped rather than fitted: what it is here to answer
    is "which post is this", and a picture letterboxed down to a strip answers it
-   worse than a crop of the middle of it does. */
+   worse than a crop of the middle of it does. Bled out past the bubble's own
+   padding on the top and both sides so the picture meets the frame rather than
+   floating in a paper border, with a rule under it dividing it from the words. */
 .postPopupImage {
-  width: 100%;
+  width: calc(100% + 20px);
   height: 96px;
-  margin-bottom: 4px;
+  margin: -6px -10px 6px;
   display: block;
-  border: 1px solid var(--ink);
+  border: 0;
+  border-bottom: 1px solid var(--ink);
   object-fit: cover;
 }
 

@@ -267,7 +267,8 @@
     "copyFailed": "复制失败",
     "posts": "最近的 posts",
     "noPosts": "还没有发过 post",
-    "message": "发消息"
+    "message": "发消息",
+    "edit": "编辑资料"
   },
   "messages": {
     "title": "消息",

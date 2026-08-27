@@ -268,7 +268,8 @@
     "copyFailed": "Could not copy",
     "posts": "Recent posts",
     "noPosts": "Nothing posted yet",
-    "message": "Message"
+    "message": "Message",
+    "edit": "Edit profile"
   },
   "messages": {
     "title": "Messages",

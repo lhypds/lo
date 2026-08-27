@@ -267,7 +267,8 @@
     "copyFailed": "コピーできませんでした",
     "posts": "最近の posts",
     "noPosts": "まだ post はありません",
-    "message": "メッセージ"
+    "message": "メッセージ",
+    "edit": "プロフィール編集"
   },
   "messages": {
     "title": "メッセージ",

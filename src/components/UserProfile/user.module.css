@@ -40,6 +40,29 @@
   display: block;
 }
 
+/* The same box as the picture, standing in for one that was never put up: the
+   soft fill the rest of lo's empty picture boxes wear, with a figure drawn in
+   the muted grey at the size the box can hold. */
+.avatarEmpty {
+  align-self: flex-start;
+  width: 96px;
+  height: 96px;
+  border: 1px solid var(--ink);
+  background: var(--soft);
+  display: grid;
+  place-items: center;
+}
+
+.avatarEmpty svg {
+  width: 56px;
+  height: 56px;
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 /* The name is the heading of the page. text-decoration is still spelled out: it
    was an anchor when a sheet drew this same column, and it is the sort of thing a
    heading should say for itself rather than inherit an answer to. */
@@ -55,17 +78,12 @@
   white-space: nowrap;
 }
 
-/* The figures at one end and the button at the other, on the line under the
-   name. Wrapping, because both ends have their own width — two counts and a word
-   — and on the narrowest phone with a long enough word in the reader's language
-   the button drops under the figures rather than squeezing them. */
+/* The two figures on the line under the name — the buttons that once shared
+   this line have moved up under the name itself (see .buttons). */
 .follows {
   margin: 14px 0 0;
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px 16px;
 }
 
 .figures {
@@ -98,14 +116,15 @@
   text-decoration: underline;
 }
 
-/* The two things this page lets you do about a person, at the far end of the
-   line the figures start. They wrap as a pair rather than one at a time: on the
-   narrowest phone with long enough words in the reader's language they drop
-   under the figures together, which keeps them reading as the two halves of one
-   answer to "what now". */
+/* The two things this page lets you do about a person, on the line directly
+   under the name. Equal width as each other but no wider than the pair needs:
+   an inline grid that shrinks to its content, with two columns each sized to
+   the wider of the two words. */
 .buttons {
-  display: flex;
-  flex-wrap: wrap;
+  align-self: flex-start;
+  display: inline-grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
   gap: 8px;
 }
 
@@ -220,14 +239,13 @@
   text-decoration: none;
 }
 
-/* 48 rather than 32: the row beside it is two lines of type and a line of grey,
-   and at 32 the picture was shorter than the words it belonged to — which read as
-   an icon on a row rather than as the photograph the post is mostly made of. This
-   is as tall as the row it is in. */
+/* 64 rather than 48: the photograph is most of what a post is, so on the page
+   about its author it is given room to be looked at rather than kept down to the
+   height of the two lines of type beside it. */
 .thumb {
   flex: 0 0 auto;
-  width: 48px;
-  height: 48px;
+  width: 64px;
+  height: 64px;
   border: 1px solid var(--ink);
   background: var(--soft);
   object-fit: cover;
@@ -307,6 +325,5 @@
 
   .post:hover {
     background: var(--soft);
-    box-shadow: -8px 0 var(--soft), 8px 0 var(--soft);
   }
 }

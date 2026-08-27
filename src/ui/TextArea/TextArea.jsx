@@ -4,7 +4,7 @@ import styles from "./textarea.module.css";
 // The house textarea, the same one liveboard and stash ship: the browser's own
 // corner grip is off, and the field is resized by the ruled handle in the
 // bottom right instead — one gesture, drawn the way everything else here is.
-const TextArea = forwardRef(function TextArea({ className, minHeight = 80, ...props }, forwardedRef) {
+const TextArea = forwardRef(function TextArea({ className, minHeight = 80, style, ...props }, forwardedRef) {
   const localRef = useRef(null);
 
   function setRefs(el) {
@@ -30,6 +30,11 @@ const TextArea = forwardRef(function TextArea({ className, minHeight = 80, ...pr
     // guarantees the one pointerup that ends it arrives here.
     handle.setPointerCapture(event.pointerId);
 
+    // Where the grab landed relative to the field's bottom edge, so the height
+    // follows the pointer from where it is rather than snapping the edge up to
+    // it on the first move — that snap is the jump the drag used to open with.
+    const grabOffset = event.clientY - localRef.current.getBoundingClientRect().bottom;
+
     function onMove(moveEvent) {
       // A second finger on the screen is its own pointer and has nothing to do
       // with this drag.
@@ -40,7 +45,7 @@ const TextArea = forwardRef(function TextArea({ className, minHeight = 80, ...pr
       // shifting the textarea's top out from under a fixed anchor and
       // decoupling the handle from the pointer.
       const top = localRef.current.getBoundingClientRect().top;
-      localRef.current.style.height = Math.max(minHeight, moveEvent.clientY - top) + "px";
+      localRef.current.style.height = Math.max(minHeight, moveEvent.clientY - top - grabOffset) + "px";
     }
 
     // Cancel as well as up: the browser takes a touch pointer away the moment it
@@ -60,7 +65,16 @@ const TextArea = forwardRef(function TextArea({ className, minHeight = 80, ...pr
 
   return (
     <div className={styles.wrapper}>
-      <textarea ref={setRefs} className={`${styles.textarea}${className ? ` ${className}` : ""}`} {...props} />
+      {/* The floor is a CSS min-height as well as the cap on the drag, so the
+          field opens at that height rather than at whatever `rows` works out to
+          — otherwise the first drag jumps it up to the floor it should have
+          started on. */}
+      <textarea
+        ref={setRefs}
+        className={`${styles.textarea}${className ? ` ${className}` : ""}`}
+        style={{ minHeight, ...style }}
+        {...props}
+      />
       <div className={styles.handle} onPointerDown={startResize} />
     </div>
   );

@@ -119,8 +119,15 @@
   visibility: hidden;
 }
 
+/* Hugging the picture rather than the sheet: width fit-content so the frame is
+   the picture's own box, centred in the sheet. A portrait photo capped at 200px
+   tall used to leave the soft fill showing down both sides — the frame is the
+   width of what it holds now, so there is nothing beside the photo to fill. */
 .frame {
   position: relative;
+  width: fit-content;
+  max-width: 100%;
+  margin-inline: auto;
   border: 1px solid var(--ink);
   background: var(--soft);
   line-height: 0;

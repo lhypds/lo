@@ -315,6 +315,14 @@ a {
   display: inline-flex;
 }
 
+/* The envelope drawn at a true 1px rather than the 1.17px a stroke of 2 in a
+   24 viewBox comes to at this icon's 14px: non-scaling-stroke reads the width
+   in screen pixels, so the line is one whatever the icon is rendered at. */
+.topbar-badge svg path {
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
 .topbar-dot {
   position: absolute;
   top: -2px;
@@ -1150,7 +1158,7 @@ html:has(.home-main:not(.home-main-map) .card-pager) {
   overflow: hidden;
   border: 1px solid var(--ink);
   border-radius: 0;
-  background: var(--paper);
+  background: var(--soft);
 }
 
 .profile-avatar img {
@@ -1164,12 +1172,13 @@ html:has(.home-main:not(.home-main-map) .card-pager) {
    what the box is missing is the thing it is asking for, and full ink would read
    as a picture of a person rather than as the absence of one. */
 .profile-avatar svg {
-  width: 32px;
-  height: 32px;
+  width: 38px;
+  height: 38px;
   fill: none;
   stroke: var(--muted);
   stroke-width: 1.4;
   stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .profile-avatar-buttons {

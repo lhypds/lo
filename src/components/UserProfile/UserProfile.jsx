@@ -7,6 +7,7 @@ import { CONTACTS } from "../../utils/contacts.js";
 import { formatCoords, formatUsername, relativeTime } from "../../utils/format.js";
 import { profileLinks } from "../../utils/links.js";
 import { useAuth } from "../AuthProvider/index.js";
+import AccountModal from "../AccountModal/index.js";
 import FollowsModal from "../FollowsModal/index.js";
 import MessageModal from "../MessageModal/index.js";
 
@@ -15,7 +16,7 @@ import MessageModal from "../MessageModal/index.js";
 // lands, and a profile is a column of short rows where that is the whole page
 // moving.
 const AVATAR_BOX = 96;
-const THUMB_BOX = 48;
+const THUMB_BOX = 64;
 import styles from "./user.module.css";
 
 // Who somebody is, in the four things one account can ask about another: the
@@ -49,6 +50,10 @@ export default function UserProfile({ username }) {
   // and want to say something to them — so the way in is here as well as in the
   // inbox, and both open the same sheet.
   const [messaging, setMessaging] = useState(false);
+  // Whether your own account sheet is open over your profile: on your own page
+  // the edit button under your name is the way in to it, the same sheet the top
+  // bar's figure opens.
+  const [editing, setEditing] = useState(false);
   // A press is out. The button keeps its word while it is — what it says is
   // still true until the server says otherwise — and only stops being pressable,
   // which is what keeps a double press from asking the same thing twice.
@@ -64,6 +69,7 @@ export default function UserProfile({ username }) {
     setFollows(null);
     setListing(null);
     setMessaging(false);
+    setEditing(false);
     setError("");
     api
       .getUser(username)
@@ -179,36 +185,64 @@ export default function UserProfile({ username }) {
       <div className={styles.head}>
         {/* The picture, where there is one, above the name it belongs to — the one
             thing on this page that is looked at rather than read, so it leads and
-            the name reads as its caption. Nothing at all where there is none: a
-            page about somebody who has not put a picture up should not carry a
-            grey square saying so. That is the frame in the sheet's business, where
-            the empty box is what is being offered; here it would be a hole. */}
-        {profile?.avatar && (
-          <img
-            className={styles.avatar}
-            src={profile.avatar}
-            alt=""
-            width={AVATAR_BOX}
-            height={AVATAR_BOX}
-          />
-        )}
+            the name reads as its caption. Where there is none the same box stands
+            with a figure drawn in it, so a page about somebody with no picture up
+            still opens on a face rather than straight on the name. */}
+        {profile &&
+          (profile.avatar ? (
+            <img className={styles.avatar} src={profile.avatar} alt="" width={AVATAR_BOX} height={AVATAR_BOX} />
+          ) : (
+            <div className={styles.avatarEmpty} aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <circle cx="12" cy="8" r="4" />
+                <path d="M4 21c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5" />
+              </svg>
+            </div>
+          ))}
         {/* The name, and nothing beside it. The day the account was opened stood
             at the other end of this line for a while and has gone: when somebody
             signed up is a fact about lo's records rather than about them, and
             the line under the name now carries the two figures that are worth
             reading — how many people follow them, and how many they follow. */}
         <h1 className={styles.name}>{name}</h1>
+
+        {/* The two things this page lets you do about a person, on the line
+            directly under the name — the same pair, of equal width, so they read
+            as the two halves of one answer to "what now". Reading somebody and
+            writing to them: the follow first, because it is the quieter of the
+            two and the one more often pressed, and saying something beside it.
+            Your own page has none of this — see isSelf. */}
+        {profile && follows && !isSelf && (
+          <div className={styles.buttons}>
+            <button type="button" className={styles.follow} onClick={toggleFollow} disabled={working}>
+              {t(follows.isFollowing ? "user.unfollow" : "user.follow")}
+            </button>
+            <button type="button" className={styles.follow} onClick={() => setMessaging(true)}>
+              {t("user.message")}
+            </button>
+          </div>
+        )}
+
+        {/* Your own page: the one thing to do about it is change it, so the edit
+            button stands where the follow and message do on everyone else's,
+            under the name and above the figures. It opens the account sheet the
+            top bar's figure opens — the same one, reached from your own page. */}
+        {profile && isSelf && (
+          <div className={styles.buttons}>
+            <button type="button" className={styles.follow} onClick={() => setEditing(true)}>
+              {t("user.edit")}
+            </button>
+          </div>
+        )}
       </div>
 
       {error && <p className="form-message error">{error}</p>}
 
       {profile && (
         <>
-          {/* The two figures at one end of a line and the one thing to do about
-              a person at the other, directly under the name they are about: how
-              many read this account and how many it reads are facts about who
-              somebody is, which is what this page is, and they belong with the
-              name rather than under the posts.
+          {/* How many read this account and how many it reads, directly under the
+              name they are about: facts about who somebody is, which is what this
+              page is, and they belong with the name rather than under the posts.
 
               Nothing at all until the figures are in hand: they come back with
               the profile in the one request the page makes, so the row lands
@@ -219,33 +253,6 @@ export default function UserProfile({ username }) {
                 {figure("followers")}
                 {figure("following")}
               </div>
-              {/* Your own page has the figures and no buttons — see isSelf.
-                  Reading somebody and writing to them are the two things one
-                  account does about another, so they stand together at the far
-                  end of the line: the follow first, because it is the quieter of
-                  the two and the one more often pressed, and saying something
-                  beside it. Neither is a black bar across the column — a profile
-                  is a page you came to read, and the filled slab is for a sheet
-                  where there is one thing to press. */}
-              {!isSelf && (
-                <div className={styles.buttons}>
-                  <button
-                    type="button"
-                    className={styles.follow}
-                    onClick={toggleFollow}
-                    disabled={working}
-                  >
-                    {t(follows.isFollowing ? "user.unfollow" : "user.follow")}
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.follow}
-                    onClick={() => setMessaging(true)}
-                  >
-                    {t("user.message")}
-                  </button>
-                </div>
-              )}
             </div>
           )}
 
@@ -302,19 +309,9 @@ export default function UserProfile({ username }) {
                       and the rest of the ground filtered out. It is a starting
                       point rather than a lock — the field is the reader's, and
                       clearing it widens the map back out to everyone. */}
-                  <Link
-                    to={`/posts?post=${post.id}&author=${encodeURIComponent(username)}`}
-                    className={styles.post}
-                  >
+                  <Link to={`/posts?post=${post.id}&author=${encodeURIComponent(username)}`} className={styles.post}>
                     {post.image && (
-                      <img
-                        className={styles.thumb}
-                        src={post.image}
-                        alt=""
-                        loading="lazy"
-                        width={THUMB_BOX}
-                        height={THUMB_BOX}
-                      />
+                      <img className={styles.thumb} src={post.image} alt="" loading="lazy" width={THUMB_BOX} height={THUMB_BOX} />
                     )}
                     <span className={styles.postLines}>
                       <span className={styles.postTitle}>
@@ -352,9 +349,12 @@ export default function UserProfile({ username }) {
           opened from — the same sheet the inbox opens, reached from the other
           end. Mounted only while it is up: unlike the sheet above it, this one
           fetches on the name it is given, and a name is always in hand here. */}
-      {messaging && (
-        <MessageModal username={username} onClose={() => setMessaging(false)} />
-      )}
+      {messaging && <MessageModal username={username} onClose={() => setMessaging(false)} />}
+
+      {/* Your own account, over your own page — the same sheet the top bar's
+          figure opens, reached from the edit button under your name. Only on
+          your own page, and mounted only while it is up. */}
+      {isSelf && <AccountModal isOpen={editing} onClose={() => setEditing(false)} />}
     </div>
   );
 }
