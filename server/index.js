@@ -22,6 +22,7 @@ import {
   getFollowing,
   getMarks,
   getOtherPositions,
+  getPassword,
   getPost,
   getPostsByUser,
   getPostsNear,
@@ -32,6 +33,7 @@ import {
   readConversation,
   renameMark,
   savePosition,
+  setPassword,
   unfollowUser,
   updatePost,
   updateProfile,
@@ -64,6 +66,23 @@ const isProduction = process.env.NODE_ENV === "production";
 const USERNAME_RE =
   /^[a-z0-9_\p{Script_Extensions=Han}\p{Script_Extensions=Hiragana}\p{Script_Extensions=Katakana}\p{Script_Extensions=Hangul}-]{1,32}$/u;
 const USERNAME_HINT = "用户名为 1–32 个字符，可使用中日韩文字、字母、数字、- 和 _";
+// And one of those characters has to be a letter. Digits, dashes and underscores
+// on their own make an account number rather than a name: a purely numeric one
+// would be read as an id everywhere it turns up — in a path, in a search box,
+// beside a post — and a name in lo is what somebody is called. A letter in any of
+// the scripts the pattern above allows counts, so this rules out 12345 without
+// ruling out 李明.
+const USERNAME_LETTER_RE =
+  /[a-z\p{Script_Extensions=Han}\p{Script_Extensions=Hiragana}\p{Script_Extensions=Katakana}\p{Script_Extensions=Hangul}]/u;
+const USERNAME_LETTER_HINT = "用户名需包含至少一个字母";
+// A password, unlike a username, is nobody's address and nothing links to it, so
+// the only rules are the two that stop it being a mistake: long enough to be a
+// choice, short enough to have been typed on purpose. Whatever was typed is kept
+// as it was typed — no trimming, no case folding — because a space at the end of
+// a password is a character of it.
+const PASSWORD_MIN = 4;
+const PASSWORD_MAX = 64;
+const PASSWORD_HINT = `密码为 ${PASSWORD_MIN}–${PASSWORD_MAX} 个字符`;
 // A profile lives at /<name>, so lo's own paths are names nobody can have: an
 // account called "posts" would be one the router sends to the posts page and
 // nothing could ever link to. Kept in step with RESERVED in src/App.jsx.
@@ -76,6 +95,28 @@ const LANGS = new Set(["en", "zh", "ja"]);
 
 function normalizeUsername(value) {
   return String(value ?? "").trim().normalize("NFKC").toLowerCase();
+}
+
+// What is wrong with a name, as a body to send back, or nothing where it is a name
+// lo will have: the shape, then the letter. Both endpoints that decide whether a
+// name may be used at all ask this — the one that signs an existing account in does
+// not, since a name already in the table has been answered for and refusing it
+// there would lock somebody out of an account rather than turn a new one away.
+function usernameFault(username) {
+  if (!USERNAME_RE.test(username)) return { error: USERNAME_HINT };
+  if (!USERNAME_LETTER_RE.test(username)) {
+    return { error: USERNAME_LETTER_HINT, code: "USERNAME_NO_LETTER" };
+  }
+  return null;
+}
+
+// A password as sent, or nothing where what was sent could not be one. Null
+// rather than a thrown error because both callers answer the same way, and a
+// usable password is never the empty string — so the answer reads as a yes or no.
+function usablePassword(value) {
+  const password = String(value ?? "");
+  if (password.length < PASSWORD_MIN || password.length > PASSWORD_MAX) return null;
+  return password;
 }
 
 function requestedLang(req) {
@@ -174,9 +215,26 @@ app.get("/api/session", (req, res) => {
   res.json({ user });
 });
 
-// A username is the whole account, but a name nobody has used yet is more often
-// a typo than a new person — so login only signs in, and an unknown name comes
-// back as USER_NOT_FOUND for the browser to ask about before /api/users opens it.
+// Signing in is asked in two goes — the name, then the password — and this is the
+// first of them: it signs nobody in and answers the two things the screen after it
+// has to know before it can ask for anything. Whether the name is an account at
+// all, since a name nobody has used yet is more often a typo than a new person and
+// comes back as USER_NOT_FOUND for the browser to ask about before /api/users opens
+// it; and whether that account has a password yet, because one opened before there
+// were passwords has its password chosen by the next sign-in that reaches it
+// rather than checked.
+app.post("/api/username", (req, res) => {
+  const username = normalizeUsername(req.body?.username);
+  const fault = usernameFault(username);
+  if (fault) return res.status(400).json(fault);
+  const user = getUser(username);
+  if (!user) return res.status(404).json({ error: "用户不存在", code: "USER_NOT_FOUND" });
+  res.json({ username: user.username, hasPassword: getPassword(username) !== null });
+});
+
+// And the second, which is the one that signs somebody in — the other request
+// that hands a session out is the one below that opens the account in the first
+// place, and it is the same screen doing it.
 app.post("/api/login", (req, res) => {
   const username = normalizeUsername(req.body?.username);
   if (!USERNAME_RE.test(username)) {
@@ -184,6 +242,20 @@ app.post("/api/login", (req, res) => {
   }
   const user = getUser(username);
   if (!user) return res.status(404).json({ error: "用户不存在", code: "USER_NOT_FOUND" });
+
+  const stored = getPassword(username);
+  if (stored === null) {
+    // An account from before there were passwords. Nobody can be asked to prove
+    // a password that was never set, and lo will not lock its own readers out of
+    // accounts they have been using — so the first sign-in to arrive here is the
+    // one that chooses it, the same way opening a new account does.
+    const password = usablePassword(req.body?.password);
+    if (!password) return res.status(400).json({ error: PASSWORD_HINT, code: "PASSWORD_INVALID" });
+    setPassword(user.id, password);
+  } else if (String(req.body?.password ?? "") !== stored) {
+    return res.status(401).json({ error: "密码错误", code: "PASSWORD_WRONG" });
+  }
+
   startSession(user, req, res);
   res.json({ user });
 });
@@ -193,18 +265,20 @@ app.post("/api/logout", (req, res) => {
   res.status(204).end();
 });
 
-// Opening the account and signing into it are the same request: there is no
-// password to set, so a confirmed name is all it takes.
+// Opening the account and signing into it are still the same request: the name
+// and the password it is being given arrive together, from the second screen of
+// the same two-step form an existing account is signed into through.
 app.post("/api/users", (req, res) => {
   const username = normalizeUsername(req.body?.username);
-  if (!USERNAME_RE.test(username)) {
-    return res.status(400).json({ error: USERNAME_HINT });
-  }
+  const fault = usernameFault(username);
+  if (fault) return res.status(400).json(fault);
+  const password = usablePassword(req.body?.password);
+  if (!password) return res.status(400).json({ error: PASSWORD_HINT, code: "PASSWORD_INVALID" });
   if (RESERVED_NAMES.has(username)) return res.status(409).json({ error: "用户名不可用" });
   if (getUser(username)) return res.status(409).json({ error: "用户名已存在", code: "USER_EXISTS" });
 
   try {
-    const user = createUser(username);
+    const user = createUser(username, password);
     startSession(user, req, res);
     res.status(201).json({ user });
   } catch (error) {

@@ -190,17 +190,34 @@ a {
   font-size: 14px;
 }
 
+/* Nothing under the field but the line's own 9px (see .form-message): the form used
+   to carry a margin of its own, from when the message was pinned under it rather
+   than following it, and that margin is what made the gap under the two fields
+   disagree. */
 .login-form {
-  margin: 0 auto 16px;
-  position: relative;
+  margin: 0;
 }
 
-.login-form .form-message {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  margin: 9px 0 0;
+/* The two ways out of the password step are words inside the line of type under
+   the field, not boxes set beside it: the field and its button are what the screen
+   is for, and a second pair of slabs under them would read as a second thing to
+   do. Being in the line is also what centres them, the card centring every line it
+   holds — and what keeps the message, the pair of them, and the 9px they all sit
+   below the field the same on both screens (see .form-message, which is where that
+   9px comes from).
+   Neither breaks across two lines: the words of the message are what has room to
+   give, and a wrapped "Forgotten?" would open the line to say one thing in three
+   syllables. */
+.auth-back,
+.auth-forgot {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .joined-field {
@@ -1183,12 +1200,24 @@ html:has(.home-main:not(.home-main-map) .card-pager) {
   margin-top: 16px;
 }
 
-.modal-actions button {
+/* The anchor is the one action at the foot of a confirm that is not a press: the
+   way out of a forgotten password is a letter to the administrator, which is an
+   address the reader's own mail app opens rather than anything lo does. Sized with
+   its neighbours, and told to centre its word the way a button does for free. */
+.modal-actions button,
+.modal-actions a {
   width: auto;
   min-width: 72px;
   height: 30px;
   padding: 0 14px;
   font-size: 12px;
+}
+
+.modal-actions a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
 }
 
 /* --------------------------------------------------------------- profile -- */
@@ -1464,6 +1493,13 @@ html:has(.home-main:not(.home-main-map) .card-pager) {
   .primary-button:hover,
   .joined-field button:hover {
     background: var(--paper);
+    color: var(--ink);
+  }
+
+  /* Grey until the pointer is on it, like every other line of type in lo that
+     turns out to be pressable */
+  .auth-back:hover:not(:disabled),
+  .auth-forgot:hover:not(:disabled) {
     color: var(--ink);
   }
 }

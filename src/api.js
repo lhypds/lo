@@ -25,10 +25,16 @@ function geoQuery({ latitude, longitude }) {
 }
 
 export const getSession = () => request("/api/session");
-export const login = (username) =>
-  request("/api/login", { method: "POST", body: JSON.stringify({ username }) });
-export const createUser = (username) =>
-  request("/api/users", { method: "POST", body: JSON.stringify({ username }) });
+// The first of the two steps signing in is asked in: whether the name is an
+// account, and whether it has a password yet. Nobody is signed in by it — what
+// comes back is what the password screen needs in order to know whether it is
+// asking for a password or asking for one to be chosen.
+export const checkUsername = (username) =>
+  request("/api/username", { method: "POST", body: JSON.stringify({ username }) });
+export const login = (username, password) =>
+  request("/api/login", { method: "POST", body: JSON.stringify({ username, password }) });
+export const createUser = (username, password) =>
+  request("/api/users", { method: "POST", body: JSON.stringify({ username, password }) });
 export const logout = () => request("/api/logout", { method: "POST" });
 export const getMe = () => request("/api/me");
 // The whole profile every time, which is what makes an emptied field a cleared

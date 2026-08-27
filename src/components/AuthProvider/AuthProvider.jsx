@@ -5,9 +5,18 @@ import * as api from "../../api.js";
 const storageKey = "lo:user";
 const AuthContext = createContext(null);
 
-// A username is the whole credential here, so a ?user=<name> link carries an
-// entire login: opening one signs that account in, exactly as typing the name
-// on /login would.
+// The last name signed in from this browser. Not a credential and no longer a way
+// back in on its own — it is the name the login screen opens with in its field,
+// so that coming back after a session has gone is a password to type rather than
+// both halves of one.
+export function rememberedUsername() {
+  return localStorage.getItem(storageKey) || "";
+}
+
+// A ?user=<name> link used to carry a whole login, a username being the whole
+// credential; there is a password behind it now, so what the link carries is the
+// typing. Whoever follows one lands on the login screen with the name filled in
+// and the password left to them.
 function linkedUsername() {
   const raw = new URLSearchParams(window.location.search).get("user") || "";
   return raw.trim().normalize("NFKC").toLowerCase();
@@ -20,67 +29,36 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     let cancelled = false;
-    const storedUsername = localStorage.getItem(storageKey);
     const requested = linkedUsername();
 
-    // The name has done its job the moment it is signed in, so it comes back
-    // out of the URL — a bookmark or a shared link should not keep handing the
-    // account out, and a later reload should not undo a sign-out.
-    function dropUserParam() {
-      const url = new URL(window.location.href);
-      if (!url.searchParams.has("user")) return;
-      url.searchParams.delete("user");
-      navigate(`${url.pathname}${url.search}${url.hash}`, { replace: true });
-    }
-
-    async function restore() {
+    async function start() {
+      let signedIn = null;
       try {
         const data = await api.getSession();
-        if (!cancelled) setUser(data.user);
+        signedIn = data.user;
       } catch {
-        // The server restarted and dropped the session, but the browser still
-        // remembers who this is — a username is the whole credential, so
-        // signing back in needs nothing more.
-        if (storedUsername) {
-          try {
-            const data = await api.login(storedUsername);
-            if (!cancelled) setUser(data.user);
-          } catch {
-            localStorage.removeItem(storageKey);
-          }
-        }
-      } finally {
-        if (!cancelled) setReady(true);
+        // Nobody is signed in here, or the server restarted and dropped the
+        // session it had. Either way the login screen is the answer: a password
+        // is not something this browser is holding on anybody's behalf.
       }
-    }
+      if (cancelled) return;
+      setUser(signedIn);
+      setReady(true);
+      if (!requested) return;
 
-    async function start() {
-      // The link says who should be signed in, so it wins over whatever
-      // session this browser is already holding.
-      if (requested) {
-        try {
-          const data = await api.login(requested);
-          if (cancelled) return;
-          localStorage.setItem(storageKey, data.user.username);
-          setUser(data.user);
-          setReady(true);
-          dropUserParam();
-          return;
-        } catch (error) {
-          // A name the server refuses is no login at all: fall through to the
-          // usual restore, which lands on /login when there is nothing left.
-          if (cancelled) return;
-          // A link naming an account that does not exist yet gets the same
-          // question typing the name would: the login page carries it, ready
-          // for the create prompt, rather than creating it on a tap.
-          if (error?.code === "USER_NOT_FOUND") {
-            navigate(`/login?username=${encodeURIComponent(requested)}`, { replace: true });
-          } else {
-            dropUserParam();
-          }
-        }
+      // The name has done its job the moment it has been read, so it comes back
+      // out of the URL — a bookmark or a shared link should not keep handing an
+      // account's name out, and a reload should not undo a sign-out.
+      const url = new URL(window.location.href);
+      url.searchParams.delete("user");
+      // A link cannot sign anybody in any more, and it will not sign anybody out
+      // either: where this browser is already holding a session, the name is
+      // simply dropped and the reader stays where the link put them.
+      if (signedIn) {
+        navigate(`${url.pathname}${url.search}${url.hash}`, { replace: true });
+      } else {
+        navigate(`/login?username=${encodeURIComponent(requested)}`, { replace: true });
       }
-      await restore();
     }
 
     start();
@@ -89,15 +67,15 @@ export function AuthProvider({ children }) {
     };
   }, [navigate]);
 
-  async function login(username) {
-    const data = await api.login(username);
+  async function login(username, password) {
+    const data = await api.login(username, password);
     localStorage.setItem(storageKey, data.user.username);
     setUser(data.user);
     return data.user;
   }
 
-  async function register(username) {
-    const data = await api.createUser(username);
+  async function register(username, password) {
+    const data = await api.createUser(username, password);
     localStorage.setItem(storageKey, data.user.username);
     setUser(data.user);
     return data.user;

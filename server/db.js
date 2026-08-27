@@ -22,6 +22,15 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    -- The second half of the credential, kept as it was typed. Deliberately not
+    -- hashed: lo has no way to reset one — a reader who forgets theirs writes to
+    -- the administrator (see VITE_ADMIN_EMAIL), who reads this column and sets a new
+    -- one — and a hash would make that the one thing the administrator cannot
+    -- do. It is never selected into a profile row (see PROFILE_COLUMNS): the
+    -- only readings of it are the two statements below.
+    -- Null on an account opened before there were passwords, which is what the
+    -- login step reads as "this one is still to be chosen".
+    password TEXT,
     -- A file name from data/images, the same as a post's photo and never bytes
     avatar TEXT,
     bio TEXT,
@@ -186,6 +195,10 @@ for (const column of [
   "whatsapp",
   "wechat",
   "links",
+  // Arrived last of all, and the accounts that predate it have it empty rather
+  // than filled in with anything: the first sign-in that reaches one is where
+  // its password is chosen.
+  "password",
 ]) {
   if (!userColumns.has(column)) db.exec(`ALTER TABLE users ADD COLUMN ${column} TEXT`);
 }
@@ -238,8 +251,26 @@ const updateProfileFields = db.prepare(`
 `);
 
 const insertUser = db.prepare(`
-  INSERT INTO users (username)
-  VALUES (?)
+  INSERT INTO users (username, password)
+  VALUES (?, ?)
+`);
+
+// The one column no reader of a user ever gets handed. Everything else about an
+// account travels as a row — the profile columns above go out to whoever asks
+// for the page — so the password is read on its own, by the one statement that
+// has any business with it, and compared inside the login endpoint.
+const selectPasswordByName = db.prepare(`
+  SELECT password
+  FROM users
+  WHERE username = ?
+`);
+
+// Chosen once, by the first sign-in to reach an account that has none: either an
+// account just opened, or one from before there were passwords.
+const updatePassword = db.prepare(`
+  UPDATE users
+  SET password = ?
+  WHERE id = ?
 `);
 
 const countMarksForUser = db.prepare(`
@@ -656,9 +687,22 @@ export function updateProfile(userId, profile) {
   );
 }
 
-export function createUser(username) {
-  insertUser.run(username);
+export function createUser(username, password) {
+  insertUser.run(username, password);
   return getUser(username);
+}
+
+// Nothing back where there is no such account, and null where there is one with
+// no password chosen yet — two different answers, and the login step tells them
+// apart before it asks for anything.
+export function getPassword(username) {
+  const row = selectPasswordByName.get(username);
+  if (!row) return undefined;
+  return row.password ?? null;
+}
+
+export function setPassword(userId, password) {
+  updatePassword.run(password, userId);
 }
 
 export function countMarks(userId) {

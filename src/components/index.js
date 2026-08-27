@@ -1,6 +1,6 @@
 export { default as AccountModal } from "./AccountModal/index.js";
 export { default as AddCard } from "./AddCard/index.js";
-export { AuthProvider, useAuth } from "./AuthProvider/index.js";
+export { AuthProvider, rememberedUsername, useAuth } from "./AuthProvider/index.js";
 export { default as CardSize } from "./CardSize/index.js";
 export { default as ClockCard } from "./ClockCard/index.js";
 export { default as CommentsModal } from "./CommentsModal/index.js";
