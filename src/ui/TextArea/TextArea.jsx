@@ -13,29 +13,55 @@ const TextArea = forwardRef(function TextArea({ className, minHeight = 80, ...pr
     else if (forwardedRef) forwardedRef.current = el;
   }
 
-  function onMouseDown(e) {
-    e.preventDefault();
-    function onMouseMove(e) {
+  // A pointer rather than a mouse. This was mousedown/mousemove/mouseup, which is
+  // a gesture no touchscreen makes: a finger raises a click and a synthesised
+  // mousedown *after* it is lifted, and never a stream of mousemove in between —
+  // so the handle drew a grip on a phone that nothing could drag. Pointer events
+  // are the one code path all three devices arrive on, and the phone is the one
+  // that needs the handle most, since it has no native grip to fall back on.
+  function startResize(event) {
+    // Keeps the press off the textarea underneath: the drag is a resize, not a
+    // reach for the caret or the start of a selection.
+    event.preventDefault();
+    const handle = event.currentTarget;
+    // The gesture belongs to this element from here on, wherever the finger
+    // wanders — off the handle, past the edge of the sheet — which is what lets
+    // the listeners live on the handle rather than on the document, and what
+    // guarantees the one pointerup that ends it arrives here.
+    handle.setPointerCapture(event.pointerId);
+
+    function onMove(moveEvent) {
+      // A second finger on the screen is its own pointer and has nothing to do
+      // with this drag.
+      if (moveEvent.pointerId !== event.pointerId) return;
       // Measure the live top on every move rather than anchoring to the
-      // position at mousedown: growing the textarea can grow its container
+      // position at the start: growing the textarea can grow its container
       // (e.g. a vertically-centered modal re-centers as it grows taller),
       // shifting the textarea's top out from under a fixed anchor and
-      // decoupling the handle from the cursor.
+      // decoupling the handle from the pointer.
       const top = localRef.current.getBoundingClientRect().top;
-      localRef.current.style.height = Math.max(minHeight, e.clientY - top) + "px";
+      localRef.current.style.height = Math.max(minHeight, moveEvent.clientY - top) + "px";
     }
-    function onMouseUp() {
-      document.removeEventListener("mousemove", onMouseMove);
-      document.removeEventListener("mouseup", onMouseUp);
+
+    // Cancel as well as up: the browser takes a touch pointer away the moment it
+    // decides the gesture is something of its own, and a drag that ended that way
+    // would otherwise leave the listeners on.
+    function onEnd(endEvent) {
+      if (endEvent.pointerId !== event.pointerId) return;
+      handle.removeEventListener("pointermove", onMove);
+      handle.removeEventListener("pointerup", onEnd);
+      handle.removeEventListener("pointercancel", onEnd);
     }
-    document.addEventListener("mousemove", onMouseMove);
-    document.addEventListener("mouseup", onMouseUp);
+
+    handle.addEventListener("pointermove", onMove);
+    handle.addEventListener("pointerup", onEnd);
+    handle.addEventListener("pointercancel", onEnd);
   }
 
   return (
     <div className={styles.wrapper}>
       <textarea ref={setRefs} className={`${styles.textarea}${className ? ` ${className}` : ""}`} {...props} />
-      <div className={styles.handle} onMouseDown={onMouseDown} />
+      <div className={styles.handle} onPointerDown={startResize} />
     </div>
   );
 });

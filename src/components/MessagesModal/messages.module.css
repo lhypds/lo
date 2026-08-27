@@ -17,7 +17,21 @@
   list-style: none;
 }
 
+/* Closed on both edges rather than only fenced off from the next one: every row
+   has a rule over it and a rule under it, so the first in the list is not left
+   with an open top and the last is not left standing on nothing. A row here is a
+   whole exchange with somebody, which reads as a thing in its own right — where
+   a list of names is a column that only needs dividing.
+
+   The line between two rows is one hairline and not two. The top border is what
+   does the dividing all the way down, and only the last row draws a bottom of
+   its own — the alternative, both borders on every row, would double every rule
+   in the middle of the list and leave the ends lighter than the middle. */
 .list li {
+  border-top: 1px solid var(--line);
+}
+
+.list li:last-child {
   border-bottom: 1px solid var(--line);
 }
 
