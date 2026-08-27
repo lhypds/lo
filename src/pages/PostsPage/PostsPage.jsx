@@ -134,8 +134,8 @@ export default function PostsPage() {
       </div>
       <main className="posts-list">
         {/* The heading and the search stay put while the list scrolls under them
-            — the title says which list this is and the field is how it is
-            narrowed, and both want to be in reach at the bottom of a long one. */}
+            — held out of the scroller below rather than stuck to its top, so the
+            list's own overscroll bounce cannot drag them down. */}
         <div className="list-sticky">
           <div className="section-heading">
             <div className="section-heading-titles">
@@ -146,37 +146,39 @@ export default function PostsPage() {
           </div>
           {posts.length > 0 && <SearchField value={query} onChange={setQuery} placeholder={t("search.posts")} />}
         </div>
-        {posts.length === 0 ? (
-          <p className="empty-state">{t("posts.empty")}</p>
-        ) : shown.length === 0 ? (
-          <p className="empty-state">{t("search.empty", { query: query.trim() })}</p>
-        ) : (
-          <ul className="post-list">
-            {shown.map((post) => (
-              <PostItem
-                key={post.id}
-                post={post}
-                from={coords}
-                mine={Boolean(user && post.username === user.username)}
-                hovered={post.id === hovered}
-                chosen={post.id === chosen}
-                onHover={setHovered}
-                onEdit={setEditing}
-                onDelete={setDeleting}
-                // Pressing the row is what sends the map, the way pressing a
-                // mark's name does. A fresh object every time rather than the
-                // post itself: the map pans on a new `focus`, and asking twice
-                // for the same spot — after wandering off it — has to move the
-                // map twice.
-                onShowOnMap={(target) => setFocus({ ...target })}
-              />
-            ))}
-          </ul>
-        )}
-        {/* A failed fetch and a failed delete both land here. Without the first
-            of them the page would answer a broken request with "nothing around
-            here", which is a different thing entirely. */}
-        {(error || postsError) && <p className="list-error">{error || postsError.message}</p>}
+        <div className="list-scroll">
+          {posts.length === 0 ? (
+            <p className="empty-state">{t("posts.empty")}</p>
+          ) : shown.length === 0 ? (
+            <p className="empty-state">{t("search.empty", { query: query.trim() })}</p>
+          ) : (
+            <ul className="post-list">
+              {shown.map((post) => (
+                <PostItem
+                  key={post.id}
+                  post={post}
+                  from={coords}
+                  mine={Boolean(user && post.username === user.username)}
+                  hovered={post.id === hovered}
+                  chosen={post.id === chosen}
+                  onHover={setHovered}
+                  onEdit={setEditing}
+                  onDelete={setDeleting}
+                  // Pressing the row is what sends the map, the way pressing a
+                  // mark's name does. A fresh object every time rather than the
+                  // post itself: the map pans on a new `focus`, and asking twice
+                  // for the same spot — after wandering off it — has to move the
+                  // map twice.
+                  onShowOnMap={(target) => setFocus({ ...target })}
+                />
+              ))}
+            </ul>
+          )}
+          {/* A failed fetch and a failed delete both land here. Without the first
+              of them the page would answer a broken request with "nothing around
+              here", which is a different thing entirely. */}
+          {(error || postsError) && <p className="list-error">{error || postsError.message}</p>}
+        </div>
       </main>
 
       {/* The composer again, opened on a post that already exists. Rewriting one

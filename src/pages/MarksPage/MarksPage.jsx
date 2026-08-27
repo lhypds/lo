@@ -111,31 +111,33 @@ export default function MarksPage() {
           {/* Nothing to search until there is something to search through */}
           {marks.length > 0 && <SearchField value={query} onChange={setQuery} placeholder={t("search.marks")} />}
         </div>
-        {marks.length === 0 ? (
-          <p className="empty-state">{t("marks.empty")}</p>
-        ) : shown.length === 0 ? (
-          <p className="empty-state">{t("search.empty", { query: query.trim() })}</p>
-        ) : (
-          <ul className="mark-list">
-            {shown.map((mark) => (
-              <MarkItem
-                key={mark.id}
-                mark={mark}
-                from={coords}
-                hovered={mark.id === hovered}
-                chosen={mark.id === chosen}
-                onHover={setHovered}
-                onRename={setRenaming}
-                onDelete={setDeleting}
-                // A fresh object every time rather than the mark itself: the map
-                // pans on a new `focus`, and asking twice for the same spot —
-                // after wandering off it — has to move the map twice.
-                onShowOnMap={(target) => setFocus({ ...target })}
-              />
-            ))}
-          </ul>
-        )}
-        {error && <p className="list-error">{error}</p>}
+        <div className="list-scroll">
+          {marks.length === 0 ? (
+            <p className="empty-state">{t("marks.empty")}</p>
+          ) : shown.length === 0 ? (
+            <p className="empty-state">{t("search.empty", { query: query.trim() })}</p>
+          ) : (
+            <ul className="mark-list">
+              {shown.map((mark) => (
+                <MarkItem
+                  key={mark.id}
+                  mark={mark}
+                  from={coords}
+                  hovered={mark.id === hovered}
+                  chosen={mark.id === chosen}
+                  onHover={setHovered}
+                  onRename={setRenaming}
+                  onDelete={setDeleting}
+                  // A fresh object every time rather than the mark itself: the map
+                  // pans on a new `focus`, and asking twice for the same spot —
+                  // after wandering off it — has to move the map twice.
+                  onShowOnMap={(target) => setFocus({ ...target })}
+                />
+              ))}
+            </ul>
+          )}
+          {error && <p className="list-error">{error}</p>}
+        </div>
       </main>
 
       <MarkModal
