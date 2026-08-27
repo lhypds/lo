@@ -78,6 +78,29 @@ export const updatePost = (postId, post) =>
   request(`/api/posts/${postId}`, { method: "PATCH", body: JSON.stringify(post) });
 export const deletePost = (postId) => request(`/api/posts/${postId}`, { method: "DELETE" });
 
+// What has been said back about one post, and saying something yourself. The
+// second answers with the row *and* the figure it has just changed: the sheet
+// puts the row at the foot of its column, and the count goes back to the map,
+// where the corner of a bubble is what said there was anything to open.
+export const getComments = (postId) => request(`/api/posts/${postId}/comments`);
+export const addComment = (postId, body) =>
+  request(`/api/posts/${postId}/comments`, { method: "POST", body: JSON.stringify({ body }) });
+
+// The inbox and the figure the letter in the top bar wears, in one answer: the
+// dot says somebody wrote and the list is who, which is one reading of one
+// table. The bar asks for this on a beat and hands what comes back to the sheet
+// it opens, so opening the inbox costs nothing.
+export const getMessages = () => request("/api/messages");
+// One exchange, both directions. Asking for it is what marks it read, so the
+// unread figure comes back already counted down by this reading.
+export const getConversation = (username) =>
+  request(`/api/messages/${encodeURIComponent(username)}`);
+export const sendMessage = (username, body) =>
+  request(`/api/messages/${encodeURIComponent(username)}`, {
+    method: "POST",
+    body: JSON.stringify({ body }),
+  });
+
 export const getMarks = (limit) => request(limit ? `/api/marks?limit=${limit}` : "/api/marks");
 export const createMark = (mark) =>
   request(`/api/marks?lang=${i18n.language || "en"}`, { method: "POST", body: JSON.stringify(mark) });

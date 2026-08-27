@@ -6,6 +6,7 @@ import { cardSpan, useCards } from "../../utils/cards.js";
 import { paginate } from "../../utils/pages.js";
 import { getLocationState, refreshLocation } from "../../utils/location.js";
 import ClockCard from "../../components/ClockCard/index.js";
+import CommentsModal from "../../components/CommentsModal/index.js";
 import DirectionCard from "../../components/DirectionCard/index.js";
 import EventsCard from "../../components/EventsCard/index.js";
 import Header from "../../components/Header/index.js";
@@ -38,7 +39,7 @@ export default function HomePage() {
   // Posts come from the provider rather than from here: they are a reading of
   // the fix, like the place name is, and the refresh in the top bar has to be
   // able to reach them without knowing which page it is sitting on.
-  const { coords, place, posts, addPost, supports, reloadToken } = useHere();
+  const { coords, place, posts, addPost, replacePost, supports, reloadToken } = useHere();
   // Which cards are on the page, and how much of the grid each of them covers.
   // Both halves of the first in one question — what this country can feed and
   // what the reader has kept — so the grid below asks once per card rather than
@@ -69,6 +70,11 @@ export default function HomePage() {
   // a post belongs to the spot its writer was standing on when they started it,
   // not to wherever they have drifted by the time they press Post.
   const [composing, setComposing] = useState(null);
+  // The post whose remarks are open over the page, from the count in the corner
+  // of its bubble on the map. Held here rather than in the card: a tile is a
+  // container-sized box, which would be the containing block of any fixed sheet
+  // mounted inside it.
+  const [commenting, setCommenting] = useState(null);
 
   // Marks are yours and are the same list wherever you are standing, so unlike
   // posts they are not asked for again on every move — only on the refresh in
@@ -216,6 +222,7 @@ export default function HomePage() {
             marks={marks}
             expanded={expanded}
             onToggleExpanded={() => setMapExpanded((value) => !value)}
+            onOpenComments={setCommenting}
           />
         </Suspense>,
       ),
@@ -494,6 +501,16 @@ export default function HomePage() {
         place={place ? [place.locality, place.name, place.region].filter(Boolean).join(" · ") : ""}
         onClose={() => setComposing(null)}
         onCreated={created}
+      />
+
+      {/* Out here for the same reason the composer is: the count that opens this
+          is in a bubble on the map, and the map is the whole of the page while it
+          is expanded. What is added goes back into the provider's list with the
+          new figure on it, which is what the pins are drawn from. */}
+      <CommentsModal
+        post={commenting}
+        onClose={() => setCommenting(null)}
+        onAdded={(post, comments) => replacePost({ ...post, comments })}
       />
     </div>
   );

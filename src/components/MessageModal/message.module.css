@@ -1,0 +1,132 @@
+/* The exchange above and the box below it, in that order and nothing between:
+   the sheet is one column with a floor. */
+.sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* A definite height rather than one that follows the exchange. Two people who
+   have said three things to each other and two people who have said three
+   hundred get the same sheet, which is what keeps opening one from resizing the
+   thing the pointer just pressed — and it is what puts the box on a floor
+   instead of somewhere down a growing page.
+
+   Capped against the window as well, because the modal itself stops at 90vh and
+   a thread taller than that would push the box off the bottom of it on a short
+   screen. */
+.thread {
+  min-height: 180px;
+  height: 40vh;
+  max-height: 360px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 2px;
+}
+
+.lines {
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  list-style: none;
+}
+
+/* Which side a line hangs on is the whole of who said it: a name on every row of
+   a conversation between exactly two people is the same two names down the page.
+   Each row is its own column so the time sits under the words rather than beside
+   them — a bubble is as wide as its sentence, and a time set next to a one-word
+   line would be further left than the time above it. */
+.line {
+  max-width: 78%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  align-self: flex-start;
+}
+
+.mine {
+  align-self: flex-end;
+  align-items: flex-end;
+}
+
+/* Ruled like everything else in lo, and turned over on your own lines: black on
+   white is what somebody said to you, white on black is what you said back. The
+   two are the same box — this is not two kinds of thing, it is one thing from
+   two directions. */
+.bubble {
+  padding: 7px 10px;
+  border: 1px solid var(--ink);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.5;
+  /* Somebody else's writing, so it can be a pasted address with no spaces in it:
+     without this one line would set the width of the sheet. */
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.mine .bubble {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.when {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+}
+
+.empty {
+  margin: 0;
+  padding: 18px 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.composer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* The house textarea sets no size of its own, so the size a sheet is worked at
+   is said here — the same 12px the post composer types in. */
+.text {
+  padding: 8px 10px;
+  font-size: 12px;
+}
+
+/* The count at one end and the send at the other, which is the post composer's
+   own foot: how much room is left, and the one thing to do about it. */
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.count {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+}
+
+/* Only as wide as its word, and the sheet's own height rather than the 42px a
+   full-width button on a form page takes: this is a control in a row, not the
+   end of a form. */
+.footer button {
+  width: auto;
+  min-width: 72px;
+  height: 30px;
+  padding: 0 14px;
+  font-size: 12px;
+}
+
+.footer button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}

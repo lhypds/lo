@@ -266,7 +266,27 @@
     "copied": "コピーしました",
     "copyFailed": "コピーできませんでした",
     "posts": "最近の posts",
-    "noPosts": "まだ post はありません"
+    "noPosts": "まだ post はありません",
+    "message": "メッセージ"
+  },
+  "messages": {
+    "title": "メッセージ",
+    "waiting": "メッセージ — 未読 {{n}} 件",
+    "empty": "メッセージはまだありません",
+    "said": "自分：{{body}}",
+    "emptyThread": "{{name}} とのやり取りはまだありません",
+    "placeholder": "返信を書く",
+    "send": "送信",
+    "sending": "送信中"
+  },
+  "comments": {
+    "title": "コメント",
+    "short": "コメント",
+    "aboutPost": "この post",
+    "empty": "まだコメントはありません",
+    "placeholder": "コメントを書く",
+    "submit": "送信",
+    "sending": "送信中"
   },
   "search": {
     "marks": "記録を検索",

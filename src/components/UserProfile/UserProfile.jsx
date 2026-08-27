@@ -8,6 +8,7 @@ import { formatCoords, formatUsername, relativeTime } from "../../utils/format.j
 import { profileLinks } from "../../utils/links.js";
 import { useAuth } from "../AuthProvider/index.js";
 import FollowsModal from "../FollowsModal/index.js";
+import MessageModal from "../MessageModal/index.js";
 
 // What the pictures on this page are drawn at, on the tag as well as in the
 // stylesheet: one that arrives without its size resizes the page around it as it
@@ -43,6 +44,11 @@ export default function UserProfile({ username }) {
   // the sheet is the figures' own, so what says it is up is which figure was
   // pressed (see FollowsModal).
   const [listing, setListing] = useState(null);
+  // Whether the exchange with this person is open over the page. A profile is
+  // where a conversation most often starts — you have just read who somebody is
+  // and want to say something to them — so the way in is here as well as in the
+  // inbox, and both open the same sheet.
+  const [messaging, setMessaging] = useState(false);
   // A press is out. The button keeps its word while it is — what it says is
   // still true until the server says otherwise — and only stops being pressable,
   // which is what keeps a double press from asking the same thing twice.
@@ -57,6 +63,7 @@ export default function UserProfile({ username }) {
     setPosts([]);
     setFollows(null);
     setListing(null);
+    setMessaging(false);
     setError("");
     api
       .getUser(username)
@@ -212,16 +219,32 @@ export default function UserProfile({ username }) {
                 {figure("followers")}
                 {figure("following")}
               </div>
-              {/* Your own page has the figures and no button — see isSelf. */}
+              {/* Your own page has the figures and no buttons — see isSelf.
+                  Reading somebody and writing to them are the two things one
+                  account does about another, so they stand together at the far
+                  end of the line: the follow first, because it is the quieter of
+                  the two and the one more often pressed, and saying something
+                  beside it. Neither is a black bar across the column — a profile
+                  is a page you came to read, and the filled slab is for a sheet
+                  where there is one thing to press. */}
               {!isSelf && (
-                <button
-                  type="button"
-                  className={styles.follow}
-                  onClick={toggleFollow}
-                  disabled={working}
-                >
-                  {t(follows.isFollowing ? "user.unfollow" : "user.follow")}
-                </button>
+                <div className={styles.buttons}>
+                  <button
+                    type="button"
+                    className={styles.follow}
+                    onClick={toggleFollow}
+                    disabled={working}
+                  >
+                    {t(follows.isFollowing ? "user.unfollow" : "user.follow")}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.follow}
+                    onClick={() => setMessaging(true)}
+                  >
+                    {t("user.message")}
+                  </button>
+                </div>
               )}
             </div>
           )}
@@ -308,11 +331,10 @@ export default function UserProfile({ username }) {
             </ul>
           )}
 
-          {/* And nothing after the posts. Saying something to somebody is the one
-              thing lo lets you do about a person, and it is already the first
-              row of Contact above — a black bar down here repeating the same
-              three words would be the same action twice on one short sheet, and
-              the row is the nearer of the two to the top anyway.
+          {/* And nothing after the posts. Saying something to somebody is up
+              beside the follow, under the name — a black bar down here
+              repeating it would be the same action twice on one short page, and
+              the button is the nearer of the two to the top anyway.
 
               Your own profile ends there too: this is your profile as it is
               read, not as it is written, and a way through to the form would be
@@ -325,6 +347,14 @@ export default function UserProfile({ username }) {
           nothing until it has a list to draw (see ui/Modal), and keeping it here
           is what lets the two figures be the whole of the way in. */}
       <FollowsModal username={username} mode={listing} onClose={() => setListing(null)} />
+
+      {/* And the exchange with whoever this page is about, over the page it was
+          opened from — the same sheet the inbox opens, reached from the other
+          end. Mounted only while it is up: unlike the sheet above it, this one
+          fetches on the name it is given, and a name is always in hand here. */}
+      {messaging && (
+        <MessageModal username={username} onClose={() => setMessaging(false)} />
+      )}
     </div>
   );
 }

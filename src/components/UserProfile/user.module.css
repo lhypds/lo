@@ -98,15 +98,25 @@
   text-decoration: underline;
 }
 
-/* The one thing this page lets you do about a person, on the terms every other
-   control in lo is drawn on: white with a black rule, turning over under the
-   pointer, and as wide as its word. Never a black bar across the column — a
-   profile is a page you came to read, and the filled slab is for the sheet where
-   there is one thing to press.
+/* The two things this page lets you do about a person, at the far end of the
+   line the figures start. They wrap as a pair rather than one at a time: on the
+   narrowest phone with long enough words in the reader's language they drop
+   under the figures together, which keeps them reading as the two halves of one
+   answer to "what now". */
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
 
-   What it says is what it does, following the labels everywhere else in lo:
-   "Follow" while you do not, "Unfollow" while you do. The state is in the word,
-   so nothing here has to be read twice. */
+/* Both of them on the terms every other control in lo is drawn on: white with a
+   black rule, turning over under the pointer, and as wide as its word. Never a
+   black bar across the column — a profile is a page you came to read, and the
+   filled slab is for the sheet where there is one thing to press.
+
+   What the first says is what it does, following the labels everywhere else in
+   lo: "Follow" while you do not, "Unfollow" while you do. The state is in the
+   word, so nothing here has to be read twice. */
 .follow {
   padding: 6px 16px;
   border: 1px solid var(--ink);

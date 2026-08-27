@@ -1,0 +1,172 @@
+/* What the post said, the column of answers, and the box — one column with a
+   floor, the same shape the conversation sheet keeps. */
+.sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Which post this is about, set as the caption it is: two lines of it and then
+   the rest is on the map behind the sheet. The rule under it is what separates
+   the thing being talked about from the talking. */
+.about {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  margin: 0;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--ink);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+/* A definite height rather than one that follows the column: a post with three
+   remarks under it and one with thirty get the same sheet, which is what keeps
+   opening one from resizing the thing the pointer just pressed. Capped against
+   the window as well, because the modal itself stops at 90vh and a long column
+   would push the box off the bottom of it on a short screen. */
+.list {
+  min-height: 140px;
+  height: 36vh;
+  max-height: 320px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.items {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* The picture, then who and when over what they said — a row of a list of people
+   with a paragraph hanging off it. Set on the top: the name starts where the
+   picture starts, so a remark that runs to four lines reads against the same
+   edge as one that runs to one. */
+.item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.item:last-child {
+  border-bottom: 0;
+}
+
+/* Square and ruled like every other picture in lo, at the size a row can hold.
+   Nothing at all where somebody has not put one up — the row starts at the name
+   instead, which is the reading every other list of people takes. */
+.avatar {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--ink);
+  background: var(--soft);
+  object-fit: cover;
+}
+
+.lines {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* The name at one end and when it was said at the other, on the line above the
+   words: the byline a post's own bubble carries, in a column. */
+.head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.who {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  text-decoration: none;
+}
+
+.when {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+}
+
+.body {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  /* Somebody else's writing, so it can be a pasted address with no spaces in it:
+     without this one remark would set the width of the sheet. */
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.empty {
+  margin: 0;
+  padding: 18px 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.composer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* The house textarea sets no size of its own, so the size a sheet is worked at
+   is said here — the same 12px the post composer types in. */
+.text {
+  padding: 8px 10px;
+  font-size: 12px;
+}
+
+/* The count at one end and the submit at the other, which is the post composer's
+   own foot: how much room is left, and the one thing to do about it. */
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.count {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+}
+
+/* Only as wide as its word, and the sheet's own height rather than the 42px a
+   full-width button on a form page takes: this is a control in a row, not the
+   end of a form. */
+.footer button {
+  width: auto;
+  min-width: 72px;
+  height: 30px;
+  padding: 0 14px;
+  font-size: 12px;
+}
+
+.footer button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+@media (hover: hover) {
+  .who:hover {
+    text-decoration: underline;
+  }
+}

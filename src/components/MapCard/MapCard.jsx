@@ -173,18 +173,26 @@ function markPopupElement(name, coords, iso, when) {
 // are clamped and the picture is small — and the click that opens it properly
 // is still there underneath.
 //
-// The name on the byline is the one thing in a bubble that can be pressed, and
-// where it goes is the person: a post says somebody was standing here, and who
-// that is, is a fair next question to have an answer to. Everything else in here
-// stays deaf to the pointer — see .postPopupWho in map.module.css, which is the
-// one hole in that.
+// Two things in a bubble can be pressed and the rest of it stays deaf to the
+// pointer — see .postPopupWho and .postPopupComments in map.module.css, which
+// are the two holes in that.
+//
+// The first is the name on the byline, and where it goes is the person: a post
+// says somebody was standing here, and who that is, is a fair next question to
+// have an answer to. The second is the count in the bottom corner, and what it
+// opens is what everyone who came past had to say back — the half of a post that
+// does not fit in a bubble 180px wide.
 //
 // An anchor built by hand, and handed the router's own `navigate` rather than
 // reaching for it: this is DOM mapbox owns, outside any React tree, so there is
 // no Link to use and no context to read one from. Written as a real href all the
 // same, because that is what makes it a name that can be opened in a tab, copied
 // or sent to somebody — the press is intercepted, the address is not a pretence.
-function postPopupElement(post, headline, place, iso, when, navigate) {
+//
+// `comments` is a word and a way to open the sheet, or nothing where the page
+// has nowhere to open one — the marks page draws no posts at all, and a count
+// nothing answers would be a control that does nothing.
+function postPopupElement(post, headline, place, iso, when, navigate, comments) {
   const wrapper = document.createElement("div");
   wrapper.className = styles.postPopup;
   if (post.image) {
@@ -228,11 +236,34 @@ function postPopupElement(post, headline, place, iso, when, navigate) {
     at.textContent = ` · ${place}`;
     who.append(at);
   }
+  // When it was left at one end of the last line and what was said back at the
+  // other. One row rather than two: the corner of the bubble is where the count
+  // belongs, and the time was already standing in it.
+  const foot = document.createElement("div");
+  foot.className = styles.postPopupFoot;
   const time = document.createElement("time");
   time.className = styles.markPopupMeta;
   time.dateTime = iso;
   time.textContent = when;
-  wrapper.append(label, who, time);
+  foot.append(time);
+  if (comments) {
+    const open = document.createElement("button");
+    open.type = "button";
+    open.className = styles.postPopupComments;
+    // The word and the figure, and the figure even at nought: a count that
+    // stopped being a control when nobody had said anything would read as one
+    // that had failed rather than as an invitation to be the first.
+    open.textContent = `${comments.label} ${post.comments ?? 0}`;
+    open.addEventListener("click", (event) => {
+      // Short of the map, which reads a click as "put the chosen bubble away" —
+      // the reader is opening the remarks, not dismissing the post. The same
+      // stop the byline beside it makes.
+      event.stopPropagation();
+      comments.open(post);
+    });
+    foot.append(open);
+  }
+  wrapper.append(label, who, foot);
   return wrapper;
 }
 
@@ -312,6 +343,7 @@ export default function MapCard({
   onToggleExpanded,
   onHoverPin,
   onSelectPin,
+  onOpenComments,
 }) {
   const { t, i18n } = useTranslation();
   const { coords } = useHere();
@@ -319,6 +351,13 @@ export default function MapCard({
   // For the byline in a post's bubble, which is hand-built DOM outside the tree
   // and so cannot carry a Link of its own (see postPopupElement)
   const navigate = useNavigate();
+  // And for the count beside it. Read through a ref for the reason every other
+  // handler on this card is: the listener goes on a node mapbox owns and
+  // outlives the render that built it, and the sheet it opens belongs to the
+  // page — the card is inside a container-sized tile, which would be the
+  // containing block of any fixed box mounted in here.
+  const commentsRef = useRef(onOpenComments);
+  commentsRef.current = onOpenComments;
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const hereMarkerRef = useRef(null);
@@ -626,13 +665,21 @@ export default function MapCard({
   }, [onHoverPin, onSelectPin]);
 
   // Posts, drawn the same wholesale way and for the same reason. The bubble on
-  // these is the post: the picture, the words, who left them and when. There is
-  // no sheet behind it to open — the square is where a post is read, which is
-  // also why the list's rows send the map here rather than opening anything.
+  // these is the post: the picture, the words, who left them and when. The
+  // square is still where a post is *read* — which is why the list's rows send
+  // the map here rather than opening anything — and the one thing behind it is
+  // the column of what everyone else said back, which no bubble 180px wide was
+  // ever going to hold (see the count in the corner of postPopupElement).
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
     postMarkersRef.current.forEach(({ marker }) => marker.remove());
+    // The word on the count and the way to open the sheet behind it, built once
+    // for the whole redraw rather than per pin. Nothing at all where the page
+    // has nowhere to open one.
+    const comments = onOpenComments
+      ? { label: t("comments.short"), open: (post) => commentsRef.current?.(post) }
+      : null;
     postMarkersRef.current = posts.map((post) => {
       const element = postElement();
       // The same three things the row in the list carries, chosen the same way:
@@ -655,6 +702,7 @@ export default function MapCard({
                 post.time,
                 formatDateTime(post.time, i18n.language),
                 navigate,
+                comments,
               ),
             ),
           )
@@ -663,7 +711,12 @@ export default function MapCard({
       );
       return { id: post.id, marker };
     });
-  }, [posts, i18n.language, preview, navigate]);
+    // `onOpenComments` only for whether there is a control at all — which page
+    // this is does not change while it is on screen — and the handler itself is
+    // read off the ref, so a new one on every render of the page above does not
+    // tear every pin on the map down and build it again.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [posts, t, i18n.language, preview, navigate, Boolean(onOpenComments)]);
 
   // The pairing the other way round: a row under the pointer in the list opens
   // the bubble on its own pin, so whichever half the reader is looking at, the

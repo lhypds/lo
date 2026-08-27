@@ -1,0 +1,127 @@
+/* A column of people in the house sheet, with the same inset the follows sheet
+   takes on top of the modal's own: small type wants more air at its edges than a
+   row of buttons does, and every row in here is ruled the full width of it. */
+.sheet {
+  padding: 0 8px;
+}
+
+/* Capped rather than let run: the modal stops at 90vh, so this is the shorter of
+   the two on a tall screen and the sheet's own content box is on a short one —
+   the same bargain the list of followers makes. */
+.list {
+  margin: 0;
+  padding: 0;
+  max-height: 60vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  list-style: none;
+}
+
+.list li {
+  border-bottom: 1px solid var(--line);
+}
+
+/* The picture, two lines of who and what, and when at the far end — the row a
+   list of people has in lo, with the second line being the one thing this list
+   adds. A button rather than a link, because what is on the other side of the
+   press is a sheet over this one rather than an address: an exchange between two
+   accounts is nobody else's to open, so there is nothing here to link to.
+
+   Set on the top rather than the middle: the name starts where the picture
+   starts, so a row whose last line runs long reads against the same edge as one
+   that does not. */
+.item {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 9px 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* Square and ruled like every other picture in lo, at the size a row can hold.
+   Nothing at all where somebody has not put one up — the row starts at the name
+   instead, which is the reading every other list of people takes. */
+.avatar {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--ink);
+  background: var(--soft);
+  object-fit: cover;
+}
+
+.lines {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.who {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+/* One line of it, then the rest is what opening the row is for. Grey, because
+   what is being read down this column is the names — the line under each is how
+   the reader tells one exchange from another, not the exchange itself. */
+.preview {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* The time, and the mark under it when something on that row is waiting. A
+   column so the dot sits under the time rather than beside it: the times are the
+   right-hand edge of the list and a dot in the middle of them would ripple that
+   edge from row to row. */
+.tail {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 5px;
+  padding-top: 1px;
+}
+
+.when {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+}
+
+/* The same dot the envelope in the top bar wears, without the paper ring — this
+   one stands on the sheet rather than on the corner of a box. */
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ink);
+}
+
+.empty {
+  margin: 0;
+  padding: 18px 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* The row lights up past its own edges, which is how a pressable row reads
+   everywhere else in lo: the sheet's inset is what the shadow fills. */
+@media (hover: hover) {
+  .item:hover {
+    background: var(--soft);
+    box-shadow: -8px 0 var(--soft), 8px 0 var(--soft);
+  }
+}

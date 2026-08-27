@@ -266,7 +266,27 @@
     "copied": "已复制",
     "copyFailed": "复制失败",
     "posts": "最近的 posts",
-    "noPosts": "还没有发过 post"
+    "noPosts": "还没有发过 post",
+    "message": "发消息"
+  },
+  "messages": {
+    "title": "消息",
+    "waiting": "消息 — {{n}} 条未读",
+    "empty": "还没有消息",
+    "said": "我：{{body}}",
+    "emptyThread": "还没有和 {{name}} 说过话",
+    "placeholder": "写下回复",
+    "send": "发送",
+    "sending": "发送中"
+  },
+  "comments": {
+    "title": "留言",
+    "short": "留言",
+    "aboutPost": "这条 post",
+    "empty": "还没有人留言",
+    "placeholder": "说点什么",
+    "submit": "提交",
+    "sending": "提交中"
   },
   "search": {
     "marks": "搜索你的记录",

@@ -5,6 +5,7 @@ import { Modal, showToast, useSearchParams } from "../../ui/index.js";
 import { formatUsername } from "../../utils/format.js";
 import { filterBy } from "../../utils/search.js";
 import { useAuth } from "../../components/AuthProvider/index.js";
+import CommentsModal from "../../components/CommentsModal/index.js";
 import Header from "../../components/Header/index.js";
 import PostItem from "../../components/PostItem/index.js";
 import PostModal from "../../components/PostModal/index.js";
@@ -60,6 +61,11 @@ export default function PostsPage() {
   const [chosen, setChosen] = useState(null);
   const [editing, setEditing] = useState(null);
   const [deleting, setDeleting] = useState(null);
+  // The post whose remarks are open over the page, from the count in the corner
+  // of its bubble on the map. Held here rather than in the card: the map is
+  // inside a container-sized tile, which would be the containing block of any
+  // fixed box mounted in it.
+  const [commenting, setCommenting] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -122,6 +128,7 @@ export default function PostsPage() {
             hovered={hovered}
             onHoverPin={setHovered}
             onSelectPin={setChosen}
+            onOpenComments={setCommenting}
           />
         </Suspense>
       </div>
@@ -187,6 +194,17 @@ export default function PostsPage() {
           // through — the same reason writing one says so.
           showToast(t("post.saved"), 1800);
         }}
+      />
+
+      {/* What everyone who came past had to say about one post. The count that
+          opens it is in the corner of the bubble on the map, and adding a remark
+          hands the new figure back through the provider — the pins are redrawn
+          from that list, so the corner is right again the moment the sheet
+          closes. */}
+      <CommentsModal
+        post={commenting}
+        onClose={() => setCommenting(null)}
+        onAdded={(post, comments) => replacePost({ ...post, comments })}
       />
 
       <Modal

@@ -14,7 +14,9 @@ you put on the ones you want.
 
 One tap marks the spot, so a place you want to keep becomes a place you can come back to.
 Hold the same button instead and you leave a post — a few words and a photo, pinned to the
-ground as a small `p` on the map for whoever comes past it next.
+ground as a small `p` on the map for whoever comes past it next. Press one of those squares
+and its bubble tells you what was left there; the count in its corner opens what everyone
+who came past had to say about it, and a box to say something yourself.
 
 Whoever else has a tab open nearby is a name on the dashboard. Press one and you get the
 person rather than the ground: a line they wrote about themselves, the ways to reach them
@@ -25,4 +27,6 @@ everywhere else.
 
 And you can say something to them. A post is left on the ground for anyone; a message is
 addressed to one person wherever they are. The envelope in the top bar opens them over
-whatever you were looking at, and wears a small mark when one is waiting.
+whatever you were looking at, and wears a small mark when one is waiting — a row there is a
+person, and pressing one opens the exchange with a box at the foot of it to answer in. The
+button beside Follow on somebody's page opens the same thing from the other end.

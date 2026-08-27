@@ -307,6 +307,26 @@ a {
   justify-content: flex-end;
 }
 
+/* The envelope in the top bar wears a mark when something is waiting for the
+   reader. A dot and not a figure: how many there are is the list's own answer,
+   and a number that small in a box this size is a smudge. */
+.topbar-badge {
+  position: relative;
+  display: inline-flex;
+}
+
+.topbar-dot {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 6px;
+  height: 6px;
+  border: 1px solid var(--paper);
+  border-radius: 50%;
+  background: var(--ink);
+  pointer-events: none;
+}
+
 /* ------------------------------------------------------------------ gate -- */
 
 .gate-page {
@@ -1287,6 +1307,15 @@ html:has(.home-main:not(.home-main-map) .card-pager) {
   .profile-save:hover:not(:disabled) {
     background: var(--ink);
     color: var(--paper);
+  }
+}
+
+@media (hover: hover) {
+  /* The envelope inverts under the pointer, and a black dot on a black box is
+     no dot at all */
+  .topbar-badge:hover .topbar-dot {
+    border-color: var(--ink);
+    background: var(--paper);
   }
 }
 

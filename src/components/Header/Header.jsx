@@ -3,9 +3,11 @@ import { useTranslation } from "react-i18next";
 import { ActionButton, Link, useNavigate } from "../../ui/index.js";
 import { MARK_PIN_EYE, MARK_PIN_PATH } from "../../utils/icons.js";
 import { useAuth } from "../AuthProvider/index.js";
+import { useHere } from "../LocationProvider/index.js";
 import AccountModal from "../AccountModal/index.js";
 import AddCard from "../AddCard/index.js";
 import LanguageSwitcher from "../LanguageSwitcher/index.js";
+import MessagesModal from "../MessagesModal/index.js";
 
 // `cards` puts the dashboard's own contents page in the bar. On every page there
 // is a dashboard to go back to, because what the dashboard carries is a setting
@@ -23,10 +25,17 @@ import LanguageSwitcher from "../LanguageSwitcher/index.js";
 export default function Header({ back = false, backTo = "/", cards = false }) {
   const { t } = useTranslation();
   const { user } = useAuth();
+  // How much is waiting to be read, which rides in on the presence trade the
+  // provider is already making every minute (see LocationProvider). The bar has
+  // no loop of its own for it: a second beat asking a question the first one can
+  // answer for free would be a request a minute for a number that is nearly
+  // always nought.
+  const { unread } = useHere();
   const navigate = useNavigate();
-  // The account sheet is opened from here and nowhere else, so the bar holds it
-  // open itself rather than through a module anything could call.
+  // The two sheets opened from here and nowhere else, so the bar holds them open
+  // itself rather than through a module anything could call.
   const [accountOpen, setAccountOpen] = useState(false);
+  const [messagesOpen, setMessagesOpen] = useState(false);
 
   // There is no refresh button. The dashboard keeps itself current — the fix
   // every thirty seconds, the weather and the place name behind it, who else is
@@ -75,6 +84,30 @@ export default function Header({ back = false, backTo = "/", cards = false }) {
               </svg>
             </ActionButton>
           )}
+          {/* What somebody said to you, rather than what somebody left on the
+              ground: posts are addressed to nobody and this is addressed to you,
+              so it is the one thing in the top bar that can be waiting. The dot
+              says something is; how many, and from whom, is the answer inside.
+
+              A sheet rather than a page, on the same terms as the account below
+              it: reading what somebody wrote is a glance rather than somewhere
+              you go, the page you were on stays underneath, and the ✕ puts you
+              back exactly where you were standing. */}
+          {user && (
+            <span className="topbar-badge">
+              <ActionButton
+                tooltip={t("messages.title")}
+                aria-label={unread > 0 ? t("messages.waiting", { n: unread }) : t("messages.title")}
+                onClick={() => setMessagesOpen(true)}
+              >
+                <svg viewBox="0 0 24 24">
+                  <path d="M3 6h18v12H3z" />
+                  <path d="m3 7 9 6 9-6" />
+                </svg>
+              </ActionButton>
+              {unread > 0 && <span className="topbar-dot" aria-hidden="true" />}
+            </span>
+          )}
           {/* Your own account, on the same terms as everything else up here: a
               sheet over the page you were reading rather than a page you have to
               come back from. */}
@@ -90,10 +123,12 @@ export default function Header({ back = false, backTo = "/", cards = false }) {
         </span>
       </header>
 
-      {/* Mounted beside the bar rather than inside it: the bar is sticky and
-          carries a stacking context of its own, and a sheet opened in there would
-          be pinned under it. Out here it is a child of the page, like every other
-          sheet in lo. */}
+      {/* Both sheets mounted beside the bar rather than inside it: the bar is
+          sticky and carries a stacking context of its own, and a sheet opened in
+          there would be pinned under it. Out here they are children of the page,
+          like every other sheet in lo — and because the bar is on every page, so
+          are they. */}
+      {user && <MessagesModal isOpen={messagesOpen} onClose={() => setMessagesOpen(false)} />}
       {user && <AccountModal isOpen={accountOpen} onClose={() => setAccountOpen(false)} />}
     </>
   );

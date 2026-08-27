@@ -267,7 +267,27 @@
     "copied": "Copied",
     "copyFailed": "Could not copy",
     "posts": "Recent posts",
-    "noPosts": "Nothing posted yet"
+    "noPosts": "Nothing posted yet",
+    "message": "Message"
+  },
+  "messages": {
+    "title": "Messages",
+    "waiting": "Messages — {{n}} waiting",
+    "empty": "No messages yet",
+    "said": "You: {{body}}",
+    "emptyThread": "Nothing said to {{name}} yet",
+    "placeholder": "Write a reply",
+    "send": "Send",
+    "sending": "Sending"
+  },
+  "comments": {
+    "title": "Comments",
+    "short": "comments",
+    "aboutPost": "This post",
+    "empty": "Nothing said about this yet",
+    "placeholder": "Say something about this",
+    "submit": "Comment",
+    "sending": "Sending"
   },
   "search": {
     "marks": "Search your marks",

@@ -119,6 +119,54 @@ db.exec(`
   -- which the key cannot answer: who follows this account, newest first, which
   -- is the list the sheet on a profile page draws.
   CREATE INDEX IF NOT EXISTS follows_followee_idx ON follows(followee_id, created_at DESC);
+
+  -- A word from one account to one other. Unlike a post it is addressed, so it
+  -- is filed under the pair rather than under the ground: nothing here knows or
+  -- cares where either of them was standing.
+  --
+  -- Kept flat — a row per line said — rather than as threads with rows hanging
+  -- off them: two accounts have exactly one conversation between them, so the
+  -- pair of names *is* the thread, and a table of threads would be a second copy
+  -- of that fact to keep in step with this one.
+  CREATE TABLE IF NOT EXISTS messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    from_user INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    to_user INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    body TEXT NOT NULL,
+    -- When the recipient opened the thread it is in, which is the only thing
+    -- either side is told about a message after it is sent. Null means nobody
+    -- has opened it yet, which is what puts the dot on the letter in the bar.
+    read_at TEXT,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+
+  -- One thread is every row with both accounts on it in either direction, so
+  -- both directions are indexed; the second one is also what counts an inbox.
+  CREATE INDEX IF NOT EXISTS messages_from_idx ON messages(from_user, id DESC);
+  CREATE INDEX IF NOT EXISTS messages_to_idx ON messages(to_user, id DESC);
+
+  -- What somebody coming past a post has to say back about it. A post is left on
+  -- the ground for whoever finds it, and until now finding one was the end of
+  -- the exchange — this is the other half, and it is filed under the post rather
+  -- than under the spot, because what a comment is about is the words and not
+  -- the ground they were left on.
+  --
+  -- No place and no fix of its own for the same reason: a comment is written
+  -- wherever its writer happens to be, which is nobody's business but theirs,
+  -- and a pin for it would be a second claim on ground the post already holds.
+  CREATE TABLE IF NOT EXISTS comments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    body TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+
+  -- Oldest first, which is the order a conversation is read in and the opposite
+  -- of every other list in lo: the rows below a post are an exchange, and an
+  -- exchange read newest first is one read backwards. The same index answers the
+  -- count on the preview.
+  CREATE INDEX IF NOT EXISTS comments_post_idx ON comments(post_id, created_at);
 `);
 
 // The account grew a profile after the first accounts were opened, so the
@@ -241,7 +289,12 @@ const POST_COLUMNS = `
   p.image_width AS imageWidth,
   p.image_height AS imageHeight,
   p.place,
-  u.username
+  u.username,
+  -- How many people have said something back. Part of every reading of a post
+  -- rather than a request of its own: the figure is drawn in the corner of the
+  -- bubble on the map, which is already holding the post, and a count fetched
+  -- separately would land after the thing it is counting for.
+  (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id) AS comments
 `;
 
 const selectPostById = db.prepare(`
@@ -368,6 +421,141 @@ const selectFollowing = db.prepare(`
   WHERE f.follower_id = ?
   ORDER BY f.created_at DESC, u.id DESC
   LIMIT ?
+`);
+
+/* ----------------------------------------------------------------- comments */
+
+const insertComment = db.prepare(`
+  INSERT INTO comments (post_id, user_id, body)
+  VALUES (?, ?, ?)
+`);
+
+// A comment is what was said, who said it, and when — the same three things a
+// row of any list of people in lo carries, plus the words. The picture comes
+// along because the sheet draws a column of faces and names, and asking for each
+// writer's profile afterwards would be one request per row.
+const COMMENT_COLUMNS = `
+  c.id,
+  c.body,
+  c.created_at AS time,
+  u.username,
+  CASE WHEN u.avatar IS NULL THEN NULL ELSE '/api/images/' || u.avatar END AS avatar
+`;
+
+const selectCommentById = db.prepare(`
+  SELECT ${COMMENT_COLUMNS}
+  FROM comments c
+  JOIN users u ON u.id = c.user_id
+  WHERE c.id = ?
+`);
+
+// Oldest first: this is an exchange, and an exchange is read from the top. Every
+// other list in lo runs the other way because every other list answers "what has
+// been happening", where this one answers "what was said".
+const selectComments = db.prepare(`
+  SELECT ${COMMENT_COLUMNS}
+  FROM comments c
+  JOIN users u ON u.id = c.user_id
+  WHERE c.post_id = ?
+  ORDER BY c.created_at ASC, c.id ASC
+  LIMIT ?
+`);
+
+const countCommentsOnPost = db.prepare(`
+  SELECT COUNT(*) AS count
+  FROM comments
+  WHERE post_id = ?
+`);
+
+/* ----------------------------------------------------------------- messages */
+
+const insertMessage = db.prepare(`
+  INSERT INTO messages (from_user, to_user, body)
+  VALUES (?, ?, ?)
+`);
+
+// `mine` is the one thing a line in a conversation needs that is not in its own
+// row: which side of the sheet it hangs on. Worked out here rather than by
+// handing anybody's id out — nothing above this file knows one — and a
+// conversation is drawn from the point of view of whoever asked for it.
+const selectMessageById = db.prepare(`
+  SELECT m.id, m.body, m.created_at AS time, m.from_user = ? AS mine
+  FROM messages m
+  WHERE m.id = ?
+`);
+
+// A thread is every row with both accounts on it, whichever way round — the two
+// halves of a conversation are one conversation. Newest first and reversed by
+// the caller, so a long thread hands back its end rather than its beginning.
+//
+// By id rather than by the clock: ids are handed out in order, so this is the
+// true sequence of an exchange without either side's timestamp being trusted.
+const selectConversation = db.prepare(`
+  SELECT m.id, m.body, m.created_at AS time, m.from_user = ? AS mine
+  FROM messages m
+  WHERE (m.from_user = ? AND m.to_user = ?) OR (m.from_user = ? AND m.to_user = ?)
+  ORDER BY m.id DESC
+  LIMIT ?
+`);
+
+// Everyone this account has traded a word with, one row each: who they are, the
+// last thing either of them said, and how much of it is still unread.
+//
+// A conversation and not a mailbox. Which direction a message went is a fact
+// about that message, not a place it lives — filing them under "in" and "out"
+// cuts one conversation in half and puts the halves in different boxes. So the
+// list is of people, and a person opens the thread.
+//
+// `other` is the account at the far end of a row whichever end this one is at,
+// which is what turns a table of messages into a list of people. The last word
+// in each thread is the row with the highest id under that name.
+const selectThreads = db.prepare(`
+  WITH conv AS (
+    SELECT
+      CASE WHEN m.from_user = ? THEN m.to_user ELSE m.from_user END AS other,
+      m.id,
+      m.body,
+      m.created_at,
+      m.from_user
+    FROM messages m
+    WHERE m.from_user = ? OR m.to_user = ?
+  )
+  SELECT
+    u.username,
+    CASE WHEN u.avatar IS NULL THEN NULL ELSE '/api/images/' || u.avatar END AS avatar,
+    c.body,
+    c.created_at AS time,
+    CASE WHEN c.from_user = ? THEN 1 ELSE 0 END AS mine,
+    (
+      SELECT COUNT(*)
+      FROM messages unread
+      WHERE unread.to_user = ? AND unread.from_user = u.id AND unread.read_at IS NULL
+    ) AS unread
+  FROM conv c
+  JOIN users u ON u.id = c.other
+  WHERE c.id = (SELECT MAX(latest.id) FROM conv latest WHERE latest.other = c.other)
+  ORDER BY c.id DESC
+  LIMIT ?
+`);
+
+// The figure behind the dot on the letter in the top bar, and the whole of what
+// that dot knows: how many lines are sitting in the inbox unopened. Counted
+// across everybody rather than per conversation — the bar has one letter on it,
+// and what it is saying is "somebody wrote".
+const countUnreadMessages = db.prepare(`
+  SELECT COUNT(*) AS count
+  FROM messages
+  WHERE to_user = ? AND read_at IS NULL
+`);
+
+// Opening a thread reads it: everything in it addressed to the reader and not
+// already stamped, in one statement. Only the other side's lines are touched —
+// your own were never unread — and only the ones still unmarked, so the stamp is
+// when a line was first opened rather than when it was last looked at.
+const markConversationRead = db.prepare(`
+  UPDATE messages
+  SET read_at = ?
+  WHERE to_user = ? AND from_user = ? AND read_at IS NULL
 `);
 
 const upsertPosition = db.prepare(`
@@ -520,6 +708,13 @@ export function getRecentPosts(limit = 200) {
   return selectRecentPosts.all(limit);
 }
 
+// One post, whoever left it: the two comment endpoints below start by asking
+// whether there is anything here to be talking about, and a post that is not
+// there is not one anybody may write under.
+export function getPost(postId) {
+  return selectPostById.get(postId) ?? null;
+}
+
 export function getPostsByUser(username, limit = 20) {
   return selectPostsByUser.all(username, limit);
 }
@@ -569,6 +764,55 @@ export function getFollowers(userId, limit = 200) {
 
 export function getFollowing(userId, limit = 200) {
   return selectFollowing.all(userId, limit);
+}
+
+export function getComments(postId, limit = 200) {
+  return selectComments.all(postId, limit);
+}
+
+// The comment that was just written, and the figure it has just changed: the
+// sheet puts the one at the bottom of its list and hands the other back to the
+// map, where the count in the corner of a bubble is what said there was
+// anything to open. Two answers because they belong to two different things on
+// screen, and one round trip because they are the same act.
+export function createComment(userId, postId, body) {
+  const result = insertComment.run(postId, userId, body);
+  return {
+    comment: selectCommentById.get(Number(result.lastInsertRowid)),
+    count: countCommentsOnPost.get(postId)?.count ?? 0,
+  };
+}
+
+// SQLite answers a comparison in 0 and 1; every reader of a message wants a yes
+// or a no, which is the same turn EXISTS gets in getFollowStats above.
+function withSide(row) {
+  return row ? { ...row, mine: row.mine === 1 } : null;
+}
+
+export function getThreads(userId, limit = 100) {
+  return selectThreads.all(userId, userId, userId, userId, userId, limit).map(withSide);
+}
+
+// Oldest last out of SQLite and oldest first on the way out of here: a thread is
+// read downwards, so the newest is the row nearest the composer.
+export function getConversation(userId, otherUserId, limit = 200) {
+  return selectConversation
+    .all(userId, userId, otherUserId, otherUserId, userId, limit)
+    .reverse()
+    .map(withSide);
+}
+
+export function countUnread(userId) {
+  return countUnreadMessages.get(userId)?.count ?? 0;
+}
+
+export function readConversation(userId, otherUserId) {
+  return markConversationRead.run(new Date().toISOString(), userId, otherUserId).changes;
+}
+
+export function createMessage(fromUserId, toUserId, body) {
+  const result = insertMessage.run(fromUserId, toUserId, body);
+  return withSide(selectMessageById.get(fromUserId, Number(result.lastInsertRowid)));
 }
 
 export function savePosition(userId, { latitude, longitude, accuracy }) {

@@ -5,22 +5,30 @@ import { fileURLToPath } from "node:url";
 import express from "express";
 import {
   countMarks,
+  countUnread,
+  createComment,
   createMark,
+  createMessage,
   createPost,
   createUser,
   deleteMark,
   deletePost,
   followUser,
+  getComments,
+  getConversation,
   getFollowStats,
   getFollowers,
   getFollowing,
   getMarks,
   getOtherPositions,
+  getPost,
   getPostsByUser,
   getPostsNear,
   getProfile,
   getRecentPosts,
+  getThreads,
   getUser,
+  readConversation,
   renameMark,
   savePosition,
   unfollowUser,
@@ -345,10 +353,12 @@ app.get("/api/users/:username", requireSession, (req, res) => {
 // one response, so it has to have an end.
 const FOLLOWS_MAX = 200;
 
-// The account a follow endpoint is about, or nothing — every one of the four
-// below starts by reading a name out of the path, and three of them answer with
-// the same figures afterwards.
-function followTarget(req, res) {
+// The account an endpoint is about, or nothing. Every endpoint that takes a name
+// in its path starts here — the four follow ones below, and the two message ones
+// further down — because reading a name out of a path is one act: it has to be
+// normalised the same way the login field is, refused in the same words, and
+// answered with the same 404 when nobody has it.
+function namedUser(req, res) {
   const username = normalizeUsername(req.params.username);
   if (!USERNAME_RE.test(username)) {
     res.status(400).json({ error: USERNAME_HINT });
@@ -371,7 +381,7 @@ function followTarget(req, res) {
 // anybody made, so neither is an error: both endpoints leave the same row there
 // or not there whatever they found (see followUser in db.js).
 app.put("/api/users/:username/follow", requireSession, (req, res) => {
-  const target = followTarget(req, res);
+  const target = namedUser(req, res);
   if (!target) return;
   // Your own page has no button on it, so this is a request nobody's browser
   // sends; the table would refuse the row anyway, and a name in its own list is
@@ -382,7 +392,7 @@ app.put("/api/users/:username/follow", requireSession, (req, res) => {
 });
 
 app.delete("/api/users/:username/follow", requireSession, (req, res) => {
-  const target = followTarget(req, res);
+  const target = namedUser(req, res);
   if (!target) return;
   unfollowUser(req.user.id, target.id);
   res.json({ follows: getFollowStats(req.user.id, target.username) });
@@ -393,13 +403,13 @@ app.delete("/api/users/:username/follow", requireSession, (req, res) => {
 // a page everyone can open, and a figure nobody may read the names behind would
 // be a number lo was asking to be taken on trust.
 app.get("/api/users/:username/followers", requireSession, (req, res) => {
-  const target = followTarget(req, res);
+  const target = namedUser(req, res);
   if (!target) return;
   res.json({ people: getFollowers(target.id, FOLLOWS_MAX) });
 });
 
 app.get("/api/users/:username/following", requireSession, (req, res) => {
-  const target = followTarget(req, res);
+  const target = namedUser(req, res);
   if (!target) return;
   res.json({ people: getFollowing(target.id, FOLLOWS_MAX) });
 });
@@ -650,6 +660,136 @@ app.delete("/api/posts/:postId", requireSession, (req, res) => {
   res.status(204).end();
 });
 
+/* ---------------------------------------------------------------- comments */
+
+// A comment is a remark rather than a post: it is read in a column under
+// something else and it has no ground of its own to be about, so it gets a
+// fraction of the room a post does. Long enough for a sentence or three, short
+// enough that a hundred of them under one photo is still a list.
+const COMMENT_BODY_MAX = 300;
+// How many the sheet will draw. Far past what any post on lo has, and there for
+// the reason every other limit in here is: a list is answered in one response,
+// so it has to have an end.
+const COMMENTS_MAX = 200;
+
+// The post a comment endpoint is about, or nothing — both of them start by
+// asking whether there is anything here to be talking about, and a post that has
+// been taken down is not one anybody may write under.
+function commentTarget(req, res) {
+  const postId = Number(req.params.postId);
+  if (!Number.isInteger(postId) || postId < 1) {
+    res.status(400).json({ error: "帖子 ID 无效" });
+    return null;
+  }
+  const post = getPost(postId);
+  if (!post) {
+    res.status(404).json({ error: "帖子不存在", code: "POST_NOT_FOUND" });
+    return null;
+  }
+  return post;
+}
+
+// Everyone's, like the post they hang off: what was said back about something
+// left on the ground is part of what a passer-by finds there.
+app.get("/api/posts/:postId/comments", requireSession, (req, res) => {
+  const post = commentTarget(req, res);
+  if (!post) return;
+  res.json({ comments: getComments(post.id, COMMENTS_MAX) });
+});
+
+// Under anybody's post, including your own: a writer answering the people who
+// came past is the ordinary shape of one of these columns, and a rule against it
+// would be lo deciding who is allowed to finish a conversation.
+app.post("/api/posts/:postId/comments", requireSession, (req, res) => {
+  const post = commentTarget(req, res);
+  if (!post) return;
+  const body = String(req.body?.body ?? "").trim().normalize("NFKC");
+  // No photo and so nothing to stand in for the words: an empty comment is
+  // somebody pressing the button twice, not a post with a picture in it.
+  if (!body) return res.status(400).json({ error: "请写点什么" });
+  if (body.length > COMMENT_BODY_MAX) {
+    return res.status(400).json({ error: `内容最多 ${COMMENT_BODY_MAX} 个字符` });
+  }
+  // The row and the figure it has just changed, because they are read by two
+  // different things on screen — the column in the sheet and the count in the
+  // corner of the bubble on the map (see createComment in db.js).
+  const { comment, count } = createComment(req.user.id, post.id, body);
+  res.status(201).json({ comment, comments: count });
+});
+
+/* ---------------------------------------------------------------- messages */
+
+// A message is a letter rather than a remark, so it gets the room a letter
+// needs. Still bounded: everything in lo that can be typed has an end, and this
+// is about as much as anybody reads inside a sheet without scrolling twice.
+const MESSAGE_BODY_MAX = 1000;
+// How many correspondents the inbox draws, and how much of one exchange is read
+// back. The exchange is capped at its *end* rather than its beginning (see
+// selectConversation in db.js) — a long correspondence opens on the part of it
+// that is still being had.
+const INBOX_MAX = 50;
+const CONVERSATION_MAX = 200;
+
+// The inbox, and the figure the top bar's letter wears, in one answer. They are
+// one reading of the same table — the dot says somebody wrote and the list is
+// who — so asking twice would let the row of names disagree with the mark over
+// it. Asked for when the sheet opens rather than on a beat: the dot is what says
+// whether opening it is worth doing, and that rides in on the presence trade
+// already turning every minute (see /api/people).
+app.get("/api/messages", requireSession, (req, res) => {
+  res.json({ conversations: getThreads(req.user.id, INBOX_MAX), unread: countUnread(req.user.id) });
+});
+
+// The person a message endpoint is about, or nothing. Writing to yourself is
+// refused in words rather than left to the table's own CHECK, for the reason
+// following yourself is: neither is a request any browser of ours sends, and the
+// server is the copy of the rule that holds whatever asks.
+function messageTarget(req, res) {
+  const target = namedUser(req, res);
+  if (!target) return null;
+  if (target.id === req.user.id) {
+    res.status(400).json({ error: "不能给自己发消息" });
+    return null;
+  }
+  return target;
+}
+
+// One exchange, both directions, oldest first — and opening it is what marks it
+// read. There is no button for that: a conversation somebody has just been shown
+// is one they have seen, and a sheet that made the reader press something
+// afterwards would be asking them to file their own post.
+//
+// The unread figure comes back with it, already counted down by this reading, so
+// the dot in the bar goes out at the same moment the words arrive rather than on
+// the bar's next beat.
+app.get("/api/messages/:username", requireSession, (req, res) => {
+  const target = messageTarget(req, res);
+  if (!target) return;
+  readConversation(req.user.id, target.id);
+  res.json({
+    user: { username: target.username, avatar: target.avatar },
+    messages: getConversation(req.user.id, target.id, CONVERSATION_MAX),
+    unread: countUnread(req.user.id),
+  });
+});
+
+// Anybody may write to anybody: a name in lo is a public address — it is what
+// every list of people links to — and following is one-way, so there is no
+// arrangement between two accounts for this to be gated on.
+app.post("/api/messages/:username", requireSession, (req, res) => {
+  const target = messageTarget(req, res);
+  if (!target) return;
+  const body = String(req.body?.body ?? "").trim().normalize("NFKC");
+  if (!body) return res.status(400).json({ error: "请写点什么" });
+  if (body.length > MESSAGE_BODY_MAX) {
+    return res.status(400).json({ error: `内容最多 ${MESSAGE_BODY_MAX} 个字符` });
+  }
+  // The line as the sheet will draw it, which is the row plus which side of the
+  // conversation it hangs on — so a sent message lands in the column without the
+  // whole exchange being asked for again.
+  res.status(201).json({ message: createMessage(req.user.id, target.id, body) });
+});
+
 /* ------------------------------------------------------------------ images */
 
 // The bytes arrive already compressed to WebP by the browser, which is what
@@ -707,9 +847,13 @@ function livePeople(userId) {
   return getOtherPositions(userId, new Date(Date.now() - PRESENCE_WINDOW_MS).toISOString());
 }
 
-// Who else is out.
+// Who else is out — and how much is waiting to be read, which has nothing to do
+// with where anybody is standing and rides along anyway: the dot on the letter
+// in the top bar has to keep itself current, and this is the one loop already
+// turning every minute. A poller of its own would be a second beat asking a
+// question this one can answer for free.
 app.get("/api/people", requireSession, (req, res) => {
-  res.json({ people: livePeople(req.user.id) });
+  res.json({ people: livePeople(req.user.id), unread: countUnread(req.user.id) });
 });
 
 // Telling the server where you are and asking who else is out are the same
@@ -718,7 +862,7 @@ app.put("/api/position", requireSession, (req, res) => {
   const location = parseLocation(req.body);
   if (!location) return res.status(400).json({ error: "坐标无效" });
   savePosition(req.user.id, location);
-  res.json({ people: livePeople(req.user.id) });
+  res.json({ people: livePeople(req.user.id), unread: countUnread(req.user.id) });
 });
 
 if (isProduction) {
