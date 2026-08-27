@@ -1,10 +1,17 @@
 import styles from "./compass.module.css";
 
-// The dial, at the size of an icon. This tile is one square and the reading is
-// the figure beside it, which leaves the drawing the one thing a number cannot
-// say: that north is over there. So it is a ring, eight ticks and a filled pip at
-// north — the letters and the figure it carried when it was a panel four squares
-// big were mush at a third of that.
+// The dial, and on this tile it is the reading rather than an icon beside one:
+// it takes the middle of the card's top half at whatever diameter the half can
+// give it — a little under fifty pixels on the smallest square the grid draws,
+// eighty on the largest — and the degrees are set small alongside as its caption
+// (see compass.module.css). What it is for is the one thing the number cannot
+// say: that north is over there.
+//
+// Still a ring, three ticks and a filled pip, which is what it wore when it was
+// half this size. The letters and the inner figure it carried as a four-square
+// panel are not back; there is room for them again at eighty pixels and none at
+// all at thirty-two, and a dial that gains marks as the tile grows is two
+// drawings rather than one.
 //
 // A compass card in the sense the instrument means it: the dial is the part that
 // turns and the mark at the top is the part that stays. The mark is where the
@@ -15,8 +22,9 @@ import styles from "./compass.module.css";
 // language, so the one thing sized in the stylesheet is the tile it sits on.
 //
 // Three ticks and the pip, rather than the eight or the twenty-four a dial is
-// really marked with: at thirty pixels across, the marks between the quarters are
-// a grey smudge round the rim and the four that mean something are lost in it.
+// really marked with: at the floor of that range the marks between the quarters
+// are a grey smudge round the rim, and the four that mean something are lost in
+// it. The quarters carry the reading; the rest were only ever texture.
 const TICKS = [90, 180, 270];
 
 export default function CompassRose({ turn, unknown, className }) {

@@ -230,8 +230,7 @@
   "people": {
     "nearby": "Nearby people",
     "short": "People",
-    "you": "you",
-    "empty": "Nobody else out here right now"
+    "you": "you"
   },
   "profile": {
     "title": "Profile",

@@ -102,19 +102,15 @@ export default function PeopleCard() {
             </li>
           ))}
         </ul>
-        {/* Under your own row rather than instead of the list, which is never
-            empty now that you are on it. It is still worth saying: a panel
-            showing one name could be read as one that failed to load the rest,
-            and "who else is around" is the question this is here to answer.
-            Until the first trade comes back that is exactly what a panel
-            showing one name would be, so the bars stand in the meantime and
-            the sentence waits until it is true. */}
-        {rows.length === 0 &&
-          (loadingPeople ? (
-            <Skeleton rows={3} lines={1} label={t("common.loading")} className={styles.waiting} />
-          ) : (
-            <p className={styles.empty}>{t("people.empty")}</p>
-          ))}
+        {/* Bars under your own row until the first trade comes back, because a
+            panel showing one name could be read as one that failed to load the
+            rest. Nothing after that: the list is never empty now that you are
+            on it, and a sentence saying nobody is here under a row with your
+            name on it would be the panel arguing with itself. One name and no
+            more is the answer. */}
+        {rows.length === 0 && loadingPeople && (
+          <Skeleton rows={3} lines={1} label={t("common.loading")} className={styles.waiting} />
+        )}
       </div>
     </Card>
   );

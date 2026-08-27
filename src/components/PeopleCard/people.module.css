@@ -90,14 +90,6 @@
   border-bottom: 1px solid var(--line);
 }
 
-.empty {
-  margin: 0;
-  padding: 34px 12px;
-  color: var(--muted);
-  text-align: center;
-  font-size: 11px;
-}
-
 /* On a single square the row keeps the name and how far off, and drops how long
    ago: a name squeezed to two letters and an ellipsis is a row that has stopped
    answering, and of the two readings beside it the distance is the one the list is
@@ -112,13 +104,6 @@
    is. */
 .square .itemMeta time {
   display: none;
-}
-
-/* Said in less room, so the sentence is not the only thing in view: at a square
-   it stands under your own row, and the pair of them should not need a scroll to
-   be read */
-.square .empty {
-  padding: 18px 10px;
 }
 
 @media (hover: hover) {

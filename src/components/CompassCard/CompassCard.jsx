@@ -1,7 +1,6 @@
 import { useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Card } from "../../ui/index.js";
-import { formatCoords } from "../../utils/format.js";
 import { startSensors, useSensors } from "../../utils/sensors.js";
 import { useHere } from "../LocationProvider/index.js";
 import CompassRose from "./CompassRose.jsx";
@@ -33,26 +32,30 @@ function useTurn(heading) {
 
 // Which way the thing in your hand is pointing, and where the hand is standing.
 //
-// One square, the size of the clock and the weather beside it and built in the
-// same three parts: a figure on the top edge, a small drawing beside it, and the
-// readings along the bottom. It does not resize, because a face is a face — there
-// is nothing more of it to show a reader who gives it another tile, only the same
-// dial drawn larger (see utils/cards.js).
+// One square, and unlike the clock and the weather beside it the answer here is a
+// drawing rather than a figure: the dial takes the middle of the tile at whatever
+// size the tile can give it, and the degrees and the point are set small alongside
+// as its caption. So this is the one of the three squares whose reading does not
+// sit on the shared figure line — a compass says which way round it is by being
+// turned, and a number saying the same thing twice is worth less than the room it
+// takes off the dial. It does not resize either, because a face is a face (see
+// utils/cards.js).
 //
 // The tile is in two halves and the halves fail separately, which is the whole of
 // its layout. Above the rule is the handset: the dial, or — where the instruments
 // are off, refused, or simply not in the device — the button and the sentence
-// that stand in its place. Below the rule is the fix, which wants none of the
-// permission this card asks for and is drawn whether the instruments answered or
+// that stand in its place, in the same middle of the same space. Below the rule
+// are the readings, and they want none of the permission this card asks for: two
+// of the three come off the fix and are drawn whether the instruments answered or
 // not. A phone that will not give up its gyroscope still knows where it is, and a
 // tile going blank over the half it lacks would be hiding the half it has.
 //
-// So of the four readings only the turn rate is an instrument's. The coordinates
-// and the speed are the fix's, straight off the GPS. Altitude is the fix's too
-// and is the odd one — the fix carries it where the device has a GPS good enough
-// to claim it (see utils/location.js), and where it does not, the ground here is
-// a number the weather already came back with. Both are metres above sea level
-// and only one of them is about the phone, so the card says which it is showing.
+// So of the three readings only the turn rate is an instrument's. Speed is the
+// fix's, straight off the GPS. Altitude is the fix's too and is the odd one — the
+// fix carries it where the device has a GPS good enough to claim it (see
+// utils/location.js), and where it does not, the ground here is a number the
+// weather already came back with. Both are metres above sea level and only one of
+// them is about the phone, so the card says which it is showing.
 export default function CompassCard() {
   const { t } = useTranslation();
   const { coords, weather } = useHere();
@@ -78,16 +81,19 @@ export default function CompassCard() {
 
   let handset;
   if (live) {
+    // The dial is the reading, and the figures are its caption. Beside it rather
+    // than under it, and the two of them stacked, because a dial wants to be as
+    // round and as big as the tile can make it and text set under it would be
+    // taking the height that makes it so.
     handset = (
       <div className={styles.now}>
         <CompassRose className={styles.glyph} turn={turn} unknown={heading == null} />
-        <span className={styles.figure}>{heading == null ? NONE : `${Math.round(heading)}°`}</span>
-        {/* Beside the figure rather than under it, the way the clock keeps its
-            seconds: one square has one line to spend on the answer, and the word
-            is the smaller half of it. */}
-        {heading != null && (
-          <span className={styles.point}>{t(`compass.point.${pointKey(heading)}`)}</span>
-        )}
+        <div className={styles.reading}>
+          <span className={styles.figure}>{heading == null ? NONE : `${Math.round(heading)}°`}</span>
+          {heading != null && (
+            <span className={styles.point}>{t(`compass.point.${pointKey(heading)}`)}</span>
+          )}
+        </div>
       </div>
     );
   } else if (status === "listening") {
@@ -127,13 +133,7 @@ export default function CompassCard() {
   return (
     <Card title={t("compass.title")} meta={meta} square>
       <div className={styles.inner}>
-        <div className={styles.top}>
-          <div className={styles.handset}>{handset}</div>
-          {/* The fix itself, on the line where the tile stops being about the
-              phone and starts being about the place. Small and quiet: it is the
-              address of everything above it rather than a reading of its own. */}
-          <p className={styles.fix}>{coords ? formatCoords(coords.latitude, coords.longitude) : NONE}</p>
-        </div>
+        <div className={styles.handset}>{handset}</div>
         <dl className={styles.rows}>
           <div>
             <dt>{altitude?.ground ? t("compass.ground") : t("compass.altitude")}</dt>
