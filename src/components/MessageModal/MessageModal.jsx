@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
 import { Modal, Skeleton, TextArea } from "../../ui/index.js";
@@ -9,6 +9,27 @@ import styles from "./message.module.css";
 // The same figure the server holds a message to, so the count under the box runs
 // out at the moment the send would be refused rather than after it.
 const BODY_MAX = 1000;
+
+// How often an open thread asks the server what has been said. Faster than
+// anything else in lo turns — the presence loop is a minute, the fix half of that
+// — because a conversation is the one thing here that two people are doing at
+// once: a reply that took a minute to appear would be answered by somebody who
+// had given up on it, and the mark on the far side would be a minute late saying
+// their line had landed in front of anybody.
+const THREAD_REFRESH_MS = 5000;
+
+// How near the foot of the thread counts as being at it. A reader who has scrolled
+// up into the exchange is left where they are when the loop brings a line; a reader
+// at the end is carried along with it, which is what being at the end means.
+const AT_END = 24;
+
+// Whether two readings of the thread say the same thing: the same lines in the
+// same order, each as read as it was. Compared rather than swapped in, because a
+// turn of the loop that brought no news should be no news on the screen either —
+// nothing re-rendered, and above all nothing scrolled.
+function same(a, b) {
+  return a.length === b.length && a.every((line, index) => line.id === b[index].id && line.read === b[index].read);
+}
 
 // One exchange with one person, over whatever page the reader was on: what has
 // been said either way, and a box at the foot of it to say the next thing.
@@ -36,6 +57,40 @@ export default function MessageModal({ username, onClose }) {
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const threadRef = useRef(null);
+  // Every reading of the thread gets a number, so a slow answer cannot land on
+  // top of a newer one — the loop below asks again every few seconds, and the
+  // sheet can be closed and reopened on somebody else in between.
+  const askedRef = useRef(0);
+  // Whether the reader is at the end of the exchange, which is what says a line
+  // arriving should carry them with it.
+  const atEndRef = useRef(true);
+
+  // One reading of the thread. `quiet` is a turn of the loop rather than the sheet
+  // opening: it says nothing about waiting and nothing about failing, because the
+  // thread already on screen is still the thread and a turn that missed is not
+  // news to anybody.
+  const load = useCallback(
+    (quiet) => {
+      if (!username) return;
+      const ticket = (askedRef.current += 1);
+      if (!quiet) setLoading(true);
+      api
+        .getConversation(username)
+        .then((data) => {
+          if (ticket !== askedRef.current) return;
+          const lines = data.messages ?? [];
+          setMessages((current) => (same(current, lines) ? current : lines));
+          noteUnread?.(data.unread ?? 0);
+        })
+        .catch((requestError) => {
+          if (ticket === askedRef.current && !quiet) setError(requestError.message);
+        })
+        .finally(() => {
+          if (ticket === askedRef.current && !quiet) setLoading(false);
+        });
+    },
+    [username, noteUnread],
+  );
 
   // Asked for when the sheet opens rather than with the page under it, the way
   // the follows lists are: most readings of a profile never write to anybody.
@@ -43,38 +98,69 @@ export default function MessageModal({ username, onClose }) {
   // Cleared on the way in, so a sheet opened on one person and then on another
   // never shows the first exchange under the second's name — and the half-typed
   // line goes with it, because a draft belongs to whoever it was being written
-  // to.
+  // to. An answer still out when that happens belongs to the sheet that has gone:
+  // bumping the ticket is what tells it so.
   useEffect(() => {
     if (!username) return undefined;
-    let cancelled = false;
     setMessages([]);
     setDraft("");
     setError("");
-    setLoading(true);
-    api
-      .getConversation(username)
-      .then((data) => {
-        if (cancelled) return;
-        setMessages(data.messages ?? []);
-        noteUnread?.(data.unread ?? 0);
-      })
-      .catch((requestError) => {
-        if (!cancelled) setError(requestError.message);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+    atEndRef.current = true;
+    load();
     return () => {
-      cancelled = true;
+      askedRef.current += 1;
     };
-  }, [username, noteUnread]);
+  }, [username, load]);
+
+  // And kept current while it is up. Both halves of a conversation need it: a line
+  // the other side sends while this is open should arrive without the sheet being
+  // closed and opened again, and a line of yours they have just read can only be
+  // learned by asking — being read happens on their screen, not on this one.
+  //
+  // The same request does both, because the request *is* the reading: asking for a
+  // conversation is what stamps the lines in it as seen (see /api/messages in
+  // server/index.js). Which is also why the loop stops when the window is put
+  // away: a thread left open in a tab nobody is looking at is not a thread being
+  // read, and going on marking it would have this sheet telling the other side
+  // something untrue on the reader's behalf.
+  useEffect(() => {
+    if (!username) return undefined;
+    let timer = null;
+    function stop() {
+      window.clearInterval(timer);
+      timer = null;
+    }
+    function start() {
+      if (!timer) timer = window.setInterval(() => load(true), THREAD_REFRESH_MS);
+    }
+    function watch() {
+      if (document.hidden) {
+        stop();
+        return;
+      }
+      // Coming back to it is a reading in itself, and the one moment the thread on
+      // screen is most likely to be out of date.
+      load(true);
+      start();
+    }
+    if (!document.hidden) start();
+    document.addEventListener("visibilitychange", watch);
+    return () => {
+      stop();
+      document.removeEventListener("visibilitychange", watch);
+    };
+  }, [username, load]);
 
   // The end of the thread, which is the part being had: a conversation opens on
   // its last line the way a page of one opens at the bottom, and a reply that
   // landed off screen would read as one that had not been sent.
+  //
+  // Only for a reader who is already there, now that lines arrive on their own: a
+  // reader who has scrolled up into the exchange is reading it, and a loop that
+  // dragged them back to the bottom every few seconds would be unusable.
   useEffect(() => {
     const box = threadRef.current;
-    if (box) box.scrollTop = box.scrollHeight;
+    if (box && atEndRef.current) box.scrollTop = box.scrollHeight;
   }, [messages]);
 
   async function send(event) {
@@ -86,7 +172,10 @@ export default function MessageModal({ username, onClose }) {
     try {
       const data = await api.sendMessage(username, body);
       // Straight onto the end of the thread rather than through a second read of
-      // it: the writer is looking at the line they have just sent.
+      // it: the writer is looking at the line they have just sent — and is taken
+      // to it wherever in the exchange they had scrolled to, because sending is
+      // asking to be at the end.
+      atEndRef.current = true;
       setMessages((current) => [...current, data.message]);
       setDraft("");
     } catch (requestError) {
@@ -95,6 +184,14 @@ export default function MessageModal({ username, onClose }) {
       setSending(false);
     }
   }
+
+  // How far down your own side of the exchange the other person has got: the
+  // newest line of yours they have had in front of them, and the only one the mark
+  // is drawn on. One mark and not one per line, because that is what the fact is —
+  // a thread is read down to a point, and saying it against every line above that
+  // point is saying the same thing five times. Under the last of them it reads as
+  // the boundary it is: everything above, seen; anything below, not yet.
+  const readTo = messages.reduce((last, message) => (message.mine && message.read ? message.id : last), null);
 
   return (
     <Modal
@@ -115,7 +212,18 @@ export default function MessageModal({ username, onClose }) {
             sheet and the exchange scrolls above it rather than pushing it off
             the bottom — and the same height however much has been said, so a
             sheet does not change size under the pointer that opened it. */}
-        <div className={styles.thread} ref={threadRef}>
+        <div
+          className={styles.thread}
+          ref={threadRef}
+          // Where the reader is in the exchange, read off every scroll rather than
+          // held as state: what it decides is whether the next line arriving
+          // carries them along, and that is a question asked in an effect and
+          // answered in the same frame — nothing on screen depends on it.
+          onScroll={(event) => {
+            const box = event.currentTarget;
+            atEndRef.current = box.scrollHeight - box.scrollTop - box.clientHeight <= AT_END;
+          }}
+        >
           {/* Waiting is not the same answer as none: "nothing said yet" while
               the request is still out would be a claim about two people rather
               than about the request. */}
@@ -134,9 +242,16 @@ export default function MessageModal({ username, onClose }) {
                       it — a name on every line of a conversation between two
                       people is the same two names down the page. */}
                   <span className={styles.bubble}>{message.body}</span>
-                  <time className={styles.when} dateTime={message.time}>
-                    {relativeTime(message.time, i18n.language, t)}
-                  </time>
+                  {/* When it was said, and on the last line the far side has had
+                      in front of them, that it has been. One small grey line
+                      under the words either way: being read is a fact about a
+                      message of the same size as when it was sent. */}
+                  <span className={styles.meta}>
+                    <time className={styles.when} dateTime={message.time}>
+                      {relativeTime(message.time, i18n.language, t)}
+                    </time>
+                    {message.id === readTo && <span className={styles.read}>{t("messages.read")}</span>}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -153,6 +268,13 @@ export default function MessageModal({ username, onClose }) {
             onChange={(event) => {
               setDraft(event.target.value);
               setError("");
+            }}
+            // Enter sends; Shift+Enter is a newline, and a return that only
+            // closes an IME's candidate list (CJK input) is left to it.
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+                send(event);
+              }
             }}
             placeholder={t("messages.placeholder")}
             maxLength={BODY_MAX}

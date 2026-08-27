@@ -74,10 +74,27 @@
   color: var(--paper);
 }
 
-.when {
+/* The small line under the words: when they were said, and on your own last line
+   the far side has opened, that they have. One row, so the two are read as one
+   fact about the message rather than as a second line hanging off it. */
+.meta {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.when,
+.read {
   color: var(--muted);
   font-family: var(--mono);
   font-size: 10px;
+}
+
+/* The dot belongs to the mark and not to the row, so it arrives with it: the time
+   under an unread line has nothing to be separated from. */
+.read::before {
+  content: "·";
+  margin-right: 6px;
 }
 
 .empty {

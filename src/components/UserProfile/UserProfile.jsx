@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
 import { Link, showToast } from "../../ui/index.js";
@@ -58,6 +58,12 @@ export default function UserProfile({ username }) {
   // still true until the server says otherwise — and only stops being pressable,
   // which is what keeps a double press from asking the same thing twice.
   const [working, setWorking] = useState(false);
+  // Which recent post has its delete revealed, on your own page. A swipe left on
+  // one row uncovers it, the way a conversation is deleted from the inbox; one at
+  // a time, since the same swipe that opens one puts any other away.
+  const [revealedPost, setRevealedPost] = useState(null);
+  const postSwipe = useRef(null);
+  const postSwiped = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -70,6 +76,7 @@ export default function UserProfile({ username }) {
     setListing(null);
     setMessaging(false);
     setEditing(false);
+    setRevealedPost(null);
     setError("");
     api
       .getUser(username)
@@ -130,6 +137,48 @@ export default function UserProfile({ username }) {
       showToast(requestError.message, 1800);
     } finally {
       setWorking(false);
+    }
+  }
+
+  // Swipe-to-delete on your own recent posts, the same gesture the inbox uses: a
+  // left drag on a row uncovers its delete, a right one puts it away.
+  function onPostSwipeStart(event, id) {
+    postSwipe.current = { id: event.pointerId, x: event.clientX, y: event.clientY, post: id };
+  }
+
+  function onPostSwipeEnd(event) {
+    const gesture = postSwipe.current;
+    postSwipe.current = null;
+    if (!gesture || event.pointerId !== gesture.id) return;
+    const dx = event.clientX - gesture.x;
+    const dy = event.clientY - gesture.y;
+    if (Math.abs(dx) <= 8 || Math.abs(dx) <= Math.abs(dy)) return;
+    postSwiped.current = true;
+    setRevealedPost(dx < 0 ? gesture.post : null);
+  }
+
+  // A press on the row: through to the post, unless the row is a drag being
+  // finished or a delete standing open — either of which the press is putting
+  // away rather than following.
+  function onPostClick(event) {
+    if (postSwiped.current) {
+      postSwiped.current = false;
+      event.preventDefault();
+      return;
+    }
+    if (revealedPost) {
+      event.preventDefault();
+      setRevealedPost(null);
+    }
+  }
+
+  async function removePost(id) {
+    setRevealedPost(null);
+    try {
+      await api.deletePost(id);
+      setPosts((current) => current.filter((post) => post.id !== id));
+    } catch (requestError) {
+      showToast(requestError.message, 1800);
     }
   }
 
@@ -296,22 +345,30 @@ export default function UserProfile({ username }) {
             <p className={styles.empty}>{t("user.noPosts")}</p>
           ) : (
             <ul className={styles.posts}>
-              {posts.map((post) => (
-                <li key={post.id}>
-                  {/* Through to the posts page with the map already on it, which
-                      is where a post is read — the same hand-off the dashboard's
-                      list of posts makes, for the same reason.
-
-                      And with the name in hand as well, which the dashboard has
-                      no reason to send: a reader who presses a row here is on
-                      somebody's page and is still reading about that somebody,
-                      so the page opens with @them already in the search field
-                      and the rest of the ground filtered out. It is a starting
-                      point rather than a lock — the field is the reader's, and
-                      clearing it widens the map back out to everyone. */}
-                  <Link to={`/posts?post=${post.id}&author=${encodeURIComponent(username)}`} className={styles.post}>
+              {posts.map((post) => {
+                // Through to the posts page with the map already on it, which is
+                // where a post is read — and with the name in hand so the page
+                // opens filtered to @them.
+                const link = (
+                  <Link
+                    to={`/posts?post=${post.id}&author=${encodeURIComponent(username)}`}
+                    className={styles.post}
+                    onClick={isSelf ? onPostClick : undefined}
+                    // Off, so a swipe on it is a swipe and not the browser
+                    // dragging the link out — which also swallows the pointer
+                    // stream the reveal is read from.
+                    draggable={false}
+                  >
                     {post.image && (
-                      <img className={styles.thumb} src={post.image} alt="" loading="lazy" width={THUMB_BOX} height={THUMB_BOX} />
+                      <img
+                        className={styles.thumb}
+                        src={post.image}
+                        alt=""
+                        loading="lazy"
+                        width={THUMB_BOX}
+                        height={THUMB_BOX}
+                        draggable={false}
+                      />
                     )}
                     <span className={styles.postLines}>
                       <span className={styles.postTitle}>
@@ -323,8 +380,39 @@ export default function UserProfile({ username }) {
                       </span>
                     </span>
                   </Link>
-                </li>
-              ))}
+                );
+                // Only your own posts can be taken down, so only they carry the
+                // swipe and the delete behind it.
+                if (!isSelf) return <li key={post.id}>{link}</li>;
+                return (
+                  <li key={post.id} className={styles.postRow}>
+                    <div
+                      className={revealedPost === post.id ? `${styles.postSlider} ${styles.revealed}` : styles.postSlider}
+                      onPointerDown={(event) => onPostSwipeStart(event, post.id)}
+                      onPointerUp={onPostSwipeEnd}
+                      onPointerCancel={() => {
+                        postSwipe.current = null;
+                      }}
+                    >
+                      {link}
+                    </div>
+                    <button
+                      type="button"
+                      className={styles.postDelete}
+                      onClick={() => removePost(post.id)}
+                      aria-label={t("post.delete")}
+                      title={t("post.delete")}
+                    >
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M4 7h16" />
+                        <path d="M10 11v6M14 11v6" />
+                        <path d="M6 7l1 13h10l1-13" />
+                        <path d="M9 7V4h6v3" />
+                      </svg>
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           )}
 

@@ -147,9 +147,16 @@ export default function MessagesModal({ isOpen, onClose }) {
                 <li key={conversation.username} className={styles.row}>
                   {/* The row slides left under a swipe to uncover the delete
                       behind it (see .slider / .delete); the button underneath is
-                      the whole exchange taken down. */}
+                      the whole exchange taken down. A row with something unread on
+                      it wears the warning wash rather than a mark of its own. */}
                   <div
-                    className={revealed === conversation.username ? `${styles.slider} ${styles.revealed}` : styles.slider}
+                    className={[
+                      styles.slider,
+                      revealed === conversation.username && styles.revealed,
+                      conversation.unread > 0 && styles.unread,
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
                     onPointerDown={(event) => onSwipeStart(event, conversation.username)}
                     onPointerUp={onSwipeEnd}
                     onPointerCancel={() => {
@@ -164,19 +171,17 @@ export default function MessagesModal({ isOpen, onClose }) {
                         <span className={styles.who}>{formatUsername(conversation.username)}</span>
                         {/* The last thing said, whoever said it, marked when it was
                             the reader's own: without that a row reads as something
-                            waiting to be answered when it is the answer. */}
+                            waiting to be answered when it is the answer. When it
+                            was said leads the line — the time is read first, then
+                            the words it dates. */}
                         <span className={styles.preview}>
-                          {conversation.mine ? t("messages.said", { body: conversation.body }) : conversation.body}
+                          <time className={styles.when} dateTime={conversation.time}>
+                            {relativeTime(conversation.time, i18n.language, t)}
+                          </time>
+                          <span className={styles.previewText}>
+                            {conversation.mine ? t("messages.said", { body: conversation.body }) : conversation.body}
+                          </span>
                         </span>
-                      </span>
-                      <span className={styles.tail}>
-                        <time className={styles.when} dateTime={conversation.time}>
-                          {relativeTime(conversation.time, i18n.language, t)}
-                        </time>
-                        {/* The same dot the letter in the bar wears, for the same
-                            reason: how many is the thread's own answer, and a
-                            figure this small in a row of grey is a smudge. */}
-                        {conversation.unread > 0 && <span className={styles.dot} aria-hidden="true" />}
                       </span>
                     </button>
                   </div>

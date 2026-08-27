@@ -187,10 +187,7 @@ export default function PostModal({ isOpen, coords, place, post = null, onClose,
   function movePress(event) {
     const origin = originRef.current;
     if (!origin) return;
-    if (
-      Math.abs(event.clientX - origin.x) > LONG_PRESS_SLOP ||
-      Math.abs(event.clientY - origin.y) > LONG_PRESS_SLOP
-    ) {
+    if (Math.abs(event.clientX - origin.x) > LONG_PRESS_SLOP || Math.abs(event.clientY - origin.y) > LONG_PRESS_SLOP) {
       endPress();
     }
   }
@@ -318,12 +315,7 @@ export default function PostModal({ isOpen, coords, place, post = null, onClose,
     : place || (coords ? formatCoords(coords.latitude, coords.longitude) : "");
 
   return (
-    <Modal
-      isOpen={isOpen}
-      title={editing ? t("post.editTitle") : t("post.title")}
-      onClose={busy ? undefined : onClose}
-      wide
-    >
+    <Modal isOpen={isOpen} title={editing ? t("post.editTitle") : t("post.title")} onClose={busy ? undefined : onClose} wide>
       <form
         className={styles.form}
         onSubmit={submit}
@@ -405,9 +397,7 @@ export default function PostModal({ isOpen, coords, place, post = null, onClose,
                     ? t("post.compressing")
                     : t("post.photoTap")}
               </span>
-              <span className={stage ? `${styles.hold} ${styles.holdHidden}` : styles.hold}>
-                {t("post.photoHold")}
-              </span>
+              <span className={stage ? `${styles.hold} ${styles.holdHidden}` : styles.hold}>{t("post.photoHold")}</span>
             </span>
           </button>
         )}
@@ -419,6 +409,13 @@ export default function PostModal({ isOpen, coords, place, post = null, onClose,
           onChange={(event) => {
             setBody(event.target.value);
             setError("");
+          }}
+          // Cmd/Ctrl+Enter posts; a plain Enter is a newline, since a post is
+          // written in paragraphs where a message is a line.
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && (event.metaKey || event.ctrlKey) && !event.nativeEvent.isComposing) {
+              submit(event);
+            }
           }}
           placeholder={t("post.placeholder")}
           maxLength={BODY_MAX}
@@ -433,13 +430,7 @@ export default function PostModal({ isOpen, coords, place, post = null, onClose,
             {body.length}/{BODY_MAX}
           </span>
           <button type="submit" className="primary-button" disabled={busy}>
-            {editing
-              ? submitting
-                ? t("post.saving")
-                : t("common.save")
-              : submitting
-                ? t("post.posting")
-                : t("post.submit")}
+            {editing ? (submitting ? t("post.saving") : t("common.save")) : submitting ? t("post.posting") : t("post.submit")}
           </button>
         </div>
 

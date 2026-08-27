@@ -70,6 +70,13 @@
   transform: translateX(-48px);
 }
 
+/* Something unread on the row: the warning wash, the same yellow the weather
+   warnings stand on, in place of a mark of its own — the whole row says it is
+   waiting rather than a dot in the corner. */
+.slider.unread {
+  background: rgb(255 255 173);
+}
+
 /* The picture, two lines of who and what, and when at the far end — the row a
    list of people has in lo, with the second line being the one thing this list
    adds. A button rather than a link, because what is on the other side of the
@@ -153,43 +160,30 @@
   font-size: 13px;
 }
 
-/* One line of it, then the rest is what opening the row is for. Grey, because
-   what is being read down this column is the names — the line under each is how
-   the reader tells one exchange from another, not the exchange itself. */
+/* When it was said, then one line of what was said. Grey, because what is being
+   read down this column is the names — the line under each is how the reader
+   tells one exchange from another, not the exchange itself. */
 .preview {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
   color: var(--muted);
   font-size: 12px;
 }
 
-/* The time, and the mark under it when something on that row is waiting. A
-   column so the dot sits under the time rather than beside it: the times are the
-   right-hand edge of the list and a dot in the middle of them would ripple that
-   edge from row to row. */
-.tail {
-  flex: 0 0 auto;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 5px;
-  padding-top: 1px;
+.previewText {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .when {
+  flex: none;
   color: var(--muted);
   font-family: var(--mono);
   font-size: 10px;
-}
-
-/* The same dot the envelope in the top bar wears, without the paper ring — this
-   one stands on the sheet rather than on the corner of a box. */
-.dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--ink);
 }
 
 /* Centred in the content area rather than sitting at its top: an empty inbox is
@@ -211,5 +205,11 @@
 @media (hover: hover) {
   .item:hover {
     background: var(--soft);
+  }
+
+  /* An unread row keeps its warning wash under the pointer rather than taking the
+     grey hover over it — the yellow is the state, not something to paint out. */
+  .slider.unread .item:hover {
+    background: transparent;
   }
 }

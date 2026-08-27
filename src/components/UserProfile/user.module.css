@@ -226,6 +226,60 @@
   border-bottom: 1px solid var(--line);
 }
 
+/* Your own rows carry a delete behind them: the row clips, the link over it
+   slides left under a swipe to uncover the delete, the way an inbox row does. */
+.postRow {
+  position: relative;
+  overflow: hidden;
+}
+
+.postSlider {
+  position: relative;
+  z-index: 1;
+  background: var(--paper);
+  transition: transform 0.18s ease;
+  touch-action: pan-y;
+  /* A swipe is a swipe, not the start of a selection or a drag of the link and
+     its picture out of the page — either of which would break the gesture. */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
+}
+
+.postSlider.revealed {
+  transform: translateX(-48px);
+}
+
+/* Behind the row against its right edge, uncovered only when the slider is
+   carried left. Black, the way a slid-out delete reads. */
+.postDelete {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 0;
+  width: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  background: var(--ink);
+  color: var(--paper);
+  line-height: 0;
+  cursor: pointer;
+}
+
+.postDelete svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 /* The dashboard's post row, in a narrower column: a thumbnail, two lines, and
    the whole of it pressable. Set on the top rather than the middle: the words
    start where the picture starts, so a row whose post runs to one line reads

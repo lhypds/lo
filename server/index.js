@@ -755,10 +755,16 @@ function messageTarget(req, res) {
   return target;
 }
 
-// One exchange, both directions, oldest first — and opening it is what marks it
+// One exchange, both directions, oldest first — and asking for it is what marks it
 // read. There is no button for that: a conversation somebody has just been shown
 // is one they have seen, and a sheet that made the reader press something
 // afterwards would be asking them to file their own post.
+//
+// Which is why this is also the request an open sheet repeats every few seconds
+// (see MessageModal): a line that arrives in front of a reader who already has the
+// thread up has been seen just as plainly as one they opened the thread to find,
+// and the same answer carries that fact back to whoever wrote it — every line in
+// the reply says whether the far side has had it in front of them.
 //
 // The unread figure comes back with it, already counted down by this reading, so
 // the dot in the bar goes out at the same moment the words arrive rather than on

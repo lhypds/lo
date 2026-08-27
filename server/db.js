@@ -487,8 +487,15 @@ const insertMessage = db.prepare(`
 // row: which side of the sheet it hangs on. Worked out here rather than by
 // handing anybody's id out — nothing above this file knows one — and a
 // conversation is drawn from the point of view of whoever asked for it.
+//
+// `read` is the other end of the stamp the inbox counts with: the row already
+// knows when the person it was addressed to first had the thread open in front of
+// them, and that is the one thing the sender cannot see for themselves. Sent out
+// as a yes or no rather than as the hour, because what a sender is owed is that it
+// arrived in front of somebody, not a record of when they looked.
 const selectMessageById = db.prepare(`
-  SELECT m.id, m.body, m.created_at AS time, m.from_user = ? AS mine
+  SELECT m.id, m.body, m.created_at AS time, m.from_user = ? AS mine,
+    m.read_at IS NOT NULL AS read
   FROM messages m
   WHERE m.id = ?
 `);
@@ -500,7 +507,8 @@ const selectMessageById = db.prepare(`
 // By id rather than by the clock: ids are handed out in order, so this is the
 // true sequence of an exchange without either side's timestamp being trusted.
 const selectConversation = db.prepare(`
-  SELECT m.id, m.body, m.created_at AS time, m.from_user = ? AS mine
+  SELECT m.id, m.body, m.created_at AS time, m.from_user = ? AS mine,
+    m.read_at IS NOT NULL AS read
   FROM messages m
   WHERE ((m.from_user = ? AND m.to_user = ?) OR (m.from_user = ? AND m.to_user = ?))
     AND m.deleted_at IS NULL
@@ -812,6 +820,15 @@ function withSide(row) {
   return row ? { ...row, mine: row.mine === 1 } : null;
 }
 
+// A line of a conversation carries one more of those: whether it has been in front
+// of the person it was addressed to. Only your own lines have anything to say with
+// it — a line addressed to you is read by the act of reading it — which is why the
+// sheet draws the mark on your side only (see MessageModal).
+function withRead(row) {
+  const line = withSide(row);
+  return line ? { ...line, read: row.read === 1 } : null;
+}
+
 export function getThreads(userId, limit = 100) {
   return selectThreads.all(userId, userId, userId, userId, userId, limit).map(withSide);
 }
@@ -822,7 +839,7 @@ export function getConversation(userId, otherUserId, limit = 200) {
   return selectConversation
     .all(userId, userId, otherUserId, otherUserId, userId, limit)
     .reverse()
-    .map(withSide);
+    .map(withRead);
 }
 
 export function countUnread(userId) {
@@ -835,7 +852,7 @@ export function readConversation(userId, otherUserId) {
 
 export function createMessage(fromUserId, toUserId, body) {
   const result = insertMessage.run(fromUserId, toUserId, body);
-  return withSide(selectMessageById.get(fromUserId, Number(result.lastInsertRowid)));
+  return withRead(selectMessageById.get(fromUserId, Number(result.lastInsertRowid)));
 }
 
 export function deleteConversation(userId, otherUserId) {
