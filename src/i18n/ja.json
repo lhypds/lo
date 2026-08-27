@@ -147,16 +147,14 @@
   },
   "compass": {
     "title": "コンパス",
-    "body": "コンパス・加速度・ジャイロは端末そのものの測定値です。",
     "enable": "センサーをオンにする",
     "asking": "確認中",
     "denied": "モーションセンサーがブロックされています",
-    "deniedHint": "ブラウザの設定でこのサイトのモーションと方向を許可してから、もう一度お試しください。",
     "unsupported": "この端末にモーションセンサーはありません",
     "accuracy": "±{{degrees}}°",
     "altitude": "高度",
     "ground": "地表",
-    "accelerometer": "加速度",
+    "speed": "速度",
     "gyroscope": "ジャイロ",
     "point": {
       "n": "北",

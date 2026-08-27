@@ -44,7 +44,10 @@ function restoreLastFix() {
   try {
     const parsed = JSON.parse(raw);
     if (!Number.isFinite(parsed?.latitude) || !Number.isFinite(parsed?.longitude)) return null;
-    return parsed;
+    // Everything else here survives being put away and taken out again: where the
+    // phone was is still where it was, marked stale. A speed does not — it is a
+    // claim about a moment rather than about a place, and the moment has passed.
+    return { ...parsed, speed: null };
   } catch {
     return null;
   }
@@ -98,6 +101,17 @@ function readPosition(highAccuracy) {
             // Carried here rather than read for itself, because it is part of
             // the same fix — see CompassCard, which is where it is read.
             altitude: Number.isFinite(position.coords.altitude) ? round(position.coords.altitude, 1) : null,
+            // Metres a second, over the ground, and the one figure here that no
+            // amount of arithmetic elsewhere can stand in for: an accelerometer
+            // is blind to steady movement — a phone carried at a walk is pushed
+            // exactly as hard as one lying on a table — so a speed either comes
+            // off the GPS or it is not really a speed. Null as often as altitude
+            // is and for the same reason, and negative on some devices when they
+            // mean they do not know.
+            speed:
+              Number.isFinite(position.coords.speed) && position.coords.speed >= 0
+                ? round(position.coords.speed, 1)
+                : null,
             at: Date.now(),
           },
         }),

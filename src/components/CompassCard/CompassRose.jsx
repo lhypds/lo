@@ -13,7 +13,11 @@ import styles from "./compass.module.css";
 //
 // Drawn on the same 24-unit square as the weather glyphs, in the same stroke
 // language, so the one thing sized in the stylesheet is the tile it sits on.
-const TICKS = [45, 90, 135, 180, 225, 270, 315];
+//
+// Three ticks and the pip, rather than the eight or the twenty-four a dial is
+// really marked with: at thirty pixels across, the marks between the quarters are
+// a grey smudge round the rim and the four that mean something are lost in it.
+const TICKS = [90, 180, 270];
 
 export default function CompassRose({ turn, unknown, className }) {
   return (
@@ -32,16 +36,16 @@ export default function CompassRose({ turn, unknown, className }) {
             key={angle}
             className={styles.tick}
             x1="12"
-            y1="4.4"
+            y1="4.2"
             x2="12"
-            y2={angle % 90 === 0 ? 6.6 : 5.8}
+            y2="6.6"
             transform={`rotate(${angle} 12 12)`}
           />
         ))}
         {/* North filled, and the only filled thing on the dial: whichever way the
             card is lying, this is the end that means something. It stands where
             the tick at north would have — the pip is that tick, said louder. */}
-        <path className={styles.north} d="M12 3.6 10.4 7 13.6 7Z" />
+        <path className={styles.north} d="M12 3.2 10.1 7.6 13.9 7.6Z" />
       </g>
     </svg>
   );

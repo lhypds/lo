@@ -147,16 +147,14 @@
   },
   "compass": {
     "title": "Compass",
-    "body": "The compass, the accelerometer and the gyroscope are the handset's own readings.",
     "enable": "Turn on sensors",
     "asking": "Asking",
     "denied": "Motion access is blocked",
-    "deniedHint": "Allow motion and orientation for this site in your browser settings, then try again.",
     "unsupported": "This device has no motion sensors",
     "accuracy": "±{{degrees}}°",
     "altitude": "Altitude",
     "ground": "Ground",
-    "accelerometer": "Accelerometer",
+    "speed": "Speed",
     "gyroscope": "Gyroscope",
     "point": {
       "n": "N",

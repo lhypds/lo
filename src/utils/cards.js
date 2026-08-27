@@ -48,10 +48,10 @@ const SIZES = [TINY, SMALL, LARGE, TALL];
 // `min` is the smallest a panel can be cut to, and also the size it arrives at: a
 // panel is offered at its smallest and grows if the reader wants it to. Two
 // squares unless a card says otherwise, because most of these panels are lists
-// that need the width of a line to read; the two that answer at a glance — a
-// count of people, a warning or none — say `min: TINY` and can stand in a single
-// square. What the reader does from either default — a card added, a panel given
-// more room — is the only thing the layout below remembers.
+// that need the width of a line to read; the three that answer at a glance — a
+// count of people, a warning or none, a needle — say `min: TINY` and stand in a
+// single square. What the reader does from either default — a card added, a panel
+// given more room — is the only thing the layout below remembers.
 //
 // `max` is the other end of the same ladder, and it is six squares — a third tile
 // down, the tallest thing on the grid — unless a card says otherwise. Every panel
@@ -62,18 +62,18 @@ const SIZES = [TINY, SMALL, LARGE, TALL];
 // answer and not the feed's, so the rung is offered on all of them and none of
 // them opens at it.
 //
-// The two kinds of panel that are not lists say otherwise. The squares are
-// `max: TINY`: a count of people or a warning is one line, and room under a line
-// is air. The compass is `max: LARGE`, for the far end of the same thought — a
-// dial and three readings are a fixed drawing that a third tile would only put
-// more paper around.
+// The panels that are not lists say `max: TINY` instead, which with the same
+// `min` is a card that cannot be resized at all: a count of people, a warning or
+// none, the time, the sky, the ground, a needle and three readings off the
+// handset. Each of those is a face rather than a window — read at a glance and
+// finished — and a second tile under a finished thing is air. The clock, the
+// weather and the map are that by nature, and so is the compass, which stands
+// outside their block on the grid and is the same kind of thing on it.
 //
-// The clock, the weather and the map are single squares and never resize: those
-// three with the mark button are the block the rest of the grid is set against.
-// They say so as a ladder with one rung rather than by leaving the pair out —
-// the page has to know how much of the grid every card covers to work out where
-// it breaks into pages (see utils/pages.js), and a card that never offers the
-// reader a choice of size still has one.
+// Such a card says so as a ladder with one rung rather than by leaving the pair
+// out: the page has to know how much of the grid every card covers to work out
+// where it breaks into pages (see utils/pages.js), and a card that never offers
+// the reader a choice of size still has one.
 export const CARDS = [
   { id: "clock", label: "clock.title", min: TINY, max: TINY },
   { id: "weather", label: "weather.title", min: TINY, max: TINY },
@@ -84,7 +84,7 @@ export const CARDS = [
   { id: "nearby", label: "news.title", off: true },
   { id: "events", label: "events.title", off: true },
   { id: "trends", label: "trends.title", off: true },
-  { id: "compass", label: "compass.title", own: true, off: true, max: LARGE },
+  { id: "compass", label: "compass.title", own: true, off: true, min: TINY, max: TINY },
 ];
 
 const BY_ID = new Map(CARDS.map((card) => [card.id, card]));

@@ -147,16 +147,14 @@
   },
   "compass": {
     "title": "指南针",
-    "body": "指南针、加速度计和陀螺仪都是设备自身的读数。",
     "enable": "打开传感器",
     "asking": "请求中",
     "denied": "运动传感器已被阻止",
-    "deniedHint": "请在浏览器设置中允许本站访问运动与方向权限，然后重试。",
     "unsupported": "此设备没有运动传感器",
     "accuracy": "±{{degrees}}°",
     "altitude": "高度",
     "ground": "地面",
-    "accelerometer": "加速度计",
+    "speed": "速度",
     "gyroscope": "陀螺仪",
     "point": {
       "n": "北",
