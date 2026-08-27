@@ -55,11 +55,23 @@
   text-align: left;
 }
 
-/* 特別警報 is the top of the scale and the one the whole card exists for: the row
-   it is on inverts, which is the loudest thing a page with no colour can do */
-.gravest {
-  background: var(--ink);
-  color: var(--paper);
+/* The two the card exists for, said in the colours the scale is read in rather
+   than in the inversion that used to carry 特別警報 alone: a page with no colour
+   in it has one loud thing to do and only one, and by spending it on the top step
+   the step below it — a 警報, level 3, the row that is in force far more often —
+   was left looking like the advisory above it.
+
+   Under the row rather than in the words, because it has to answer from across
+   the room, before the number at the end of the row is anywhere near read. Pale
+   enough that it does: the ink and the grey on top of it are the card's own, and
+   a ground that changed them would be a second thing to keep legible for no more
+   said. */
+.warned {
+  background: rgb(255 255 173);
+}
+
+.grave {
+  background: rgb(253 242 245);
 }
 
 /* Filled at warning strength, hollow for an advisory. It carries no information
@@ -116,13 +128,6 @@
   font-family: var(--mono);
   font-size: 10px;
   font-variant-numeric: tabular-nums;
-}
-
-.gravest .areas,
-.gravest .severity,
-.gravest .level,
-.gravest .detail {
-  color: var(--paper);
 }
 
 /* The claim itself, in words: 警報 and 注意報 are different things and no amount
@@ -241,8 +246,11 @@
 
 @media (hover: hover) {
   /* Inverted under the pointer, the way every other list of links on the
-     dashboard answers — and inverted back on the 特別警報 row, which is already
-     the other way up */
+     dashboard answers. The coloured rows invert with the rest of them: the
+     colour is there to be found without looking, and the pointer is already on
+     the row it is answering for — what it wants said then is that the row can be
+     pressed, which on this dashboard is what inverting says. It comes back the
+     moment the pointer leaves. */
   .item:hover {
     background: var(--ink);
     color: var(--paper);
@@ -253,17 +261,5 @@
   .item:hover .level,
   .item:hover .detail {
     color: var(--paper);
-  }
-
-  .gravest .item:hover {
-    background: var(--paper);
-    color: var(--ink);
-  }
-
-  .gravest .item:hover .areas,
-  .gravest .item:hover .severity,
-  .gravest .item:hover .level,
-  .gravest .item:hover .detail {
-    color: var(--muted);
   }
 }

@@ -19,6 +19,19 @@ function coordKey(coords) {
   return `${coords.latitude.toFixed(2)},${coords.longitude.toFixed(2)}`;
 }
 
+// What the row is standing on, by how far up 警戒レベル it is: yellow at 3, where
+// a 警報 is in force, red at 4 and 5, where the country's advice stops being
+// "watch this" and becomes "leave". Below that nothing — an advisory is the
+// card's ordinary weather, and a list where every row is coloured has no voice
+// left to raise. Read off the level rather than the band, because the level is
+// what the colour is about: the two top bands share a colour here, and it is the
+// number at the end of the row that says which of them this is.
+function levelClass(level) {
+  if (level >= 4) return styles.grave;
+  if (level === 3) return styles.warned;
+  return undefined;
+}
+
 export default function Warnings() {
   const { t, i18n } = useTranslation();
   const { coords, reloadToken } = useHere();
@@ -84,10 +97,7 @@ export default function Warnings() {
           // the outlook table has a row for — the rest of the rows go without.
           const outlook = formatWarningWindow(item.from, item.to, i18n.language);
           return (
-            <li
-              key={itemKey}
-              className={item.severity === "emergency" ? styles.gravest : undefined}
-            >
+            <li key={itemKey} className={levelClass(level)}>
               {/* The row itself is the way through to the bulletin: three words
                   and a clock cannot carry what the page behind them says, and a
                   warning is not the place to make a reader hunt for the link. */}
