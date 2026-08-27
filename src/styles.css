@@ -815,15 +815,11 @@ html:has(.home-main:not(.home-main-map) .card-pager) {
    list of forty. Both pages share the rule for the reason they share every
    other one: they are the same page asking two questions.
 
-   The wash is cast 8px past the text column rather than padded out to it, so
-   lighting a row moves nothing in it — and the divider between rows keeps the
-   width it has on every other row. */
+   The wash stops at the row's own edges, so it lines up with the divider under
+   it rather than reaching 8px past the text column. */
 .mark-item.row-hovered,
 .post-item.row-hovered {
   background: var(--soft);
-  box-shadow:
-    -8px 0 var(--soft),
-    8px 0 var(--soft);
 }
 
 .mark-row {
