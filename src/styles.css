@@ -756,9 +756,10 @@ html:has(.home-main:not(.home-main-map) .card-pager) {
      making the type bigger is nobody's mistake. */
   overflow-x: hidden;
   touch-action: pan-y pinch-zoom;
-  /* The list is the only scroller on the page; without this, running off its
-     end hands the gesture to the document and bounces the whole split */
-  overscroll-behavior: contain;
+  /* The list is the only scroller on the page; none rather than contain so it
+     neither hands a run off its end to the document nor rubber-bands on its own
+     — that bounce is what dragged the sticky header down past the top edge. */
+  overscroll-behavior: none;
 }
 
 /* Once the window is twice the map's own column, stacking them wastes it: the
