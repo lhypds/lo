@@ -1,21 +1,27 @@
 /* A column of people in the house sheet, flush with the modal's own inset so the
    rows line up with the title and the close button above them. The row's hover
    still bleeds 8px past the text (see .item), into that inset rather than into a
-   margin of its own. */
-.sheet {
-  padding: 0;
-}
+   margin of its own.
 
-/* The same height the chat sheet stands at, so opening a row does not resize the
-   sheet under the pointer. That sheet is its thread (40vh, 180–360px) with the
-   composer under it — textarea 64px, footer 30px, and the two gaps of 8 and 12 —
-   so this list takes the thread's height plus that 114px the composer adds. */
-.list {
-  margin: 0;
+   The same height the chat sheet stands at whether or not there is anything in
+   it, so an empty inbox is not a shorter sheet than a full one and opening a row
+   does not resize the sheet under the pointer. That sheet is its thread (40vh,
+   180–360px) with the composer under it — textarea 64px, footer 30px, and the
+   two gaps of 8 and 12 — so this takes the thread's height plus that 114px. */
+.sheet {
   padding: 0;
   height: calc(40vh + 114px);
   min-height: 294px;
   max-height: 474px;
+  display: flex;
+  flex-direction: column;
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
   list-style: none;
@@ -39,6 +45,31 @@
   border-bottom: 1px solid var(--line);
 }
 
+/* The row is the frame the delete hides behind: the slider over it carries the
+   whole visible row and slides left under a swipe, uncovering the delete pinned
+   to the right. Clipped, so what slides off the left edge and the slot before it
+   is uncovered both stay inside the row. */
+.row {
+  position: relative;
+  overflow: hidden;
+}
+
+/* Everything the row shows, over the delete and opaque so it hides it until a
+   swipe carries it left. pan-y leaves vertical scrolling to the list and hands
+   the horizontal gesture to the swipe handlers. */
+.slider {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  background: var(--paper);
+  transition: transform 0.18s ease;
+  touch-action: pan-y;
+}
+
+.slider.revealed {
+  transform: translateX(-48px);
+}
+
 /* The picture, two lines of who and what, and when at the far end — the row a
    list of people has in lo, with the second line being the one thing this list
    adds. A button rather than a link, because what is on the other side of the
@@ -49,7 +80,8 @@
    starts, so a row whose last line runs long reads against the same edge as one
    that does not. */
 .item {
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   display: flex;
   align-items: flex-start;
   gap: 10px;
@@ -60,6 +92,38 @@
   font: inherit;
   text-align: left;
   cursor: pointer;
+}
+
+/* Behind the row against its right edge, uncovered only when the slider is
+   carried left. As wide as the slide (see .slider.revealed), the trash centred
+   in it. Black, the way a slid-out delete reads: the one filled slab in the
+   list, so what it is stands out from the rows it sits among. */
+.delete {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 0;
+  width: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  background: var(--ink);
+  color: var(--paper);
+  line-height: 0;
+  cursor: pointer;
+}
+
+.delete svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 /* Square and ruled like every other picture in lo, at the size a row can hold.
@@ -128,20 +192,24 @@
   background: var(--ink);
 }
 
+/* Centred in the content area rather than sitting at its top: an empty inbox is
+   a whole sheet saying one thing, so the one thing stands in the middle of it. */
 .empty {
+  flex: 1;
   margin: 0;
-  padding: 18px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: var(--muted);
   font-size: 12px;
+  text-align: center;
 }
 
-/* The row lights up past its own edges, which is how a pressable row reads
-   everywhere else in lo: the sheet's inset is what the shadow fills. */
+/* The row lights up under the pointer. Flush with its own edges: the slider it
+   sits in clips anything past them, and the row is already flush with the sheet's
+   inset. */
 @media (hover: hover) {
   .item:hover {
     background: var(--soft);
-    box-shadow:
-      -8px 0 var(--soft),
-      8px 0 var(--soft);
   }
 }

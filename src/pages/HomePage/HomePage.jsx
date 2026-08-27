@@ -1,8 +1,8 @@
-import { Fragment, Suspense, lazy, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Suspense, lazy, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
-import { Card, Skeleton, showToast } from "../../ui/index.js";
-import { cardSpan, useCards } from "../../utils/cards.js";
+import { Card, Skeleton, TileId, showToast } from "../../ui/index.js";
+import { arrangeCards, cardLabel, cardSpan, useCards } from "../../utils/cards.js";
 import { paginate } from "../../utils/pages.js";
 import { getLocationState, refreshLocation } from "../../utils/location.js";
 import ClockCard from "../../components/ClockCard/index.js";
@@ -34,6 +34,68 @@ const MapCard = lazy(() => import("../../components/MapCard/MapCard.jsx"));
 const TURN = 48;
 const AXIS = 8;
 
+// A press on a card's heading that stays put for this long is the reader picking
+// the card up rather than turning the page, and one that wanders further than
+// SLOP before then was a page turn from the start. The length is the mark
+// button's, because a hold should mean one thing at one length across the app.
+const HOLD = 500;
+const SLOP = 10;
+
+// How near the edge of the strip a carried card has to be held for the page under
+// it to turn, and how long it has to be held there. Both are the reader saying
+// they mean it: the zone is narrower than the gutter the tiles keep, so a card
+// being placed in the outside column is not also a card being taken to the next
+// page, and half a second of holding still is longer than any drag spends
+// crossing the edge on its way somewhere else.
+const EDGE = 24;
+const EDGE_MS = 600;
+
+// Which card a point is over, by name. The tiles say which card they are (see
+// TileId in ui/Card) rather than being counted off against the list they were
+// dealt from: a card can decline to draw anything at all — the warnings tile does,
+// where there is nobody to ask — and a page of the grid holding one fewer element
+// than the page holds cards would put every id after it out by one.
+//
+// Null over the seams between the tiles, which is nowhere in particular: a card
+// carried across a gap should stay where it is rather than jump to whichever side
+// of it the arithmetic rounded to.
+function cardAt(grid, x, y) {
+  const tiles = grid ? [...grid.children] : [];
+  for (const tile of tiles) {
+    const box = tile.getBoundingClientRect();
+    if (x >= box.left && x <= box.right && y >= box.top && y <= box.bottom) {
+      return tile.dataset.card ?? null;
+    }
+  }
+  // Below the last row is the end of the page rather than nowhere: a short last
+  // row leaves the rest of the grid empty, and that space is somewhere the reader
+  // can plainly mean to put a card down.
+  const last = tiles[tiles.length - 1];
+  return last && y > last.getBoundingClientRect().bottom ? (last.dataset.card ?? null) : null;
+}
+
+// Where an id stands in a line of them, and behind everything in it when it is
+// not in the line at all — a card the dashboard picked up while another one was
+// in the air has no place in an order settled before it arrived.
+function placeIn(ids, id) {
+  const at = ids.indexOf(id);
+  return at === -1 ? Number.MAX_SAFE_INTEGER : at;
+}
+
+// The same list with one id moved to a place in it. `to` is where the id ends up
+// rather than where it is put in — the two differ by one when a card is moving
+// forwards, since lifting it out of the line shortens everything after it. The
+// list itself comes back when nothing moved, which is how the drag below tells a
+// gesture that changed the page from one that did not.
+function moveTo(ids, id, to) {
+  const from = ids.indexOf(id);
+  if (from === -1 || to < 0 || from === to) return ids;
+  const next = [...ids];
+  next.splice(from, 1);
+  next.splice(to, 0, id);
+  return next;
+}
+
 export default function HomePage() {
   const { t } = useTranslation();
   // Posts come from the provider rather than from here: they are a reading of
@@ -44,7 +106,7 @@ export default function HomePage() {
   // Both halves of the first in one question — what this country can feed and
   // what the reader has kept — so the grid below asks once per card rather than
   // twice (see utils/cards.js). The plus in the top bar is the other end of it.
-  const { shown, size, inAdditionOrder } = useCards(supports);
+  const { shown, size, inAdditionOrder, arrange } = useCards(supports);
   // Held here, not in the map: expanding it hides the rest of the dashboard.
   const [mapExpanded, setMapExpanded] = useState(false);
   const [marks, setMarks] = useState([]);
@@ -66,6 +128,20 @@ export default function HomePage() {
   const swipeRef = useRef(null);
   const draggedRef = useRef(false);
   const frozenRef = useRef(false);
+  // The card the reader has picked up by its heading, if any: which one it is,
+  // the order the dashboard stands in while it is up, and the order it stood in
+  // when it was lifted. Nothing is written down until it is set back down, so the
+  // rearranging under the finger is a preview and the last of the three is what
+  // says whether the gesture came to anything.
+  const [carry, setCarry] = useState(null);
+  // The press that has not become a carry yet, and the last place the finger was
+  // seen — the chip is put there as it mounts, one render after the fact.
+  const holdRef = useRef(null);
+  const chipRef = useRef(null);
+  const pointRef = useRef({ x: 0, y: 0 });
+  // A carried card held against one edge of the strip, waiting on the page there
+  // to turn.
+  const edgeRef = useRef(null);
   // The fix the hold was made on, which is also what says the sheet is open —
   // a post belongs to the spot its writer was standing on when they started it,
   // not to wherever they have drifted by the time they press Post.
@@ -140,6 +216,33 @@ export default function HomePage() {
     observer.observe(view);
     return () => observer.disconnect();
   }, [located]);
+
+  // Nothing outlives the page: a hold still counting when the reader leaves is
+  // not a card being picked up on the way out, and neither is a page waiting to
+  // turn under one.
+  useEffect(
+    () => () => {
+      window.clearTimeout(holdRef.current?.timer);
+      window.clearTimeout(edgeRef.current?.timer);
+    },
+    [],
+  );
+
+  // The tile in hand, marked as such for as long as it is. Written onto the
+  // element rather than passed into the card, for the reason the strip's own drag
+  // is a class and not state: what is on the grid is whatever the dashboard is
+  // carrying, none of those cards knows it is being moved, and a card moving
+  // across the grid should not also be a page re-rendering to say so. Every
+  // render, because the mark goes with the card and the card is changing places.
+  useLayoutEffect(() => {
+    if (!carry) return undefined;
+    const tile = trackRef.current?.querySelector(`[data-card="${carry.id}"]`);
+    tile?.classList.add("carried");
+    // The chip arrives with the card, a render after the finger last said where
+    // it was, so it is put in place as it mounts rather than at the next move.
+    placeChip();
+    return () => tile?.classList.remove("carried");
+  });
 
   // A hold is also a request for a current position, the same way a tap on the
   // same button is: the post is pinned to the freshest fix the device can give.
@@ -229,23 +332,20 @@ export default function HomePage() {
     // Last of the four squares, which on a two-column grid is the one to the
     // right of the map: the ground you are standing on first and the one thing
     // you can do about it after it — the button is the corner the block ends on.
-    // A square by its own stylesheet rather than by the reader's choice, which is
-    // why this one names its own ground.
-    {
-      id: "mark",
-      cols: 1,
-      rows: 1,
-      node: (
-        <MarkButton
-          onLongPress={compose}
-          onMarked={(mark) => setMarks((current) => [mark, ...current])}
-          onUnmarked={(mark) => setMarks((current) => current.filter((item) => item.id !== mark.id))}
-          onRenamed={(mark) =>
-            setMarks((current) => current.map((item) => (item.id === mark.id ? mark : item)))
-          }
-        />
-      ),
-    },
+    // Sized like the rest of them even though it is the one card the reader
+    // cannot put away: it is a square by the catalog's answer rather than by its
+    // own stylesheet, which is what lets it be dragged about with the others.
+    sized(
+      "mark",
+      <MarkButton
+        onLongPress={compose}
+        onMarked={(mark) => setMarks((current) => [mark, ...current])}
+        onUnmarked={(mark) => setMarks((current) => current.filter((item) => item.id !== mark.id))}
+        onRenamed={(mark) =>
+          setMarks((current) => current.map((item) => (item.id === mark.id ? mark : item)))
+        }
+      />,
+    ),
     // The last two defaults complete the six-square opening page on mobile:
     // time, weather, map, mark, people and warnings, in that order. Optional
     // cards are appended below rather than being allowed to insert themselves
@@ -266,11 +366,20 @@ export default function HomePage() {
       shown("direction") && sized("direction", <DirectionCard />),
     ].filter(Boolean),
   );
-  const tiles = [...defaultTiles, ...addedTiles];
+  // The page's own order first, then the reader's over the top of it: a card that
+  // has been dragged somewhere stays where it was put, and one that never has
+  // keeps the place the list above gives it (see utils/cards.js).
+  const tiles = arrange([...defaultTiles, ...addedTiles]);
+  // While a card is up the dashboard stands in the order the drag has reached so
+  // far, which is a preview and not a decision — the grid rearranges itself under
+  // the finger and nothing is written until the card is set down.
+  const laid = carry
+    ? [...tiles].sort((a, b) => placeIn(carry.ids, a.id) - placeIn(carry.ids, b.id))
+    : tiles;
 
   // One page until the window has been measured, carrying nothing — that empty
   // grid is what it is measured against.
-  const pages = grid ? paginate(tiles, grid.cols, grid.rows) : [[]];
+  const pages = grid ? paginate(laid, grid.cols, grid.rows) : [[]];
   // A dashboard cut down to fewer pages than the reader had turned to — a card
   // put away, a panel shrunk, a window made taller — lands on the last one there
   // is rather than on a page that is no longer there.
@@ -366,6 +475,135 @@ export default function HomePage() {
     track.style.transform = `translateX(${-current * 100}%)`;
   }
 
+  // Picking a card up is the other thing a press on the dashboard can be, and it
+  // is read alongside the page turn rather than instead of it: up to the moment
+  // the hold fires the same press is still a swipe, and a press that moves is one.
+  //
+  // The handle is the card's own heading — the one strip of a tile that is
+  // neither something to read nor something to press, and the plainest thing to
+  // call a card by. The buttons standing in it keep their own press: a hold on
+  // the plus that makes a panel taller is that button, held.
+  function beginHold(x, y, target, pointerId) {
+    if (expanded) return;
+    const head = target?.closest?.("header");
+    if (!head || target.closest("button")) return;
+    const id = head.closest("[data-card]")?.dataset.card;
+    if (!id || !trackRef.current?.children[current]?.contains(head)) return;
+    pointRef.current = { x, y };
+    holdRef.current = { x, y, timer: window.setTimeout(() => lift(id, pointerId), HOLD) };
+  }
+
+  function cancelHold() {
+    window.clearTimeout(holdRef.current?.timer);
+    holdRef.current = null;
+  }
+
+  function moveHold(x, y) {
+    const hold = holdRef.current;
+    if (!hold) return;
+    if (Math.abs(x - hold.x) > SLOP || Math.abs(y - hold.y) > SLOP) cancelHold();
+  }
+
+  // The card is in the air. Whatever the first few pixels of this press did to the
+  // strip is put back — it was not a page turn after all — and the buzz is the
+  // only signal a hold has landed on a phone, where the finger is covering the
+  // card it has just picked up.
+  function lift(id, pointerId) {
+    holdRef.current = null;
+    cancelSwipe();
+    if (navigator.vibrate) navigator.vibrate(30);
+    window.getSelection()?.removeAllRanges();
+    viewRef.current?.classList.add("carrying");
+    // A mouse carrying a card off the strip — down over the dots, up over the
+    // place name — is still carrying it, so the strip keeps hold of the pointer
+    // until it is let go of. A finger is already held by where it landed.
+    try {
+      if (pointerId != null) viewRef.current?.setPointerCapture(pointerId);
+    } catch {
+      // The pointer is gone: the press ended somewhere inside the hold
+    }
+    const ids = laid.map((tile) => tile.id);
+    setCarry({ id, ids, was: ids });
+  }
+
+  // Where the card would land if it were let go here: the tile under the finger
+  // gives up its place, and everything between there and where the card came from
+  // shuffles along to fill the hole it leaves. Only the tiles on this page are on
+  // offer — a card put down somewhere the reader cannot see it is a card they have
+  // lost — and the pages are one list cut up in order, so taking a tile's place on
+  // the page is taking its place in the list.
+  function moveCarry(x, y) {
+    if (!carry) return;
+    pointRef.current = { x, y };
+    placeChip();
+    waitAtEdge(x);
+    const over = cardAt(trackRef.current?.children[current], x, y);
+    if (over == null) return;
+    const ids = moveTo(carry.ids, carry.id, carry.ids.indexOf(over));
+    if (ids !== carry.ids) setCarry({ ...carry, ids });
+  }
+
+  // A card held against either edge of the strip turns the page under it, and
+  // comes along to the new one — a hand that has just been carried to page two is
+  // not still holding something on page one. Without this the dashboard could only
+  // be rearranged a page at a time, and what is on the second page could never be
+  // brought to the front: there is nowhere on the first page to pick it up from.
+  //
+  // The wait is armed once and cleared when it fires, so a card held perfectly
+  // still turns one page and a card still being moved along the edge keeps
+  // turning them.
+  function waitAtEdge(x) {
+    const box = viewRef.current?.getBoundingClientRect();
+    if (!box) return;
+    const dir = x < box.left + EDGE ? -1 : x > box.right - EDGE ? 1 : 0;
+    const waiting = edgeRef.current;
+    if (waiting?.dir === dir) return;
+    window.clearTimeout(waiting?.timer);
+    edgeRef.current = null;
+    const next = current + dir;
+    if (dir === 0 || next < 0 || next > pages.length - 1) return;
+    edgeRef.current = {
+      dir,
+      timer: window.setTimeout(() => {
+        edgeRef.current = null;
+        turnTo(next);
+        // Onto the near end of the page being turned to — the front of it going
+        // forwards and the back of it coming back, which is the edge the card was
+        // carried across either way. Named by the card already standing there,
+        // whose place it takes.
+        const arrival = dir > 0 ? pages[next][0] : pages[next][pages[next].length - 1];
+        setCarry((held) =>
+          held ? { ...held, ids: moveTo(held.ids, held.id, held.ids.indexOf(arrival?.id)) } : held,
+        );
+      }, EDGE_MS),
+    };
+  }
+
+  // Set down. The order under the finger is the order that is kept, and only if
+  // the card actually went somewhere — a hold that was thought better of leaves
+  // the dashboard exactly as it found it.
+  function endCarry(keep) {
+    const held = carry;
+    setCarry(null);
+    window.clearTimeout(edgeRef.current?.timer);
+    edgeRef.current = null;
+    viewRef.current?.classList.remove("carrying");
+    if (!held) return;
+    if (keep && held.ids !== held.was) arrangeCards(held.ids);
+    // The press that set the card down ends in a click on whatever it came to
+    // rest over, which is swallowed the way the end of a page turn is.
+    draggedRef.current = true;
+  }
+
+  // The name of the card in hand, under the hand that has it. Moved by hand for
+  // the reason the strip is: a card crossing the grid is not a page rendered once
+  // per pixel on the way. Above the finger, which on a phone is covering the tile
+  // it is answering about.
+  function placeChip() {
+    const { x, y } = pointRef.current;
+    chipRef.current?.style.setProperty("transform", `translate(calc(${x}px - 50%), ${y - 44}px)`);
+  }
+
   // The click that follows the drag, caught on the way down before it reaches the
   // card it landed on. A touch that turns into a page turn raises no click on most
   // browsers anyway; a mouse always does, and letting it through would open
@@ -401,20 +639,45 @@ export default function HomePage() {
           // mouse and the trackpad — a touch raises pointer events of its own on
           // top of the touch ones, and reading a drag twice would turn two pages.
           onPointerDown={(event) => {
-            if (event.pointerType !== "touch") beginSwipe(event.clientX, event.clientY, event.target);
-          }}
-          onPointerMove={(event) => {
-            if (event.pointerType !== "touch" && event.buttons === 1) {
-              moveSwipe(event.clientX, event.clientY);
+            if (event.pointerType === "touch") return;
+            // A card still in hand as a new press begins is one whose release was
+            // never seen — a button let go of outside the window, where no up is
+            // delivered. It is set down before anything else happens, so the
+            // dashboard cannot be left carrying something nobody is holding.
+            if (carry) endCarry(true);
+            beginSwipe(event.clientX, event.clientY, event.target);
+            // The left button only: a press held on the right of the mouse is a
+            // menu being asked for, not a card being picked up.
+            if (event.button === 0) {
+              beginHold(event.clientX, event.clientY, event.target, event.pointerId);
             }
           }}
+          onPointerMove={(event) => {
+            if (event.pointerType === "touch" || event.buttons !== 1) return;
+            if (carry) {
+              moveCarry(event.clientX, event.clientY);
+              return;
+            }
+            moveHold(event.clientX, event.clientY);
+            moveSwipe(event.clientX, event.clientY);
+          }}
           onPointerUp={(event) => {
-            if (event.pointerType !== "touch") endSwipe(event.clientX, event.clientY);
+            if (event.pointerType === "touch") return;
+            cancelHold();
+            if (carry) endCarry(true);
+            else endSwipe(event.clientX, event.clientY);
           }}
           // A button let go of outside the carousel never raises its up here, so
-          // leaving is where a pointer drag ends if it ends anywhere else.
+          // leaving is where a pointer drag ends if it ends anywhere else. A card
+          // in hand is held by the pointer capture taken out when it was lifted,
+          // so this is only reached with one after that capture has been lost —
+          // and a card whose drag cannot be followed any further is set down
+          // where the reader last saw it rather than put back.
           onPointerLeave={(event) => {
-            if (event.pointerType !== "touch") cancelSwipe();
+            if (event.pointerType === "touch") return;
+            cancelHold();
+            if (carry) endCarry(true);
+            else cancelSwipe();
           }}
           // Guarded like the rest of them, and this one is the whole gesture on a
           // phone: a browser raises pointercancel on a touch pointer the moment
@@ -423,7 +686,16 @@ export default function HomePage() {
           // that, the carousel put every swipe back before it had begun. What a
           // finger being taken away really looks like is touchcancel, below.
           onPointerCancel={(event) => {
-            if (event.pointerType !== "touch") cancelSwipe();
+            if (event.pointerType === "touch") return;
+            cancelHold();
+            if (carry) endCarry(false);
+            else cancelSwipe();
+          }}
+          // Android raises its own menu on a hold, over the card the same hold is
+          // picking up — and it raises it while the press is still being counted,
+          // which would take the card back out of the reader's hand.
+          onContextMenu={(event) => {
+            if (holdRef.current || carry) event.preventDefault();
           }}
           // A name in a list is a link and a post's photo is an image, and the
           // browser will take a drag on either of them off this page and turn it
@@ -433,17 +705,31 @@ export default function HomePage() {
           onDragStart={(event) => event.preventDefault()}
           onTouchStart={(event) => {
             const touch = event.touches[0];
-            if (touch) beginSwipe(touch.clientX, touch.clientY, event.target);
+            if (!touch) return;
+            beginSwipe(touch.clientX, touch.clientY, event.target);
+            beginHold(touch.clientX, touch.clientY, event.target);
           }}
           onTouchMove={(event) => {
             const touch = event.touches[0];
-            if (touch) moveSwipe(touch.clientX, touch.clientY);
+            if (!touch) return;
+            if (carry) {
+              moveCarry(touch.clientX, touch.clientY);
+              return;
+            }
+            moveHold(touch.clientX, touch.clientY);
+            moveSwipe(touch.clientX, touch.clientY);
           }}
           onTouchEnd={(event) => {
+            cancelHold();
             const touch = event.changedTouches[0];
-            if (touch) endSwipe(touch.clientX, touch.clientY);
+            if (carry) endCarry(true);
+            else if (touch) endSwipe(touch.clientX, touch.clientY);
           }}
-          onTouchCancel={cancelSwipe}
+          onTouchCancel={() => {
+            cancelHold();
+            if (carry) endCarry(false);
+            else cancelSwipe();
+          }}
           onClickCapture={swallowClick}
         >
           <div
@@ -462,8 +748,16 @@ export default function HomePage() {
                 // dots below like everyone else.
                 inert={index !== current && !expanded}
               >
+                {/* Each tile is told which card it is on the way in, and says so
+                    on its own element: what a heading held for half a second has
+                    picked up, and what the tile under the finger would give its
+                    place to, are both read back off the grid (see TileId in
+                    ui/Card). A provider draws nothing, so the tiles are still the
+                    grid's own children and the module is untouched. */}
                 {cards.map((card) => (
-                  <Fragment key={card.id}>{card.node}</Fragment>
+                  <TileId.Provider key={card.id} value={card.id}>
+                    {card.node}
+                  </TileId.Provider>
                 ))}
               </div>
             ))}
@@ -489,6 +783,18 @@ export default function HomePage() {
           </div>
         </div>
       </main>
+
+      {/* The card in hand, named, riding just above the finger that has it. The
+          tile itself stays on the grid and shows where the card would land, so
+          what is missing is which of them is the one being moved — a hand covers
+          a square of a phone whole. Outside the strip, whose pages are one
+          translated row: a fixed box inside a transformed one is laid out against
+          it rather than against the window. */}
+      {carry && (
+        <div ref={chipRef} className="card-chip" aria-hidden="true">
+          {t(cardLabel(carry.id))}
+        </div>
+      )}
 
       {/* Outside <main>, which is emptied down to the map while it is expanded:
           the hold that opens this can be made on the full-screen map too.

@@ -123,19 +123,12 @@ export default function MessageModal({ username, onClose }) {
             loading ? (
               <Skeleton rows={3} lines={1} label={t("common.loading")} />
             ) : (
-              !error && (
-                <p className={styles.empty}>
-                  {t("messages.emptyThread", { name: formatUsername(username ?? "") })}
-                </p>
-              )
+              !error && <p className={styles.empty}>{t("messages.emptyThread", { name: formatUsername(username ?? "") })}</p>
             )
           ) : (
             <ul className={styles.lines}>
               {messages.map((message) => (
-                <li
-                  key={message.id}
-                  className={message.mine ? `${styles.line} ${styles.mine}` : styles.line}
-                >
+                <li key={message.id} className={message.mine ? `${styles.line} ${styles.mine}` : styles.line}>
                   {/* The words in a box and when they were said under it. Which
                       side of the sheet the box hangs on is the whole of who said
                       it — a name on every line of a conversation between two

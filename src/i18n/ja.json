@@ -278,7 +278,8 @@
     "emptyThread": "{{name}} とのやり取りはまだありません",
     "placeholder": "返信を書く",
     "send": "送信",
-    "sending": "送信中"
+    "sending": "送信中",
+    "delete": "削除"
   },
   "comments": {
     "title": "コメント",

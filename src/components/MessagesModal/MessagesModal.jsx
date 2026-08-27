@@ -67,9 +67,64 @@ export default function MessagesModal({ isOpen, onClose }) {
   // sent is the last thing said, and the unread marks on that row have been
   // cleared by the reading. Both are one question, and it is the one this sheet
   // asks on opening.
+  // Which row has its delete revealed, and nothing when none has. One at a time:
+  // a swipe on one row is also the gesture that puts any other row back.
+  const [revealed, setRevealed] = useState(null);
+  // The swipe in progress, and the flag that keeps the click a horizontal drag
+  // raises from being read as a tap that opens the thread.
+  const swipe = useRef(null);
+  const swiped = useRef(false);
+
+  function onSwipeStart(event, username) {
+    swipe.current = { id: event.pointerId, x: event.clientX, y: event.clientY, username };
+  }
+
+  function onSwipeEnd(event) {
+    const gesture = swipe.current;
+    swipe.current = null;
+    if (!gesture || event.pointerId !== gesture.id) return;
+    const dx = event.clientX - gesture.x;
+    const dy = event.clientY - gesture.y;
+    // A horizontal move and not a scroll or a tap: left reveals this row's
+    // delete, right puts it away.
+    if (Math.abs(dx) <= 8 || Math.abs(dx) <= Math.abs(dy)) return;
+    swiped.current = true;
+    setRevealed(dx < 0 ? gesture.username : null);
+  }
+
+  // A press on the row: the thread, unless the row is a drag being finished or a
+  // delete standing open — either of which the press is putting away rather than
+  // opening.
+  function openThread(username) {
+    if (swiped.current) {
+      swiped.current = false;
+      return;
+    }
+    if (revealed) {
+      setRevealed(null);
+      return;
+    }
+    setReading(username);
+  }
+
   function closeThread() {
     setReading(null);
+    setRevealed(null);
     load();
+  }
+
+  // A whole exchange taken down from the inbox. Dropped from the list the moment
+  // the server says it is gone rather than through a second read of it — soft on
+  // its side (every line stamped, not removed), gone from here.
+  async function remove(username) {
+    setRevealed(null);
+    setError("");
+    try {
+      await api.deleteConversation(username);
+      setConversations((current) => current.filter((conversation) => conversation.username !== username));
+    } catch (requestError) {
+      setError(requestError.message);
+    }
   }
 
   return (
@@ -89,42 +144,58 @@ export default function MessagesModal({ isOpen, onClose }) {
           ) : (
             <ul className={styles.list}>
               {conversations.map((conversation) => (
-                <li key={conversation.username}>
+                <li key={conversation.username} className={styles.row}>
+                  {/* The row slides left under a swipe to uncover the delete
+                      behind it (see .slider / .delete); the button underneath is
+                      the whole exchange taken down. */}
+                  <div
+                    className={revealed === conversation.username ? `${styles.slider} ${styles.revealed}` : styles.slider}
+                    onPointerDown={(event) => onSwipeStart(event, conversation.username)}
+                    onPointerUp={onSwipeEnd}
+                    onPointerCancel={() => {
+                      swipe.current = null;
+                    }}
+                  >
+                    <button type="button" className={styles.item} onClick={() => openThread(conversation.username)}>
+                      {conversation.avatar && (
+                        <img className={styles.avatar} src={conversation.avatar} alt="" loading="lazy" width="28" height="28" />
+                      )}
+                      <span className={styles.lines}>
+                        <span className={styles.who}>{formatUsername(conversation.username)}</span>
+                        {/* The last thing said, whoever said it, marked when it was
+                            the reader's own: without that a row reads as something
+                            waiting to be answered when it is the answer. */}
+                        <span className={styles.preview}>
+                          {conversation.mine ? t("messages.said", { body: conversation.body }) : conversation.body}
+                        </span>
+                      </span>
+                      <span className={styles.tail}>
+                        <time className={styles.when} dateTime={conversation.time}>
+                          {relativeTime(conversation.time, i18n.language, t)}
+                        </time>
+                        {/* The same dot the letter in the bar wears, for the same
+                            reason: how many is the thread's own answer, and a
+                            figure this small in a row of grey is a smudge. */}
+                        {conversation.unread > 0 && <span className={styles.dot} aria-hidden="true" />}
+                      </span>
+                    </button>
+                  </div>
+                  {/* Behind the row until a swipe uncovers it: a sibling of the
+                      slider rather than inside it, since one control cannot sit
+                      within another. */}
                   <button
                     type="button"
-                    className={styles.item}
-                    onClick={() => setReading(conversation.username)}
+                    className={styles.delete}
+                    onClick={() => remove(conversation.username)}
+                    aria-label={t("messages.delete")}
+                    title={t("messages.delete")}
                   >
-                    {conversation.avatar && (
-                      <img
-                        className={styles.avatar}
-                        src={conversation.avatar}
-                        alt=""
-                        loading="lazy"
-                        width="28"
-                        height="28"
-                      />
-                    )}
-                    <span className={styles.lines}>
-                      <span className={styles.who}>{formatUsername(conversation.username)}</span>
-                      {/* The last thing said, whoever said it, marked when it was
-                          the reader's own: without that a row reads as something
-                          waiting to be answered when it is the answer. */}
-                      <span className={styles.preview}>
-                        {conversation.mine
-                          ? t("messages.said", { body: conversation.body })
-                          : conversation.body}
-                      </span>
-                    </span>
-                    <span className={styles.tail}>
-                      <time className={styles.when} dateTime={conversation.time}>
-                        {relativeTime(conversation.time, i18n.language, t)}
-                      </time>
-                      {/* The same dot the letter in the bar wears, for the same
-                          reason: how many is the thread's own answer, and a
-                          figure this small in a row of grey is a smudge. */}
-                      {conversation.unread > 0 && <span className={styles.dot} aria-hidden="true" />}
-                    </span>
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M4 7h16" />
+                      <path d="M10 11v6M14 11v6" />
+                      <path d="M6 7l1 13h10l1-13" />
+                      <path d="M9 7V4h6v3" />
+                    </svg>
                   </button>
                 </li>
               ))}

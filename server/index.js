@@ -12,6 +12,7 @@ import {
   createPost,
   createUser,
   deleteMark,
+  deleteConversation,
   deletePost,
   followUser,
   getComments,
@@ -788,6 +789,17 @@ app.post("/api/messages/:username", requireSession, (req, res) => {
   // conversation it hangs on — so a sent message lands in the column without the
   // whole exchange being asked for again.
   res.status(201).json({ message: createMessage(req.user.id, target.id, body) });
+});
+
+// A whole exchange taken down from the inbox: the list is of conversations, so a
+// row's delete removes the conversation rather than one line of it. Soft — every
+// message is stamped rather than removed (see deleteConversation in db.js) — and
+// an exchange with nobody at the far end is a target not found.
+app.delete("/api/messages/:username", requireSession, (req, res) => {
+  const target = messageTarget(req, res);
+  if (!target) return;
+  deleteConversation(req.user.id, target.id);
+  res.status(204).end();
 });
 
 /* ------------------------------------------------------------------ images */

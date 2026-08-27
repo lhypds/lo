@@ -74,10 +74,21 @@ const SIZES = [TINY, SMALL, LARGE, TALL];
 // out: the page has to know how much of the grid every card covers to work out
 // where it breaks into pages (see utils/pages.js), and a card that never offers
 // the reader a choice of size still has one.
+//
+// `fixed` is a card that is not the reader's to put away — the mark button, which
+// is lo's own doing rather than a reading of anything, and the one tile a
+// dashboard you can take every other tile off should still keep. It is in the
+// catalog all the same rather than left to the page that draws it, because the
+// layout is also where the order of the tiles is kept now that the reader can
+// drag them about (see arrangeCards), and a tile left out of the catalog would be
+// the one thing on the grid that could not be moved with the rest. Being fixed is
+// what keeps it out of the menu: a row that cannot be turned off is a row with
+// nothing to press.
 export const CARDS = [
   { id: "clock", label: "clock.title", min: TINY, max: TINY },
   { id: "weather", label: "weather.title", min: TINY, max: TINY },
   { id: "map", label: "map.title", min: TINY, max: TINY },
+  { id: "mark", label: "mark.button", own: true, fixed: true, min: TINY, max: TINY },
   { id: "people", label: "people.nearby", own: true, min: TINY, max: TINY },
   { id: "warnings", label: "warnings.title", min: TINY, max: TINY },
   { id: "posts", label: "posts.nearby", own: true, off: true },
@@ -113,6 +124,7 @@ function restore() {
       if (typeof value.on === "boolean") choice.on = value.on;
       if (SIZES.includes(value.size)) choice.size = value.size;
       if (Number.isSafeInteger(value.added) && value.added > 0) choice.added = value.added;
+      if (Number.isSafeInteger(value.rank) && value.rank >= 0) choice.rank = value.rank;
       if (Object.keys(choice).length > 0) kept[id] = choice;
     }
 
@@ -155,9 +167,21 @@ function snapshot() {
   return decided;
 }
 
-// The reader's own answer where there is one, and the card's where there is not.
+// The reader's own answer where there is one, and the card's where there is not —
+// except on the cards that were never the reader's to answer for, which are on
+// the page whatever is remembered about them.
 function isOn(choices, id) {
-  return choices[id]?.on ?? !BY_ID.get(id)?.off;
+  const card = BY_ID.get(id);
+  if (card?.fixed) return true;
+  return choices[id]?.on ?? !card?.off;
+}
+
+// Where the reader has dragged a card to, if they have moved anything. A rank is
+// written on every tile that was on the page at the time (see arrangeCards), so a
+// card without one is a card that arrived after the last rearrangement: it goes
+// to the end, which is where a newly added card goes anyway.
+function rankOf(choices, id) {
+  return choices[id]?.rank ?? Number.MAX_SAFE_INTEGER;
 }
 
 // Every size a panel is offered at, smallest first — the ladder the pair of
@@ -183,8 +207,15 @@ function sizeOf(choices, id) {
 
 // A new object when something changes and the same one in between, which is the
 // whole of what useSyncExternalStore reads to decide that anything happened.
-function decide(id, change) {
-  decided = { ...decided, [id]: { ...decided[id], ...change } };
+//
+// As many cards at a time as the decision covers, rather than one: turning a card
+// on is a decision about that card, and dragging one across the grid is a
+// decision about the line all of them are standing in.
+function decide(changes) {
+  decided = { ...decided };
+  for (const [id, change] of Object.entries(changes)) {
+    decided[id] = { ...decided[id], ...change };
+  }
   try {
     localStorage.setItem(KEY, JSON.stringify(decided));
   } catch {
@@ -195,19 +226,46 @@ function decide(id, change) {
 }
 
 export function toggleCard(id) {
-  const on = !isOn(decided, id);
   const card = BY_ID.get(id);
+  if (card?.fixed) return;
+  const on = !isOn(decided, id);
   if (on && card?.off) {
     const added = Math.max(0, ...Object.values(decided).map((choice) => choice.added ?? 0)) + 1;
-    decide(id, { on, added });
+    decide({ [id]: { on, added } });
   } else {
-    decide(id, { on });
+    decide({ [id]: { on } });
   }
 }
 
 export function resizeCard(id, size) {
-  if (cardSizes(id).includes(size)) decide(id, { size });
+  if (cardSizes(id).includes(size)) decide({ [id]: { size } });
 }
+
+// Where the tiles stand, as ids, first to last — the answer to a card having been
+// picked up by its heading and set down somewhere else (see HomePage).
+//
+// The whole line is written and not only the card that moved, because a rank is a
+// place in a line and a line where one card knows its place and the rest do not is
+// not one. What is not in the line keeps no rank: a card that was off the page
+// when this was decided has no place in it to keep, and comes back at the end the
+// way it would have arrived.
+export function arrangeCards(ids) {
+  const changes = {};
+  ids.forEach((id, index) => {
+    if (BY_ID.has(id)) changes[id] = { rank: index };
+  });
+  decide(changes);
+}
+
+// A card's own heading, by id — the name the tile carries on the grid, which is
+// also what the thing under the finger is called while it is being moved.
+export function cardLabel(id) {
+  return BY_ID.get(id)?.label;
+}
+
+// How the tiles on the grid are told which card each of them is, so that a
+// heading that has been held can be answered for with a name, lives with the box
+// that reads it: TileId, in ui/Card.
 
 // The same size read as ground on the grid: how many columns across and how many
 // rows down the card covers. A single square is one of each; everything else is
@@ -236,8 +294,13 @@ export function useCards(supports) {
   return {
     // What the plus in the top bar has to offer — every card the place can feed,
     // each with whether it is on the page. A card no country here can answer is
-    // not in the menu at all: adding it would put an empty tile on the grid.
-    cards: CARDS.filter(offered).map((card) => ({ ...card, on: isOn(choices, card.id) })),
+    // not in the menu at all: adding it would put an empty tile on the grid, and
+    // neither is one the reader cannot take off, which would be a row with
+    // nothing to press.
+    cards: CARDS.filter((card) => !card.fixed && offered(card)).map((card) => ({
+      ...card,
+      on: isOn(choices, card.id),
+    })),
     // What the page draws, which is both questions at once: crossing into a
     // country that cannot feed a card takes it off the dashboard without
     // touching what the reader decided about it.
@@ -260,6 +323,11 @@ export function useCards(supports) {
         const bOrder = choices[b.id]?.added ?? Number.MAX_SAFE_INTEGER;
         return aOrder - bOrder || (INDEX_BY_ID.get(a.id) ?? 0) - (INDEX_BY_ID.get(b.id) ?? 0);
       }),
+    // The line the reader has dragged the tiles into, over the one the page wrote
+    // them in. Everything they have moved comes first, in their order; anything
+    // they have not — a card added to the dashboard since — keeps the order it
+    // came in with, which the sort leaves alone because it is a stable one.
+    arrange: (items) => [...items].sort((a, b) => rankOf(choices, a.id) - rankOf(choices, b.id)),
     toggle: toggleCard,
   };
 }

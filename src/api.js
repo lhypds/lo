@@ -100,6 +100,8 @@ export const sendMessage = (username, body) =>
     method: "POST",
     body: JSON.stringify({ body }),
   });
+export const deleteConversation = (username) =>
+  request(`/api/messages/${encodeURIComponent(username)}`, { method: "DELETE" });
 
 export const getMarks = (limit) => request(limit ? `/api/marks?limit=${limit}` : "/api/marks");
 export const createMark = (mark) =>

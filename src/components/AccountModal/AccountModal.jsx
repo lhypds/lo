@@ -66,8 +66,13 @@ export default function AccountModal({ isOpen, onClose }) {
   // no account to draw — and every line below is a reading of one.
   if (!user) return null;
 
+  // The wider of the two frames the house Modal offers, which this sheet earns at
+  // its foot: the block the account ends on is a profile being written — a display
+  // name, a photo and a bio — and that is the same work the composer is given the
+  // room for. The record above it reads no worse for the width, being a pair of
+  // columns and a set of rules that simply run further.
   return (
-    <Modal isOpen={isOpen} title={t("account.title")} onClose={onClose} closeOnOverlay>
+    <Modal isOpen={isOpen} title={t("account.title")} onClose={onClose} closeOnOverlay wide>
       <div className={styles.account}>
         {/* What lo knows about you and cannot be argued with. Whether the app
             has your position is one of the four, read and not set: it is turned

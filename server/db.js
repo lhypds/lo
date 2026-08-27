@@ -137,6 +137,9 @@ db.exec(`
     -- either side is told about a message after it is sent. Null means nobody
     -- has opened it yet, which is what puts the dot on the letter in the bar.
     read_at TEXT,
+    -- When its sender took it back down. Soft rather than a real delete: the row
+    -- stays so an exchange keeps its shape, and null is a line still standing.
+    deleted_at TEXT,
     created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
   );
 
@@ -186,6 +189,12 @@ for (const column of [
 ]) {
   if (!userColumns.has(column)) db.exec(`ALTER TABLE users ADD COLUMN ${column} TEXT`);
 }
+
+// Soft delete arrived after the first messages were sent, so the column is added
+// to a table that may already exist. On a database made by the CREATE above it
+// is already there and this does nothing.
+const messageColumns = new Set(db.prepare(`PRAGMA table_info(messages)`).all().map((column) => column.name));
+if (!messageColumns.has("deleted_at")) db.exec(`ALTER TABLE messages ADD COLUMN deleted_at TEXT`);
 
 // What a person is, as far as anyone else is concerned: the name, when they
 // turned up, the line they wrote about themselves and the ways to reach them.
@@ -493,7 +502,8 @@ const selectMessageById = db.prepare(`
 const selectConversation = db.prepare(`
   SELECT m.id, m.body, m.created_at AS time, m.from_user = ? AS mine
   FROM messages m
-  WHERE (m.from_user = ? AND m.to_user = ?) OR (m.from_user = ? AND m.to_user = ?)
+  WHERE ((m.from_user = ? AND m.to_user = ?) OR (m.from_user = ? AND m.to_user = ?))
+    AND m.deleted_at IS NULL
   ORDER BY m.id DESC
   LIMIT ?
 `);
@@ -518,7 +528,8 @@ const selectThreads = db.prepare(`
       m.created_at,
       m.from_user
     FROM messages m
-    WHERE m.from_user = ? OR m.to_user = ?
+    WHERE (m.from_user = ? OR m.to_user = ?)
+      AND m.deleted_at IS NULL
   )
   SELECT
     u.username,
@@ -530,6 +541,7 @@ const selectThreads = db.prepare(`
       SELECT COUNT(*)
       FROM messages unread
       WHERE unread.to_user = ? AND unread.from_user = u.id AND unread.read_at IS NULL
+        AND unread.deleted_at IS NULL
     ) AS unread
   FROM conv c
   JOIN users u ON u.id = c.other
@@ -545,7 +557,7 @@ const selectThreads = db.prepare(`
 const countUnreadMessages = db.prepare(`
   SELECT COUNT(*) AS count
   FROM messages
-  WHERE to_user = ? AND read_at IS NULL
+  WHERE to_user = ? AND read_at IS NULL AND deleted_at IS NULL
 `);
 
 // Opening a thread reads it: everything in it addressed to the reader and not
@@ -556,6 +568,17 @@ const markConversationRead = db.prepare(`
   UPDATE messages
   SET read_at = ?
   WHERE to_user = ? AND from_user = ? AND read_at IS NULL
+`);
+
+// A whole exchange taken down from the inbox, both directions at once: the list
+// is of conversations, so what a row's delete removes is the conversation. Soft
+// — every line is stamped rather than removed — and only the ones still standing,
+// so the count of what changed is the count of what this press took down.
+const deleteConversationMessages = db.prepare(`
+  UPDATE messages
+  SET deleted_at = ?
+  WHERE ((from_user = ? AND to_user = ?) OR (from_user = ? AND to_user = ?))
+    AND deleted_at IS NULL
 `);
 
 const upsertPosition = db.prepare(`
@@ -813,6 +836,10 @@ export function readConversation(userId, otherUserId) {
 export function createMessage(fromUserId, toUserId, body) {
   const result = insertMessage.run(fromUserId, toUserId, body);
   return withSide(selectMessageById.get(fromUserId, Number(result.lastInsertRowid)));
+}
+
+export function deleteConversation(userId, otherUserId) {
+  return deleteConversationMessages.run(new Date().toISOString(), userId, otherUserId, otherUserId, userId).changes;
 }
 
 export function savePosition(userId, { latitude, longitude, accuracy }) {

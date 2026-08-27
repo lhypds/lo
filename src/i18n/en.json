@@ -279,7 +279,8 @@
     "emptyThread": "Nothing said to {{name}} yet",
     "placeholder": "Write a reply",
     "send": "Send",
-    "sending": "Sending"
+    "sending": "Sending",
+    "delete": "Delete"
   },
   "comments": {
     "title": "Comments",

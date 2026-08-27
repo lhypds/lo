@@ -278,7 +278,8 @@
     "emptyThread": "还没有和 {{name}} 说过话",
     "placeholder": "写下回复",
     "send": "发送",
-    "sending": "发送中"
+    "sending": "发送中",
+    "delete": "删除"
   },
   "comments": {
     "title": "留言",

@@ -451,6 +451,16 @@ a {
   -webkit-user-select: none;
 }
 
+/* And while a card is in hand: the same, plus a pointer that says what it is
+   holding. The grid rearranges itself under the press, so nothing on it is a
+   line of type either. */
+.card-carousel.carrying,
+.card-carousel.carrying .card-grid header {
+  cursor: grabbing;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
 .card-track {
   height: 100%;
   display: flex;
@@ -491,6 +501,44 @@ a {
      pixel or they put the panels beside them out of line. */
   container-type: inline-size;
   --tile: calc((100cqw - 10px) / 2);
+}
+
+/* A card's heading is also its handle: held for half a second it picks the card
+   up, and the grid rearranges itself under the finger until it is let go of (see
+   HomePage). Everything here follows from that.
+
+   The finger's own gestures are off, because a hold that scrolled the page or
+   selected the title on its way to lifting the card is a hold that never lifts
+   one — and on a phone the callout Safari raises over a held word would arrive
+   at the same moment the card did. Pinch-zoom is left alone, the way it is
+   everywhere else here: making the type bigger is nobody's mistake. Old engines
+   that do not know the value keep the line above and take nothing.
+
+   Only the dashboard's own grid: every other page in the app carries cards too,
+   and a card standing on a page rather than in a set of tiles is not one of
+   anything to be reordered. */
+.card-grid header {
+  cursor: grab;
+  touch-action: none;
+  touch-action: pinch-zoom;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* Expanded, the map is the whole page and the only card on it: there is nothing
+   for it to trade places with, and its heading says so. */
+.home-main-map .card-grid header {
+  cursor: default;
+}
+
+/* The tile in hand, left standing on the grid where it would land rather than
+   dragged out of it: the card doing the moving is also the one showing what the
+   move comes to, and the chip under the finger says which card that is. Ghosted
+   rather than outlined, so that what the reader is reading is the shape of the
+   page and not the tile in the way of it. */
+.card-grid > .carried {
+  opacity: 0.4;
 }
 
 /* Once the window can hold four full-size cubes, the grid doubles to the four
@@ -613,6 +661,31 @@ a {
    the normal toast position. */
 html:has(.home-main:not(.home-main-map) .card-pager) {
   --toast-bottom: calc(40px + env(safe-area-inset-bottom));
+}
+
+/* The card being carried, named, in the box and the face it was picked up by: a
+   heading taken off the grid and held. It rides above the finger rather than
+   under it — a hand covers a square of a phone whole — and it is a label and not
+   a control, so the press it is following goes straight through it to the grid.
+   Placed by hand, which is why there is no left or top here past the corner it is
+   measured from (see HomePage). */
+.card-chip {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--ink);
+  background: var(--paper);
+  font-family: var(--display);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 /* ------------------------------------------------------------------ list -- */

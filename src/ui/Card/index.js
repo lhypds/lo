@@ -1,1 +1,1 @@
-export { default } from "./Card.jsx";
+export { default, TileId } from "./Card.jsx";

@@ -1,10 +1,12 @@
-/* liveboard's account sheet, in lo's ink and paper: a narrow column, a titled
+/* liveboard's account sheet, in lo's ink and paper: one column, a titled
    block for each thing that can be done, and every control the same white box
    with a black rule that turns over under the pointer. Nothing in here is a
    black bar — a filled button is lo's way of saying "this is the one thing to
    press", and a sheet you opened to read your own record has no such thing. */
-/* No width of its own: how wide a sheet is in lo is the house Modal's answer
-   (400px), which is the frame every sheet in lo is drawn in.
+/* No width of its own: how wide a sheet is in lo is the house Modal's answer, and
+   this one asks for the wider of the two frames it offers (560px, see ui/Modal) —
+   the same one the composer and the message sheets are drawn in. The reason is at
+   the foot of the sheet, where the profile is written.
 
    The extra inset on top of the sheet's own 16px, which is liveboard's 24px: a
    column of small type wants more air at its edges than a line of buttons does,

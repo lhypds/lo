@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
-import { showToast } from "../../ui/index.js";
+import { TileId, showToast } from "../../ui/index.js";
 import { MARK_PIN_EYE, MARK_PIN_PATH } from "../../utils/icons.js";
 import { getLocationState, refreshLocation } from "../../utils/location.js";
 import { useHere } from "../LocationProvider/index.js";
@@ -27,6 +27,11 @@ const LONG_PRESS_SLOP = 10;
 export default function MarkButton({ onMarked, onUnmarked, onRenamed, onLongPress }) {
   const { t } = useTranslation();
   const { coords } = useHere();
+  // A tile like any other on the grid, and named like one, so a card being
+  // carried across the dashboard can take its place (see HomePage). It cannot be
+  // picked up itself: what a card is carried by is its heading, and this square is
+  // a button with no heading to hold.
+  const tile = useContext(TileId);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(null);
   const [message, setMessage] = useState("");
@@ -203,7 +208,7 @@ export default function MarkButton({ onMarked, onUnmarked, onRenamed, onLongPres
   // The message is a sibling of the button rather than a child: edit and undo
   // are themselves buttons, and one cannot sit inside another.
   return (
-    <div className={styles.tile}>
+    <div className={styles.tile} data-card={tile ?? undefined}>
       <button
         type="button"
         className={`${styles.button}${saving ? ` ${styles.busy}` : ""}`}
