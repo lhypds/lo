@@ -42,7 +42,7 @@ export default function HomePage() {
   // Both halves of the first in one question — what this country can feed and
   // what the reader has kept — so the grid below asks once per card rather than
   // twice (see utils/cards.js). The plus in the top bar is the other end of it.
-  const { shown, size } = useCards(supports);
+  const { shown, size, inAdditionOrder } = useCards(supports);
   // Held here, not in the map: expanding it hides the rest of the dashboard.
   const [mapExpanded, setMapExpanded] = useState(false);
   const [marks, setMarks] = useState([]);
@@ -189,7 +189,7 @@ export default function HomePage() {
   // is the page's own and paging does not touch it — the cards are cut into
   // pages exactly where they are written.
   const sized = (id, node) => ({ id, node, ...cardSpan(size(id)) });
-  const tiles = [
+  const defaultTiles = [
     shown("clock") && sized("clock", <ClockCard />),
     shown("weather") && sized("weather", <WeatherCard />),
     shown("map") &&
@@ -238,54 +238,26 @@ export default function HomePage() {
         />
       ),
     },
-    // Then lo's own two, ahead of everything the country has to say — the
-    // warnings, the news and the trending list all come after them. What
-    // somebody left on this street and who is standing on it are the nearest
-    // things on the page, and the only two that can change while it is open; the
-    // rest is a slower reading of a wider place. Somebody who opened lo to see
-    // where they are should not have to turn a page to find out who is next to
-    // them.
-    //
-    // Every width reads this as the order it is written in. A wide screen reads
-    // it across four columns instead of two and nothing else changes — where a
-    // panel lands is auto-placement's answer at both (see .card-grid in
-    // styles.css).
-    //
-    // How much room each of them takes is the reader's and is asked for by the
-    // card itself, not decided here: the people card starts at a single square
-    // and joins the block of tiles above, and the posts panel starts at the width
-    // of the panel column and begins a row of its own under it (see
-    // utils/cards.js).
-    //
-    // Posts are lo's own and belong to no country, so no country is asked about
-    // this one — the same reason the mark button is unconditional. It reads the
-    // list the map above it is already drawing.
-    shown("posts") && sized("posts", <PostsCard />),
-    // Who else is around, under the list of what people left. The map draws the
-    // posts but not the people — presence is the half of it that reads as type, a
-    // name with how far off and how long ago. No country is asked about this one
-    // either: presence is lo's own and stops at no border, which is also why it
-    // can be on the page from the first visit: a square of names is the answer to
-    // "is anybody near me", and there is nowhere lo runs where that has no answer.
+    // The last two defaults complete the six-square opening page on mobile:
+    // time, weather, map, mark, people and warnings, in that order. Optional
+    // cards are appended below rather than being allowed to insert themselves
+    // into this block.
     shown("people") && sized("people", <PeopleCard />),
-    // Still under the map, which is the half of the page a warning is about: it
-    // reads as a caption on that ground once you have seen where you are
-    // standing. Under lo's own panels as well now, which is a judgement about
-    // distance rather than about weight — what is on this street is nearer than
-    // what is being said about the region, and a phone shows the two together
-    // anyway. At the square it starts as it stands in the block of tiles instead
-    // of beginning a row of its own — where "nothing in force here", which is
-    // what it says almost every day, is one square rather than a row across the
-    // page.
     shown("warnings") && sized("warnings", <Warnings />),
-    // Then the two readings of the wider place, each its own panel again and each
-    // its own line in the menu: what is being said around here, and what is on.
-    // Two questions, so two panels — read as one list, the rows answering either
-    // one were most of the answer to the other.
-    shown("nearby") && sized("nearby", <NewsCard />),
-    shown("events") && sized("events", <EventsCard />),
-    shown("trends") && sized("trends", <TrendsCard />),
   ].filter(Boolean);
+
+  // Every card the reader explicitly adds follows the defaults, ordered by the
+  // moment it was enabled. Pagination keeps that sequence intact, so each new
+  // card takes the next available grid position or starts the next page.
+  const addedTiles = inAdditionOrder(
+    [
+      shown("posts") && sized("posts", <PostsCard />),
+      shown("nearby") && sized("nearby", <NewsCard />),
+      shown("events") && sized("events", <EventsCard />),
+      shown("trends") && sized("trends", <TrendsCard />),
+    ].filter(Boolean),
+  );
+  const tiles = [...defaultTiles, ...addedTiles];
 
   // One page until the window has been measured, carrying nothing — that empty
   // grid is what it is measured against.

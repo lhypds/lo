@@ -72,14 +72,15 @@ export const CARDS = [
   { id: "weather", label: "weather.title", min: TINY, max: TINY },
   { id: "map", label: "map.title", min: TINY, max: TINY },
   { id: "posts", label: "posts.nearby", own: true, off: true },
-  { id: "people", label: "people.nearby", own: true, min: TINY },
-  { id: "warnings", label: "warnings.title", min: TINY },
+  { id: "people", label: "people.nearby", own: true, min: TINY, max: TINY },
+  { id: "warnings", label: "warnings.title", min: TINY, max: TINY },
   { id: "nearby", label: "news.title", off: true, max: TALL },
   { id: "events", label: "events.title", off: true, max: TALL },
   { id: "trends", label: "trends.title", off: true },
 ];
 
 const BY_ID = new Map(CARDS.map((card) => [card.id, card]));
+const INDEX_BY_ID = new Map(CARDS.map((card, index) => [card.id, index]));
 
 // Everything the reader has decided about the shape of the dashboard — which
 // cards are on it and how tall each panel stands — under one key, because it is
@@ -103,7 +104,29 @@ function restore() {
       const choice = {};
       if (typeof value.on === "boolean") choice.on = value.on;
       if (SIZES.includes(value.size)) choice.size = value.size;
+      if (Number.isSafeInteger(value.added) && value.added > 0) choice.added = value.added;
       if (Object.keys(choice).length > 0) kept[id] = choice;
+    }
+
+    // Layouts saved before addition order was recorded already have an order on
+    // screen: the catalog order. Preserve that as their historical addition
+    // order, so the first newly enabled card is appended after them rather than
+    // jumping in front on upgrade.
+    let nextAdded = Math.max(0, ...Object.values(kept).map((choice) => choice.added ?? 0));
+    let migrated = false;
+    for (const card of CARDS) {
+      if (!card.off || kept[card.id]?.on !== true || kept[card.id]?.added) continue;
+      nextAdded += 1;
+      kept[card.id] = { ...kept[card.id], added: nextAdded };
+      migrated = true;
+    }
+    if (migrated) {
+      try {
+        localStorage.setItem(KEY, JSON.stringify(kept));
+      } catch {
+        // The in-memory migration is still useful for this tab when storage is
+        // readable but cannot be written (private modes can behave this way).
+      }
     }
     return kept;
   } catch {
@@ -164,7 +187,14 @@ function decide(id, change) {
 }
 
 export function toggleCard(id) {
-  decide(id, { on: !isOn(decided, id) });
+  const on = !isOn(decided, id);
+  const card = BY_ID.get(id);
+  if (on && card?.off) {
+    const added = Math.max(0, ...Object.values(decided).map((choice) => choice.added ?? 0)) + 1;
+    decide(id, { on, added });
+  } else {
+    decide(id, { on });
+  }
 }
 
 export function resizeCard(id, size) {
@@ -213,6 +243,15 @@ export function useCards(supports) {
     // because how much of the grid the cards cover between them is what decides
     // where the dashboard breaks into pages.
     size: (id) => sizeOf(choices, id),
+    // Optional cards follow the defaults in the order the reader enabled them.
+    // Accept whole tile records so the page does not have to sort ids and then
+    // rebuild the records it already made.
+    inAdditionOrder: (items) =>
+      [...items].sort((a, b) => {
+        const aOrder = choices[a.id]?.added ?? Number.MAX_SAFE_INTEGER;
+        const bOrder = choices[b.id]?.added ?? Number.MAX_SAFE_INTEGER;
+        return aOrder - bOrder || (INDEX_BY_ID.get(a.id) ?? 0) - (INDEX_BY_ID.get(b.id) ?? 0);
+      }),
     toggle: toggleCard,
   };
 }

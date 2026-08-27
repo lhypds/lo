@@ -2,10 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
 import { Card, Skeleton } from "../../ui/index.js";
-import { SMALL, TINY, useCardSize } from "../../utils/cards.js";
 import { relativeTime } from "../../utils/format.js";
 import { formatWarningWindow, warningKindKey, warningLevel } from "../../utils/warnings.js";
-import CardSize from "../CardSize/index.js";
 import { useHere } from "../LocationProvider/index.js";
 import styles from "./warnings.module.css";
 
@@ -24,7 +22,6 @@ function coordKey(coords) {
 export default function Warnings() {
   const { t, i18n } = useTranslation();
   const { coords, reloadToken } = useHere();
-  const size = useCardSize("warnings");
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   // True from the first render rather than from the first effect — see the
@@ -166,26 +163,11 @@ export default function Warnings() {
   return (
     <Card
       title={t("warnings.title")}
-      // Which municipality Yahoo answered for, and not at a square: the heading
-      // there is 警報・注意報 and a pair of buttons, which is the whole of the
-      // room — the name would arrive cut to its first character. Nothing is lost
-      // by dropping it. The strip at the top of the page says where you are
-      // standing, and the fix is rounded onto one municipality before it is
-      // asked, so at this size the answer is about here and says so by being
-      // here. At the panel column's width the name fits and every row under it
-      // carries the areas it covers as well.
-      meta={size === TINY ? null : result?.area}
-      action={<CardSize id="warnings" />}
-      // The three sizes as the card sees them: a single square, the panel column
-      // one tile tall, and that column twice as tall (see utils/cards.js).
-      wide={size !== TINY}
-      half={size === SMALL}
-      square={size !== SMALL}
+      // One of the six fixed opening cubes: warnings no longer carries resize
+      // controls or a wider panel state.
+      square
       flush
-      // Cut down to a single square the card stops being a panel and joins the
-      // block of squares the dashboard opens as — and says so to its own rows,
-      // which have more in them than a square can hold.
-      className={size === TINY ? styles.square : undefined}
+      className={styles.square}
     >
       <div className={styles.inner}>
         <div className={styles.scroll}>{body}</div>
