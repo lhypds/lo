@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
 import { Card, Skeleton } from "../../ui/index.js";
-import { LARGE, useCardSize } from "../../utils/cards.js";
+import { LARGE, SMALL, TALL, useCardSize } from "../../utils/cards.js";
 import CardSize from "../CardSize/index.js";
 import { useHere } from "../LocationProvider/index.js";
 import styles from "./trends.module.css";
@@ -17,6 +17,9 @@ function coordKey(coords) {
 export default function TrendsCard() {
   const { t, i18n } = useTranslation();
   const { coords, reloadToken } = useHere();
+  // Ten rows by definition, in a tile the reader sizes from two squares to six:
+  // at the smallest that is a window onto a third of the list and at the tallest
+  // it is very nearly all of it (see utils/cards.js).
   const size = useCardSize("trends");
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
@@ -99,8 +102,9 @@ export default function TrendsCard() {
       meta={where}
       action={<CardSize id="trends" />}
       wide
-      half={size !== LARGE}
+      half={size === SMALL}
       square={size === LARGE}
+      tall={size === TALL}
       flush
     >
       <div className={styles.scroll}>{body}</div>

@@ -1,7 +1,7 @@
-/* The news and events panels' width and half their height: a trend is one line
-   where a story is three, so the list scrolls inside two squares rather than
-   four and the column below the map stays shorter for it. Same handover to the
-   page at either end as the panels above it. */
+/* The news and events panels' width and the same ladder of heights, though a
+   trend is one line where a story is three: this list opens in two squares and
+   is worth pulling down only where the reader wants ten rows at once rather
+   than three. Same handover to the page at either end as the panels above it. */
 .scroll {
   height: 100%;
   overflow-y: auto;

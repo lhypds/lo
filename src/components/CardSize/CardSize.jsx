@@ -6,10 +6,10 @@ import styles from "./size.module.css";
 // The pair of buttons at the right of a panel's heading: a plus that gives it a
 // step more room and a minus that hands the step back. One step at a time up the
 // panel's own ladder rather than a jump to either end (see cardSizes in
-// utils/cards.js) — most panels have two rungs and the two buttons are the two of
-// them, and the ones that reach further at either end — down to a single square,
-// up to a third tile — have three, where a button that jumped would put the middle
-// one out of reach.
+// utils/cards.js) — every panel that holds a list has three rungs, two squares to
+// four to six, and a button that jumped would put the middle one out of reach. The
+// squares that never resize have one rung and spend both buttons on it, which is
+// the same rule read at the other end.
 //
 // At either end of the ladder one of the two buttons is spent — shown rather than
 // hidden, because a control that comes and goes moves the other one under the

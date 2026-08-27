@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Card, Link, Skeleton } from "../../ui/index.js";
-import { LARGE, useCardSize } from "../../utils/cards.js";
+import { LARGE, SMALL, TALL, useCardSize } from "../../utils/cards.js";
 import { distanceMeters, formatCoords, formatDistance, formatUsername, relativeTime } from "../../utils/format.js";
 import CardSize from "../CardSize/index.js";
 import { useHere } from "../LocationProvider/index.js";
@@ -22,9 +22,11 @@ import styles from "./posts.module.css";
 export default function PostsCard() {
   const { t, i18n } = useTranslation();
   const { coords, posts, loadingPosts } = useHere();
-  // How tall the reader has left it. A list panel is the kind of tile that is
-  // worth the extra two squares on some days and not on others, which is what
-  // the pair of buttons in the heading is for.
+  // How tall the reader has left it, anywhere from two squares to six. A list
+  // panel is the kind of tile that is worth another row on some days and not on
+  // others, which is what the pair of buttons in the heading is for: how many
+  // posts are around here is the street's answer and how much of the page they
+  // are worth is the reader's.
   const size = useCardSize("posts");
 
   return (
@@ -44,8 +46,9 @@ export default function PostsCard() {
       meta={posts.length || null}
       action={<CardSize id="posts" />}
       wide
-      half={size !== LARGE}
+      half={size === SMALL}
       square={size === LARGE}
+      tall={size === TALL}
       flush
     >
       <div className={styles.scroll}>

@@ -52,14 +52,15 @@ const SIZES = [TINY, SMALL, LARGE, TALL];
 // square. What the reader does from either default — a card added, a panel given
 // more room — is the only thing the layout below remembers.
 //
-// `max` is the other end of the same ladder, and it is four squares unless a card
-// says otherwise: two tiles is as tall as a panel can be and still leave the
-// square block beside it looking like part of the same grid. The two feeds that
-// come back with more rows than that — the newswire and what is on this week —
-// say `max: TALL` and can be pulled a third tile down, because there the extra
-// height is more of the answer rather than more air under it: the posts and the
-// people run to a handful of rows and the trending list to ten by definition,
-// while these two arrive long and are read by scrolling inside a tile.
+// `max` is the other end of the same ladder, and it is six squares — a third tile
+// down, the tallest thing on the grid — unless a card says otherwise. Every panel
+// that holds a list ends up there, because every one of them is a window onto more
+// rows than it shows: the newswire and what is on this week arrive long, the posts
+// around here run to as many as the street has left, and the trending list is ten
+// by definition. Which of those readings is worth a third tile is the reader's
+// answer and not the feed's, so the rung is offered on all of them and none of
+// them opens at it. The squares say `max: TINY` instead: a count of people or a
+// warning is one line, and room under a line is air.
 //
 // The clock, the weather and the map are single squares and never resize: those
 // three with the mark button are the block the rest of the grid is set against.
@@ -74,8 +75,8 @@ export const CARDS = [
   { id: "people", label: "people.nearby", own: true, min: TINY, max: TINY },
   { id: "warnings", label: "warnings.title", min: TINY, max: TINY },
   { id: "posts", label: "posts.nearby", own: true, off: true },
-  { id: "nearby", label: "news.title", off: true, max: TALL },
-  { id: "events", label: "events.title", off: true, max: TALL },
+  { id: "nearby", label: "news.title", off: true },
+  { id: "events", label: "events.title", off: true },
   { id: "trends", label: "trends.title", off: true },
 ];
 
@@ -159,7 +160,7 @@ function isOn(choices, id) {
 export function cardSizes(id) {
   const card = BY_ID.get(id);
   const min = card?.min ?? SMALL;
-  const max = card?.max ?? LARGE;
+  const max = card?.max ?? TALL;
   return SIZES.filter((size) => size >= min && size <= max);
 }
 

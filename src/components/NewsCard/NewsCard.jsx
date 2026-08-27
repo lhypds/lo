@@ -26,9 +26,10 @@ export default function NewsCard() {
   const { t, i18n } = useTranslation();
   const { coords, reloadToken } = useHere();
   // Two squares like every other panel, until the reader gives it four or six.
-  // One of the two that go to six, because the wire comes back with more rows than
-  // two tiles can hold (see utils/cards.js) — and the only card whose place on a
-  // wide grid changes with its height, see the class below.
+  // The wire comes back with more rows than even three tiles hold, so every rung
+  // of the ladder is a window onto the same scroll (see utils/cards.js) — and this
+  // is the only card whose place on a wide grid changes with its height, see the
+  // class below.
   const size = useCardSize("nearby");
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
