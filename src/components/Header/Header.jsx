@@ -69,11 +69,16 @@ export default function Header({ back = false, backTo = "/", cards = false }) {
               list pages is the page you came from and will go back to. Its list
               opens rightwards over its own row (see add.module.css). */}
           {cards && <AddCard />}
-          {/* A letter rather than a drawing, because the thing it opens is drawn
-              as a letter: the squares on the map say p, and so does this. */}
+          {/* A picture in a frame, for what a post mostly is — a photo left on
+              the ground — and drawn like every other icon in the bar rather than
+              as the letter the map's own squares carry. */}
           {user && (
             <ActionButton tooltip={t("header.posts")} onClick={() => navigate("/posts")}>
-              <span>p</span>
+              <svg viewBox="0 0 24 24">
+                <rect x="3" y="4" width="18" height="16" />
+                <circle cx="8.5" cy="9.5" r="1.5" />
+                <path d="M21 15l-5-4-5 4-3-2-5 4" />
+              </svg>
             </ActionButton>
           )}
           {user && (
