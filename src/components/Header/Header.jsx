@@ -66,18 +66,6 @@ export default function Header({ back = false, backTo = "/", cards = false }) {
               list pages is the page you came from and will go back to. Its list
               opens rightwards over its own row (see add.module.css). */}
           {cards && <AddCard />}
-          {/* A picture in a frame, for what a post mostly is — a photo left on
-              the ground — and drawn like every other icon in the bar rather than
-              as the letter the map's own squares carry. */}
-          {user && (
-            <ActionButton tooltip={t("header.posts")} onClick={() => navigate("/posts")}>
-              <svg viewBox="0 0 24 24">
-                <rect x="3" y="4" width="18" height="16" />
-                <circle cx="8.5" cy="9.5" r="1.5" />
-                <path d="M21 15l-5-4-5 4-3-2-5 4" />
-              </svg>
-            </ActionButton>
-          )}
           {user && (
             <ActionButton tooltip={t("header.marks")} onClick={() => navigate("/marks")}>
               <svg viewBox="0 0 24 24">
@@ -85,6 +73,20 @@ export default function Header({ back = false, backTo = "/", cards = false }) {
                 <circle {...MARK_PIN_EYE} />
               </svg>
             </ActionButton>
+          )}
+          {/* A picture in a frame, for what a post mostly is — a photo left on
+              the ground — and drawn like every other icon in the bar rather than
+              as the letter the map's own squares carry. */}
+          {user && (
+            <span className="topbar-post">
+              <ActionButton tooltip={t("header.posts")} onClick={() => navigate("/posts")}>
+                <svg viewBox="0 0 24 24">
+                  <rect x="3" y="4" width="18" height="16" />
+                  <circle cx="8.5" cy="9.5" r="1.5" />
+                  <path d="M21 15l-5-4-5 4-3-2-5 4" />
+                </svg>
+              </ActionButton>
+            </span>
           )}
           {/* What somebody said to you, rather than what somebody left on the
               ground: posts are addressed to nobody and this is addressed to you,

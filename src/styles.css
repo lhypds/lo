@@ -324,11 +324,15 @@ a {
   display: inline-flex;
 }
 
-/* The envelope drawn at a true 1px rather than the 1.17px a stroke of 2 in a
-   24 viewBox comes to at this icon's 14px: non-scaling-stroke reads the width
-   in screen pixels, so the line is one whatever the icon is rendered at. */
-.topbar-badge svg path {
-  stroke-width: 1;
+/* The envelope and the post's picture drawn as a lighter hairline than the
+   module's stroke of 2 (about 1.17px at this 14px icon) comes to. non-scaling
+   reads the width in screen pixels, so it is the same fine line whatever the
+   icon is rendered at — and it covers the post frame's border for the same. */
+.topbar-badge svg path,
+.topbar-post svg path,
+.topbar-post svg rect,
+.topbar-post svg circle {
+  stroke-width: 0.75;
   vector-effect: non-scaling-stroke;
 }
 
