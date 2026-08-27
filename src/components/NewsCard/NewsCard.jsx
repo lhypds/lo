@@ -98,15 +98,12 @@ export default function NewsCard() {
     );
   }
 
-  // `panel-lead` is the page's hook for a tall panel at the top of the right
-  // half: on a wide screen it is pinned across the rows there, and the square
-  // tiles fold into a block beside it rather than above it. That pin is a claim
-  // only a card more than a row tall can make good on — at one row the news would
-  // leave the row under it standing empty — so it is the news grown past two
-  // squares that takes it, and at its own default size it is another of the panels
-  // in that column. Which of the two pins depends on how far it has grown: the pin
-  // names the rows it covers, so a panel three tiles deep needs the one that says
-  // three. All of these classes are global on purpose, like the map's `map-full`.
+  // How much of the grid it covers is the whole of what this card says about
+  // where it goes. It used to hand the page a hook as well — a class that pinned
+  // it to the top of the right half on a wide screen — and that went with the
+  // paging: a dashboard cut into windowfuls has no one top right for a panel to
+  // be pinned to, and a row claimed by a pin is a row the page cannot count when
+  // it works out where to cut (see .card-grid in styles.css, utils/pages.js).
   return (
     <Card
       title={t("news.title")}
@@ -117,7 +114,6 @@ export default function NewsCard() {
       square={size === LARGE}
       tall={size === TALL}
       flush
-      className={size === SMALL ? "panel-aside" : size === LARGE ? "panel-lead" : "panel-lead-tall"}
     >
       <div className={styles.scroll}>{body}</div>
     </Card>

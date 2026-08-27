@@ -182,14 +182,10 @@ export default function Warnings() {
       half={size === SMALL}
       square={size !== SMALL}
       flush
-      // `panel-aside` is the page's hook for the panels that carry the
-      // country's own reading of the place — on a wide screen they take the
-      // right half of the grid, under the news (see .card-grid in styles.css).
-      // Not at a single square: that hook is half the grid wide, which is the
-      // one thing a square is not. Cut this far down the card stops being a
-      // panel and joins the block of squares the dashboard opens as — and says
-      // so to its own rows, which have more in them than a square can hold.
-      className={size === TINY ? styles.square : "panel-aside"}
+      // Cut down to a single square the card stops being a panel and joins the
+      // block of squares the dashboard opens as — and says so to its own rows,
+      // which have more in them than a square can hold.
+      className={size === TINY ? styles.square : undefined}
     >
       <div className={styles.inner}>
         <div className={styles.scroll}>{body}</div>

@@ -101,10 +101,6 @@ export default function EventsCard() {
       square={size === LARGE}
       tall={size === TALL}
       flush
-      // The right half of the grid on a wide screen, with the warnings and the
-      // trending list: what the place itself has to say, in one column under the
-      // news (see .card-grid in styles.css).
-      className="panel-aside"
     >
       <div className={styles.scroll}>{body}</div>
     </Card>

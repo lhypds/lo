@@ -102,10 +102,6 @@ export default function TrendsCard() {
       half={size !== LARGE}
       square={size === LARGE}
       flush
-      // Right half of the grid on a wide screen, under the warnings — the other
-      // half of what the country says about this place (see .card-grid in
-      // styles.css).
-      className="panel-aside"
     >
       <div className={styles.scroll}>{body}</div>
     </Card>

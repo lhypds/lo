@@ -55,7 +55,8 @@
     "accuracy": "Accuracy",
     "stale": "Last known position",
     "updated": "Updated {{time}}",
-    "locating": "Locating"
+    "locating": "Locating",
+    "page": "Page {{number}} of {{total}}"
   },
   "clock": {
     "title": "Time",

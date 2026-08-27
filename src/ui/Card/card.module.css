@@ -45,10 +45,10 @@
   height: calc(var(--tile) * 3 + 20px);
 }
 
-/* Past the width of two of those panels the dashboard grid is four columns
-   instead of two (see .card-grid in styles.css, same breakpoint), so covering
-   four squares means half the grid rather than all of it. `wide` on its own
-   still means the full width — that is the expanded map, which wants it. */
+/* In the four-column web layout (see .card-grid in styles.css, same
+   breakpoint), covering four squares means half the grid rather than all of
+   it. `wide` on its own still means the full width — that is the expanded map,
+   which wants it. */
 @media (min-width: 1200px) {
   .wide.square {
     grid-column: span 2;

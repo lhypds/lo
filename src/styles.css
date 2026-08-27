@@ -349,9 +349,36 @@ a {
 
 /* ------------------------------------------------------------- dashboard -- */
 
+/* The one page in lo that is exactly as tall as the window and never taller: the
+   dashboard is turned rather than scrolled, so a page of it that ran past the
+   bottom edge would be a page with something on it nobody can see and no scroll
+   bar to say so. Everything under the top bar is dealt out to fit (see
+   utils/pages.js). */
 .home-page {
+  height: 100vh;
+  height: 100dvh;
+  height: calc(var(--vh, 1vh) * 100);
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+}
+
+/* A mouse double-click on the dashboard is an action, not a request to select
+   the label or number under the pointer. Keep real editing surfaces selectable
+   so composing a post or changing account details still behaves normally. */
+@media (hover: hover) and (pointer: fine) {
+  .home-page {
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .home-page input,
+  .home-page textarea,
+  .home-page select,
+  .home-page [contenteditable="true"] {
+    user-select: text;
+    -webkit-user-select: text;
+  }
 }
 
 .home-main {
@@ -359,16 +386,73 @@ a {
   margin: 0 auto;
   padding: 0 12px calc(20px + env(safe-area-inset-bottom));
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
 }
 
-/* Two columns at every width. The tiles are squares, so the column count is
-   what sets their size — dropping to one would make each tile as tall as the
-   screen is wide, which is the opposite of compact. */
+/* What is left of the window once the place name is at the top of it and the
+   dots are at the bottom: one page's worth of grid, and the row of pages
+   sliding behind it.
+
+   Out to the viewport edges rather than the narrower two- or four-cube page:
+   the screen edge is the carousel's clip, so a page being dragged does not hit
+   an invisible wall at the edge of the centered grid. Each grid supplies its
+   own padding to keep the cubes at their intended width.
+
+   No touch-action of its own. The body already says pan-y pinch-zoom (see the
+   note up top), which is exactly what this wants: the browser never takes a
+   sideways drag, so the page turn below is free to read it, and pinching to
+   make the type bigger is left alone. */
+.card-carousel {
+  flex: 1;
+  min-height: 0;
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  overflow: hidden;
+}
+
+/* While a drag has turned out to be a page turn, nothing under it is a line of
+   type being selected: the pointer has hold of the whole strip rather than of
+   anything written on it. Set only for as long as the drag lasts — a dashboard
+   you cannot copy a place name off is not what any of this is for — and by hand
+   rather than by state, so a page being dragged is not also a page being
+   re-rendered (see HomePage). */
+.card-carousel.dragging {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.card-track {
+  height: 100%;
+  display: flex;
+  transition: transform 260ms ease;
+}
+
+/* Two columns on mobile. The tiles are squares, so the column count is what
+   sets their size — dropping to one would make each tile as tall as the screen
+   is wide, which is the opposite of compact. The web breakpoint below raises
+   this to four.
+
+   Published as --cols because the page has to count squares to know where the
+   window fills up, and the count is the stylesheet's answer rather than
+   something to be guessed at a breakpoint on the other side of the app (see
+   HomePage).
+
+   A page of the grid is the width of the carousel and its full height. Its
+   overflow is clipped rather than made into a second, vertical navigation
+   system: every card after the third row is dealt onto the next horizontal
+   page (see utils/pages.js). */
 .card-grid {
+  --cols: 2;
+  --page-max: 600px;
+  flex: 0 0 100%;
+  min-width: 0;
+  height: 100%;
+  padding: 0 max(12px, calc((100vw - var(--page-max)) / 2 + 12px));
+  overflow: hidden;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
   gap: 10px;
   align-content: start;
   /* The grid is a query container so that a card can be sized against the
@@ -381,96 +465,37 @@ a {
   --tile: calc((100cqw - 10px) / 2);
 }
 
-/* Once two news panels fit side by side, one column of them is a waste of the
-   window: the grid doubles to four columns, the panels take half of it each,
-   and the page stops growing there so every tile keeps the size it had.
+/* Once the window can hold four full-size cubes, the grid doubles to the four
+   columns used by the wide layout. Below that threshold the page remains two
+   cubes wide instead of shrinking four cubes to fit. Panels take half of either
+   grid, so their line length stays useful. Where
+   each of them lands is auto-placement's answer and nothing else's — the same
+   answer as on a phone, read across four columns instead of two.
 
-   The news panel is placed by hand. Pinning it to the third column keeps the
-   square tiles that would have filled the top row out of it, and normal
-   auto-placement folds them into a block two columns wide on the left instead —
-   the same squares, beside the panel rather than above it, however many of them
-   the reader is carrying: four is the fewest, and the two panels that can be cut
-   to a square each stand in the same block when they are (see utils/cards.js).
-   The other panels then
-   fill the rows below it, two to a row, wherever in the page's own order they
-   are written: the pin is a place on the grid and not a place in the queue,
-   which is what lets the page put lo's own panels first without moving the news
-   out of the corner it belongs in on a wide screen. */
+   Three of the panels used to be pinned here by hand, and the grid packed dense
+   around them: the news to the top of the right half, and everything the country
+   itself had to say down the column under it, leaving the left to lo's own. That
+   was a shape for one long grid read from the top — the corner it pinned the
+   news to was the dashboard's own corner, and there was one of it.
+
+   Cut into pages there is no such corner. Every page has a top right of its own,
+   so the pin holds whichever page the card happened to be dealt onto, which is
+   not a place in the reading at all. And it made the pages the wrong size: a row
+   claimed by a pin is a row the page could not count, and the last page came out
+   taller than the window it was cut to fit (see utils/pages.js).
+
+   So the wide grid now says how wide it is and nothing else, and the order the
+   page is written in is the order it is read at every width. */
 @media (min-width: 1200px) {
   .home-main {
     width: min(100%, 1200px);
   }
 
   .card-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    --cols: 4;
+    --page-max: 1200px;
     /* Four columns, so three gaps to take out of the width before it is split */
     --tile: calc((100cqw - 30px) / 4);
-    /* Dense, because the panels below are placed by column rather than in a
-       queue: a panel sent to the right half leaves the left half of that row
-       standing empty, and sparse packing will not go back for it — the panel
-       after it would land a row lower, and the two columns would walk down the
-       page in steps. Nothing can be pulled out of order by it: the squares fill
-       their own block, and a panel is either half the grid wide or one of those
-       squares, so the only holes dense has to fill are the ones the pins below
-       open. */
-    grid-auto-flow: row dense;
-  }
-
-  .home-main .card-grid > .panel-lead {
-    grid-column: 3 / span 2;
-    grid-row: 1 / span 2;
-  }
-
-  /* The same corner, for the news pulled a third tile down: the pin has to say
-     how many rows it is holding, so a panel that grows needs the pin to grow with
-     it — left at two the card would be three tiles tall standing in two rows of
-     the grid, and everything under it would ride up into its bottom edge. Only
-     the news asks for this; a panel anywhere else on the grid takes its rows from
-     its own height (see .wide.tall in the card's stylesheet), and it is being
-     pinned by hand that makes this one the exception. */
-  .home-main .card-grid > .panel-lead-tall {
-    grid-column: 3 / span 2;
-    grid-row: 1 / span 3;
-  }
-
-  /* What the country says about the place — the warnings and what it is
-     searching for — is pinned to the right half of the rows under the news
-     panel, which is the rest of that same reading. That leaves the left half to
-     the posts and the people: lo's own two panels, both of them readings of the
-     ground you are standing on, one under the other. A card cut to a single
-     square carries none of this and asks for none of it: a square cannot be
-     pinned to a half, and one is small enough to belong to the block of tiles
-     rather than to either column (see Warnings.jsx).
-
-     Pinned to a column and not to a cell, and only that side is pinned at all.
-     Which of these panels the country can feed is not known until it answers,
-     and a page that named rows would leave a hole wherever the answer was no.
-     Leaving the left pair to auto-place is the same care: where neither warning
-     nor trend can be fed, the posts and the people spread across both halves
-     instead of stacking down one side of an empty grid.
-
-     In one column there is no left or right and this does nothing: the panels
-     read in the order they are written. Same as the pinned panel above, for the
-     same reason — where a panel belongs on a wide grid is not the order it
-     belongs in on a phone.
-
-     …which is what `order` is for. The page writes lo's own panels first, so a
-     phone reads them first; a column is claimed in the order the panels are
-     placed, though, and left to that order the right half of the posts' own row
-     was still standing empty when the people panel came looking for somewhere to
-     go — dense packing put it there, beside the posts instead of under them, and
-     shoved the warnings and the trending list a row further down the right with
-     a hole under the posts. Sending these two to the front of the placement puts
-     the right half in the country's hands before lo's own two are dealt: the
-     warnings take the row under the news, the trends the row under that, and the
-     left half is what is left for the posts and the people, one under the other.
-
-     It reorders nothing a reader meets in one column, where `order` does not
-     apply, and nothing a screen reader or the tab key walks — both follow the
-     page, and the page is written in the order it is meant to be read. */
-  .home-main .card-grid > .panel-aside {
-    grid-column: 3 / span 2;
-    order: -1;
   }
 }
 
@@ -485,18 +510,73 @@ a {
   padding-bottom: calc(12px + env(safe-area-inset-bottom));
 }
 
-.home-main-map > :not(.card-grid) {
+.home-main-map > :not(.card-carousel) {
+  display: none;
+}
+
+/* The page the map is on is the only one left standing, and the pages either
+   side of it are taken out of the strip rather than translated past: whichever
+   page the map had been dealt onto, it is the one thing in the row and so it is
+   at the window's own edge. The page itself does not have to be turned back to
+   for that, which is the point — the reader expanded the map from where they
+   were and gets it back on the same page when they collapse it. */
+.home-main-map .card-track > :not(:has(.map-full)) {
   display: none;
 }
 
 .home-main-map .card-grid {
-  flex: 1;
-  min-height: 0;
   grid-template-rows: minmax(0, 1fr);
 }
 
 .home-main-map .card-grid > :not(.map-full) {
   display: none;
+}
+
+/* How many pages the dashboard came to and which one is being read: a row of
+   dots under the grid, one to a page, the one you are on filled in. Each is also
+   the button that turns to it, for a reader who would rather aim at the page
+   they want than drag their way to it. The disc and the spacing are tikt's, to
+   the pixel:
+   the same mark for the same thing on both, and the only two odd numbers in this
+   stylesheet's own measure are the ones that came across with it. */
+.card-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 0 0;
+}
+
+.pager-dots {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.pager-dot {
+  position: relative;
+  width: 5px;
+  height: 5px;
+  padding: 0;
+  border: 1px solid var(--ink);
+  border-radius: 50%;
+  background: transparent;
+}
+
+/* A 5px disc is a mark, not a target. The press reaches out past it on all four
+   sides — as far sideways as the gap it is standing in, so each dot's reach ends
+   where the next one's begins and there is no seam between them to miss through.
+   None of it is laid out: the row is the discs and the 8px between them, exactly
+   as it reads on tikt. */
+.pager-dot::after {
+  content: "";
+  position: absolute;
+  inset: -8px -4px;
+}
+
+.pager-dot.active {
+  background: var(--ink);
 }
 
 /* ------------------------------------------------------------------ list -- */

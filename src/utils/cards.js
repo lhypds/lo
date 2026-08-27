@@ -63,10 +63,14 @@ const SIZES = [TINY, SMALL, LARGE, TALL];
 //
 // The clock, the weather and the map are single squares and never resize: those
 // three with the mark button are the block the rest of the grid is set against.
+// They say so as a ladder with one rung rather than by leaving the pair out —
+// the page has to know how much of the grid every card covers to work out where
+// it breaks into pages (see utils/pages.js), and a card that never offers the
+// reader a choice of size still has one.
 export const CARDS = [
-  { id: "clock", label: "clock.title" },
-  { id: "weather", label: "weather.title" },
-  { id: "map", label: "map.title" },
+  { id: "clock", label: "clock.title", min: TINY, max: TINY },
+  { id: "weather", label: "weather.title", min: TINY, max: TINY },
+  { id: "map", label: "map.title", min: TINY, max: TINY },
   { id: "posts", label: "posts.nearby", own: true, off: true },
   { id: "people", label: "people.nearby", own: true, min: TINY },
   { id: "warnings", label: "warnings.title", min: TINY },
@@ -167,6 +171,15 @@ export function resizeCard(id, size) {
   if (cardSizes(id).includes(size)) decide(id, { size });
 }
 
+// The same size read as ground on the grid: how many columns across and how many
+// rows down the card covers. A single square is one of each; everything else is
+// the width of the panel column — the whole grid on a phone, half of it on a
+// laptop — and as many rows as it has squares to fill it with. That is the whole
+// of what the pages need to know about a card (see utils/pages.js).
+export function cardSpan(size) {
+  return size === TINY ? { cols: 1, rows: 1 } : { cols: 2, rows: size / 2 };
+}
+
 // One panel's own size, for the panel and for the pair of buttons in its heading.
 // Asked by id rather than handed down through the page, so how much room a panel
 // takes is between it and the layout — nothing above it has to hold a size for
@@ -194,6 +207,12 @@ export function useCards(supports) {
       const card = BY_ID.get(id);
       return Boolean(card) && offered(card) && isOn(choices, id);
     },
+    // How tall the reader has left each panel, asked from the page rather than
+    // from inside the card. The card reads its own size for the same store and
+    // gets the same answer (useCardSize below); the page needs them all at once
+    // because how much of the grid the cards cover between them is what decides
+    // where the dashboard breaks into pages.
+    size: (id) => sizeOf(choices, id),
     toggle: toggleCard,
   };
 }

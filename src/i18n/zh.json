@@ -55,7 +55,8 @@
     "accuracy": "精度",
     "stale": "上次已知位置",
     "updated": "更新于 {{time}}",
-    "locating": "定位中"
+    "locating": "定位中",
+    "page": "第 {{number}} 页，共 {{total}} 页"
   },
   "clock": {
     "title": "时间",

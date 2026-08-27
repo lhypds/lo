@@ -55,7 +55,8 @@
     "accuracy": "精度",
     "stale": "最後に確認した位置",
     "updated": "{{time}}に更新",
-    "locating": "測位中"
+    "locating": "測位中",
+    "page": "{{total}} ページ中 {{number}} ページ目"
   },
   "clock": {
     "title": "時刻",
