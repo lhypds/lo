@@ -742,7 +742,10 @@ html:has(.home-main:not(.home-main-map) .card-pager) {
   min-height: 0;
   width: min(100%, 600px);
   margin: 0 auto;
-  padding: 16px 12px calc(20px + env(safe-area-inset-bottom));
+  /* No top padding of its own: the gap above the heading is the sticky header's
+     own (see .list-sticky), so it is opaque and the header sits at the very top
+     of the scroller from the first frame rather than sliding up into place. */
+  padding: 0 12px calc(20px + env(safe-area-inset-bottom));
   overflow-y: auto;
   /* Naming one axis makes the other one auto, not visible — so a list that has
      nothing to show sideways would still take a sideways drag, and the tooltips
@@ -818,14 +821,16 @@ html:has(.home-main:not(.home-main-map) .card-pager) {
 }
 
 /* The heading and the search bar held at the top of the list while the rows
-   scroll under them. Paper behind, so a row disappears beneath the header rather
-   than through it, and above the rows' own hover so nothing lights up under it.
-   The list's own top padding scrolls off with the first rows; once it is gone the
-   header rests at the very top of the scroller. */
+   scroll under them. It carries the gap above itself as its own top padding, so
+   that gap is paper too — a row scrolling up disappears behind it rather than
+   showing through between the map and the title — and it rests at the very top of
+   the scroller from the first frame rather than sliding up into place. Above the
+   rows' own hover so nothing lights up under it. */
 .list-sticky {
   position: sticky;
   top: 0;
   z-index: 5;
+  padding-top: 16px;
   background: var(--paper);
 }
 
@@ -885,8 +890,13 @@ html:has(.home-main:not(.home-main-map) .card-pager) {
   list-style: none;
 }
 
+/* A row is a control rather than a passage of text: pressing it sends the map,
+   so a press-and-drag on it is a mis-hit to swallow rather than a selection to
+   start. */
 .mark-item {
   border-bottom: 1px solid var(--line);
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 /* The row whose preview is showing on the map — because the pointer is on it or
@@ -981,6 +991,8 @@ html:has(.home-main:not(.home-main-map) .card-pager) {
 
 .post-item {
   border-bottom: 1px solid var(--line);
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .post-row {
