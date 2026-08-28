@@ -34,6 +34,7 @@ import {
   getUser,
   getUserByLinkKey,
   readConversation,
+  recordLogin,
   renameMark,
   savePosition,
   setDiscoverable,
@@ -180,13 +181,35 @@ function currentSession(req) {
   return { token, ...session };
 }
 
+// The address a request came from, as well as it can be known from behind a
+// proxy: Express reads it off X-Forwarded-For because of `trust proxy` below,
+// which means it is whatever the proxy in front of lo wrote down. Good enough
+// for the thing it is for — a person reading the users table and asking whether
+// an account is still being used, and from roughly where — and not something to
+// hang a decision on: with the chain trusted whole, a client can put an extra
+// hop on the front of that header itself.
+//
+// An IPv4 address arriving over an IPv6 socket comes back mapped, as
+// ::ffff:1.2.3.4. That is the same address said the long way, so it is written
+// down as the four numbers it is.
+function clientIp(req) {
+  return String(req.ip ?? "").trim().replace(/^::ffff:/i, "");
+}
+
 // Hands the token back, which is the whole of signing somebody in. Every client
 // is the same shape — a browser and an Even Hub package both learn the token
 // here and both present it in a header — so this is the only place any of them
 // can come by the one they will be using from here on.
-function startSession(user) {
+//
+// Which also makes it the one place a sign-in can be written down. All three
+// ways in pass through here — a password, a link key, an account just opened —
+// and none of them is more of a sign-in than the others. Presenting a token
+// already held is not one and does not reach this, so the stamp stays the last
+// time somebody signed in rather than the last time they were about.
+function startSession(user, req) {
   const token = crypto.randomBytes(32).toString("base64url");
   sessions.set(token, { userId: user.id, username: user.username, expiresAt: Date.now() + sessionAgeMs });
+  recordLogin(user.id, clientIp(req));
   return token;
 }
 
@@ -295,7 +318,7 @@ app.post("/api/login", (req, res) => {
   // `key` alongside the session: the link this account can be signed in from
   // anywhere else with, which is a password that has already been given rather
   // than a new secret being disclosed to anybody.
-  res.json({ user, token: startSession(user), key: linkKeyFor(user) });
+  res.json({ user, token: startSession(user, req), key: linkKeyFor(user) });
 });
 
 app.post("/api/logout", (req, res) => {
@@ -315,7 +338,7 @@ app.post("/api/logout", (req, res) => {
 app.post("/api/link", (req, res) => {
   const user = getUserByLinkKey(String(req.body?.key ?? ""));
   if (!user) return res.status(401).json({ error: "That link no longer works", code: "LINK_INVALID" });
-  res.json({ user, token: startSession(user), key: linkKeyFor(user) });
+  res.json({ user, token: startSession(user, req), key: linkKeyFor(user) });
 });
 
 // Taking a key back, for a link that got somewhere it should not have. Whichever
@@ -358,7 +381,7 @@ app.post("/api/users", (req, res) => {
 
   try {
     const user = createUser(username, password);
-    res.status(201).json({ user, token: startSession(user), key: linkKeyFor(user) });
+    res.status(201).json({ user, token: startSession(user, req), key: linkKeyFor(user) });
   } catch (error) {
     console.error("create user failed", error);
     res.status(500).json({ error: "Could not create the account" });

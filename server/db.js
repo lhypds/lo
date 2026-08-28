@@ -58,6 +58,30 @@ db.exec(`
     -- else's answer has it in (see selectOtherPositions). Kept off the public
     -- profile on purpose — that somebody is hiding is not a thing to publish.
     discoverable INTEGER NOT NULL DEFAULT 1,
+    -- The last way in: when the account last signed in and the address it came
+    -- from. lo has no admin screen — the list of users is this table, read by
+    -- hand by whoever also sets a forgotten password (see the note above) — and
+    -- what that reading wants of an account is whether it is still being used
+    -- and from where. Overwritten every sign-in rather than added to: this is
+    -- the last one, not a history of them, and a history is a table.
+    --
+    -- Written wherever a session is handed out (see startSession), so a link key
+    -- and a password count alike; presenting a token already held does not, or
+    -- the column would be the clock rather than the account.
+    --
+    -- Never selected into a user or a profile row (see PROFILE_COLUMNS): where
+    -- somebody signs in from is theirs, and the map is the only thing in lo that
+    -- publishes anybody's whereabouts — with a switch on it (see discoverable).
+    last_ip TEXT,
+    last_login_at TEXT,
+    -- And where the account last said it was. The same fix the positions table
+    -- takes, kept a second time on the account so that the by-hand reading is
+    -- one table rather than a join: positions is presence, read a hundred rows
+    -- at a time to draw the map, and this is one line of an account's story
+    -- beside its name. Held back from readers exactly as the address above is.
+    last_latitude REAL,
+    last_longitude REAL,
+    last_position_at TEXT,
     created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
   );
 
@@ -255,8 +279,21 @@ for (const column of [
   // whole use of a link is being followed next week from a device that has never
   // signed in. Empty on every account until its owner asks for one.
   "link_key",
+  // The last sign-in and the last fix, which arrived after every account already
+  // had a history of both. Empty on all of them until the next one happens:
+  // there is nowhere to read a past sign-in back from, and a made-up one would
+  // be worse than a blank in the column that is meant to say "never seen".
+  "last_ip",
+  "last_login_at",
+  "last_position_at",
 ]) {
   if (!userColumns.has(column)) db.exec(`ALTER TABLE users ADD COLUMN ${column} TEXT`);
+}
+
+// The two halves of that fix, which are numbers rather than text and so are
+// added apart from the loop, the same way discoverable is below.
+for (const column of ["last_latitude", "last_longitude"]) {
+  if (!userColumns.has(column)) db.exec(`ALTER TABLE users ADD COLUMN ${column} REAL`);
 }
 
 // Being findable arrived after the first accounts were opened, and it is the one
@@ -362,6 +399,15 @@ const selectLinkKeyById = db.prepare(`
 const updateLinkKey = db.prepare(`
   UPDATE users
   SET link_key = ?
+  WHERE id = ?
+`);
+
+// Stamping the account with the sign-in that has just happened. Write-only as
+// far as lo is concerned: nothing above reads either column back, and the one
+// reader they have is a person with the table open (see the note on them).
+const updateLastLogin = db.prepare(`
+  UPDATE users
+  SET last_ip = ?, last_login_at = ?
   WHERE id = ?
 `);
 
@@ -741,6 +787,16 @@ const upsertPosition = db.prepare(`
     updated_at = excluded.updated_at
 `);
 
+// And the same fix written onto the account, which is where it can be read
+// without joining anything: one line of an account's story rather than a row of
+// the map. Its own timestamp rather than the one in positions, so that a column
+// beside the coordinates says how old they are.
+const updateLastPosition = db.prepare(`
+  UPDATE users
+  SET last_latitude = ?, last_longitude = ?, last_position_at = ?
+  WHERE id = ?
+`);
+
 // Everyone but the asker: the reader's own dot comes from their own sensor,
 // which is always fresher than the round trip through here.
 const selectOtherPositions = db.prepare(`
@@ -837,6 +893,13 @@ export function getLinkKey(userId) {
 
 export function setLinkKey(userId, key) {
   updateLinkKey.run(key, userId);
+}
+
+// Where a sign-in came from, and when. An address lo could not make out is
+// stored as nothing rather than as a blank, so "not known" is one value in the
+// column and not two — the rule every other optional field here follows.
+export function recordLogin(userId, ip) {
+  updateLastLogin.run(ip || null, new Date().toISOString(), userId);
 }
 
 export function countMarks(userId) {
@@ -1046,8 +1109,14 @@ export function deleteConversation(userId, otherUserId) {
   return deleteConversationMessages.run(new Date().toISOString(), userId, otherUserId, otherUserId, userId).changes;
 }
 
+// One fix, filed twice: in positions, which is the presence the map is drawn
+// from, and on the account, which is the copy a person reading the users table
+// has in front of them. The same stamp on both, so the two never disagree about
+// when it was taken.
 export function savePosition(userId, { latitude, longitude, accuracy }) {
-  upsertPosition.run(userId, latitude, longitude, accuracy ?? null, new Date().toISOString());
+  const now = new Date().toISOString();
+  upsertPosition.run(userId, latitude, longitude, accuracy ?? null, now);
+  updateLastPosition.run(latitude, longitude, now, userId);
 }
 
 // `since` is an ISO timestamp: same format the column is written in, so the
