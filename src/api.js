@@ -1,15 +1,88 @@
 import i18n from "./i18n/index.js";
 
+// lo runs inside a cross-site iframe when the Even Hub package hosts it, and a
+// SameSite=Lax cookie is neither stored nor sent from that position. The session
+// the server opens there is dropped on the floor: the sign-in itself looks like
+// it worked, because the answer to it names the user, and then every request
+// after it comes back "Please sign in". So an embedded lo keeps the token its
+// session was handed out with and presents it the way any non-browser client
+// does — `sessionToken` on the server already reads the cookie *or* an
+// Authorization header, so nothing there has to change to accept this.
+//
+// Embedded only, on purpose. A top-level lo stays on the httpOnly cookie, which
+// no script can read; the token below can be. That is a trade worth making only
+// where the cookie cannot work at all.
+const embeddedTokenKey = "lo:embedded-token";
+
+function detectEmbedded() {
+  try {
+    return window.self !== window.top;
+  } catch {
+    // A cross-origin parent can refuse even this comparison, and nothing but an
+    // embed can produce that refusal — so it is its own answer.
+    return true;
+  }
+}
+
+const embedded = detectEmbedded();
+
+// Held in memory as well as in storage, because a partitioned iframe is allowed
+// to deny storage outright. Where it does, the session still lasts as long as
+// the page is open rather than failing on the very next request.
+let sessionToken = "";
+if (embedded) {
+  try {
+    sessionToken = localStorage.getItem(embeddedTokenKey) || "";
+  } catch {
+    // Nothing was kept from last time; a key or a password opens a fresh one.
+  }
+}
+
+// Every answer that opens a session carries the token that opened it — the
+// password, the link key, and the request that makes the account. Keeping it is
+// the whole of what authenticates the next request.
+function keepSession(data) {
+  if (!embedded || !data?.token) return data;
+  sessionToken = data.token;
+  try {
+    localStorage.setItem(embeddedTokenKey, sessionToken);
+  } catch {
+    // Memory alone still carries this page.
+  }
+  return data;
+}
+
+function dropSession() {
+  sessionToken = "";
+  try {
+    localStorage.removeItem(embeddedTokenKey);
+  } catch {
+    // Nothing was kept, so there is nothing to clear.
+  }
+}
+
+// The one request that cannot go through `request` — the image upload, whose
+// body is raw bytes rather than JSON — still has to be authenticated the same
+// way when embedded.
+export function authHeaders() {
+  return sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {};
+}
+
 async function request(path, options = {}) {
-  const response = await fetch(path, {
-    credentials: "same-origin",
-    headers: options.body ? { "Content-Type": "application/json", ...options.headers } : options.headers,
-    ...options,
-  });
+  const headers = {
+    ...(options.body ? { "Content-Type": "application/json" } : null),
+    ...options.headers,
+    ...authHeaders(),
+  };
+  const response = await fetch(path, { credentials: "same-origin", ...options, headers });
 
   if (response.status === 204) return null;
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
+    // A token the server no longer knows, because it restarted or the session
+    // aged out. Thrown away here rather than presented on every request from now
+    // on, so that what follows is a login screen rather than a loop.
+    if (response.status === 401 && data.code === "LOGIN_REQUIRED") dropSession();
     const error = new Error(data.error || "Request failed");
     error.status = response.status;
     error.code = data.code;
@@ -32,15 +105,17 @@ export const getSession = () => request("/api/session");
 export const checkUsername = (username) =>
   request("/api/username", { method: "POST", body: JSON.stringify({ username }) });
 export const login = (username, password) =>
-  request("/api/login", { method: "POST", body: JSON.stringify({ username, password }) });
+  request("/api/login", { method: "POST", body: JSON.stringify({ username, password }) }).then(keepSession);
 export const createUser = (username, password) =>
-  request("/api/users", { method: "POST", body: JSON.stringify({ username, password }) });
-export const logout = () => request("/api/logout", { method: "POST" });
+  request("/api/users", { method: "POST", body: JSON.stringify({ username, password }) }).then(keepSession);
+// `finally` rather than `then`: a sign-out the server never heard is still a
+// sign-out here, and a token kept past it would be the one thing left signed in.
+export const logout = () => request("/api/logout", { method: "POST" }).finally(dropSession);
 // Signing in on a key instead of a password — the key read out of the fragment
 // of the link that was followed, traded for the session the password would have
 // opened. The same answer as login, because it is the same session.
 export const loginWithKey = (key) =>
-  request("/api/link", { method: "POST", body: JSON.stringify({ key }) });
+  request("/api/link", { method: "POST", body: JSON.stringify({ key }) }).then(keepSession);
 export const getMe = () => request("/api/me");
 // The whole profile every time, which is what makes an emptied field a cleared
 // one rather than an untouched one.

@@ -6,6 +6,8 @@
 // canvas to WebP — and it means the wire carries the small file, not the 8 MB
 // one straight off a phone.
 
+import { authHeaders } from "../api.js";
+
 const ENDPOINT = "/api/images";
 
 // Safari only grew createImageBitmap for blobs in 15, so an <img> decode stands
@@ -165,7 +167,7 @@ export async function uploadImage(blob) {
   const response = await fetch(ENDPOINT, {
     method: "POST",
     credentials: "same-origin",
-    headers: { "Content-Type": blob.type || "application/octet-stream" },
+    headers: { "Content-Type": blob.type || "application/octet-stream", ...authHeaders() },
     body: blob,
   });
   if (!response.ok) {
