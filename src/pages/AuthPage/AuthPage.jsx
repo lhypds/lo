@@ -262,12 +262,7 @@ export default function AuthPage() {
             {!naming && spaced && SPACE}
             {!naming && !choosing && (
               <>
-                <button
-                  type="button"
-                  className="auth-forgot"
-                  onClick={() => setForgot(true)}
-                  disabled={submitting}
-                >
+                <button type="button" className="auth-forgot" onClick={() => setForgot(true)} disabled={submitting}>
                   {t("auth.forgot")}
                 </button>
                 {SPACE}
@@ -282,12 +277,7 @@ export default function AuthPage() {
         </section>
       </main>
 
-      <Modal
-        isOpen={Boolean(pending)}
-        title={t("auth.createTitle")}
-        onClose={() => setPending("")}
-        closeOnOverlay
-      >
+      <Modal isOpen={Boolean(pending)} title={t("auth.createTitle")} onClose={() => setPending("")} closeOnOverlay>
         <p className="modal-text">{t("auth.createConfirm", { name: pending })}</p>
         <div className="modal-actions">
           <button type="button" className="outline-button" onClick={() => setPending("")}>
@@ -304,15 +294,8 @@ export default function AuthPage() {
           one person who can read it can also set a new one. So the answer is a
           word to that person, written from the reader's own mail app with the
           account already named in it. */}
-      <Modal
-        isOpen={forgot}
-        title={t("auth.forgotTitle")}
-        onClose={() => setForgot(false)}
-        closeOnOverlay
-      >
-        <p className="modal-text">
-          {ADMIN_EMAIL ? t("auth.forgotBody", { email: ADMIN_EMAIL }) : t("auth.forgotNoAdmin")}
-        </p>
+      <Modal isOpen={forgot} title={t("auth.forgotTitle")} onClose={() => setForgot(false)} closeOnOverlay>
+        <p className="modal-text">{ADMIN_EMAIL ? t("auth.forgotBody", { email: ADMIN_EMAIL }) : t("auth.forgotNoAdmin")}</p>
         <div className="modal-actions">
           <button type="button" className="outline-button" onClick={() => setForgot(false)}>
             {t("common.cancel")}
