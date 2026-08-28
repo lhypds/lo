@@ -6,11 +6,19 @@
   flex-direction: column;
 }
 
+/* Now on the left, the days ahead in the corner across from it, both hung from
+   the same top edge so the day names line up with the temperature's cap */
 .top {
   flex: 1;
   min-height: 0;
   display: flex;
-  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.current {
+  flex: 1;
+  min-width: 0;
 }
 
 .now {
@@ -87,29 +95,29 @@
   white-space: nowrap;
 }
 
+/* One grid rather than two rows of their own: the day, the glyph and the range
+   each get a column, so tomorrow and the day after line up under each other
+   however long the weekday abbreviation runs in the reader's language. */
 .forecast {
   flex: 0 0 auto;
-  margin: 8px 0 0;
-  padding: 8px 0 0;
-  border-top: 1px solid var(--ink);
+  margin: 0;
+  padding: 0;
   list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
+  display: grid;
+  grid-template-columns: auto auto auto;
+  align-items: center;
+  gap: 6px 8px;
 }
 
 .forecast li {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  display: contents;
 }
 
 .forecastDay {
-  width: 34px;
-  flex: 0 0 auto;
   color: var(--muted);
   font-family: var(--mono);
   font-size: 10px;
+  white-space: nowrap;
 }
 
 .forecastGlyph {
@@ -124,10 +132,11 @@
 }
 
 .forecastTemp {
-  margin-left: auto;
   font-family: var(--mono);
   font-size: 10px;
   font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
 }
 
 /* A phone-sized tile has room for now and the three readings, and no more —

@@ -137,7 +137,10 @@ export function lookupWeather(latitude, longitude) {
     // timezone=auto is what makes the clock card local rather than the visitor's:
     // the response carries the IANA zone of the coordinates themselves.
     url.searchParams.set("timezone", "auto");
-    url.searchParams.set("forecast_days", "3");
+    // Today plus the three days the weather tile stands in its corner. Asking
+    // for more is free at this end but nothing reads it, and a fourth row would
+    // not fit beside the temperature anyway.
+    url.searchParams.set("forecast_days", "4");
     const data = await getJson(url.href);
 
     const current = data.current ?? {};

@@ -47,14 +47,33 @@ export default function WeatherCard() {
     <Card title={t("weather.title")} meta={range} square>
       <div className={styles.inner}>
         <div className={styles.top}>
-          <div className={styles.now}>
-            <WeatherGlyph icon={weatherIcon(current.weatherCode)} className={styles.glyph} />
-            <span className={styles.temp}>
-              {round(current.temperature)}
-              <span className={styles.unit}>{unit}</span>
-            </span>
+          <div className={styles.current}>
+            <div className={styles.now}>
+              <WeatherGlyph icon={weatherIcon(current.weatherCode)} className={styles.glyph} />
+              <span className={styles.temp}>
+                {round(current.temperature)}
+                <span className={styles.unit}>{unit}</span>
+              </span>
+            </div>
+            <p className={styles.condition}>{label}</p>
           </div>
-          <p className={styles.condition}>{label}</p>
+          {/* The days ahead ride in the corner opposite the temperature
+              rather than under the readings: they are the same kind of thing as
+              the range in the header — a short forecast — and up here they read
+              beside now instead of competing with the bottom rows for the eye. */}
+          {upcoming?.length > 0 && (
+            <ul className={styles.forecast}>
+              {upcoming.map((day) => (
+                <li key={day.date}>
+                  <span className={styles.forecastDay}>{dayName(day.date, i18n.language)}</span>
+                  <WeatherGlyph icon={weatherIcon(day.weatherCode)} className={styles.forecastGlyph} />
+                  <span className={styles.forecastTemp}>
+                    {round(day.tempMax)}°/{round(day.tempMin)}°
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
         <dl className={styles.rows}>
           <div>
@@ -75,19 +94,6 @@ export default function WeatherCard() {
             </dd>
           </div>
         </dl>
-        {upcoming?.length > 0 && (
-          <ul className={styles.forecast}>
-            {upcoming.map((day) => (
-              <li key={day.date}>
-                <span className={styles.forecastDay}>{dayName(day.date, i18n.language)}</span>
-                <WeatherGlyph icon={weatherIcon(day.weatherCode)} className={styles.forecastGlyph} />
-                <span className={styles.forecastTemp}>
-                  {round(day.tempMax)}° / {round(day.tempMin)}°
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
       </div>
     </Card>
   );
