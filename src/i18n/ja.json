@@ -48,11 +48,11 @@
     "joined": "登録日",
     "marks": "記録数",
     "posts": "投稿数",
-    "discoverable": "表示",
+    "discoverable": "位置公開",
     "discoverableOn": "オン",
     "discoverableOff": "オフ",
-    "hideMe": "非表示にする",
-    "showMe": "表示する",
+    "hideMe": "非公開にする",
+    "showMe": "公開する",
     "logout": "ログアウト"
   },
   "gate": {
