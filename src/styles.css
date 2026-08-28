@@ -94,6 +94,20 @@ input {
   font: inherit;
 }
 
+/* How much of a field counts as revealed. Every reveal of one asks for the
+   nearest scroll that gets it on screen (see keepFocusVisible in index.html, and
+   the browser's own reveal on focus), and the nearest scroll leaves it flush
+   against the edge it came in over — a field sitting on the lip of the keyboard,
+   technically shown and read as the last line before the fold. The margin is
+   counted as part of the field for that purpose and nowhere else, so it buys the
+   clearance without moving anything or costing a field its place in the layout. */
+input,
+textarea,
+select,
+[contenteditable] {
+  scroll-margin-block: 32px;
+}
+
 button:focus,
 button:focus-visible,
 input:focus,
