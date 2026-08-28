@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { ActionButton } from "../../ui/index.js";
+import { ActionButton, AuthImage } from "../../ui/index.js";
 import {
   distanceMeters,
   formatCoords,
@@ -53,7 +53,7 @@ export default function PostItem({
           onClick={() => onShowOnMap(post)}
         >
           {post.image && (
-            <img className="post-thumb" src={post.image} alt="" loading="lazy" width="44" height="44" />
+            <AuthImage className="post-thumb" src={post.image} alt="" width="44" height="44" />
           )}
           <span className="post-copy-lines">
             <strong>{headline}</strong>

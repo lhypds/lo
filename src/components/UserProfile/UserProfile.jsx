@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
-import { Link, showToast } from "../../ui/index.js";
+import { AuthImage, Link, showToast } from "../../ui/index.js";
 import { copyText } from "../../utils/clipboard.js";
 import { CONTACTS } from "../../utils/contacts.js";
 import { formatCoords, formatUsername, relativeTime } from "../../utils/format.js";
@@ -239,7 +239,7 @@ export default function UserProfile({ username }) {
             still opens on a face rather than straight on the name. */}
         {profile &&
           (profile.avatar ? (
-            <img className={styles.avatar} src={profile.avatar} alt="" width={AVATAR_BOX} height={AVATAR_BOX} />
+            <AuthImage className={styles.avatar} src={profile.avatar} alt="" width={AVATAR_BOX} height={AVATAR_BOX} />
           ) : (
             <div className={styles.avatarEmpty} aria-hidden="true">
               <svg viewBox="0 0 24 24">
@@ -360,11 +360,10 @@ export default function UserProfile({ username }) {
                     draggable={false}
                   >
                     {post.image && (
-                      <img
+                      <AuthImage
                         className={styles.thumb}
                         src={post.image}
                         alt=""
-                        loading="lazy"
                         width={THUMB_BOX}
                         height={THUMB_BOX}
                         draggable={false}

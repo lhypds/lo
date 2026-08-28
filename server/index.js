@@ -92,7 +92,6 @@ const PASSWORD_HINT = `A password is ${PASSWORD_MIN}–${PASSWORD_MAX} character
 const RESERVED_NAMES = new Set(["login", "marks", "posts", "account"]);
 const sessions = new Map();
 const sessionAgeMs = 30 * 24 * 60 * 60 * 1000;
-const sessionCookie = "lo_session";
 
 const LANGS = new Set(["en", "zh", "ja"]);
 
@@ -152,31 +151,23 @@ function parseLocation(body) {
   };
 }
 
-function cookieValue(req, name) {
-  const prefix = `${name}=`;
-  const part = String(req.headers.cookie ?? "")
-    .split(";")
-    .map((value) => value.trim())
-    .find((value) => value.startsWith(prefix));
-  if (!part) return null;
-  try {
-    return decodeURIComponent(part.slice(prefix.length));
-  } catch {
-    return null;
-  }
-}
-
-// Where the session is: the browser sends it back in the cookie it was set in,
-// and an Even Hub package sends it in a header. A package runs on a foreign
-// origin and cannot be given the cookie at all — SameSite is what stops it — so
-// it keeps the token itself and presents it. One session either way; only the
-// way it travels differs.
+// Where the session is, and there is one place it can be: the Authorization
+// header, set deliberately by whichever client is asking. There was a cookie
+// too, and it is gone — one credential to reason about rather than two, and no
+// endpoint whose answer depends on which of them happened to arrive.
+//
+// A cookie could not have covered every place lo runs in any case. Embedded in a
+// cross-site iframe, which is how the Even Hub package hosts it, SameSite=Lax
+// means the cookie is neither stored nor sent. The header works identically
+// wherever lo is, and nothing a browser attaches on its own authenticates
+// anything any more — which is also what puts CSRF out of reach.
+//
+// The one thing that genuinely needed the cookie was `<img src="/api/images/…">`,
+// a request a tag makes for itself with nowhere to put a header. Those now go
+// through `authImageUrl` on the client, which fetches the bytes with the header
+// and hands the tag an object URL.
 function sessionToken(req) {
-  return (
-    cookieValue(req, sessionCookie) ??
-    /^Bearer\s+([^\s]+)$/i.exec(String(req.headers.authorization ?? ""))?.[1] ??
-    null
-  );
+  return /^Bearer\s+([^\s]+)$/i.exec(String(req.headers.authorization ?? ""))?.[1] ?? null;
 }
 
 function currentSession(req) {
@@ -190,19 +181,13 @@ function currentSession(req) {
   return { token, ...session };
 }
 
-// Hands the token back as well as setting the cookie. A browser is already signed
-// in by the cookie and ignores it; a package has no cookie to read and this is the
-// only place it can learn the token it will be presenting from here on.
-function startSession(user, req, res) {
+// Hands the token back, which is the whole of signing somebody in. Every client
+// is the same shape now — a browser and an Even Hub package both learn the token
+// here and both present it in a header — so this is the only place any of them
+// can come by the one they will be using from here on.
+function startSession(user) {
   const token = crypto.randomBytes(32).toString("base64url");
   sessions.set(token, { userId: user.id, username: user.username, expiresAt: Date.now() + sessionAgeMs });
-  res.cookie(sessionCookie, token, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: req.secure,
-    maxAge: sessionAgeMs,
-    path: "/",
-  });
   return token;
 }
 
@@ -223,10 +208,11 @@ function linkKeyFor(user) {
   return key;
 }
 
-function clearSession(req, res) {
+// Forgetting the token is the whole of signing out now. The client throws away
+// the copy it was holding; this throws away the one that made it mean anything.
+function clearSession(req) {
   const session = currentSession(req);
   if (session) sessions.delete(session.token);
-  res.clearCookie(sessionCookie, { httpOnly: true, sameSite: "lax", secure: req.secure, path: "/" });
 }
 
 function requireSession(req, res, next) {
@@ -234,7 +220,7 @@ function requireSession(req, res, next) {
   if (!session) return res.status(401).json({ error: "Please sign in", code: "LOGIN_REQUIRED" });
   const user = getUser(session.username);
   if (!user) {
-    clearSession(req, res);
+    clearSession(req);
     return res.status(401).json({ error: "Please sign in again", code: "LOGIN_REQUIRED" });
   }
   req.user = user;
@@ -244,11 +230,12 @@ function requireSession(req, res, next) {
 const app = express();
 app.set("trust proxy", true);
 // The API answers foreign origins, because an Even Hub package is one. The
-// wildcard is safe here only because nothing is authenticated by something a
-// browser attaches on its own: SameSite=Lax keeps lo_session off cross-site
-// requests entirely, so a hostile page cannot spend a reader's session, and a
-// wildcard origin makes a credentialed response unreadable in any case. Pairing
-// this with Access-Control-Allow-Credentials is what would undo both at once.
+// wildcard is safe here because nothing is authenticated by anything a browser
+// attaches on its own — there is no cookie any more, and a bearer token has to
+// be set deliberately by code that already holds it. A hostile page can send a
+// request but cannot put a reader's session on it, which is the whole of CSRF
+// gone rather than merely fenced off. Adding Access-Control-Allow-Credentials
+// would be the way to undo that, and there is nothing it would buy.
 app.use("/api", (req, res, next) => {
   res.set("Access-Control-Allow-Origin", "*");
   res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
@@ -310,11 +297,11 @@ app.post("/api/login", (req, res) => {
   // `key` alongside the session: the link this account can be signed in from
   // anywhere else with, which is a password that has already been given rather
   // than a new secret being disclosed to anybody.
-  res.json({ user, token: startSession(user, req, res), key: linkKeyFor(user) });
+  res.json({ user, token: startSession(user), key: linkKeyFor(user) });
 });
 
 app.post("/api/logout", (req, res) => {
-  clearSession(req, res);
+  clearSession(req);
   res.status(204).end();
 });
 
@@ -330,7 +317,7 @@ app.post("/api/logout", (req, res) => {
 app.post("/api/link", (req, res) => {
   const user = getUserByLinkKey(String(req.body?.key ?? ""));
   if (!user) return res.status(401).json({ error: "That link no longer works", code: "LINK_INVALID" });
-  res.json({ user, token: startSession(user, req, res), key: linkKeyFor(user) });
+  res.json({ user, token: startSession(user), key: linkKeyFor(user) });
 });
 
 // Taking a key back, for a link that got somewhere it should not have. Nothing in
@@ -355,7 +342,7 @@ app.post("/api/users", (req, res) => {
 
   try {
     const user = createUser(username, password);
-    res.status(201).json({ user, token: startSession(user, req, res), key: linkKeyFor(user) });
+    res.status(201).json({ user, token: startSession(user), key: linkKeyFor(user) });
   } catch (error) {
     console.error("create user failed", error);
     res.status(500).json({ error: "Could not create the account" });

@@ -128,6 +128,43 @@ export async function compressToWebp(file, { quality = 0.82, maxSize = 1600, squ
   }
 }
 
+// A stored picture is behind the session, and an <img> tag cannot be given the
+// Authorization header the rest of lo is read with — the tag makes its own
+// request and there is nowhere to put one. So the bytes are fetched here, where
+// the header can be attached, and the tag is handed an object URL instead.
+//
+// Memoised by URL, and the object URLs are never revoked. The names are content
+// digests, so a URL fetched once can be answered from this map forever without
+// going stale; and the handful of blobs one session looks at costs less than an
+// avatar that blinks out and back every time a list redraws.
+const objectUrls = new Map();
+
+export function authImageUrl(url) {
+  if (!url) return Promise.resolve("");
+  // Anything that is not a stored picture is already something a tag can load on
+  // its own: a blob: from a file just chosen, or a data: preview.
+  if (!url.startsWith(ENDPOINT)) return Promise.resolve(url);
+
+  const known = objectUrls.get(url);
+  if (known) return known;
+
+  const pending = fetch(url, { credentials: "omit", headers: authHeaders() })
+    .then((response) => {
+      if (!response.ok) throw new Error(`Image failed (${response.status})`);
+      return response.blob();
+    })
+    .then((blob) => URL.createObjectURL(blob))
+    .catch((error) => {
+      // Dropped rather than remembered. A picture that failed because the
+      // session had not arrived yet is one to ask for again, not one to hold as
+      // broken for the rest of the page's life.
+      objectUrls.delete(url);
+      throw error;
+    });
+  objectUrls.set(url, pending);
+  return pending;
+}
+
 // Holds until the browser has the picture at that URL ready to paint, so an
 // <img> pointed at it afterwards arrives with the photo already in it rather
 // than as an empty box that fills in a moment later. A URL that will not load
@@ -135,8 +172,10 @@ export async function compressToWebp(file, { quality = 0.82, maxSize = 1600, squ
 // picture that cannot be shown is the <img>'s problem to wear, not a failure of
 // the upload that has already gone through.
 export async function preload(url) {
+  const src = await authImageUrl(url).catch(() => "");
+  if (!src) return;
   const element = new Image();
-  element.src = url;
+  element.src = src;
   try {
     // decode() waits for the pixels, not just the bytes — the difference is a
     // frame of blank on a large photo.
@@ -166,7 +205,7 @@ export function storedName(url) {
 export async function uploadImage(blob) {
   const response = await fetch(ENDPOINT, {
     method: "POST",
-    credentials: "same-origin",
+    credentials: "omit",
     headers: { "Content-Type": blob.type || "application/octet-stream", ...authHeaders() },
     body: blob,
   });

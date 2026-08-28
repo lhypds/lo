@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
-import { TextArea, showToast } from "../../ui/index.js";
+import { AuthImage, TextArea, showToast } from "../../ui/index.js";
 import { contactsFor, profileFields } from "../../utils/contacts.js";
 import { compressToWebp, preload, uploadImage } from "../../utils/image.js";
 import { LINK_KINDS } from "../../utils/links.js";
@@ -207,7 +207,7 @@ export default function ProfileForm({ user, onSaved }) {
             aria-label={t("profile.avatarPick")}
           >
             {avatarUrl ? (
-              <img src={avatarUrl} alt="" width={AVATAR_BOX} height={AVATAR_BOX} />
+              <AuthImage src={avatarUrl} alt="" width={AVATAR_BOX} height={AVATAR_BOX} />
             ) : (
               /* The same figure the top bar draws for an account, which is what an
                  empty frame here is standing in for. */

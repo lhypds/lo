@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
-import { Link, Modal, Skeleton, TextArea } from "../../ui/index.js";
+import { AuthImage, Link, Modal, Skeleton, TextArea } from "../../ui/index.js";
 import { formatUsername, relativeTime } from "../../utils/format.js";
 import styles from "./comments.module.css";
 
@@ -131,7 +131,7 @@ export default function CommentsModal({ post, onClose, onAdded }) {
               {comments.map((comment) => (
                 <li key={comment.id} className={styles.item}>
                   {comment.avatar && (
-                    <img
+                    <AuthImage
                       className={styles.avatar}
                       src={comment.avatar}
                       alt=""

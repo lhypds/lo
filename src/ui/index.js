@@ -1,4 +1,5 @@
 export { default as ActionButton } from "./ActionButton/index.js";
+export { default as AuthImage } from "./AuthImage/index.js";
 export { default as Card, TileId } from "./Card/index.js";
 export { default as Modal } from "./Modal/index.js";
 export { default as Skeleton } from "./Skeleton/index.js";

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
-import { Link, Modal, Skeleton } from "../../ui/index.js";
+import { AuthImage, Link, Modal, Skeleton } from "../../ui/index.js";
 import { formatUsername, relativeTime } from "../../utils/format.js";
 import styles from "./follows.module.css";
 
@@ -102,7 +102,7 @@ export default function FollowsModal({ username, mode, onClose }) {
                   }}
                 >
                   {person.avatar && (
-                    <img className={styles.avatar} src={person.avatar} alt="" loading="lazy" width="28" height="28" />
+                    <AuthImage className={styles.avatar} src={person.avatar} alt="" width="28" height="28" />
                   )}
                   <span className={styles.who}>{formatUsername(person.username)}</span>
                   {/* When the row was made. The list is newest first, so this is

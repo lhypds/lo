@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
-import { Modal, Skeleton } from "../../ui/index.js";
+import { AuthImage, Modal, Skeleton } from "../../ui/index.js";
 import { formatUsername, relativeTime } from "../../utils/format.js";
 import { useHere } from "../LocationProvider/index.js";
 import MessageModal from "../MessageModal/index.js";
@@ -165,7 +165,7 @@ export default function MessagesModal({ isOpen, onClose }) {
                   >
                     <button type="button" className={styles.item} onClick={() => openThread(conversation.username)}>
                       {conversation.avatar && (
-                        <img className={styles.avatar} src={conversation.avatar} alt="" loading="lazy" width="28" height="28" />
+                        <AuthImage className={styles.avatar} src={conversation.avatar} alt="" width="28" height="28" />
                       )}
                       <span className={styles.lines}>
                         <span className={styles.who}>{formatUsername(conversation.username)}</span>

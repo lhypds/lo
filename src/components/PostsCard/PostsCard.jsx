@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Card, Link, Skeleton } from "../../ui/index.js";
+import { AuthImage, Card, Link, Skeleton } from "../../ui/index.js";
 import { LARGE, SMALL, TALL, useCardSize } from "../../utils/cards.js";
 import { distanceMeters, formatCoords, formatDistance, formatUsername, relativeTime } from "../../utils/format.js";
 import CardSize from "../CardSize/index.js";
@@ -70,7 +70,7 @@ export default function PostsCard() {
                   {/* Square and cropped, as in the list on the posts page: a row
                       is the same height whichever way the photo was held. */}
                   {post.image && (
-                    <img className={styles.thumb} src={post.image} alt="" loading="lazy" width="32" height="32" />
+                    <AuthImage className={styles.thumb} src={post.image} alt="" width="32" height="32" />
                   )}
                   <span className={styles.lines}>
                     {/* A photo with no words is a whole post; where it was taken

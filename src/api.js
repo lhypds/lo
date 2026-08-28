@@ -1,51 +1,45 @@
 import i18n from "./i18n/index.js";
 
-// lo runs inside a cross-site iframe when the Even Hub package hosts it, and a
-// SameSite=Lax cookie is neither stored nor sent from that position. The session
-// the server opens there is dropped on the floor: the sign-in itself looks like
-// it worked, because the answer to it names the user, and then every request
-// after it comes back "Please sign in". So an embedded lo keeps the token its
-// session was handed out with and presents it the way any non-browser client
-// does — `sessionToken` on the server already reads the cookie *or* an
-// Authorization header, so nothing there has to change to accept this.
+// One way in, wherever lo is running: the token its session was opened with,
+// kept here and presented as `Authorization: Bearer` on every request after.
 //
-// Embedded only, on purpose. A top-level lo stays on the httpOnly cookie, which
-// no script can read; the token below can be. That is a trade worth making only
-// where the cookie cannot work at all.
-const embeddedTokenKey = "lo:embedded-token";
+// There was an httpOnly cookie as well, and it is gone. Keeping both meant two
+// authentication mechanisms to hold right instead of one, in the file where
+// getting it wrong costs somebody their account — and the cookie could never
+// have been the one that stayed. Embedded in a cross-site iframe, which is how
+// the Even Hub package hosts lo, SameSite=Lax means a cookie is neither stored
+// nor sent: the sign-in still looks like it worked, because the answer to it
+// names the user, and then every request after comes back "Please sign in".
+//
+// What the token costs is worth saying plainly. A cookie no script can read
+// survives an XSS on this page; a token in localStorage does not — it can be
+// read and carried off, and it stays good for as long as the session does. What
+// it buys, beyond working everywhere, is that nothing a browser attaches by
+// itself authenticates anything, which is CSRF gone rather than fenced off.
+//
+// Pictures used to be the one thing that needed the cookie, an <img> having
+// nowhere to put a header. They go through `authImageUrl` now, which fetches the
+// bytes here and hands the tag an object URL.
+const tokenKey = "lo:session-token";
 
-function detectEmbedded() {
-  try {
-    return window.self !== window.top;
-  } catch {
-    // A cross-origin parent can refuse even this comparison, and nothing but an
-    // embed can produce that refusal — so it is its own answer.
-    return true;
-  }
-}
-
-const embedded = detectEmbedded();
-
-// Held in memory as well as in storage, because a partitioned iframe is allowed
-// to deny storage outright. Where it does, the session still lasts as long as
-// the page is open rather than failing on the very next request.
+// Held in memory as well as in storage, because a partitioned or private frame
+// is allowed to deny storage outright. Where it does, the session still lasts as
+// long as the page is open rather than failing on the very next request.
 let sessionToken = "";
-if (embedded) {
-  try {
-    sessionToken = localStorage.getItem(embeddedTokenKey) || "";
-  } catch {
-    // Nothing was kept from last time; a key or a password opens a fresh one.
-  }
+try {
+  sessionToken = localStorage.getItem(tokenKey) || "";
+} catch {
+  // Nothing was kept from last time; a key or a password opens a fresh one.
 }
 
 // Every answer that opens a session carries the token that opened it — the
 // password, the link key, and the request that makes the account. Keeping it is
 // the whole of what authenticates the next request.
 function keepSession(data) {
-  if (!embedded || !data?.token) return data;
+  if (!data?.token) return data;
   sessionToken = data.token;
   try {
-    localStorage.setItem(embeddedTokenKey, sessionToken);
+    localStorage.setItem(tokenKey, sessionToken);
   } catch {
     // Memory alone still carries this page.
   }
@@ -55,15 +49,14 @@ function keepSession(data) {
 function dropSession() {
   sessionToken = "";
   try {
-    localStorage.removeItem(embeddedTokenKey);
+    localStorage.removeItem(tokenKey);
   } catch {
     // Nothing was kept, so there is nothing to clear.
   }
 }
 
 // The one request that cannot go through `request` — the image upload, whose
-// body is raw bytes rather than JSON — still has to be authenticated the same
-// way when embedded.
+// body is raw bytes rather than JSON — is authenticated the same way.
 export function authHeaders() {
   return sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {};
 }
@@ -74,7 +67,7 @@ async function request(path, options = {}) {
     ...options.headers,
     ...authHeaders(),
   };
-  const response = await fetch(path, { credentials: "same-origin", ...options, headers });
+  const response = await fetch(path, { credentials: "omit", ...options, headers });
 
   if (response.status === 204) return null;
   const data = await response.json().catch(() => ({}));

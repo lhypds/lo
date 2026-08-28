@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
-import { Modal, TextArea } from "../../ui/index.js";
+import { AuthImage, Modal, TextArea } from "../../ui/index.js";
 import { formatCoords } from "../../utils/format.js";
 import { compressToWebp, preload, storedName, uploadImage } from "../../utils/image.js";
 import styles from "./post.module.css";
@@ -356,7 +356,7 @@ export default function PostModal({ isOpen, coords, place, post = null, onClose,
                 preview: the frame then holds the picture's box from the first
                 frame it exists, so nothing collapses to a line if the bytes
                 have to be fetched again. */}
-            <img className={styles.image} src={image.url} alt="" width={image.width} height={image.height} />
+            <AuthImage className={styles.image} src={image.url} alt="" width={image.width} height={image.height} />
             <button type="button" className={styles.remove} onClick={() => setImage(null)} disabled={busy}>
               {t("post.removePhoto")}
             </button>
