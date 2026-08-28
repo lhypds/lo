@@ -810,22 +810,16 @@ export default function MapCard({
       }
     }
 
-    // The pan is aimed under the middle of the map rather than at it, because the
-    // pin is not the whole of what has to be looked at: the bubble stands on top
-    // of it, so a pin put dead centre hangs its preview over the top half of the
-    // tile and, on the small square, off the top of it. Half the bubble's height
-    // below centre lands the pair of them on the middle instead — the pin low,
-    // the preview filling the room above it.
-    //
-    // Measured off the bubble that is now up rather than guessed at: a post
-    // carrying a photo is three times the height of a mark's three lines, and the
-    // photo's own box is a fixed 96px, so this is a true number before the
-    // picture itself has arrived.
-    const bubble = marker && showing(marker) ? marker.getPopup().getElement() : null;
+    // The pan is aimed at the middle of the map and nowhere else. The chosen spot
+    // is what was asked for, so that is what goes under the centre of the tile —
+    // it used to be pushed down by half the bubble's height, to leave the preview
+    // the room above it, and the cost was that the pin never landed where the eye
+    // was already waiting for it. Two rows pressed in turn moved the map by
+    // different amounts, since the two bubbles are different heights. The bubble
+    // can be cropped by the top edge; where the pin is cannot be argued with.
     map.easeTo({
       center: [focus.longitude, focus.latitude],
       zoom: 16,
-      offset: [0, (bubble?.offsetHeight ?? 0) / 2],
       duration: 700,
     });
   }, [focus, keep, release]);
