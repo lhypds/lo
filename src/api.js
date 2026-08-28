@@ -2,23 +2,19 @@ import i18n from "./i18n/index.js";
 
 // One way in, wherever lo is running: the token its session was opened with,
 // kept here and presented as `Authorization: Bearer` on every request after.
+// The Even Hub package hosts lo in a cross-site iframe, a position from which
+// anything the browser would attach by itself does not survive the trip, and a
+// header put on by code that already holds the token reads the same everywhere.
+// Requests below go out `credentials: "omit"` to say as much outright: nothing
+// ambient authenticates anything here, which is CSRF gone rather than fenced
+// off, and is what lets the API answer foreign origins at all.
 //
-// There was an httpOnly cookie as well, and it is gone. Keeping both meant two
-// authentication mechanisms to hold right instead of one, in the file where
-// getting it wrong costs somebody their account — and the cookie could never
-// have been the one that stayed. Embedded in a cross-site iframe, which is how
-// the Even Hub package hosts lo, SameSite=Lax means a cookie is neither stored
-// nor sent: the sign-in still looks like it worked, because the answer to it
-// names the user, and then every request after comes back "Please sign in".
+// What that costs is worth saying plainly. The token lives in localStorage, so
+// an XSS on this page can read it and carry it off, and it stays good for as
+// long as the session does.
 //
-// What the token costs is worth saying plainly. A cookie no script can read
-// survives an XSS on this page; a token in localStorage does not — it can be
-// read and carried off, and it stays good for as long as the session does. What
-// it buys, beyond working everywhere, is that nothing a browser attaches by
-// itself authenticates anything, which is CSRF gone rather than fenced off.
-//
-// Pictures used to be the one thing that needed the cookie, an <img> having
-// nowhere to put a header. They go through `authImageUrl` now, which fetches the
+// One request cannot carry a header: an <img> makes its own, with nowhere to
+// put one. Pictures therefore go through `authImageUrl`, which fetches the
 // bytes here and hands the tag an object URL.
 const tokenKey = "lo:session-token";
 

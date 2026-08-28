@@ -152,20 +152,16 @@ function parseLocation(body) {
 }
 
 // Where the session is, and there is one place it can be: the Authorization
-// header, set deliberately by whichever client is asking. There was a cookie
-// too, and it is gone — one credential to reason about rather than two, and no
-// endpoint whose answer depends on which of them happened to arrive.
+// header, set deliberately by whichever client is asking. One credential to
+// reason about, and no endpoint whose answer turns on which of several happened
+// to arrive.
 //
-// A cookie could not have covered every place lo runs in any case. Embedded in a
-// cross-site iframe, which is how the Even Hub package hosts it, SameSite=Lax
-// means the cookie is neither stored nor sent. The header works identically
-// wherever lo is, and nothing a browser attaches on its own authenticates
-// anything any more — which is also what puts CSRF out of reach.
-//
-// The one thing that genuinely needed the cookie was `<img src="/api/images/…">`,
-// a request a tag makes for itself with nowhere to put a header. Those now go
-// through `authImageUrl` on the client, which fetches the bytes with the header
-// and hands the tag an object URL.
+// It also reads the same wherever lo runs. The Even Hub package hosts it in a
+// cross-site iframe, a position from which anything a browser would attach by
+// itself does not survive the trip; a header put on by code that already holds
+// the token does. And since nothing ambient authenticates anything, a hostile
+// page cannot spend a reader's session — CSRF is out of reach rather than
+// fenced off.
 function sessionToken(req) {
   return /^Bearer\s+([^\s]+)$/i.exec(String(req.headers.authorization ?? ""))?.[1] ?? null;
 }
@@ -182,7 +178,7 @@ function currentSession(req) {
 }
 
 // Hands the token back, which is the whole of signing somebody in. Every client
-// is the same shape now — a browser and an Even Hub package both learn the token
+// is the same shape — a browser and an Even Hub package both learn the token
 // here and both present it in a header — so this is the only place any of them
 // can come by the one they will be using from here on.
 function startSession(user) {
@@ -208,8 +204,8 @@ function linkKeyFor(user) {
   return key;
 }
 
-// Forgetting the token is the whole of signing out now. The client throws away
-// the copy it was holding; this throws away the one that made it mean anything.
+// Forgetting the token is the whole of signing out. The client throws away the
+// copy it was holding; this throws away the one that made it mean anything.
 function clearSession(req) {
   const session = currentSession(req);
   if (session) sessions.delete(session.token);
@@ -231,11 +227,10 @@ const app = express();
 app.set("trust proxy", true);
 // The API answers foreign origins, because an Even Hub package is one. The
 // wildcard is safe here because nothing is authenticated by anything a browser
-// attaches on its own — there is no cookie any more, and a bearer token has to
-// be set deliberately by code that already holds it. A hostile page can send a
-// request but cannot put a reader's session on it, which is the whole of CSRF
-// gone rather than merely fenced off. Adding Access-Control-Allow-Credentials
-// would be the way to undo that, and there is nothing it would buy.
+// attaches on its own: a bearer token has to be set deliberately by code that
+// already holds it. A hostile page can send a request but cannot put a reader's
+// session on it. Adding Access-Control-Allow-Credentials would be the way to
+// undo that, and there is nothing it would buy.
 app.use("/api", (req, res, next) => {
   res.set("Access-Control-Allow-Origin", "*");
   res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
@@ -968,6 +963,10 @@ app.post(
   },
 );
 
+// Behind the session like everything else, which an <img> tag cannot satisfy on
+// its own — it makes its own request and there is nowhere on it to put a header.
+// So the client never points a tag straight here: `authImageUrl` fetches the
+// bytes with the header and hands the tag an object URL instead.
 app.get("/api/images/:name", requireSession, (req, res) => {
   const file = imageFile(req.params.name);
   if (!file) return res.status(400).json({ error: "Invalid image name" });
