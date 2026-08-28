@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
-import { Card, Skeleton } from "../../ui/index.js";
+import { Card, Modal, Skeleton } from "../../ui/index.js";
 import { relativeTime } from "../../utils/format.js";
 import { formatWarningWindow, warningKindKey, warningLevel } from "../../utils/warnings.js";
 import { useHere } from "../LocationProvider/index.js";
@@ -41,6 +41,13 @@ export default function Warnings() {
   // same line in NewsCard. It matters most here: "nothing in force" is the one
   // sentence on the dashboard nobody should read before it has been asked.
   const [loading, setLoading] = useState(() => Boolean(coords));
+  // Which warning is open in full. Unlike the news card this opens nothing from
+  // anywhere: Yahoo's bulletin is a table, not prose, and lo has already parsed
+  // it — so the sheet is the row with the parts the tile had to cut. Chiefly the
+  // area list, which a square shows eight of and a prefecture-wide warning may
+  // have sixty. Held by index because two rows can name the same hazard at
+  // different strengths.
+  const [reading, setReading] = useState(null);
   const requestRef = useRef(0);
 
   const key = coordKey(coords);
@@ -75,6 +82,16 @@ export default function Warnings() {
   if (result && !result.covered) return null;
 
   const items = result?.items ?? [];
+  // The row the sheet is open on, and the two things it says that the tile had
+  // to cut short. Worked out here rather than in the sheet so the whole of what
+  // it needs is one place, and so an index left over from a previous answer —
+  // the list is refetched every five minutes — closes the sheet instead of
+  // opening it on the wrong warning.
+  const open = reading == null ? null : (items[reading] ?? null);
+  const openWindow = open ? formatWarningWindow(open.from, open.to, i18n.language) : null;
+  const openAreas = open
+    ? (open.areaNames?.length ? open.areaNames : [result?.area].filter(Boolean))
+    : [];
 
   let body;
   if (loading && !result) {
@@ -98,15 +115,10 @@ export default function Warnings() {
           const outlook = formatWarningWindow(item.from, item.to, i18n.language);
           return (
             <li key={itemKey} className={levelClass(level)}>
-              {/* The row itself is the way through to the bulletin: three words
-                  and a clock cannot carry what the page behind them says, and a
-                  warning is not the place to make a reader hunt for the link. */}
-              <a
-                className={styles.item}
-                href={result.url}
-                target="_blank"
-                rel="noreferrer noopener"
-              >
+              {/* The row itself opens the warning in full: three words and a
+                  clock cannot carry everything the bulletin says, and a warning
+                  is not the place to make a reader hunt for the rest of it. */}
+              <button type="button" className={styles.item} onClick={() => setReading(index)}>
                 <span className={styles.row}>
                   {/* Filled for anything at warning strength, hollow for an
                       advisory: the word beside it is the claim, this is only what
@@ -162,7 +174,7 @@ export default function Warnings() {
                     </span>
                   )}
                 </span>
-              </a>
+              </button>
             </li>
           );
         })}
@@ -192,6 +204,69 @@ export default function Warnings() {
           </p>
         )}
       </div>
+      {open && (
+        <Modal
+          isOpen
+          onClose={() => setReading(null)}
+          closeOnOverlay
+          title={warningKindKey(open.name) ? t(warningKindKey(open.name)) : open.name}
+          header={
+            <a
+              className={styles.away}
+              href={result.url}
+              target="_blank"
+              rel="noreferrer noopener"
+            >
+              Yahoo!<span aria-hidden="true"> ↗</span>
+            </a>
+          }
+        >
+          <dl className={styles.sheet}>
+            <dt>{t("warnings.sheet.severity")}</dt>
+            <dd>
+              {t(`warnings.severity.${open.severity}`)}
+              {warningLevel(open.severity) != null &&
+                ` · ${t("warnings.level", { level: warningLevel(open.severity) })}`}
+            </dd>
+            {openWindow && (
+              <>
+                <dt>{t("warnings.sheet.outlook")}</dt>
+                <dd>
+                  {openWindow.to
+                    ? t("warnings.window", { from: openWindow.from, to: openWindow.to })
+                    : t("warnings.windowOpen", { from: openWindow.from })}
+                </dd>
+              </>
+            )}
+            {/* The reason this sheet exists. A prefecture-wide warning can name
+                sixty municipalities and the tile has room for eight — here they
+                are all listed, because "is my town on it" is the question a
+                warning is actually being read to answer. */}
+            {openAreas.length > 0 && (
+              <>
+                <dt>
+                  {t("warnings.sheet.areas")}
+                  {open.areas != null && ` (${open.areas}/${result.areaCount})`}
+                </dt>
+                <dd>{openAreas.join("、")}</dd>
+              </>
+            )}
+            {result.issuedAt && (
+              <>
+                <dt>{t("warnings.sheet.issued")}</dt>
+                <dd>
+                  <time dateTime={result.issuedAt}>
+                    {new Date(result.issuedAt).toLocaleString(i18n.language, {
+                      dateStyle: "long",
+                      timeStyle: "short",
+                    })}
+                  </time>
+                </dd>
+              </>
+            )}
+          </dl>
+        </Modal>
+      )}
     </Card>
   );
 }

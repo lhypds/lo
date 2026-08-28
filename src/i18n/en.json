@@ -113,6 +113,12 @@
     "level": "Level {{level}}",
     "window": "Outlook {{from}} – {{to}}",
     "windowOpen": "Outlook from {{from}}",
+    "sheet": {
+      "severity": "In force",
+      "outlook": "Outlook",
+      "areas": "Areas covered",
+      "issued": "Issued"
+    },
     "severity": {
       "emergency": "Emergency warning",
       "urgent": "Danger warning",
@@ -143,6 +149,14 @@
       "recordRain": "Record rainfall",
       "heat": "Heatstroke"
     }
+  },
+  "reader": {
+    "title": "Article",
+    "open": "Open",
+    "loading": "Reading the story",
+    "unavailable": "This one could not be read here — the page itself is a tap away",
+    "paywalled": "The rest of this story is behind the publisher's paywall.",
+    "partial": "Only the opening of this story could be read."
   },
   "trends": {
     "title": "Trends",

@@ -113,6 +113,12 @@
     "level": "レベル{{level}}",
     "window": "推移 {{from}}〜{{to}}",
     "windowOpen": "推移 {{from}}〜",
+    "sheet": {
+      "severity": "発表中",
+      "outlook": "見通し",
+      "areas": "対象地域",
+      "issued": "発表時刻"
+    },
     "severity": {
       "emergency": "特別警報",
       "urgent": "危険警報",
@@ -143,6 +149,14 @@
       "recordRain": "記録的短時間大雨",
       "heat": "熱中症"
     }
+  },
+  "reader": {
+    "title": "記事",
+    "open": "開く",
+    "loading": "本文を読み込んでいます",
+    "unavailable": "この記事はここでは読めません — 元のページは上のリンクから",
+    "paywalled": "この続きは配信元の有料記事です。",
+    "partial": "この記事は冒頭のみ取得できました。"
   },
   "trends": {
     "title": "トレンド",

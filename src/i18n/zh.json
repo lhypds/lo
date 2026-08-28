@@ -113,6 +113,12 @@
     "level": "等级{{level}}",
     "window": "推移 {{from}}–{{to}}",
     "windowOpen": "推移 {{from}} 起",
+    "sheet": {
+      "severity": "当前等级",
+      "outlook": "预计时段",
+      "areas": "覆盖区域",
+      "issued": "发布时间"
+    },
     "severity": {
       "emergency": "特别警报",
       "urgent": "危险警报",
@@ -143,6 +149,14 @@
       "recordRain": "短时强降雨",
       "heat": "中暑"
     }
+  },
+  "reader": {
+    "title": "文章",
+    "open": "打开",
+    "loading": "正在读取全文",
+    "unavailable": "这篇无法在此阅读 — 可点击上方打开原页面",
+    "paywalled": "全文需在原站订阅后阅读。",
+    "partial": "仅能读取到这篇的开头部分。"
   },
   "trends": {
     "title": "趋势",

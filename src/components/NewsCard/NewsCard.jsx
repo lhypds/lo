@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
-import { Card, Skeleton } from "../../ui/index.js";
+import { Card, PageModal, Skeleton, sheetLink } from "../../ui/index.js";
 import { LARGE, SMALL, TALL, useCardSize } from "../../utils/cards.js";
 import { formatDistance, relativeTime } from "../../utils/format.js";
 import CardSize from "../CardSize/index.js";
@@ -38,6 +38,9 @@ export default function NewsCard() {
   // would show "nothing to report" for the frame in between — a card that
   // answers before it has asked.
   const [loading, setLoading] = useState(() => Boolean(coords));
+  // The story the reader is on, read in a sheet over the dashboard rather than
+  // in a tab that takes the dashboard's place. See ui/PageModal.
+  const [reading, setReading] = useState(null);
   const requestRef = useRef(0);
 
   const key = coordKey(coords);
@@ -85,7 +88,15 @@ export default function NewsCard() {
       <ul className={styles.list}>
         {items.map((item) => (
           <li key={item.url}>
-            <a href={item.url} target="_blank" rel="noreferrer noopener" className={styles.item}>
+            {/* A story opens into its own words; a place opens Wikipedia. The
+                fallback rows are not news and lo keeps no reading for them —
+                and unlike a newspaper, Wikipedia is a page worth arriving at. */}
+            <a
+              {...(item.kind === "place"
+                ? { href: item.url, target: "_blank", rel: "noreferrer noopener" }
+                : sheetLink(item.url, () => setReading(item)))}
+              className={styles.item}
+            >
               <span className={styles.itemTitle}>{item.title}</span>
               <span className={styles.itemMeta}>
                 <span className={styles.source}>{item.source}</span>
@@ -117,6 +128,14 @@ export default function NewsCard() {
       flush
     >
       <div className={styles.scroll}>{body}</div>
+      <PageModal
+        url={reading?.url}
+        title={reading?.title}
+        source={reading?.source}
+        time={reading?.time}
+        kind="news"
+        onClose={() => setReading(null)}
+      />
     </Card>
   );
 }

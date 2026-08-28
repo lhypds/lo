@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
-import { Card, Skeleton } from "../../ui/index.js";
+import { Card, PageModal, Skeleton, sheetLink } from "../../ui/index.js";
 import { LARGE, SMALL, TALL, useCardSize } from "../../utils/cards.js";
 import { relativeTime } from "../../utils/format.js";
 import CardSize from "../CardSize/index.js";
@@ -35,6 +35,8 @@ export default function EventsCard() {
   // the request below is as good as sent, and starting at false would show
   // "nothing on" for the frame in between — a card that answers before it asks.
   const [loading, setLoading] = useState(() => Boolean(coords));
+  // The listing the reader is on, read over the dashboard. See ui/PageModal.
+  const [reading, setReading] = useState(null);
   const requestRef = useRef(0);
 
   const key = coordKey(coords);
@@ -78,7 +80,7 @@ export default function EventsCard() {
       <ul className={styles.list}>
         {items.map((item) => (
           <li key={item.url}>
-            <a href={item.url} target="_blank" rel="noreferrer noopener" className={styles.item}>
+            <a {...sheetLink(item.url, () => setReading(item))} className={styles.item}>
               <span className={styles.itemTitle}>{item.title}</span>
               <span className={styles.itemMeta}>
                 <span className={styles.source}>{item.source}</span>
@@ -103,6 +105,14 @@ export default function EventsCard() {
       flush
     >
       <div className={styles.scroll}>{body}</div>
+      <PageModal
+        url={reading?.url}
+        title={reading?.title}
+        source={reading?.source}
+        time={reading?.time}
+        kind="event"
+        onClose={() => setReading(null)}
+      />
     </Card>
   );
 }

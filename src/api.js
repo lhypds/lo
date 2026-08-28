@@ -131,6 +131,19 @@ export const getLocal = (coords) => request(`/api/local?${geoQuery(coords)}`);
 export const getNearby = (coords) => request(`/api/nearby?${geoQuery(coords)}`);
 export const getEvents = (coords) => request(`/api/events?${geoQuery(coords)}`);
 export const getTrends = (coords) => request(`/api/trends?${geoQuery(coords)}`);
+
+// The words behind a headline, asked for by the row's own link rather than by
+// the id the list came back with. The row carries the id as a hint — whether
+// there is a reading waiting — but a reader who presses within seconds of the
+// list arriving can beat the server to the story, and the link is what lets it
+// go and read one on the spot instead of answering "not yet".
+export const getArticle = ({ url, title, source, kind }) => {
+  const query = new URLSearchParams({ link: url });
+  if (title) query.set("title", title);
+  if (source) query.set("source", source);
+  if (kind) query.set("kind", kind);
+  return request(`/api/articles?${query}`);
+};
 // The one reading that does not take the interface language: Yahoo answers in
 // Japanese, and the words the card can translate it translates itself.
 export const getWarnings = ({ latitude, longitude }) =>

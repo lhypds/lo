@@ -1,0 +1,76 @@
+/* A column of running text, not a page of it: a story set the full width of a
+   1100px sheet is a story nobody finishes, so the measure is capped at the
+   length an eye tracks comfortably and centred in whatever room is left. */
+.article {
+  max-width: 66ch;
+  margin: 0 auto;
+  padding: 4px 0 24px;
+}
+
+/* The story's own title, at the top of the story rather than in the sheet's top
+   bar. It gets what a headline needs and a label bar cannot give it: as many
+   lines as the sentence takes, at a size that says this is the heading of what
+   is underneath it. */
+.headline {
+  margin: 0 0 8px;
+  font-family: var(--display);
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.when {
+  display: block;
+  margin-bottom: 20px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.paragraph {
+  margin: 0 0 14px;
+  font-size: 14px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.paragraph:last-child {
+  margin-bottom: 0;
+}
+
+/* What the sheet has to say about itself rather than about the story: that the
+   rest is behind a paywall, or that nothing came back at all. Set apart from the
+   text above it, because it is lo talking and the paragraphs are not. */
+.note {
+  margin: 20px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+/* The way through to the original, in the sheet's top bar. The headline beside
+   it takes the slack, so this lands against the close button and stays there
+   whatever the headline's length — a reader who wants the real page should not
+   have to find the link somewhere new each time the sheet opens. A masthead can
+   be long too, so it is capped and given up to the ellipsis before the headline
+   is. */
+.away {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 40%;
+  padding: 2px 4px;
+  font-size: 12px;
+  color: var(--muted);
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.away:hover {
+  color: var(--ink);
+}

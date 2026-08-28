@@ -179,6 +179,45 @@ db.exec(`
   -- exchange read newest first is one read backwards. The same index answers the
   -- count on the preview.
   CREATE INDEX IF NOT EXISTS comments_post_idx ON comments(post_id, created_at);
+
+  -- What lo has read of a story it put on the dashboard. The words themselves
+  -- are not here: they are a document, read whole by the one reader who opened
+  -- the row, and they live one JSON per article under data/articles (see
+  -- articles.js). What is here is what a list needs — a headline, the first
+  -- couple of sentences, when it was published — asked for twenty at a time and
+  -- sorted, which is the shape SQLite is for.
+  --
+  -- The id is a digest of the address the *feed* gave — the opaque Google link
+  -- the card is holding — rather than of the publisher's. That is the wrong way
+  -- round for identity and the right way round for use: the card has the feed
+  -- link and nothing else, so hashing it means a row can say "I have the reading
+  -- for this one" without a lookup table or a resolve to find out. The cost is
+  -- that a story carried by two feeds is kept twice, which is a few kilobytes.
+  CREATE TABLE IF NOT EXISTS articles (
+    id TEXT PRIMARY KEY,
+    -- Which card it came off: news or events. Warnings keep no article — the
+    -- bulletin behind them is a table lo already parses, not prose.
+    kind TEXT NOT NULL,
+    -- The address the feed gave, which is what the id above is a digest of.
+    link TEXT NOT NULL,
+    -- The publisher's own address, which the one above resolves to and which is
+    -- the one a reader is offered when they want the page itself.
+    url TEXT NOT NULL,
+    title TEXT,
+    source TEXT,
+    preview TEXT,
+    published_at TEXT,
+    -- How much was actually got. Kept because it is the difference between a
+    -- story and a paywall's opening paragraph, and the sheet says which it has.
+    chars INTEGER NOT NULL DEFAULT 0,
+    partial INTEGER NOT NULL DEFAULT 0,
+    fetched_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+
+  -- Newest first within a card, which is the only way this table is ever read
+  -- as a list; the primary key answers the other question, which is "do I
+  -- already have this one".
+  CREATE INDEX IF NOT EXISTS articles_kind_idx ON articles(kind, published_at DESC);
 `);
 
 // The account grew a profile after the first accounts were opened, so the
@@ -963,3 +1002,48 @@ export function getOtherPositions(userId, since, limit = 200) {
   return selectOtherPositions.all(userId, since, limit);
 }
 
+
+/* ---------------------------------------------------------------- articles -- */
+
+// Written once per story ever, so the conflict clause is not a race so much as
+// the second card asking for a story the first one already read — the newer
+// reading wins, because a page fetched again is a page that may have grown its
+// second half since (a paywall lifted, a wire story filled in).
+const upsertArticle = db.prepare(`
+  INSERT INTO articles (id, kind, link, url, title, source, preview, published_at, chars, partial, fetched_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  ON CONFLICT(id) DO UPDATE SET
+    kind = excluded.kind,
+    url = excluded.url,
+    title = excluded.title,
+    source = excluded.source,
+    preview = excluded.preview,
+    published_at = excluded.published_at,
+    chars = excluded.chars,
+    partial = excluded.partial,
+    fetched_at = excluded.fetched_at
+`);
+
+const selectArticle = db.prepare(`SELECT * FROM articles WHERE id = ?`);
+
+export function rememberArticle(article) {
+  upsertArticle.run(
+    article.id,
+    article.kind,
+    article.link,
+    article.url,
+    article.title ?? null,
+    article.source ?? null,
+    article.preview ?? null,
+    article.published_at ?? null,
+    article.chars ?? 0,
+    article.partial ?? 0,
+    new Date().toISOString(),
+  );
+  return selectArticle.get(article.id);
+}
+
+// The row only — the words are a file, and nothing here reads them.
+export function findArticle(id) {
+  return selectArticle.get(id) ?? null;
+}

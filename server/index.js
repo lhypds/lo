@@ -51,6 +51,7 @@ import {
   lookupWeather,
 } from "./geo.js";
 import { MAX_IMAGE_BYTES, imageFile, isStoredName, storeImage } from "./images.js";
+import { articleId, harvest, readStoredArticle } from "./articles.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "..");
@@ -625,6 +626,39 @@ app.get("/api/events", async (req, res, next) => {
     res.json(await lookupEvents(coords.latitude, coords.longitude, requestedLang(req)));
   } catch (error) {
     if (error.name === "TimeoutError") return res.status(504).json({ error: "Timed out looking up events" });
+    next(error);
+  }
+});
+
+// The reading behind one row, asked for by the row's own link, and the only
+// place a story is ever fetched. The first reader to press a row waits about a
+// second for it — Google's address has to be resolved before the publisher can
+// be asked, which is two round trips before the page itself — and that wait is
+// why the sheet has something to say while it opens. Everyone after them gets a
+// file read, because the answer was kept.
+//
+// Nothing here is behind a session: it is the same public news the card is,
+// already fetched and already sitting on the dashboard. What it will not do is
+// fetch an arbitrary address on request — that would make lo a proxy for
+// anything — so the link must be one of the feeds' own (see harvest).
+app.get("/api/articles", async (req, res, next) => {
+  const link = typeof req.query.link === "string" ? req.query.link : "";
+  if (!link) return res.status(400).json({ error: "Invalid article" });
+  try {
+    const stored = await readStoredArticle(articleId(link));
+    if (stored) return res.json(stored);
+
+    const row = await harvest({
+      url: link,
+      title: typeof req.query.title === "string" ? req.query.title : null,
+      source: typeof req.query.source === "string" ? req.query.source : null,
+      time: null,
+      kind: req.query.kind === "event" ? "event" : "news",
+    });
+    const fetched = row ? await readStoredArticle(row.id) : null;
+    if (!fetched) return res.status(404).json({ error: "No reading stored for this one" });
+    res.json(fetched);
+  } catch (error) {
     next(error);
   }
 });
