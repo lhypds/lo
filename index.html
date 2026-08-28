@@ -22,14 +22,53 @@
     <title>lo</title>
     <script>
       (function () {
+        var lastHeight = window.innerHeight;
+
         function setVh() {
           document.documentElement.style.setProperty("--vh", window.innerHeight * 0.01 + "px");
         }
+
+        // The one thing a window that has just shortened does not do for itself.
+        // A field is revealed when it is focused, and the room the page has is
+        // taken away after that — by the keys where the browser hands them their
+        // own space (interactive-widget above), and by the Even frame, which sizes
+        // this page to whatever is left above them. A sheet capped at 90vh and
+        // scrolling inside shortens with it and keeps the field where it was,
+        // which by then is under its own fold, and nothing reveals it a second
+        // time. So it is revealed again here.
+        //
+        // Only on the way down, and only ever as far as it has to go: `nearest`
+        // leaves a field that is still in sight alone, which is most of them, and
+        // brings the rest just clear of the edge rather than hauling the sheet
+        // about. Growing back when the keys go away is not something to move
+        // anybody's page for, hence the compare.
+        function keepFocusVisible() {
+          var height = window.innerHeight;
+          var shorter = height < lastHeight;
+          lastHeight = height;
+          if (!shorter) return;
+          var el = document.activeElement;
+          if (!el) return;
+          var tag = el.tagName;
+          if (tag !== "INPUT" && tag !== "TEXTAREA" && tag !== "SELECT" && !el.isContentEditable) return;
+          // After the layout the resize asked for, not in the middle of it: the
+          // keys animate, this fires the whole way up, and the answer wanted is
+          // where the field is once the page is the size it is being told about.
+          requestAnimationFrame(function () {
+            el.scrollIntoView({ block: "nearest", behavior: "auto" });
+          });
+        }
+
+        function onViewport() {
+          setVh();
+          keepFocusVisible();
+        }
+
         setVh();
-        window.addEventListener("resize", setVh);
-        window.addEventListener("orientationchange", setVh);
+        window.addEventListener("resize", onViewport);
+        window.addEventListener("orientationchange", onViewport);
         if (window.visualViewport) {
-          window.visualViewport.addEventListener("resize", setVh);
+          window.visualViewport.addEventListener("resize", onViewport);
         }
       })();
     </script>
