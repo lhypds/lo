@@ -47,9 +47,12 @@
     "username": "用户名",
     "joined": "注册于",
     "marks": "记录数",
-    "location": "定位",
-    "locationOn": "已开启",
-    "locationOff": "已关闭",
+    "posts": "动态数",
+    "discoverable": "可被发现",
+    "discoverableOn": "已开启",
+    "discoverableOff": "已关闭",
+    "hideMe": "隐藏我",
+    "showMe": "显示我",
     "logout": "退出登录"
   },
   "gate": {

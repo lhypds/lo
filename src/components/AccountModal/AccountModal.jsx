@@ -3,9 +3,7 @@ import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
 import { Link, Modal, useNavigate } from "../../ui/index.js";
 import { formatUsername } from "../../utils/format.js";
-import { isLocationEnabled } from "../../utils/location.js";
 import { useAuth } from "../AuthProvider/index.js";
-import { useHere } from "../LocationProvider/index.js";
 import ProfileForm from "../ProfileForm/index.js";
 import styles from "./account.module.css";
 
@@ -29,9 +27,16 @@ import styles from "./account.module.css";
 export default function AccountModal({ isOpen, onClose }) {
   const { t, i18n } = useTranslation();
   const { user, updateUser, logout } = useAuth();
-  const { status } = useHere();
   const navigate = useNavigate();
   const [markCount, setMarkCount] = useState(null);
+  const [postCount, setPostCount] = useState(null);
+  // Held here as well as on the account, so the line answers the press rather
+  // than the round trip: the switch is the reader's own and there is nothing for
+  // them to be told about it that they did not just say. Null until the sheet
+  // has read the account, which is what keeps it from drawing "on" at a reader
+  // who is hidden.
+  const [discoverable, setDiscoverable] = useState(null);
+  const [saving, setSaving] = useState(false);
 
   // Asked again each time the sheet opens rather than once on mount: the top bar
   // this hangs off is on every page and never unmounts, so a count read when the
@@ -46,6 +51,8 @@ export default function AccountModal({ isOpen, onClose }) {
       .then((data) => {
         if (cancelled) return;
         setMarkCount(data.markCount);
+        setPostCount(data.postCount);
+        setDiscoverable(data.user.discoverable !== false);
         updateUser(data.user);
       })
       .catch(() => {});
@@ -54,7 +61,24 @@ export default function AccountModal({ isOpen, onClose }) {
     };
   }, [isOpen, updateUser]);
 
-  const locationOn = status === "ready" || status === "locating" || isLocationEnabled();
+  // Straight to the new answer and back if lo will not have it. A switch that
+  // waited on the round trip would sit on the old word for as long as the
+  // network took, which on the one control here whose whole point is "not right
+  // now" is the wrong way round.
+  async function toggleDiscoverable() {
+    if (discoverable === null || saving) return;
+    const wanted = !discoverable;
+    setDiscoverable(wanted);
+    setSaving(true);
+    try {
+      const answer = await api.setDiscoverable(wanted);
+      setDiscoverable(answer.discoverable);
+    } catch {
+      setDiscoverable(!wanted);
+    } finally {
+      setSaving(false);
+    }
+  }
 
   async function handleLogout() {
     await logout();
@@ -92,8 +116,45 @@ export default function AccountModal({ isOpen, onClose }) {
             <dd>{markCount ?? "—"}</dd>
           </div>
           <div>
-            <dt>{t("account.location")}</dt>
-            <dd>{locationOn ? t("account.locationOn") : t("account.locationOff")}</dd>
+            <dt>{t("account.posts")}</dt>
+            <dd>{postCount ?? "—"}</dd>
+          </div>
+          {/* The one line of the record that can be argued with. Where lo has
+              your position was read and never set — it is turned on by being
+              asked for and off in the browser's own settings, which is the only
+              place it can be turned off for good — so the line said nothing the
+              reader could act on and is now the one that can: whether they are a
+              dot on everybody else's map.
+
+              The state is the reading and the way to change it is in brackets
+              after it, which is the shape lo uses wherever a fact has a verb
+              attached (see the mark line in MarkButton). Not a checkbox: the
+              answer is a word either way, and a word that changes reads better
+              in this column of words than a box that has to be looked at to be
+              read. */}
+          <div>
+            <dt>{t("account.discoverable")}</dt>
+            <dd>
+              {discoverable === null
+                ? "—"
+                : discoverable
+                  ? t("account.discoverableOn")
+                  : t("account.discoverableOff")}
+              {discoverable !== null && (
+                <>
+                  {" ("}
+                  <button
+                    type="button"
+                    className={styles.action}
+                    onClick={toggleDiscoverable}
+                    disabled={saving}
+                  >
+                    {discoverable ? t("account.hideMe") : t("account.showMe")}
+                  </button>
+                  {")"}
+                </>
+              )}
+            </dd>
           </div>
         </dl>
 

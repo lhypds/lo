@@ -47,6 +47,17 @@ db.exec(`
     -- to keep it rather than to know anything about it. Parsed on the way out of
     -- this file, so nothing above ever sees the string.
     links TEXT,
+    -- Whether this account is one of the dots on everybody else's map. On by
+    -- default, because a location dashboard whose people card is empty until
+    -- each reader has been into a sheet and found a switch is a card that looks
+    -- broken rather than private.
+    --
+    -- It gates the reading and not the writing: a hidden account still files
+    -- where it is, because it is still asking who else is about and that trade
+    -- is one round trip (see PUT /api/position). What changes is that nobody
+    -- else's answer has it in (see selectOtherPositions). Kept off the public
+    -- profile on purpose — that somebody is hiding is not a thing to publish.
+    discoverable INTEGER NOT NULL DEFAULT 1,
     created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
   );
 
@@ -248,6 +259,14 @@ for (const column of [
   if (!userColumns.has(column)) db.exec(`ALTER TABLE users ADD COLUMN ${column} TEXT`);
 }
 
+// Being findable arrived after the first accounts were opened, and it is the one
+// added column that is not TEXT — so it is added here rather than in the loop
+// above. The default is what every account that predates the switch gets, which
+// is the answer they have been giving all along.
+if (!userColumns.has("discoverable")) {
+  db.exec(`ALTER TABLE users ADD COLUMN discoverable INTEGER NOT NULL DEFAULT 1`);
+}
+
 // Soft delete arrived after the first messages were sent, so the column is added
 // to a table that may already exist. On a database made by the CREATE above it
 // is already there and this does nothing.
@@ -274,8 +293,11 @@ const PROFILE_COLUMNS = `
   u.wechat
 `;
 
+// The signed-in reader's own row, which is the public profile plus the two
+// things only they are told: their id, and whether they are on everybody else's
+// map. Deliberately not in PROFILE_COLUMNS — see the note on the column.
 const selectUserByName = db.prepare(`
-  SELECT u.id, ${PROFILE_COLUMNS}
+  SELECT u.id, u.discoverable, ${PROFILE_COLUMNS}
   FROM users u
   WHERE u.username = ?
 `);
@@ -347,6 +369,25 @@ const countMarksForUser = db.prepare(`
   SELECT COUNT(*) AS count
   FROM marks
   WHERE user_id = ?
+`);
+
+// The other half of what an account has left behind. Two statements rather than
+// one with a join, because they count two unrelated tables and the account sheet
+// draws them as two figures — a mark is private and a post is not, which is the
+// whole difference between them and is worth reading as two lines.
+const countPostsForUser = db.prepare(`
+  SELECT COUNT(*) AS count
+  FROM posts
+  WHERE user_id = ?
+`);
+
+// Whether this account is on everybody else's map. Written as 1 and 0 because
+// SQLite has no boolean; turned back into one on the way out of this file, so
+// nothing above ever compares a number (see getUser).
+const updateDiscoverable = db.prepare(`
+  UPDATE users
+  SET discoverable = ?
+  WHERE id = ?
 `);
 
 const insertMark = db.prepare(`
@@ -706,7 +747,7 @@ const selectOtherPositions = db.prepare(`
   SELECT u.username, p.latitude, p.longitude, p.accuracy, p.updated_at AS time
   FROM positions p
   JOIN users u ON u.id = p.user_id
-  WHERE p.user_id <> ? AND p.updated_at >= ?
+  WHERE p.user_id <> ? AND p.updated_at >= ? AND u.discoverable = 1
   ORDER BY p.updated_at DESC
   LIMIT ?
 `);
@@ -727,8 +768,12 @@ function withLinks(row) {
   return { ...row, links };
 }
 
+// The signed-in reader's own row. SQLite answers the switch in 1 and 0, and
+// every reader of it above wants a yes or a no — the same turn withSide takes on
+// a message, and for the same reason.
 export function getUser(username) {
-  return withLinks(selectUserByName.get(username) ?? null);
+  const row = withLinks(selectUserByName.get(username) ?? null);
+  return row ? { ...row, discoverable: row.discoverable === 1 } : null;
 }
 
 export function getProfile(username) {
@@ -796,6 +841,15 @@ export function setLinkKey(userId, key) {
 
 export function countMarks(userId) {
   return countMarksForUser.get(userId)?.count ?? 0;
+}
+
+export function countPosts(userId) {
+  return countPostsForUser.get(userId)?.count ?? 0;
+}
+
+export function setDiscoverable(userId, on) {
+  updateDiscoverable.run(on ? 1 : 0, userId);
+  return on;
 }
 
 export function createMark(userId, { time, latitude, longitude, accuracy, label, place }) {

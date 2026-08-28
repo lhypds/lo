@@ -44,6 +44,26 @@
   overflow-wrap: anywhere;
 }
 
+/* A verb sitting inside a reading, in brackets after it: the same control the
+   mark line wears, and set the same way — a button that has given up every mark
+   of being one except the underline, so it reads as a word in the sentence
+   rather than as a thing bolted to the end of it. */
+.action {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.action:disabled {
+  color: var(--muted);
+  cursor: default;
+}
+
 .section {
   display: flex;
   flex-direction: column;

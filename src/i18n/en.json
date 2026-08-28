@@ -47,9 +47,12 @@
     "username": "Username",
     "joined": "Joined",
     "marks": "Marks",
-    "location": "Location",
-    "locationOn": "On",
-    "locationOff": "Off",
+    "posts": "Posts",
+    "discoverable": "Discoverable",
+    "discoverableOn": "On",
+    "discoverableOff": "Off",
+    "hideMe": "hide me",
+    "showMe": "show me",
     "logout": "Logout"
   },
   "gate": {

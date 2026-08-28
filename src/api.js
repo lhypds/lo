@@ -110,6 +110,13 @@ export const getMe = () => request("/api/me");
 // one rather than an untouched one.
 export const updateProfile = (profile) =>
   request("/api/me", { method: "PATCH", body: JSON.stringify(profile) });
+// Whether you are one of the dots on everybody else's map. Its own address
+// rather than a field of the profile above, because the profile is sent whole
+// and an emptied field there means "cleared" — a switch has no such state, and
+// putting it in that body would make every save of a bio an answer about this
+// too.
+export const setDiscoverable = (discoverable) =>
+  request("/api/me/discoverable", { method: "PUT", body: JSON.stringify({ discoverable }) });
 // Somebody else: who they are, how to reach them, and what they have left lying
 // around. One request, because a page about a person answers all three at once.
 export const getUser = (username) => request(`/api/users/${encodeURIComponent(username)}`);

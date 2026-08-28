@@ -47,9 +47,12 @@
     "username": "ユーザー名",
     "joined": "登録日",
     "marks": "記録数",
-    "location": "位置情報",
-    "locationOn": "オン",
-    "locationOff": "オフ",
+    "posts": "投稿数",
+    "discoverable": "表示",
+    "discoverableOn": "オン",
+    "discoverableOff": "オフ",
+    "hideMe": "非表示にする",
+    "showMe": "表示する",
     "logout": "ログアウト"
   },
   "gate": {

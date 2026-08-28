@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import express from "express";
 import {
   countMarks,
+  countPosts,
   countUnread,
   createComment,
   createMark,
@@ -35,6 +36,7 @@ import {
   readConversation,
   renameMark,
   savePosition,
+  setDiscoverable,
   setLinkKey,
   setPassword,
   unfollowUser,
@@ -364,7 +366,28 @@ app.post("/api/users", (req, res) => {
 });
 
 app.get("/api/me", requireSession, (req, res) => {
-  res.json({ user: req.user, markCount: countMarks(req.user.id) });
+  res.json({
+    user: req.user,
+    markCount: countMarks(req.user.id),
+    postCount: countPosts(req.user.id),
+  });
+});
+
+// Whether this account is one of the dots on everybody else's map.
+//
+// It gates who may read the position, not whether one is filed: a hidden reader
+// is still asking who else is about, and asking is the same round trip as
+// telling (see PUT /api/position). So nothing here touches the positions table —
+// the switch is read where the list is built, and taking it off makes the reader
+// disappear from everybody else's next minute rather than from lo's records.
+//
+// Their own dot stays where it was, which is the honest drawing: the map is
+// where *they* are, and they have not moved.
+app.put("/api/me/discoverable", requireSession, (req, res) => {
+  const wanted = req.body?.discoverable;
+  if (typeof wanted !== "boolean") return res.status(400).json({ error: "Invalid setting" });
+  setDiscoverable(req.user.id, wanted);
+  res.json({ discoverable: wanted });
 });
 
 /* ----------------------------------------------------------------- profile */
