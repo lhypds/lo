@@ -49,7 +49,13 @@ export default function PeopleCard() {
   // than the same fix would be after a round trip through the server that only
   // hears about it once a minute. So the row carries no distance and no age —
   // both are zero, and "0.0 m · just now" would be three ways of saying "here".
-  const me = user && coords ? { username: user.username } : null;
+  //
+  // Unless the reader has taken themselves off the list (see the account sheet),
+  // in which case the row goes with everybody else's copy of it. The switch says
+  // "do not show me among the people here", and a panel that went on showing the
+  // one name it drew itself would be answering a different question from the one
+  // that was asked.
+  const me = user && coords && user.discoverable !== false ? { username: user.username } : null;
 
   return (
     <Card
@@ -104,12 +110,23 @@ export default function PeopleCard() {
         </ul>
         {/* Bars under your own row until the first trade comes back, because a
             panel showing one name could be read as one that failed to load the
-            rest. Nothing after that: the list is never empty now that you are
-            on it, and a sentence saying nobody is here under a row with your
-            name on it would be the panel arguing with itself. One name and no
-            more is the answer. */}
+            rest. Ruled underneath like the rows they stand in for — but only
+            where there is a row above them to continue; hidden, they are the
+            whole of the tile and a line under them would close off nothing. */}
         {rows.length === 0 && loadingPeople && (
-          <Skeleton rows={3} lines={1} label={t("common.loading")} className={styles.waiting} />
+          <Skeleton
+            rows={3}
+            lines={1}
+            label={t("common.loading")}
+            className={me ? styles.waiting : undefined}
+          />
+        )}
+        {/* And in words once the trade is back and there is nobody. Nothing to
+            say this while your own row stands — a sentence saying nobody is here
+            under a name would be the panel arguing with itself — so it is the
+            answer only to a reader who has taken that row off. */}
+        {rows.length === 0 && !loadingPeople && !me && (
+          <p className={styles.empty}>{t("people.empty")}</p>
         )}
       </div>
     </Card>

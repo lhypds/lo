@@ -264,7 +264,8 @@
   "people": {
     "nearby": "Nearby people",
     "short": "People",
-    "you": "you"
+    "you": "you",
+    "empty": "Nobody else around here"
   },
   "profile": {
     "title": "Profile",

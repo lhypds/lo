@@ -880,9 +880,14 @@ export function setPassword(userId, password) {
 // rather than handed to it: an account that has never minted one holds SQL's
 // null and would match nothing anyway, but a link with no key after the # is a
 // question not worth asking the database at all.
+// The key names the account and getUser reads it, so what a link hands back is
+// the same row a password would have: the switch on it included, which the
+// client draws its own presence off. A row short of that column would sign a
+// hidden reader in and put them back on their own list until the next reload.
 export function getUserByLinkKey(key) {
   if (!key) return null;
-  return selectUserByLinkKey.get(key) ?? null;
+  const found = selectUserByLinkKey.get(key);
+  return found ? getUser(found.username) : null;
 }
 
 // What the account's own sheet shows, and the one reader of this column that is

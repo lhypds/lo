@@ -264,7 +264,8 @@
   "people": {
     "nearby": "附近的人",
     "short": "附近的人",
-    "you": "我"
+    "you": "我",
+    "empty": "附近没有其他人"
   },
   "profile": {
     "title": "个人资料",

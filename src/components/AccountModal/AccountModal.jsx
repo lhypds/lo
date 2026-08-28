@@ -65,16 +65,23 @@ export default function AccountModal({ isOpen, onClose }) {
   // waited on the round trip would sit on the old word for as long as the
   // network took, which on the one control here whose whole point is "not right
   // now" is the wrong way round.
+  // The account goes with it, and not only this sheet's copy: the dashboard's
+  // people panel draws the reader's own row off the same switch, and a session
+  // still holding the old answer would leave that row standing until the next
+  // reload — the sheet saying "off" over a page that still has you on it.
   async function toggleDiscoverable() {
     if (discoverable === null || saving) return;
     const wanted = !discoverable;
     setDiscoverable(wanted);
+    updateUser({ ...user, discoverable: wanted });
     setSaving(true);
     try {
       const answer = await api.setDiscoverable(wanted);
       setDiscoverable(answer.discoverable);
+      updateUser({ ...user, discoverable: answer.discoverable });
     } catch {
       setDiscoverable(!wanted);
+      updateUser({ ...user, discoverable: !wanted });
     } finally {
       setSaving(false);
     }
