@@ -21,7 +21,6 @@
   "auth": {
     "tagline": "いま、あなたのいる場所。",
     "username": "ユーザー名",
-    "usernameHint": "lo でのあなたの名前。32 文字まで。",
     "usernameNoLetter": "ユーザー名には文字を 1 つ以上含めてください",
     "next": "次へ",
     "password": "パスワード",

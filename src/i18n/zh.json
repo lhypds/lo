@@ -21,7 +21,6 @@
   "auth": {
     "tagline": "此刻，你在哪里。",
     "username": "用户名",
-    "usernameHint": "你在 lo 里的名字，最多 32 个字符。",
     "usernameNoLetter": "用户名需包含至少一个字母",
     "next": "下一步",
     "password": "密码",

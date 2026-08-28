@@ -21,7 +21,6 @@
   "auth": {
     "tagline": "Where you are, right now.",
     "username": "Username",
-    "usernameHint": "The name you go by in lo, up to 32 characters.",
     "usernameNoLetter": "A username needs at least one letter",
     "next": "Next",
     "password": "Password",
