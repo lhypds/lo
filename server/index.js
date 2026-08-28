@@ -33,6 +33,7 @@ import {
   getThreads,
   getUser,
   getUserByLinkKey,
+  readComments,
   readConversation,
   recordLogin,
   renameMark,
@@ -921,10 +922,17 @@ function commentTarget(req, res) {
 
 // Everyone's, like the post they hang off: what was said back about something
 // left on the ground is part of what a passer-by finds there.
+//
+// And asking for it is what marks it read, exactly as asking for a conversation
+// is (see /api/messages/:username below): a column somebody has just been shown
+// is one they have seen, and lo has no button anywhere for saying so. The unread
+// figure comes back already counted down by this reading, so the dot in the bar
+// goes out as the words arrive rather than on the bar's next beat.
 app.get("/api/posts/:postId/comments", requireSession, (req, res) => {
   const post = commentTarget(req, res);
   if (!post) return;
-  res.json({ comments: getComments(post.id, COMMENTS_MAX) });
+  readComments(req.user.id, post.id);
+  res.json({ comments: getComments(post.id, COMMENTS_MAX), unread: countUnread(req.user.id) });
 });
 
 // Under anybody's post, including your own: a writer answering the people who

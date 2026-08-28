@@ -37,6 +37,19 @@ const AVATAR_QUALITY = 0.75;
 // arrives.
 const AVATAR_BOX = 64;
 
+// And what the bio beside it opens at, which is the whole of that column: the
+// frame, the 6px of air under it, and the 22px the button to take a picture down
+// stands in — 12px of word with 4px over and under it inside a hairline rule (see
+// .profile-small and .profile-avatar-clear, which is where those numbers live).
+//
+// Held there whether or not the button is drawn. It comes and goes with the
+// picture, and a bio that grew a row every time a picture arrived and lost it
+// again on Remove would be the one box in this form whose height is somebody
+// else's business. So the column is the taller of its two states always, and the
+// bio is that height: the two boxes start on a line and end on one, and the only
+// thing that moves in here is what the reader moves with the handle.
+const BIO_MIN_HEIGHT = AVATAR_BOX + 6 + 22;
+
 // The half of the account page that can be written to. The list above it is what
 // lo knows about you and cannot be argued with — the name, the day you turned
 // up, how many spots you have kept; this is what you say about yourself, which is
@@ -183,19 +196,23 @@ export default function ProfileForm({ user, onSaved }) {
 
   return (
     <form className="profile-form" onSubmit={submit} autoComplete="off">
-      {/* The picture, first, because it is the one thing on the profile that is
-          read before anything is read. Its name over it and the box under that —
-          the shape every other field in this form has, and the reason this one now
-          has it too: a label standing beside a field is a label the eye has to be
-          told belongs to it, and there is no telling it in a column of fields that
-          all say their name on the line above. Beside the box, the two things there
-          are to do about it — choose a picture, or take the one there down. No drag
-          target and no cropper: a profile picture is a square shown small, and
-          every phone and every desktop already has a picker that does the choosing
-          better than a page can. */}
-      <div className="profile-avatar-field">
-        <span className="profile-label">{t("profile.avatar")}</span>
-        <div className="profile-avatar-row">
+      {/* The picture and the line about yourself, side by side, because they are
+          the one thing on the profile that is read together: a face and the
+          sentence under it is what a reader of /<name> is shown before anything
+          else, and the form may as well be laid out the way the page it writes is.
+          Each keeps its own name on a line of small grey type above it, so the two
+          labels sit on one line and the two boxes start together. */}
+      <div className="profile-identity">
+        {/* The picture, and under it the one thing there is to do about it that
+            pressing the picture cannot do — take the one there down. Choosing is
+            the picture's own press, so the button that used to say so is gone: a
+            frame that is pressed to fill it needs no second control saying the
+            same word, and the empty frame draws a figure that reads as an
+            invitation already. No drag target and no cropper either: a profile
+            picture is a square shown small, and every phone and every desktop
+            already has a picker that does the choosing better than a page can. */}
+        <div className="profile-avatar-field">
+          <span className="profile-label">{t("profile.avatar")}</span>
           {/* A button rather than a label wrapping the input, so the picture itself
               is what is pressed to change it — and so the same press works from the
               frame when there is no picture in it yet. */}
@@ -217,25 +234,28 @@ export default function ProfileForm({ user, onSaved }) {
               </svg>
             )}
           </button>
-          <span className="profile-avatar-buttons">
-            <button
-              type="button"
-              className="profile-small"
-              onClick={() => fileRef.current?.click()}
-              disabled={uploading}
-            >
-              {uploading ? t("profile.avatarWorking") : t("profile.avatarPick")}
-            </button>
-            {/* Only where there is one to take down — this is the one control here
-                that has nothing to do when the frame is empty, and a disabled
-                button beside an empty box would be a second way of saying it. */}
-            {avatarUrl && (
-              <button type="button" className="profile-small" onClick={clearAvatar}>
+          {/* The one line under the picture, which says whichever of the two
+              things is true. While a file is being compressed and sent, the word
+              for that — the frame is disabled and otherwise unchanged, so without
+              this there is nothing on the screen saying why a press does nothing.
+              Otherwise the way to take the picture down, and only where there is
+              one to take: this is the one control here with nothing to do when the
+              frame is empty, and a disabled button under an empty box would be a
+              second way of saying it is empty. */}
+          {uploading ? (
+            <span className="profile-avatar-working">{t("profile.avatarWorking")}</span>
+          ) : (
+            avatarUrl && (
+              <button
+                type="button"
+                className="profile-small profile-avatar-clear"
+                onClick={clearAvatar}
+              >
                 {t("profile.avatarClear")}
               </button>
-            )}
-          </span>
-          {/* Off the page and reached by the buttons beside it: the browser's own
+            )
+          )}
+          {/* Off the page and reached by the frame above it: the browser's own
               file control cannot be made to look like anything else in here. */}
           <input
             ref={fileRef}
@@ -245,27 +265,32 @@ export default function ProfileForm({ user, onSaved }) {
             onChange={pick}
           />
         </div>
-      </div>
 
-      <label>
-        <span className="profile-label">
-          {t("profile.bio")}
-          <span className="profile-count">
-            {fields.bio.length}/{BIO_MAX}
+        <label className="profile-bio-field">
+          <span className="profile-label">
+            {t("profile.bio")}
+            <span className="profile-count">
+              {fields.bio.length}/{BIO_MAX}
+            </span>
           </span>
-        </span>
-        {/* No placeholder: the label above already says what the box is for, and
-            a greyed-out example sentence in it reads as something somebody wrote
-            until it is looked at twice. */}
-        <TextArea
-          className="profile-text"
-          value={fields.bio}
-          onChange={(event) => edit("bio", event.target.value)}
-          maxLength={BIO_MAX}
-          rows={3}
-          minHeight={64}
-        />
-      </label>
+          {/* No placeholder: the label above already says what the box is for, and
+              a greyed-out example sentence in it reads as something somebody wrote
+              until it is looked at twice.
+              Two rows and a floor, which is the house pairing (see the comment
+              sheet, and TextArea itself): the rows work out shorter than the
+              floor, so the floor is what the box opens at and the handle takes it
+              from there. It used to ask for three, which is taller than the floor
+              and made the floor a number that only the drag ever saw. */}
+          <TextArea
+            className="profile-text"
+            value={fields.bio}
+            onChange={(event) => edit("bio", event.target.value)}
+            maxLength={BIO_MAX}
+            rows={2}
+            minHeight={BIO_MIN_HEIGHT}
+          />
+        </label>
+      </div>
 
       {/* An address, and the messenger the language this is being read in
           actually uses — see utils/contacts.js. Nothing here is required: an

@@ -310,6 +310,8 @@
     "waiting": "消息 — {{n}} 条未读",
     "empty": "还没有消息",
     "said": "我：{{body}}",
+    "saidBy": "{{name}}：{{body}}",
+    "onPost": "关于“{{post}}”",
     "emptyThread": "还没有和 {{name}} 说过话",
     "placeholder": "写下回复",
     "send": "发送",

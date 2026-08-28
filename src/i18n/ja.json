@@ -310,6 +310,8 @@
     "waiting": "メッセージ — 未読 {{n}} 件",
     "empty": "メッセージはまだありません",
     "said": "自分：{{body}}",
+    "saidBy": "{{name}}：{{body}}",
+    "onPost": "「{{post}}」について",
     "emptyThread": "{{name}} とのやり取りはまだありません",
     "placeholder": "返信を書く",
     "send": "送信",

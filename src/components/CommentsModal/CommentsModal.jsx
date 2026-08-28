@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
 import { AuthImage, Link, Modal, Skeleton, TextArea } from "../../ui/index.js";
 import { formatUsername, relativeTime } from "../../utils/format.js";
+import { useHere } from "../LocationProvider/index.js";
 import styles from "./comments.module.css";
 
 // The same figure the server holds a comment to, so the count under the box runs
@@ -23,6 +24,11 @@ const BODY_MAX = 300;
 // that opened it is already holding one.
 export default function CommentsModal({ post, onClose, onAdded }) {
   const { t, i18n } = useTranslation();
+  // Opening this column is what reads it — a remark under your post waits in the
+  // same inbox a letter does — and the answer says how much is left waiting
+  // anywhere, so the dot in the top bar goes out as the words arrive rather than
+  // on the next turn of the presence loop.
+  const { noteUnread } = useHere();
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -52,6 +58,7 @@ export default function CommentsModal({ post, onClose, onAdded }) {
       .then((data) => {
         if (cancelled) return;
         setComments(data.comments ?? []);
+        noteUnread?.(data.unread ?? 0);
       })
       .catch((requestError) => {
         if (!cancelled) setError(requestError.message);
@@ -62,7 +69,7 @@ export default function CommentsModal({ post, onClose, onAdded }) {
     return () => {
       cancelled = true;
     };
-  }, [postId]);
+  }, [postId, noteUnread]);
 
   // The end of the column, which is the part being added to: a comment that
   // landed off screen would read as one that had not been submitted.

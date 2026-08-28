@@ -215,6 +215,33 @@ db.exec(`
   -- count on the preview.
   CREATE INDEX IF NOT EXISTS comments_post_idx ON comments(post_id, created_at);
 
+  -- The other way a comment column is read: everything one account has written
+  -- under other people's posts, which is what puts those posts in their inbox
+  -- (see selectPostThreads). The post index above cannot answer it — it is
+  -- filed under the post, and this question comes with a person in hand.
+  CREATE INDEX IF NOT EXISTS comments_user_idx ON comments(user_id, post_id);
+
+  -- When each account last had a post's comment column open in front of them.
+  -- The counterpart of messages.read_at, and a table rather than a column for
+  -- the reason the two differ in kind: a message is addressed, so it is read by
+  -- one person and the stamp belongs on the row — a comment is left in the open,
+  -- read by everybody who comes past, and stamping the row would mean asking
+  -- which of them it was about.
+  --
+  -- One stamp per post rather than one per comment: a column is read down to the
+  -- moment it was opened, so what is unread is what was written after that, and
+  -- a row per comment would be that same fact copied once for every line.
+  --
+  -- Written by whoever opens the column, including a passer-by with nothing in
+  -- it — a row here is what stops their own first comment from arriving in their
+  -- inbox with everything said before it marked as waiting.
+  CREATE TABLE IF NOT EXISTS comment_reads (
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+    read_at TEXT NOT NULL,
+    PRIMARY KEY (user_id, post_id)
+  ) WITHOUT ROWID;
+
   -- What lo has read of a story it put on the dashboard. The words themselves
   -- are not here: they are a document, read whole by the one reader who opened
   -- the row, and they live one JSON per article under data/articles (see
@@ -664,6 +691,91 @@ const countCommentsOnPost = db.prepare(`
   WHERE post_id = ?
 `);
 
+// Opening a column reads it, the same way opening a thread does — so what is
+// kept is the moment, and everything written after it is what is still waiting.
+// Overwritten rather than added to: this is where the reader got to, not a
+// history of their visits.
+const upsertCommentRead = db.prepare(`
+  INSERT INTO comment_reads (user_id, post_id, read_at)
+  VALUES (?, ?, ?)
+  ON CONFLICT(user_id, post_id) DO UPDATE SET read_at = excluded.read_at
+`);
+
+// Which comment columns are this account's business: the posts it left, and the
+// posts it has written under. Two ways into the same conversation — the author
+// of a post is in every exchange beneath it, and somebody who said one thing
+// under a stranger's photo has joined that one.
+//
+// Both readings below join comments to it, so a post with nothing said under it
+// is in neither: a thread with no lines in it is not a thread yet.
+const INVOLVED_POSTS = `
+  WITH involved AS (
+    SELECT id AS post_id FROM posts WHERE user_id = ?
+    UNION
+    SELECT post_id FROM comments WHERE user_id = ?
+  )
+`;
+
+// The other half of an inbox. A row is a post rather than a person, because that
+// is what the exchange is filed under — a comment column has as many voices in
+// it as came past, and the one thing they are all talking about is the post.
+//
+// What it carries is what the row draws: enough of the post to name it (its
+// words, where it was left, its photo), the last thing anybody said under it,
+// and how much of that was said since this reader last looked. The post's own
+// author is not among them — the row is headed by the post, and whose it is, is
+// on the page it opens.
+//
+// `unread` counts everybody else's lines written after the stamp, and all of
+// them where there is no stamp: a column never opened is one where everything
+// said is still waiting. Your own are never in it, for the reason your own
+// messages never are.
+const selectPostThreads = db.prepare(`
+  ${INVOLVED_POSTS},
+  latest AS (
+    SELECT c.post_id, MAX(c.id) AS id
+    FROM comments c
+    JOIN involved i ON i.post_id = c.post_id
+    GROUP BY c.post_id
+  )
+  SELECT
+    p.id AS postId,
+    p.body AS post,
+    p.place,
+    CASE WHEN p.image IS NULL THEN NULL ELSE '/api/images/' || p.image END AS image,
+    c.body,
+    c.created_at AS time,
+    c.user_id = ? AS mine,
+    u.username,
+    (
+      SELECT COUNT(*)
+      FROM comments unread
+      WHERE unread.post_id = p.id AND unread.user_id <> ?
+        AND (r.read_at IS NULL OR unread.created_at > r.read_at)
+    ) AS unread
+  FROM latest
+  JOIN comments c ON c.id = latest.id
+  JOIN posts p ON p.id = latest.post_id
+  JOIN users u ON u.id = c.user_id
+  LEFT JOIN comment_reads r ON r.post_id = p.id AND r.user_id = ?
+  ORDER BY c.id DESC
+  LIMIT ?
+`);
+
+// The same figure across every column at once, which is the half of the top
+// bar's dot that comes from posts rather than from letters. Same rule as the row
+// above — somebody else's line, written since this reader last had that column
+// open — asked of every post they are in rather than of one.
+const countUnreadComments = db.prepare(`
+  ${INVOLVED_POSTS}
+  SELECT COUNT(*) AS count
+  FROM comments c
+  JOIN involved i ON i.post_id = c.post_id
+  LEFT JOIN comment_reads r ON r.post_id = c.post_id AND r.user_id = ?
+  WHERE c.user_id <> ?
+    AND (r.read_at IS NULL OR c.created_at > r.read_at)
+`);
+
 /* ----------------------------------------------------------------- messages */
 
 const insertMessage = db.prepare(`
@@ -1084,8 +1196,32 @@ function withRead(row) {
   return line ? { ...line, read: row.read === 1 } : null;
 }
 
+// The inbox: two tables and one list. A word addressed to you and a word left
+// under something you wrote are the same thing to whoever is reading them —
+// somebody said something, and here is where to answer — so they are read down
+// one column. What tells them apart is `kind`, and what that decides is where a
+// press goes: a person opens the exchange, a post opens its comment column.
+//
+// Merged here rather than by whoever draws it. Both halves are asked for whole
+// and the list is cut to length afterwards, so a busy month of comments cannot
+// crowd out a letter that was said more recently than any of them.
 export function getThreads(userId, limit = 100) {
-  return selectThreads.all(userId, userId, userId, userId, userId, limit).map(withSide);
+  const people = selectThreads
+    .all(userId, userId, userId, userId, userId, limit)
+    .map((row) => ({ ...withSide(row), kind: "person" }));
+  const posts = selectPostThreads
+    .all(userId, userId, userId, userId, userId, limit)
+    .map((row) => ({ ...withSide(row), kind: "post" }));
+  return [...people, ...posts]
+    .sort((a, b) => (a.time < b.time ? 1 : a.time > b.time ? -1 : 0))
+    .slice(0, limit);
+}
+
+// Opening a comment column is what reads it, exactly as asking for a
+// conversation is (see readConversation): there is no button for it, because a
+// column somebody has just been shown is one they have seen.
+export function readComments(userId, postId) {
+  upsertCommentRead.run(userId, postId, new Date().toISOString());
 }
 
 // Oldest last out of SQLite and oldest first on the way out of here: a thread is
@@ -1097,8 +1233,15 @@ export function getConversation(userId, otherUserId, limit = 200) {
     .map(withRead);
 }
 
+// What the dot on the letter in the top bar is counting, both kinds at once: the
+// bar has one letter on it and what it is saying is "somebody wrote", which is
+// as true of a remark under your photo as of a line addressed to you. Two
+// readings and one figure, because the dot is one dot — which of the two it came
+// from is the inbox's answer to give, not the bar's.
 export function countUnread(userId) {
-  return countUnreadMessages.get(userId)?.count ?? 0;
+  const letters = countUnreadMessages.get(userId)?.count ?? 0;
+  const remarks = countUnreadComments.get(userId, userId, userId, userId)?.count ?? 0;
+  return letters + remarks;
 }
 
 export function readConversation(userId, otherUserId) {

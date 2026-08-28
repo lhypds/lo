@@ -311,6 +311,8 @@
     "waiting": "Messages — {{n}} waiting",
     "empty": "No messages yet",
     "said": "You: {{body}}",
+    "saidBy": "{{name}}: {{body}}",
+    "onPost": "On “{{post}}”",
     "emptyThread": "Nothing said to {{name}} yet",
     "placeholder": "Write a reply",
     "send": "Send",

@@ -177,14 +177,19 @@ export const deletePost = (postId) => request(`/api/posts/${postId}`, { method: 
 // second answers with the row *and* the figure it has just changed: the sheet
 // puts the row at the foot of its column, and the count goes back to the map,
 // where the corner of a bubble is what said there was anything to open.
+//
+// The first is also the reading that marks a column read, the way asking for a
+// conversation is — so what comes back with it is how much is left waiting
+// anywhere, letters and remarks alike, for the dot in the top bar.
 export const getComments = (postId) => request(`/api/posts/${postId}/comments`);
 export const addComment = (postId, body) =>
   request(`/api/posts/${postId}/comments`, { method: "POST", body: JSON.stringify({ body }) });
 
 // The inbox and the figure the letter in the top bar wears, in one answer: the
-// dot says somebody wrote and the list is who, which is one reading of one
-// table. The bar asks for this on a beat and hands what comes back to the sheet
-// it opens, so opening the inbox costs nothing.
+// dot says somebody wrote and the list is who and about what — a row is either a
+// person you have traded letters with or a post somebody has been writing under.
+// The bar asks for this on a beat and hands what comes back to the sheet it
+// opens, so opening the inbox costs nothing.
 export const getMessages = () => request("/api/messages");
 // One exchange, both directions. Asking for it is what marks it read, so the
 // unread figure comes back already counted down by this reading.
