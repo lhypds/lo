@@ -11,6 +11,37 @@ function localClockTime(value) {
   return typeof value === "string" && value.includes("T") ? value.slice(11, 16) : "";
 }
 
+// Same slice, read as minutes past the location's own midnight — the unit both
+// the day's length and the wait for the next sunrise are measured in.
+function localMinutes(value) {
+  const clock = localClockTime(value);
+  if (!clock) return null;
+  const hours = Number(clock.slice(0, 2));
+  const minutes = Number(clock.slice(3, 5));
+  return Number.isFinite(hours) && Number.isFinite(minutes) ? hours * 60 + minutes : null;
+}
+
+// The wall clock at the coordinates, not in the browser — h23 rather than
+// hour12:false because some locales still render midnight as 24:00.
+function zonedMinutes(date, zone) {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: zone,
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const hours = Number(parts.find((part) => part.type === "hour")?.value);
+  const minutes = Number(parts.find((part) => part.type === "minute")?.value);
+  return Number.isFinite(hours) && Number.isFinite(minutes) ? hours * 60 + minutes : null;
+}
+
+function formatDuration(minutes, t) {
+  if (!Number.isFinite(minutes) || minutes < 0) return "";
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return hours ? t("clock.duration", { hours, minutes: rest }) : t("clock.durationMinutes", { minutes: rest });
+}
+
 function formatOffset(seconds) {
   if (!Number.isFinite(seconds)) return "";
   const sign = seconds < 0 ? "-" : "+";
@@ -60,6 +91,20 @@ export default function ClockCard() {
   const today = weather?.today;
   const offset = weather?.timezone ? t("clock.offset", { offset: formatOffset(weather.timezone.offsetSeconds) }) : "";
 
+  // Sun rows only where the sun actually rises and sets: inside the polar
+  // circles Open-Meteo answers with null for half the year, and a day with no
+  // dawn has no daylight length and no next sunrise to count down to either.
+  const sunrise = localMinutes(today?.sunrise);
+  const sunset = localMinutes(today?.sunset);
+  const hasSun = sunrise !== null && sunset !== null;
+  const clockNow = zonedMinutes(now, zone);
+  const night = hasSun && clockNow !== null && (clockNow < sunrise || clockNow >= sunset);
+  // Before dawn the wait is today's sunrise; after dusk it is tomorrow's, which
+  // the three-day forecast already carries — barring that, today's stands in.
+  const nextSunrise = localMinutes(weather?.upcoming?.[0]?.sunrise) ?? sunrise;
+  const wait = night ? (clockNow < sunrise ? sunrise - clockNow : 1440 - clockNow + nextSunrise) : null;
+  const light = hasSun && !night ? sunset - sunrise : null;
+
   return (
     <Card title={t("clock.title")} meta={offset} square>
       <div className={styles.inner}>
@@ -75,16 +120,16 @@ export default function ClockCard() {
             <dt>{t("clock.timezone")}</dt>
             <dd>{zone}</dd>
           </div>
-          {today?.sunrise && (
+          {hasSun && (
             <div>
-              <dt>{t("clock.sunrise")}</dt>
-              <dd>{localClockTime(today.sunrise)}</dd>
+              <dt>{`${t("clock.rise")} - ${t("clock.set")}`}</dt>
+              <dd>{`${localClockTime(today.sunrise)} - ${localClockTime(today.sunset)}`}</dd>
             </div>
           )}
-          {today?.sunset && (
+          {hasSun && (
             <div>
-              <dt>{t("clock.sunset")}</dt>
-              <dd>{localClockTime(today.sunset)}</dd>
+              <dt>{night ? t("clock.untilRise") : t("clock.light")}</dt>
+              <dd>{formatDuration(night ? wait : light, t)}</dd>
             </div>
           )}
         </dl>

@@ -80,8 +80,12 @@
   "clock": {
     "title": "Time",
     "timezone": "Time zone",
-    "sunrise": "Sunrise",
-    "sunset": "Sunset",
+    "rise": "Rise",
+    "set": "Set",
+    "light": "Light",
+    "untilRise": "Rise in",
+    "duration": "{{hours}}h {{minutes}}m",
+    "durationMinutes": "{{minutes}}m",
     "offset": "UTC{{offset}}"
   },
   "weather": {

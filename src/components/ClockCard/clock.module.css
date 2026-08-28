@@ -49,8 +49,12 @@
   border-top: 1px solid var(--line);
 }
 
+/* The sun row is a label and a pair of times, which in Japanese outrun a
+   phone-width tile between them: the value folds onto its own line rather than
+   losing its second half to the ellipsis. */
 .rows div {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
   gap: 10px;
@@ -71,7 +75,7 @@
 
 .rows dd {
   min-width: 0;
-  margin: 0;
+  margin: 0 0 0 auto;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

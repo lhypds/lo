@@ -80,8 +80,12 @@
   "clock": {
     "title": "时间",
     "timezone": "时区",
-    "sunrise": "日出",
-    "sunset": "日落",
+    "rise": "日出",
+    "set": "日落",
+    "light": "白昼",
+    "untilRise": "距日出",
+    "duration": "{{hours}} 小时 {{minutes}} 分",
+    "durationMinutes": "{{minutes}} 分",
     "offset": "UTC{{offset}}"
   },
   "weather": {
