@@ -20,6 +20,7 @@ import {
   getFollowStats,
   getFollowers,
   getFollowing,
+  getLinkKey,
   getMarks,
   getOtherPositions,
   getPassword,
@@ -30,9 +31,11 @@ import {
   getRecentPosts,
   getThreads,
   getUser,
+  getUserByLinkKey,
   readConversation,
   renameMark,
   savePosition,
+  setLinkKey,
   setPassword,
   unfollowUser,
   updatePost,
@@ -203,6 +206,23 @@ function startSession(user, req, res) {
   return token;
 }
 
+// The account's link key: minted the first time it is asked for, and the same one
+// from then on. It goes out with every session handed over below, so that signing
+// in the ordinary way is the whole of how a key is come by — there is no separate
+// errand to run and nothing to have remembered to do first.
+//
+// Stable on purpose. A key minted afresh on each sign-in would mean every sign-in
+// quietly broke every link already handed out, which is the opposite of what the
+// thing is for. Withdrawing one is therefore a deliberate act (see DELETE
+// /api/me/link), not a side effect of signing in again.
+function linkKeyFor(user) {
+  const existing = getLinkKey(user.id);
+  if (existing) return existing;
+  const key = crypto.randomBytes(32).toString("base64url");
+  setLinkKey(user.id, key);
+  return key;
+}
+
 function clearSession(req, res) {
   const session = currentSession(req);
   if (session) sessions.delete(session.token);
@@ -287,11 +307,37 @@ app.post("/api/login", (req, res) => {
     return res.status(401).json({ error: "Wrong password", code: "PASSWORD_WRONG" });
   }
 
-  res.json({ user, token: startSession(user, req, res) });
+  // `key` alongside the session: the link this account can be signed in from
+  // anywhere else with, which is a password that has already been given rather
+  // than a new secret being disclosed to anybody.
+  res.json({ user, token: startSession(user, req, res), key: linkKeyFor(user) });
 });
 
 app.post("/api/logout", (req, res) => {
   clearSession(req, res);
+  res.status(204).end();
+});
+
+// The third way in, and the only one that asks for nothing typed: the key out of
+// a ?k= or #k= link, traded for the session a password would have opened. What
+// comes back is exactly what /api/login hands over, because it is the same
+// session by a shorter road — the key stands in for the password rather than for
+// something weaker than one.
+//
+// Answered the way a wrong password is and in as few words: a key that opens
+// nothing gets no account named back at it. There is nothing here worth guessing
+// at, a key being 32 random bytes rather than a word somebody chose.
+app.post("/api/link", (req, res) => {
+  const user = getUserByLinkKey(String(req.body?.key ?? ""));
+  if (!user) return res.status(401).json({ error: "That link no longer works", code: "LINK_INVALID" });
+  res.json({ user, token: startSession(user, req, res), key: linkKeyFor(user) });
+});
+
+// Taking a key back, for a link that got somewhere it should not have. Nothing in
+// the app calls this — the next /api/login mints a fresh key in place of the one
+// this cleared, which is the whole of the recovery.
+app.delete("/api/me/link", requireSession, (req, res) => {
+  setLinkKey(req.user.id, null);
   res.status(204).end();
 });
 
@@ -309,7 +355,7 @@ app.post("/api/users", (req, res) => {
 
   try {
     const user = createUser(username, password);
-    res.status(201).json({ user, token: startSession(user, req, res) });
+    res.status(201).json({ user, token: startSession(user, req, res), key: linkKeyFor(user) });
   } catch (error) {
     console.error("create user failed", error);
     res.status(500).json({ error: "Could not create the account" });

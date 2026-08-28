@@ -39,7 +39,8 @@
     "forgotMail": "My lo account is {{name}}. I have forgotten my password — please set a new one for me.",
     "createTitle": "New account",
     "createConfirm": "No one is using “{{name}}” yet. Create it and choose a password?",
-    "create": "Create"
+    "create": "Create",
+    "linkDead": "That sign-in link no longer works."
   },
   "account": {
     "title": "Account",

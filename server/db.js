@@ -199,6 +199,12 @@ for (const column of [
   // than filled in with anything: the first sign-in that reaches one is where
   // its password is chosen.
   "password",
+  // The password with the typing taken out of it: a key an account mints for
+  // itself and carries in a link. It is kept on the account rather than with the
+  // sessions because a session lives in a Map that a restart empties, and the
+  // whole use of a link is being followed next week from a device that has never
+  // signed in. Empty on every account until its owner asks for one.
+  "link_key",
 ]) {
   if (!userColumns.has(column)) db.exec(`ALTER TABLE users ADD COLUMN ${column} TEXT`);
 }
@@ -270,6 +276,31 @@ const selectPasswordByName = db.prepare(`
 const updatePassword = db.prepare(`
   UPDATE users
   SET password = ?
+  WHERE id = ?
+`);
+
+// The other column that never travels as part of a user, and read on its own for
+// the same reason the password is. Looked up by the key rather than by the name,
+// because that is the whole of what whoever follows the link has to offer — the
+// key names the account as well as proving it.
+const selectUserByLinkKey = db.prepare(`
+  SELECT u.id, ${PROFILE_COLUMNS}
+  FROM users u
+  WHERE u.link_key = ?
+`);
+
+const selectLinkKeyById = db.prepare(`
+  SELECT link_key AS linkKey
+  FROM users
+  WHERE id = ?
+`);
+
+// Minted, replaced and withdrawn by the one statement: an account holds one key
+// at a time, so asking for a link retires the link before it and a null is an
+// account with none.
+const updateLinkKey = db.prepare(`
+  UPDATE users
+  SET link_key = ?
   WHERE id = ?
 `);
 
@@ -703,6 +734,25 @@ export function getPassword(username) {
 
 export function setPassword(userId, password) {
   updatePassword.run(password, userId);
+}
+
+// Whose key this is, or nobody's. The empty key is refused before the statement
+// rather than handed to it: an account that has never minted one holds SQL's
+// null and would match nothing anyway, but a link with no key after the # is a
+// question not worth asking the database at all.
+export function getUserByLinkKey(key) {
+  if (!key) return null;
+  return selectUserByLinkKey.get(key) ?? null;
+}
+
+// What the account's own sheet shows, and the one reader of this column that is
+// not signing somebody in.
+export function getLinkKey(userId) {
+  return selectLinkKeyById.get(userId)?.linkKey ?? null;
+}
+
+export function setLinkKey(userId, key) {
+  updateLinkKey.run(key, userId);
 }
 
 export function countMarks(userId) {

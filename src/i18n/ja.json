@@ -39,7 +39,8 @@
     "forgotMail": "lo のアカウントは {{name}} です。パスワードを忘れたので、新しく設定してください。",
     "createTitle": "新しいアカウント",
     "createConfirm": "「{{name}}」はまだ誰も使っていません。作成してパスワードを設定しますか？",
-    "create": "作成"
+    "create": "作成",
+    "linkDead": "このサインインリンクはもう使えません。"
   },
   "account": {
     "title": "アカウント",

@@ -36,6 +36,11 @@ export const login = (username, password) =>
 export const createUser = (username, password) =>
   request("/api/users", { method: "POST", body: JSON.stringify({ username, password }) });
 export const logout = () => request("/api/logout", { method: "POST" });
+// Signing in on a key instead of a password — the key read out of the fragment
+// of the link that was followed, traded for the session the password would have
+// opened. The same answer as login, because it is the same session.
+export const loginWithKey = (key) =>
+  request("/api/link", { method: "POST", body: JSON.stringify({ key }) });
 export const getMe = () => request("/api/me");
 // The whole profile every time, which is what makes an emptied field a cleared
 // one rather than an untouched one.

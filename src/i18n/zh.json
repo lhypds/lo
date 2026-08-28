@@ -39,7 +39,8 @@
     "forgotMail": "我的 lo 账号是 {{name}}，忘记了密码，请帮我重设。",
     "createTitle": "新建账号",
     "createConfirm": "还没有人用“{{name}}”。创建账号并设置密码？",
-    "create": "创建"
+    "create": "创建",
+    "linkDead": "这个登录链接已经失效。"
   },
   "account": {
     "title": "账号",

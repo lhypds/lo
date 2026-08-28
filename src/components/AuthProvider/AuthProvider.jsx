@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { useNavigate } from "../../ui/index.js";
+import i18n from "../../i18n/index.js";
+import { showToast, useNavigate } from "../../ui/index.js";
 import * as api from "../../api.js";
 
 const storageKey = "lo:user";
@@ -22,6 +23,35 @@ function linkedUsername() {
   return raw.trim().normalize("NFKC").toLowerCase();
 }
 
+// A k=<key> link, which does carry the whole login: the key /api/login hands back
+// with the session, standing in for the password so that a device nobody wants to
+// type into is one link away from being signed in.
+//
+// Read from the fragment first and from the query string second, and both work.
+// #k= is the one to hand out: the fragment is the half of a URL a browser keeps
+// to itself, so a key in it never reaches an access log, whatever a proxy keeps,
+// or the Referer header of the first outbound link that gets pressed. ?k= is
+// answered anyway because it is the form anyone writes by hand on the first try,
+// and a link that silently does nothing is worse than one that logs.
+function linkedKey() {
+  return (
+    new URLSearchParams(window.location.hash.replace(/^#/, "")).get("k") ||
+    new URLSearchParams(window.location.search).get("k") ||
+    ""
+  );
+}
+
+// The fragment with the key taken out and anything else in it left alone. lo puts
+// nothing else there today, but the fragment belongs to the page rather than to
+// this, and a hash that is a plain word — #somewhere — is not a key's to empty.
+function hashWithoutKey() {
+  const params = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  if (!params.has("k")) return window.location.hash;
+  params.delete("k");
+  const rest = params.toString();
+  return rest ? `#${rest}` : "";
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [ready, setReady] = useState(false);
@@ -30,6 +60,7 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     let cancelled = false;
     const requested = linkedUsername();
+    const key = linkedKey();
 
     async function start() {
       let signedIn = null;
@@ -41,23 +72,48 @@ export function AuthProvider({ children }) {
         // session it had. Either way the login screen is the answer: a password
         // is not something this browser is holding on anybody's behalf.
       }
+
+      // A key is spent only where there is nothing to spend it on. A link will
+      // not sign anybody out of a session this browser is already holding, the
+      // same way a name in one never did — arriving on a phone signed in as
+      // somebody else and being quietly turned into a different person is worse
+      // than being left where the link put you.
+      if (!signedIn && key) {
+        try {
+          const data = await api.loginWithKey(key);
+          signedIn = data.user;
+          localStorage.setItem(storageKey, data.user.username);
+        } catch {
+          // A key that was withdrawn, or replaced by a newer link. Said out loud
+          // rather than swallowed: the login screen on its own looks like a link
+          // that did nothing, and the reader has to know to go and get another.
+          if (!cancelled) showToast(i18n.t("auth.linkDead"), 2400);
+        }
+      }
+
       if (cancelled) return;
       setUser(signedIn);
       setReady(true);
-      if (!requested) return;
+      if (!requested && !key) return;
 
-      // The name has done its job the moment it has been read, so it comes back
-      // out of the URL — a bookmark or a shared link should not keep handing an
-      // account's name out, and a reload should not undo a sign-out.
+      // Both have done their job the moment they have been read, so both come
+      // back out of the URL. The name because a bookmark or a shared link should
+      // not keep handing an account's name out, and a reload should not undo a
+      // sign-out; the key because it is a password, and a password has no
+      // business sitting in the address bar of a phone somebody hands round.
       const url = new URL(window.location.href);
       url.searchParams.delete("user");
-      // A link cannot sign anybody in any more, and it will not sign anybody out
-      // either: where this browser is already holding a session, the name is
-      // simply dropped and the reader stays where the link put them.
+      url.searchParams.delete("k");
+      url.hash = hashWithoutKey();
       if (signedIn) {
         navigate(`${url.pathname}${url.search}${url.hash}`, { replace: true });
-      } else {
+      } else if (requested) {
         navigate(`/login?username=${encodeURIComponent(requested)}`, { replace: true });
+      } else {
+        // A key that opens nothing and no name to fall back on. The login screen,
+        // with the dead key stripped off the URL behind it so that a reload is
+        // one screen rather than the same failure a second time.
+        navigate("/login", { replace: true });
       }
     }
 
