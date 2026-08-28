@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import i18n from "../../i18n/index.js";
 import { showToast, useNavigate } from "../../ui/index.js";
+import { tellHost } from "../../utils/host.js";
 import * as api from "../../api.js";
 
 const storageKey = "lo:user";
@@ -39,27 +40,6 @@ function linkedKey() {
     new URLSearchParams(window.location.search).get("k") ||
     ""
   );
-}
-
-// The one thing this page has to say to whoever is hosting it. lo runs inside the
-// Even Hub package as a cross-origin iframe, and that frame holds a session of its
-// own: a second token, minted at the same sign-in against the same account, which
-// goes on feeding a pair of glasses and is written down for the next launch. None
-// of that hears about a sign-out in here by itself — two origins, two tokens, and
-// no cookie between them — so the sign-out says so out loud on its way past.
-//
-// Posted to any parent listening, because the host is an Even Hub WebView whose
-// origin is not something lo could name in advance, and there is nothing in the
-// message to keep from a page that already has this one in a frame: no token, no
-// key, no name, only the news that this page is no longer signed in.
-function tellHost(type) {
-  if (window.parent === window) return;
-  try {
-    window.parent.postMessage({ source: "lo", type }, "*");
-  } catch {
-    // A host that will not be posted to is a host that finds out for itself, the
-    // next time it asks the server anything on the session it is holding.
-  }
 }
 
 // The fragment with the key taken out and anything else in it left alone. lo puts
@@ -162,6 +142,11 @@ export function AuthProvider({ children }) {
     await api.logout().catch(() => {});
     localStorage.removeItem(storageKey);
     setUser(null);
+    // The host is holding a session of its own, minted at the same sign-in against
+    // the same account, and nothing about this one ending reaches it (see
+    // utils/host.js) — left to itself it would go on feeding a pair of glasses
+    // from a phone that has signed out.
+    //
     // Last, and after the request rather than before it: a host that hears this
     // takes the frame down, and taking it down mid-request would leave the
     // session on the server that this was asking it to forget.
