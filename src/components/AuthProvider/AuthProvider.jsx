@@ -41,6 +41,27 @@ function linkedKey() {
   );
 }
 
+// The one thing this page has to say to whoever is hosting it. lo runs inside the
+// Even Hub package as a cross-origin iframe, and that frame holds a session of its
+// own: a second token, minted at the same sign-in against the same account, which
+// goes on feeding a pair of glasses and is written down for the next launch. None
+// of that hears about a sign-out in here by itself — two origins, two tokens, and
+// no cookie between them — so the sign-out says so out loud on its way past.
+//
+// Posted to any parent listening, because the host is an Even Hub WebView whose
+// origin is not something lo could name in advance, and there is nothing in the
+// message to keep from a page that already has this one in a frame: no token, no
+// key, no name, only the news that this page is no longer signed in.
+function tellHost(type) {
+  if (window.parent === window) return;
+  try {
+    window.parent.postMessage({ source: "lo", type }, "*");
+  } catch {
+    // A host that will not be posted to is a host that finds out for itself, the
+    // next time it asks the server anything on the session it is holding.
+  }
+}
+
 // The fragment with the key taken out and anything else in it left alone. lo puts
 // nothing else there today, but the fragment belongs to the page rather than to
 // this, and a hash that is a plain word — #somewhere — is not a key's to empty.
@@ -141,6 +162,10 @@ export function AuthProvider({ children }) {
     await api.logout().catch(() => {});
     localStorage.removeItem(storageKey);
     setUser(null);
+    // Last, and after the request rather than before it: a host that hears this
+    // takes the frame down, and taking it down mid-request would leave the
+    // session on the server that this was asking it to forget.
+    tellHost("logout");
   }
 
   return (

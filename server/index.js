@@ -315,12 +315,30 @@ app.post("/api/link", (req, res) => {
   res.json({ user, token: startSession(user), key: linkKeyFor(user) });
 });
 
-// Taking a key back, for a link that got somewhere it should not have. Nothing in
-// the app calls this — the next /api/login mints a fresh key in place of the one
-// this cleared, which is the whole of the recovery.
+// Taking a key back, for a link that got somewhere it should not have. Whichever
+// of the two mints below runs next puts a fresh key in place of the one this
+// cleared, which is the whole of the recovery. The website never asks for this;
+// the Even Hub package asks for it a minute into every launch, because a key left
+// standing in a WebView's URL is a password left lying about.
 app.delete("/api/me/link", requireSession, (req, res) => {
   setLinkKey(req.user.id, null);
   res.status(204).end();
+});
+
+// And minting one, which is the same errand from the other end, for the one
+// client that signs two frames in at once. The Even Hub package holds a token of
+// its own and hosts lo in a WebView entered on a ?k= link — and it withdraws that
+// key a minute later, so there is never a key left over for it to keep. Coming
+// back at the next launch on the token it did keep therefore has to be able to
+// ask for another key, and this is where it asks: the account the token belongs
+// to, and a key to open the frame with. Both halves in one answer, because that
+// launch is showing a blank screen until it has them.
+//
+// Nothing is disclosed here that the token did not already carry. A live session
+// and a link key are each the password's equal; what this does is let the first
+// be spent on the second, by the one holding it.
+app.post("/api/me/link", requireSession, (req, res) => {
+  res.json({ user: req.user, key: linkKeyFor(req.user) });
 });
 
 // Opening the account and signing into it are still the same request: the name
