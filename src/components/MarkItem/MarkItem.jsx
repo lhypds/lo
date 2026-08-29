@@ -3,6 +3,7 @@ import { ActionButton } from "../../ui/index.js";
 import { distanceMeters, formatCoords, formatDateTime, formatDistance } from "../../utils/format.js";
 import { hoverProps, rowClass } from "../../utils/hover.js";
 import { directionsLink } from "../../utils/maps.js";
+import { placeName } from "../../utils/place.js";
 
 // Three actions, out on the row where they can be seen rather than behind a
 // swipe nothing announces. The fourth — send the map here — is the name itself,
@@ -28,7 +29,7 @@ export default function MarkItem({
 }) {
   const { t, i18n } = useTranslation();
 
-  const name = mark.label || mark.place || t("marks.unnamed");
+  const name = mark.label || placeName(mark, i18n.language) || t("marks.unnamed");
   const away = from ? formatDistance(distanceMeters(from, mark)) : "";
 
   return (

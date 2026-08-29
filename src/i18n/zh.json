@@ -221,6 +221,8 @@
   "map": {
     "title": "地图",
     "nav": "导航",
+    "search": "搜索",
+    "delete": "删除",
     "turn": "双击切换地图",
     "noToken": "请在 .env 中设置 VITE_MAPBOX_TOKEN 以显示地图。",
     "recenter": "回到我的位置",

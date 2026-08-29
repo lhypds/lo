@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
 import { Modal } from "../../ui/index.js";
 import { formatCoords } from "../../utils/format.js";
+import { placeName, placeNames } from "../../utils/place.js";
 import { filterBy } from "../../utils/search.js";
 import Header from "../../components/Header/index.js";
 import MarkItem from "../../components/MarkItem/index.js";
@@ -19,7 +20,7 @@ const MapCard = lazy(() => import("../../components/MapCard/MapCard.jsx"));
 // "where am I", this one answers "where have I been", and the list of spots is
 // the other half of that same question.
 export default function MarksPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { coords, reloadToken } = useHere();
   const [marks, setMarks] = useState([]);
   const [query, setQuery] = useState("");
@@ -71,13 +72,22 @@ export default function MarksPage() {
     }
   }
 
-  const deletingName = deleting?.label || deleting?.place || t("marks.unnamed");
+  const deletingName = deleting?.label || placeName(deleting, i18n.language) || t("marks.unnamed");
 
   // What each row shows is what it is searched by, the coordinates included: an
   // unnamed spot has nothing else written on it, and they are what the row is
   // wearing until somebody gives it a name.
+  //
+  // Every name the spot has and not only the one on the row, which is the one
+  // place the two part company: a spot is searched by what the reader might call
+  // it, and that is not always the language they are reading in (see placeNames).
   const shown = useMemo(
-    () => filterBy(marks, query, (mark) => [mark.label, mark.place, formatCoords(mark.latitude, mark.longitude)]),
+    () =>
+      filterBy(marks, query, (mark) => [
+        mark.label,
+        ...placeNames(mark),
+        formatCoords(mark.latitude, mark.longitude),
+      ]),
     [marks, query],
   );
 
@@ -91,7 +101,10 @@ export default function MarksPage() {
               the list has just said are not the ones. The fit happens once, on
               the first list that had anything in it, so typing thins the pins
               out where they stand rather than throwing the view about. */}
-          <MapCard fitMarks marks={shown} focus={focus} hovered={hovered} onHoverPin={setHovered} onSelectPin={setChosen} />
+          {/* The delete in a pin's bubble opens the very modal the row's own
+              delete opens: one confirmation, one place the deleting is done,
+              whichever half of the page it was asked for from. */}
+          <MapCard fitMarks marks={shown} focus={focus} hovered={hovered} onHoverPin={setHovered} onSelectPin={setChosen} onDeleteMark={setDeleting} />
         </Suspense>
       </div>
       <main className="marks-list">

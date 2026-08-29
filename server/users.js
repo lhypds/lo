@@ -114,8 +114,32 @@ function writeJson(file, value) {
 // list that renumbered itself would break both.
 const MARK_LABEL_MAX = 48;
 
+// The language codes a spot's name can be kept under — lo's own three, the same
+// list utils/lang.js holds for the client. A file arriving with anything else
+// keeps only these: `places` is a fixed handful of names for one spot, not a
+// place where a hand-written import can grow the file without bound.
+const PLACE_LANGS = ["en", "zh", "ja"];
+
 function markFile(username) {
   return fileIn(username, "marks.json");
+}
+
+// What the spot is called in each language it is known in, or null where it is
+// known in none.
+//
+// Null is an ordinary answer here and not a broken mark: a spot kept before this
+// field existed has none, and neither does one converted out of an export that
+// only ever had the single name its own app wrote. `place` beside it is what
+// those are read by — which is the reason that field stayed the plain string it
+// has always been rather than becoming this one.
+function readPlaces(value) {
+  if (!value || typeof value !== "object") return null;
+  const places = {};
+  for (const lang of PLACE_LANGS) {
+    const line = typeof value[lang] === "string" ? value[lang].trim() : "";
+    if (line) places[lang] = line;
+  }
+  return Object.keys(places).length > 0 ? places : null;
 }
 
 // Newest first, which is the order the list page reads them in and the order the
@@ -145,6 +169,7 @@ function readMark(value) {
     accuracy: Number.isFinite(accuracy) ? accuracy : null,
     label: typeof value.label === "string" ? value.label.slice(0, MARK_LABEL_MAX) : null,
     place: typeof value.place === "string" ? value.place : null,
+    places: readPlaces(value.places),
   };
 }
 
@@ -176,7 +201,7 @@ export function countMarks(username) {
   return readMarkFile(username).marks.length;
 }
 
-export function createMark(username, { time, latitude, longitude, accuracy, label, place }) {
+export function createMark(username, { time, latitude, longitude, accuracy, label, place, places }) {
   const file = readMarkFile(username);
   const mark = readMark({
     id: file.nextId,
@@ -186,6 +211,7 @@ export function createMark(username, { time, latitude, longitude, accuracy, labe
     accuracy: accuracy ?? null,
     label: label ?? null,
     place: place ?? null,
+    places: places ?? null,
   });
   // The endpoint checks the coordinates before it gets here, so nothing should
   // ever be turned down at this line. Thrown rather than written: a mark that

@@ -40,7 +40,12 @@ trailing note.
       "longitude": 139.7671,
       "accuracy": null,
       "label": "Tokyo Station",
-      "place": "Chiyoda, Tokyo, Japan"
+      "place": "Chiyoda, Tokyo, Japan",
+      "places": {
+        "en": "Chiyoda, Tokyo, Japan",
+        "zh": "千代田区, 东京都, 日本",
+        "ja": "千代田区, 東京都, 日本"
+      }
     }
   ]
 }
@@ -62,7 +67,12 @@ trailing note.
   over one the export generated. 48 characters at most, which is where lo cuts
   it.
 - place — where it is, in words: district, city, country, or as much of that as
-  the export knows. null when it knows none of it.
+  the export knows, in whatever language the export wrote it in. null when it
+  knows none of it.
+- places — the same words keyed by language code: "en", "zh" and "ja". lo shows
+  the reader whichever of the three they are reading in, and falls back to "en"
+  and then to place. Include a language only where you are confident of the
+  name; leave the whole field null rather than transliterating blind.
 
 ## Rules
 
@@ -70,6 +80,9 @@ trailing note.
   close together.
 - A row with no usable coordinates is left out rather than guessed at.
 - A missing field is written as null. Never drop the key.
+- Do not invent a place name that is not in the export, in any language. A spot
+  the export gives no words for keeps place and places both null; lo shows its
+  coordinates, which is the truth about it.
 - Do not round coordinates any further than the export already has.
 - Latitude is between -90 and 90, longitude between -180 and 180. A row that
   fails that has its pair the wrong way round or is not a place at all: fix it

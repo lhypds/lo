@@ -5,9 +5,10 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import { ActionButton, Card, useNavigate } from "../../ui/index.js";
 import { formatCoords, formatDateTime, formatDistance, formatUsername } from "../../utils/format.js";
 import { MARK_PIN_EYE, MARK_PIN_PATH, MARK_PIN_TIP_Y, PIN_GLYPHS } from "../../utils/icons.js";
-import { directionsLink } from "../../utils/maps.js";
+import { directionsLink, searchLink } from "../../utils/maps.js";
 import { pickedLang } from "../../utils/lang.js";
 import { cycleMapStyle, mapStyleId, mapStyleUrl, useMapStyle } from "../../utils/mapstyle.js";
+import { placeName } from "../../utils/place.js";
 import { venueParts } from "../../utils/venues.js";
 import { useAuth } from "../AuthProvider/index.js";
 import { useHere } from "../LocationProvider/index.js";
@@ -193,17 +194,14 @@ function venueElement(kind) {
   return pinElement(styles.venuePin, glyphElement(kind));
 }
 
-// The one action every kind of pin carries. Kept as a real anchor so a phone
-// can hand Google's https directions URL to the Maps app; on a desktop the same
-// helper opens the directions page in a new tab. With no origin in the URL,
-// Maps itself uses the device's current position, which is fresher than the fix
-// that happened to be on screen when Mapbox built this popup.
-function popupNavElement(to, label, name) {
+// Both hand-offs to Google Maps are the same small underlined word, and both are
+// real anchors so a phone gives the https URL to the Maps app rather than to a
+// tab; on a desktop the same helper opens the page beside lo.
+function popupLinkElement(attributes, label, name) {
   const link = document.createElement("a");
   link.className = styles.popupNav;
   link.textContent = label;
   link.setAttribute("aria-label", `${label} ${name}`);
-  const attributes = directionsLink(to);
   for (const [key, value] of Object.entries(attributes)) link.setAttribute(key, value);
   // A tap on the link belongs to Google Maps, not to the map underneath, whose
   // click handler would otherwise read it as a request to close the popup.
@@ -211,9 +209,57 @@ function popupNavElement(to, label, name) {
   return link;
 }
 
+// The one action every kind of pin carries. With no origin in the URL, Maps
+// itself uses the device's current position, which is fresher than the fix that
+// happened to be on screen when Mapbox built this popup.
+function popupNavElement(to, label, name) {
+  return popupLinkElement(directionsLink(to), label, name);
+}
+
+// And what a mark's bubble asks alongside it: not the way there, but what is
+// standing there. A mark is a spot the reader kept — often before they knew what
+// was on it — and the coordinates and the place name lo wrote down are the
+// beginning of that answer rather than the whole of it. Left of the directions
+// link because it is the question that comes first: what is this, then take me
+// back to it.
+function popupSearchElement(to, label, name) {
+  return popupLinkElement(searchLink(to), label, name);
+}
+
+// Last on the line, furthest from the two the reader means to press often,
+// because it is the one control in a bubble that takes something away. And all
+// it does is ask: what it opens is the same confirmation the row in the list
+// opens, which is where the deleting is agreed to and done (see MarksPage). A
+// bubble is a preview, and no place to be told a thing cannot be undone.
+function popupDeleteElement(mark, label, name, remove) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = styles.popupDelete;
+  button.textContent = label;
+  button.setAttribute("aria-label", `${label} ${name}`);
+  button.addEventListener("click", (event) => {
+    // Short of the map, which reads a click as "put the chosen bubble away" —
+    // the same stop every pressable thing in a bubble makes.
+    event.stopPropagation();
+    remove(mark);
+  });
+  return button;
+}
+
 // Built out of nodes rather than a string of HTML: the name is whatever the
 // reader typed into the rename box, and setHTML would run it.
-function markPopupElement(mark, name, coords, iso, when, navLabel) {
+//
+// Under the three lines that say which spot this is, the things that can be done
+// with it, in the order they are worth asking: look it up, go to it, be rid of
+// it. Three of the four actions the row in the list carries — renaming is the
+// one left behind, since a bubble that grew a text field would stop being a
+// preview — and they are here because on this page the map is where a mark is
+// found. A pin the reader has just picked out of a scatter should not have to be
+// found a second time in the list underneath to be acted on.
+//
+// `remove` is a way to ask for the deleting, or nothing where the page has no
+// answer to give — a control that did nothing would be worse than no control.
+function markPopupElement(mark, name, coords, iso, when, labels, remove) {
   const wrapper = document.createElement("div");
   wrapper.className = styles.markPopup;
   const label = document.createElement("strong");
@@ -225,7 +271,14 @@ function markPopupElement(mark, name, coords, iso, when, navLabel) {
   time.className = styles.markPopupMeta;
   time.dateTime = iso;
   time.textContent = when;
-  wrapper.append(label, position, time, popupNavElement(mark, navLabel, name));
+  const actions = document.createElement("span");
+  actions.className = styles.markPopupActions;
+  actions.append(
+    popupSearchElement(mark, labels.search, name),
+    popupNavElement(mark, labels.nav, name),
+  );
+  if (remove) actions.append(popupDeleteElement(mark, labels.remove, name, remove));
+  wrapper.append(label, position, time, actions);
   return wrapper;
 }
 
@@ -469,6 +522,11 @@ export default function MapCard({
   onSelectPin,
   onOpenComments,
   onOpenVenueComments,
+  // Asked for from a mark's bubble, answered by the page: the map says which
+  // spot, and the page is where the confirmation stands and where the list it
+  // would be taken out of lives. Nothing passed is no delete control at all,
+  // which is the dashboard, where the map draws no marks in the first place.
+  onDeleteMark,
 }) {
   const { t, i18n } = useTranslation();
   const { coords } = useHere();
@@ -485,6 +543,10 @@ export default function MapCard({
   commentsRef.current = onOpenComments;
   const venueCommentsRef = useRef(onOpenVenueComments);
   venueCommentsRef.current = onOpenVenueComments;
+  // And the same for the delete in a mark's bubble, for the same reason: the
+  // listener is on a node mapbox owns, and it outlives the render that built it.
+  const deleteMarkRef = useRef(onDeleteMark);
+  deleteMarkRef.current = onDeleteMark;
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const hereMarkerRef = useRef(null);
@@ -800,10 +862,15 @@ export default function MapCard({
     const map = mapRef.current;
     if (!map) return;
     markMarkersRef.current.forEach(({ marker }) => marker.remove());
+    // The words on the bubble's action line, and the way to ask for a deleting,
+    // built once for the whole redraw rather than per pin — the same shape the
+    // posts' comments control below is handed.
+    const labels = { search: t("map.search"), nav: t("map.nav"), remove: t("map.delete") };
+    const remove = onDeleteMark ? (mark) => deleteMarkRef.current?.(mark) : null;
     // Kept with the id it was drawn for, so a row hovered in the list can be
     // answered by the one pin that belongs to it.
     markMarkersRef.current = marks.map((mark) => {
-      const name = mark.label || mark.place || t("marks.unnamed");
+      const name = mark.label || placeName(mark, i18n.language) || t("marks.unnamed");
       const marker = preview(
         // The label, not `name`: the pin wears only what somebody wrote on it.
         new mapboxgl.Marker({ element: markElement(mark.label || ""), anchor: "bottom" })
@@ -816,7 +883,8 @@ export default function MapCard({
                 formatCoords(mark.latitude, mark.longitude),
                 mark.time,
                 formatDateTime(mark.time, i18n.language),
-                t("map.nav"),
+                labels,
+                remove,
               ),
             ),
           )
@@ -825,7 +893,12 @@ export default function MapCard({
       );
       return { id: mark.id, marker };
     });
-  }, [marks, t, i18n.language, preview]);
+    // `onDeleteMark` only for whether there is a control at all — which page
+    // this is does not change while it is on screen — and the handler itself is
+    // read off the ref, so a new one on every render of the page above does not
+    // tear every pin on the map down and build it again.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [marks, t, i18n.language, preview, Boolean(onDeleteMark)]);
 
   useEffect(() => {
     hoverPinRef.current = onHoverPin;

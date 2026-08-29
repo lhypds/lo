@@ -217,6 +217,44 @@ export function lookupPlace(latitude, longitude, lang = "en") {
   });
 }
 
+// The one line a spot is filed under — as much of district, city and region as
+// the geocoder knows, narrowest first. Null where it knew none of it, which is
+// the sea and not much else.
+//
+// Here rather than at the two endpoints that write it down, because a mark and
+// a post are filed the same way on purpose: two copies of this join is one of
+// them quietly growing a comma the other does not have.
+export function placeLine(place) {
+  return (place ? [place.locality, place.name, place.region].filter(Boolean).join(" · ") : "") || null;
+}
+
+// The same line in each language lo is read in, keyed by language code, or null
+// where no language produced one.
+//
+// All of them at once rather than the reader's own on demand: a mark is written
+// down once and read for years, and the reader who saved it is not the only
+// reader it will ever have — the account crosses devices and languages, and the
+// spot is one spot whatever it is called. Asking again years later would be
+// putting a geocoder between a reader and a list they already have.
+//
+// Three requests where there was one is the price, and it is smaller than it
+// looks: lookupPlace caches on a ~1.1 km grid for a day, so the second mark down
+// the same street pays for none of them.
+//
+// Settled rather than all-or-nothing, and a language that failed is left out
+// rather than written in empty: one geocoder request going wrong is no reason
+// for a mark to lose the two names that came back fine.
+export async function lookupPlaceLines(latitude, longitude) {
+  const langs = Object.keys(PLACE_LANGUAGE);
+  const settled = await Promise.allSettled(langs.map((lang) => lookupPlace(latitude, longitude, lang)));
+  const lines = {};
+  settled.forEach((result, index) => {
+    const line = result.status === "fulfilled" ? placeLine(result.value) : null;
+    if (line) lines[langs[index]] = line;
+  });
+  return Object.keys(lines).length > 0 ? lines : null;
+}
+
 /* ---------------------------------------------------------------- weather -- */
 
 export function lookupWeather(latitude, longitude) {

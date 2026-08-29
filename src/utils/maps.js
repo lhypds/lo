@@ -36,11 +36,28 @@ export function directionsUrl(to, from = null) {
   return `https://www.google.com/maps/dir/?${query}`;
 }
 
-// Spread onto whatever opens it. A new tab on a desktop, so lo is still sitting
-// there behind Google Maps; the same tab on a handheld, where target="_blank" is
-// the known way to stop Safari passing a link to the app, and where coming back
-// is a gesture rather than a tab to go and find.
-export function directionsLink(to, from = null) {
-  const href = directionsUrl(to, from);
+// The other question to ask about a spot: not "take me there" but "what is
+// here". Google's place-search URL, and given the coordinates rather than the
+// name — the name on a mark is whatever the reader typed on it, "home" or "the
+// good bakery", and searched as words that lands anywhere in the world except
+// the spot it was written about. A pair of coordinates can only mean one place.
+export function searchUrl(to) {
+  const query = new URLSearchParams({ api: "1", query: `${to.latitude},${to.longitude}` });
+  return `https://www.google.com/maps/search/?${query}`;
+}
+
+// Spread onto whatever opens either of them. A new tab on a desktop, so lo is
+// still sitting there behind Google Maps; the same tab on a handheld, where
+// target="_blank" is the known way to stop Safari passing a link to the app, and
+// where coming back is a gesture rather than a tab to go and find.
+function mapsLink(href) {
   return handheld() ? { href } : { href, target: "_blank", rel: "noopener noreferrer" };
+}
+
+export function directionsLink(to, from = null) {
+  return mapsLink(directionsUrl(to, from));
+}
+
+export function searchLink(to) {
+  return mapsLink(searchUrl(to));
 }

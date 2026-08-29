@@ -55,10 +55,12 @@ import {
   lookupEvents,
   lookupNearby,
   lookupPlace,
+  lookupPlaceLines,
   lookupTrends,
   lookupVenues,
   lookupWarnings,
   lookupWeather,
+  placeLine,
 } from "./geo.js";
 import { MAX_IMAGE_BYTES, imageFile, isStoredName, storeImage } from "./images.js";
 import { articleId, harvest, readStoredArticle } from "./articles.js";
@@ -934,13 +936,20 @@ app.post("/api/marks", requireSession, async (req, res, next) => {
 
   try {
     // The name of the spot is looked up here rather than trusted from the
-    // client, so a mark reads the same however it was saved.
-    const place = await lookupPlace(location.latitude, location.longitude, requestedLang(req)).catch(() => null);
+    // client, so a mark reads the same however it was saved — and in every
+    // language lo is read in rather than only the one it was saved in, so it
+    // also reads the same to whoever opens the list next (see lookupPlaceLines).
+    const places = await lookupPlaceLines(location.latitude, location.longitude).catch(() => null);
     const mark = saveMark(req.user.username, {
       ...location,
       time: suppliedTime.toISOString(),
       label: label || null,
-      place: place ? [place.locality, place.name, place.region].filter(Boolean).join(" · ") : null,
+      // The line this reader would have been shown, kept on as the plain string
+      // it has always been: it is what a mark is read by when `places` has
+      // nothing to offer — an export from somewhere that never had one, or a
+      // language the geocoder could not answer in.
+      place: places?.[requestedLang(req)] ?? places?.en ?? null,
+      places,
     });
     res.status(201).json({ mark });
   } catch (error) {
@@ -1060,7 +1069,7 @@ app.post("/api/posts", requireSession, async (req, res, next) => {
       ...location,
       ...content,
       time: suppliedTime.toISOString(),
-      place: place ? [place.locality, place.name, place.region].filter(Boolean).join(" · ") : null,
+      place: placeLine(place),
     });
     res.status(201).json({ post });
   } catch (requestError) {

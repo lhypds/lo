@@ -441,6 +441,42 @@
   }
 }
 
+/* The three things that can be done with a marked spot, on one line under what
+   the bubble says about it. A plain row with a gap rather than the posts' line,
+   which pushes its two ends apart: this bubble is only as wide as the longest of
+   the three lines above it, so spreading the words to the edges would set them a
+   different distance apart on every pin. Together and in a fixed order, they can
+   be reached for the same way twice. */
+.markPopupActions {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+/* The one control in a bubble that takes something away, wearing exactly what
+   the two links beside it wear. It is a button and not a link, so the box a
+   browser gives it has to be taken off; what it does is ask, and the modal it
+   opens is where the weight of the question belongs. */
+.popupDelete {
+  padding: 0;
+  border: 0;
+  background: none;
+  pointer-events: auto;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  text-decoration: underline;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .popupDelete:hover {
+    color: var(--ink);
+    text-decoration: none;
+  }
+}
+
 /* A post's popup is the mark's with a picture on top of it, and it is given a
    width to work with: a mark's bubble is a name and two short numbers, where
    this one is somebody's sentence and has to be told where to wrap. */
