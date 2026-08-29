@@ -39,11 +39,14 @@ const WEATHER_GRID = 2;
 const NEWS_GRID = 1; // ~11 km — local news is a city-wide question
 
 // How far ahead the hour-by-hour reading runs — the back of the weather card
-// (see WeatherHours). Twice what the tallest tile can show, because the run is
-// sliced here when the answer is fetched and read up to twenty minutes later:
-// ten in this cache and ten more in the browser's own (see LocationProvider).
-// The hours already gone are dropped at that end, and the spare is what keeps
-// twelve of them still standing when they are.
+// (see WeatherHours), which shows as many of them at once as the tile will hold
+// and scrolls through the rest. A day, because a day is what an hourly forecast
+// is: past that the front of the same card is already answering in days, and a
+// reader scrolling for the hours of the day after tomorrow is reading the wrong
+// face. The run is sliced here when the answer is fetched and read up to twenty
+// minutes later — ten in this cache and ten more in the browser's own (see
+// LocationProvider) — so the first of them may be behind by the time it lands
+// and is dropped at that end.
 const HOURLY_HOURS = 24;
 
 const cache = new Map(); // key -> { expiresAt, value } | { pending: Promise }

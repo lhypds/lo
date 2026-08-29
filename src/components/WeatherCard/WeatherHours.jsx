@@ -16,6 +16,13 @@ import styles from "./weather.module.css";
 // the lower one the chance of rain, and read down the tile they are two curves
 // over the same afternoon: where the pale line falls away and the black one
 // climbs is the hour the weather turns.
+//
+// The whole day ahead is on the card and the tile is the window on it. What a
+// square can hold at a readable height is six hours at the smallest and sixteen
+// at the largest, and the rest are a scroll away — by the hour, because the rows
+// are cut to a height that fits the opening a whole number of times and the
+// scroll snaps to them. So the reader is never looking at half of one hour and
+// half of another, and the run never ends mid-row against the card's edge.
 
 // The shortest a row may be drawn and still be read: ten point type on one line,
 // the hour's glyph beside it, and enough air between one row and the next that
@@ -25,7 +32,7 @@ const ROW_MIN = 14;
 
 // Below this the chance of rain is not worth reporting — the model says "5%" of
 // a great many dry afternoons, and a figure and a line against every one of them
-// is twelve rows of noise for the one row that matters. Under it the hour is
+// is a day of noise for the few hours that matter. Under it the hour is
 // left blank rather than drawn short: the two answers this card is asked are
 // when it will rain and how warm it will be, and "hardly at all" is a no.
 const RAIN_FLOOR = 10;
