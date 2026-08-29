@@ -1,5 +1,15 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useRef, useState } from "react";
 import styles from "./card.module.css";
+
+// What counts as two presses rather than one, when they are made with a finger.
+// The gap is the browser's own double-click interval as near as anyone states it;
+// the two lengths are in pixels — how far a single tap may travel and still be a
+// tap, and how far the second may land from the first and still be its partner.
+// A finger is a blunter instrument than a pointer, so the second is the looser of
+// the two.
+const TAP_GAP = 400;
+const TAP_SLOP = 10;
+const TAP_NEAR = 24;
 
 // Which card of a set of tiles this one is, said by whatever laid them out rather
 // than by each tile about itself — the dashboard grid is the only thing that deals
@@ -65,6 +75,58 @@ export default function Card({
   // back, and it must not play a turn the moment it mounts.
   const [turns, setTurns] = useState(0);
   const flipped = (turns + (dealt ? 1 : 0)) % 2 === 1;
+  // The first of a pair of taps, where it landed and when — and the place the
+  // finger in hand went down, which is what tells a tap from the start of a drag.
+  // The last turn a finger made is remembered for as long as it takes a browser
+  // to decide the same two taps were a double-click and say so a second time.
+  const tapRef = useRef({ at: 0, x: 0, y: 0 });
+  const downRef = useRef(null);
+  const turnedAtRef = useRef(0);
+
+  function turn() {
+    setTurns((count) => count + 1);
+    onFlip?.(!flipped);
+  }
+
+  // Two presses on the heading, read from the finger itself rather than waited
+  // for as a dblclick. iOS raises that event only for gestures it has already
+  // decided are not zooming, panning or selecting, and on a heading that is also
+  // a handle — held it lifts the card, dragged it turns the page (see HomePage) —
+  // it does not raise it at all: the card stayed face up however many times it
+  // was tapped. The two taps are counted here instead, which is the same gesture
+  // said in the events a touch device is sure about.
+  //
+  // The touch family and not the pointer one, for the reason the dashboard gives
+  // where it reads the same gestures: a finger raises both, and the two families
+  // are split by which of them each device is answered in.
+  function touchDown(event) {
+    const touch = event.touches.length === 1 ? event.touches[0] : null;
+    downRef.current = touch ? { x: touch.clientX, y: touch.clientY } : null;
+  }
+
+  function touchUp(event) {
+    const down = downRef.current;
+    const touch = event.changedTouches[0];
+    downRef.current = null;
+    if (!down || !touch || event.target.closest("button")) return;
+    // A press that travelled is a drag: the page is being turned under it, or the
+    // list behind it scrolled, and neither is half of a double press.
+    if (Math.abs(touch.clientX - down.x) > TAP_SLOP) return;
+    if (Math.abs(touch.clientY - down.y) > TAP_SLOP) return;
+    const last = tapRef.current;
+    const at = Date.now();
+    const near =
+      Math.abs(touch.clientX - last.x) <= TAP_NEAR && Math.abs(touch.clientY - last.y) <= TAP_NEAR;
+    if (at - last.at <= TAP_GAP && near) {
+      tapRef.current = { at: 0, x: 0, y: 0 };
+      turnedAtRef.current = at;
+      turn();
+    } else {
+      // The first of a pair, or a single tap that will turn out to be nothing.
+      tapRef.current = { at, x: touch.clientX, y: touch.clientY };
+    }
+  }
+
   const classes = [
     styles.card,
     square ? styles.square : "",
@@ -92,8 +154,21 @@ export default function Card({
         back
           ? (event) => {
               if (event.target.closest("button")) return;
-              setTurns((count) => count + 1);
-              onFlip?.(!flipped);
+              // A device that raises this after a double tap has already been
+              // answered — the two taps turned the card the moment the second
+              // finger left the glass, and this is the same gesture arriving a
+              // second time under another name.
+              if (Date.now() - turnedAtRef.current <= TAP_GAP + TAP_GAP) return;
+              turn();
+            }
+          : undefined
+      }
+      onTouchStart={back ? touchDown : undefined}
+      onTouchEnd={back ? touchUp : undefined}
+      onTouchCancel={
+        back
+          ? () => {
+              downRef.current = null;
             }
           : undefined
       }
