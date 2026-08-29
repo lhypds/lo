@@ -13,11 +13,10 @@
 // So: the language being read in, and then English, because it is the language lo
 // assumes about anyone it has not been told about — the same assumption the
 // server makes of a request with no lang on it. Then Chinese, Japanese, French,
-// Spanish and German,
-// in the order the languages have everywhere else in lo, which is no more
-// principled than that and does not need to be: past the reader's own language
-// and lo's default, what is left is "some name rather than none", and any fixed
-// order answers that.
+// Spanish and German, in the order the languages have everywhere else in lo,
+// which is no more principled than that and does not need to be: past the
+// reader's own language and lo's default, what is left is "some name rather than
+// none", and any fixed order answers that.
 //
 // Nothing found is the empty string rather than null: every caller is choosing
 // between this and — where a spot has no name at all, which is every spot kept in
