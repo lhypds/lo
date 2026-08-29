@@ -161,7 +161,7 @@ export function componentsFor(countryCode) {
 
 // The whole list, for /api/countries: every country lo can find itself in and
 // what it would be able to show there. Names come from ICU rather than from a
-// column of their own — Node has all three of lo's languages, and a name is not
+// column of their own — Node has all of lo's languages, and a name is not
 // something this file should be maintaining a copy of.
 export function countryList(lang = "en") {
   const names = new Intl.DisplayNames([lang], { type: "region", fallback: "code" });

@@ -51,7 +51,7 @@ async function getPage(url) {
     headers: {
       "User-Agent": BROWSER_UA,
       Accept: "text/html,application/xhtml+xml",
-      "Accept-Language": "en,ja;q=0.8,zh;q=0.6",
+      "Accept-Language": "en,ja;q=0.9,zh;q=0.8,fr;q=0.7,es;q=0.6,de;q=0.5",
     },
     redirect: "follow",
     signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),

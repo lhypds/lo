@@ -182,7 +182,7 @@ async function getJson(url, options) {
 
 /* ------------------------------------------------------------------ place -- */
 
-const PLACE_LANGUAGE = { en: "en", zh: "zh", ja: "ja" };
+const PLACE_LANGUAGE = { en: "en", zh: "zh", ja: "ja", fr: "fr", es: "es", de: "de" };
 
 function firstString(...values) {
   for (const value of values) {
@@ -221,38 +221,13 @@ export function lookupPlace(latitude, longitude, lang = "en") {
 // the geocoder knows, narrowest first. Null where it knew none of it, which is
 // the sea and not much else.
 //
-// Here rather than at the two endpoints that write it down, because a mark and
-// a post are filed the same way on purpose: two copies of this join is one of
-// them quietly growing a comma the other does not have.
+// A post's line and only a post's. A mark used to be filed the same way, in all
+// three languages at once, and is not any more: what the reader kept is a spot,
+// and a district's name is not that spot's name (see the marks endpoint). A post
+// is the other case — it is left for whoever comes past, and where it was left
+// is part of reading it.
 export function placeLine(place) {
   return (place ? [place.locality, place.name, place.region].filter(Boolean).join(" · ") : "") || null;
-}
-
-// The same line in each language lo is read in, keyed by language code, or null
-// where no language produced one.
-//
-// All of them at once rather than the reader's own on demand: a mark is written
-// down once and read for years, and the reader who saved it is not the only
-// reader it will ever have — the account crosses devices and languages, and the
-// spot is one spot whatever it is called. Asking again years later would be
-// putting a geocoder between a reader and a list they already have.
-//
-// Three requests where there was one is the price, and it is smaller than it
-// looks: lookupPlace caches on a ~1.1 km grid for a day, so the second mark down
-// the same street pays for none of them.
-//
-// Settled rather than all-or-nothing, and a language that failed is left out
-// rather than written in empty: one geocoder request going wrong is no reason
-// for a mark to lose the two names that came back fine.
-export async function lookupPlaceLines(latitude, longitude) {
-  const langs = Object.keys(PLACE_LANGUAGE);
-  const settled = await Promise.allSettled(langs.map((lang) => lookupPlace(latitude, longitude, lang)));
-  const lines = {};
-  settled.forEach((result, index) => {
-    const line = result.status === "fulfilled" ? placeLine(result.value) : null;
-    if (line) lines[langs[index]] = line;
-  });
-  return Object.keys(lines).length > 0 ? lines : null;
 }
 
 /* ---------------------------------------------------------------- weather -- */
@@ -353,7 +328,14 @@ export function lookupWeather(latitude, longitude) {
 const NEWS_HOST = "https://news.google.com/rss";
 // Google News keys a feed by three things: the reading language (hl), the
 // edition's country (gl), and the pair again as ceid.
-const NEWS_LANGUAGE = { en: { hl: "en-US", ceid: "en" }, ja: { hl: "ja", ceid: "ja" }, zh: { hl: "zh-CN", ceid: "zh-Hans" } };
+const NEWS_LANGUAGE = {
+  en: { hl: "en-US", ceid: "en" },
+  zh: { hl: "zh-CN", ceid: "zh-Hans" },
+  ja: { hl: "ja", ceid: "ja" },
+  fr: { hl: "fr", ceid: "fr" },
+  es: { hl: "es", ceid: "es" },
+  de: { hl: "de", ceid: "de" },
+};
 
 function countryFor(countryCode) {
   return /^[A-Za-z]{2}$/.test(countryCode ?? "") ? countryCode.toUpperCase() : "US";
@@ -532,7 +514,8 @@ export function lookupNearby(latitude, longitude, lang = "en") {
 // knowing about is written up in the language of the place and not necessarily
 // in the reader's: a Chinese reader in Kyoto wants 嵯峨天皇祭, and searching for
 // 活动 alone finds them 部活動 — school clubs — instead.
-const EVENT_TERMS = "(イベント OR events OR 活动 OR 祭)";
+const EVENT_TERMS =
+  "(イベント OR events OR 活动 OR 祭 OR événement OR événements OR evento OR eventos OR Veranstaltung OR Veranstaltungen)";
 // An event is stale the moment it is over, so the listing only looks back a
 // fortnight — long enough to catch a run that is still going.
 const EVENT_WINDOW = "when:14d";

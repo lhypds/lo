@@ -43,7 +43,9 @@ if (tables.has("comments") && !tables.has("post_comments")) {
 // handed as a zip.
 //
 // Whatever was in the table goes with them, once: every account's rows are
-// written into its file, and then the table goes. Here rather than below with the
+// written into its file, and then the table goes. Bar the place column, which
+// held the geocoder's line for where the phone was and is not a name for
+// anything (see readMark in users.js); it is left behind with the table. Here rather than below with the
 // column migrations because it has to run before the schema — the whole point is
 // that there is no CREATE TABLE marks any more, so a database that still has one
 // has to be emptied out on the way past. importMarks writes nothing over a folder
@@ -51,7 +53,7 @@ if (tables.has("comments") && !tables.has("post_comments")) {
 if (tables.has("marks")) {
   const kept = db
     .prepare(
-      `SELECT u.username, m.id, m.time, m.latitude, m.longitude, m.accuracy, m.label, m.place
+      `SELECT u.username, m.id, m.time, m.latitude, m.longitude, m.accuracy, m.label
        FROM marks m
        JOIN users u ON u.id = m.user_id
        ORDER BY m.user_id, m.time DESC, m.id DESC`,

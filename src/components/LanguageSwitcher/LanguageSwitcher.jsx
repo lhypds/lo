@@ -7,6 +7,9 @@ const LANGS = [
   { code: "en", label: "EN" },
   { code: "zh", label: "ZH" },
   { code: "ja", label: "JA" },
+  { code: "fr", label: "FR" },
+  { code: "es", label: "ES" },
+  { code: "de", label: "DE" },
 ];
 
 export default function LanguageSwitcher() {

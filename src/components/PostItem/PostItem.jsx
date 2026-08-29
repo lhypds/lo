@@ -39,6 +39,7 @@ export default function PostItem({
   // line that would have held the words holds where it was taken instead.
   const headline = post.body || post.place || formatCoords(post.latitude, post.longitude);
   const away = from ? formatDistance(distanceMeters(from, post)) : "";
+  const comments = post.comments ?? 0;
 
   return (
     <li
@@ -68,7 +69,26 @@ export default function PostItem({
             in the same words on both — a second copy under posts.* would be two
             keys to keep in step for no gain. */}
         <div className="post-side">
-          {away && <span className="post-distance">{t("marks.distance", { distance: away })}</span>}
+          {/* How far off it is and how much has been said back — the two figures
+              about the post that are not the post. On one line, because the row
+              is a fixed height and a third stacked line would make the list
+              taller for a number most rows do not carry. The word and the
+              figure in the bubble's own order, so the count on the row and the
+              count in the corner of the pin read as the same thing said twice
+              rather than as two different readings (see postPopupElement).
+              Unlike the bubble's, this one is not a control, so nought is left
+              off: there it is an invitation to be the first, here it would be
+              the same "0" written down every row of a quiet neighbourhood. */}
+          {(away || comments > 0) && (
+            <span className="post-meta">
+              {away && <span className="post-distance">{t("marks.distance", { distance: away })}</span>}
+              {comments > 0 && (
+                <span className="post-comments">
+                  {t("comments.short")} {comments}
+                </span>
+              )}
+            </span>
+          )}
           <span className="post-actions">
             {/* Every tooltip opens leftwards, not just the one on the end: how
                 many buttons there are depends on whose post this is, and a row

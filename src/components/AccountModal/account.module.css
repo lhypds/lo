@@ -75,6 +75,21 @@
   display: none;
 }
 
+/* A second line under a reading, saying what the reading actually costs. In the
+   value column rather than across the row, so it hangs off the word it is about
+   and not off the label; grey, because it is the one thing on this line nobody
+   has to do anything about — the reading above it is the fact and this is the
+   footnote to it. At the record's own size rather than the smaller one lo
+   quietens an address with: this is the sentence a reader weighs before deciding
+   whether to be findable, and grey is already the whole of what says it is not a
+   thing to do. Led further apart than the row, which is what keeps a sentence
+   from reading as a second row of the list. */
+.hint {
+  margin: 4px 0 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
 /* The one round thing in a square app, and round on purpose: a question mark in
    a circle is the mark every app uses for "there is more to this", and the
    reader knows it before they have read anything on the line.
@@ -123,12 +138,17 @@
    Paper over paper, so the rows it covers are covered rather than showing
    through, and the rule around it in full ink — this is a thing laid on top of
    the record, and the hairlines inside the record are the quieter grey. */
+/* The margin is said outright because one of the two panels drawn in this box is
+   a form (see DeleteAllMarks), and a form is the one element a browser may still
+   hand a margin of its own — which on a box anchored to the row's own edges
+   would be the panel hanging off them. */
 .tip {
   position: absolute;
   top: 100%;
   right: 0;
   left: 0;
   z-index: 999;
+  margin: 0;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -176,11 +196,41 @@
   cursor: pointer;
 }
 
+/* Dead means dead: the panel that empties the list keeps its button up from the
+   moment it opens, so what has to be done to reach it is plain, and a box that
+   still turned over under the pointer would be reading as pressable while
+   refusing to be pressed. */
 @media (hover: hover) {
-  .download:hover {
+  .download:not(:disabled):hover {
     background: var(--ink);
     color: var(--paper);
   }
+}
+
+/* What the panel is asking for, and the field it is asked in: the question over
+   the box rather than beside it, since the box is as wide as the panel and a
+   label sharing its line would only make both of them narrower. Wrapped in the
+   label so the words are the field's own — pressing them lands in it. */
+.confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* The house field, at the size the record around it is set in: a hairline box,
+   32px tall, and the mono face every figure and every typed handle in lo is set
+   in (see .profile-input). Mono because what goes in it is a word being copied
+   rather than a word being written, and a face whose letters are all one width
+   is the one that shows a typo. */
+.confirmField {
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  outline: 0;
+  background: var(--paper);
+  font-family: var(--mono);
+  font-size: 12px;
 }
 
 .section {

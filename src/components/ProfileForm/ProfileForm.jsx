@@ -15,23 +15,34 @@ const LINKS_MAX = 12;
 
 // A picture the size of the box it is shown in and no larger, and square,
 // because square is the only shape a profile picture is ever drawn in — 96px on
-// the profile page, 64px in this sheet, both of them cropped square by
-// object-fit. So 192: twice the larger box, which is a retina screen's worth,
-// and three times the smaller one.
+// the profile page, 64px in this sheet, 28px in every list, all of them cropped
+// square by object-fit.
 //
 // It was 320 fitted whole, which is the same number meaning something else. A
 // landscape photo fitted that way stored 320x180 and drew the middle 180 of it,
 // so the honest reading of the old size was 180 — and the bytes for the width
 // either side were spent anyway. Cut to the square instead (see middleSquare)
-// and 192 is both the number stored and the number shown: a little sharper than
-// what a landscape photo used to arrive at, and between a third and two thirds
-// of the pixels. This is one file every reader of the profile downloads before
-// anything else on the page, so that is the trade worth making.
-const AVATAR_SIZE = 192;
-// And a shade under what a post photo is kept at. This one is drawn at half the
-// size it is stored at, and what does not survive that reduction is not worth
-// paying to send.
-const AVATAR_QUALITY = 0.75;
+// and the number stored is the number shown.
+//
+// Then 192, twice the profile page's box, and now 160. Two hundred percent of a
+// 96px box is a rule for a photograph somebody looks at; a face in a 96px square
+// is not read that closely, and the second half of those pixels is being paid
+// for on every profile in order to survive a magnification nobody performs. 160
+// is still two and a half times the sheet's box and nearly six times a list's,
+// and the whole of the difference between it and 192 on a 96px square is in fine
+// detail at the edge of the frame — foliage, brickwork — rather than in the
+// person. This is the one file every reader of a profile downloads before
+// anything else on the page, so what it costs is worth counting closely.
+const AVATAR_SIZE = 160;
+// And well under what a post photo is kept at. A post photo is looked at; this
+// is drawn at a little over half the size it is stored at and at under a fifth
+// of it in a list, and detail that cannot survive that reduction is detail
+// nobody is going to see. Past about here the picture starts to go soft in the
+// face rather than at the edges, which is the point at which the saving stops
+// being free — and the saving is mostly in the size above anyway: dropping the
+// quality alone that far at 192 gives back a fifth of the file where cutting to
+// 160 as well gives back a third.
+const AVATAR_QUALITY = 0.66;
 // And the box it is drawn in here, which is also what the <img> is told it is:
 // a picture whose size is on the tag does not resize the form around it when it
 // arrives.

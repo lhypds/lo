@@ -143,7 +143,14 @@ export async function downloadExport(username) {
   const plain = /filename="([^"]+)"/i.exec(disposition)?.[1];
   const filename = (encoded ? decodeURIComponent(encoded) : plain) || "lo-export.zip";
 
-  const url = URL.createObjectURL(await response.blob());
+  startDownload(await response.blob(), filename);
+}
+
+// Bytes already in hand, handed to the browser as a file. A link that is made,
+// pressed and thrown away in the same breath, because there is no other way to
+// give a browser a name to save something under.
+function startDownload(blob, filename) {
+  const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
   link.download = filename;
@@ -279,6 +286,42 @@ export const importMarks = (text) =>
     body: text,
     headers: { "Content-Type": "text/plain" },
   });
+// The list on its way out: the account's own marks.json, saved as a file. The
+// other half of the verb beside it — what the import reads back is exactly what
+// this hands over, so a list carried between devices or accounts makes the round
+// trip unchanged.
+//
+// Not the zip in the top bar, which is the whole folder and a thing to be
+// unpacked. Most readers pressing "export" on the marks line want the marks.
+//
+// Fetched as JSON and written out here rather than sent down as an attachment,
+// for the reason the zip cannot be (see downloadExport): a plain navigation to
+// the address would arrive without the session. Laid out the way the server lays
+// the file out — two spaces, a closing newline — since a marks.json is meant to
+// be opened and read.
+//
+// Called marks.json, with no stamp in the name. It is what the file is called in
+// the folder, in the zip, and in the note that explains how to make one; a
+// browser asked for it twice writes the second as marks (1).json on its own,
+// which is a better answer than a name nobody can say out loud.
+export async function downloadMarks() {
+  const file = await request("/api/marks/export.json");
+  startDownload(new Blob([`${JSON.stringify(file, null, 2)}\n`], { type: "application/json" }), "marks.json");
+}
+// The language goes up with the name for the reason it goes up with a new mark:
+// a spot is named in the language its namer was reading in, and that is the one
+// the name is written under. Read off i18n here rather than asked of the caller,
+// so that a sheet opened from a row and a sheet opened from the save button
+// cannot disagree about it.
 export const renameMark = (markId, label) =>
-  request(`/api/marks/${markId}`, { method: "PATCH", body: JSON.stringify({ label }) });
+  request(`/api/marks/${markId}?lang=${i18n.language || "en"}`, {
+    method: "PATCH",
+    body: JSON.stringify({ label }),
+  });
 export const deleteMark = (markId) => request(`/api/marks/${markId}`, { method: "DELETE" });
+// The list itself rather than a mark in it, which is what the bare path says:
+// what is being asked for is a list with nothing in it, not a removal repeated
+// until there is nothing left. What comes back is the number that went, since
+// after this the count is zero either way and the figure that went is the only
+// thing the reader has not already been told.
+export const clearMarks = () => request("/api/marks", { method: "DELETE" });

@@ -55,7 +55,6 @@ import {
   lookupEvents,
   lookupNearby,
   lookupPlace,
-  lookupPlaceLines,
   lookupTrends,
   lookupVenues,
   lookupWarnings,
@@ -70,13 +69,16 @@ import { articleId, harvest, readStoredArticle } from "./articles.js";
 // in a table until this shelf existed, and `getSettings` is about to be read
 // beside `getSession`.
 import {
+  clearMarks,
   countMarks as countUserMarks,
   createMark as saveMark,
   deleteMark as removeMark,
+  getMarkFile as readMarkFile,
   getMarks as readMarks,
   getSettings as readSettings,
   hasUserDir,
   mergeMarks,
+  migrateMarks,
   renameMark as relabelMark,
   saveSettings as writeSettings,
   userDir,
@@ -103,6 +105,13 @@ try {
 // Two seconds is still short enough to walk away from an address that is
 // genuinely dead.
 net.setDefaultAutoSelectFamilyAttemptTimeout(2000);
+
+// The one thing done to the data on the way up rather than on the way past. The
+// database's own migrations run as db.js is imported, a line or two above this;
+// the accounts' files have none of their own, and a shape they have stopped being
+// written in is worth one (see migrateMarks). It is quiet where there is nothing
+// to do, which is every start after the first.
+migrateMarks();
 
 const port = Number(process.env.PORT) || 3014;
 const isProduction = process.env.NODE_ENV === "production";
@@ -138,7 +147,7 @@ const sessionAgeMs = 30 * 24 * 60 * 60 * 1000;
 // accumulate on a quiet server.
 deleteExpiredSessions(Date.now());
 
-const LANGS = new Set(["en", "zh", "ja"]);
+const LANGS = new Set(["en", "zh", "ja", "fr", "es", "de"]);
 
 function normalizeUsername(value) {
   return String(value ?? "").trim().normalize("NFKC").toLowerCase();
@@ -926,7 +935,37 @@ app.get("/api/marks", requireSession, (req, res) => {
   res.json({ marks: readMarks(req.user.username, limit) });
 });
 
-app.post("/api/marks", requireSession, async (req, res, next) => {
+// The same list as a file rather than as a page of it: the folder's own
+// marks.json, which is the one thing in the zip most readers were ever after and
+// the file the import below reads back.
+//
+// Its own address rather than the reading above with the limit taken off. What a
+// page asks for and what a backup asks for are two different questions — one is
+// as much of the list as a screen can hold and the other is all of it, always —
+// and an endpoint that answered both would be one where the wrong caller gets the
+// whole file by forgetting an argument.
+app.get("/api/marks/export.json", requireSession, (req, res) => {
+  res.json(readMarkFile(req.user.username));
+});
+
+// A spot is kept with what the reader gave it and nothing else. The name of the
+// place used to be looked up here and written down beside it, in all three
+// languages, so that a mark saved in one tap still read as somewhere; that is
+// gone. A geocoder's line is where the phone was, not what the spot is — the
+// reader marked a doorway and the list called it "Chiyoda · Tokyo", which is a
+// name for several thousand other spots as well and for none of them well.
+//
+// So a mark with no name written on it is stored with none: its label empty in
+// every language (see readLabel in users.js). What it is read by then is where it
+// is — the coordinates, which are the truth about it and the one thing every mark
+// has. Naming it stays the reader's to do, from the row in the list or from the
+// sheet the save itself offers.
+//
+// The language on the request is still read, but for a different question than it
+// used to answer. It said which language to look the place up in; it now says
+// which language the reader typed the name in, and that is the one the name is
+// written under.
+app.post("/api/marks", requireSession, (req, res) => {
   const location = parseLocation(req.body);
   if (!location) return res.status(400).json({ error: "Invalid coordinates" });
   const label = String(req.body?.label ?? "").trim().normalize("NFKC");
@@ -934,27 +973,13 @@ app.post("/api/marks", requireSession, async (req, res, next) => {
   const suppliedTime = req.body?.time ? new Date(req.body.time) : new Date();
   if (Number.isNaN(suppliedTime.getTime())) return res.status(400).json({ error: "Invalid time" });
 
-  try {
-    // The name of the spot is looked up here rather than trusted from the
-    // client, so a mark reads the same however it was saved — and in every
-    // language lo is read in rather than only the one it was saved in, so it
-    // also reads the same to whoever opens the list next (see lookupPlaceLines).
-    const places = await lookupPlaceLines(location.latitude, location.longitude).catch(() => null);
-    const mark = saveMark(req.user.username, {
-      ...location,
-      time: suppliedTime.toISOString(),
-      label: label || null,
-      // The line this reader would have been shown, kept on as the plain string
-      // it has always been: it is what a mark is read by when `places` has
-      // nothing to offer — an export from somewhere that never had one, or a
-      // language the geocoder could not answer in.
-      place: places?.[requestedLang(req)] ?? places?.en ?? null,
-      places,
-    });
-    res.status(201).json({ mark });
-  } catch (error) {
-    next(error);
-  }
+  const mark = saveMark(req.user.username, {
+    ...location,
+    time: suppliedTime.toISOString(),
+    label,
+    lang: requestedLang(req),
+  });
+  res.status(201).json({ mark });
 });
 
 // How big a marks.json may be on the way in. A spot is about 150 bytes written
@@ -986,14 +1011,32 @@ app.post(
   },
 );
 
+// Naming a spot, or renaming it, or taking its name off — in one language of it,
+// the one the sheet was typed in. The rest of the name is left alone (see
+// renameMark), which is why an empty box here is a language cleared rather than a
+// spot made nameless.
 app.patch("/api/marks/:markId", requireSession, (req, res) => {
   const markId = Number(req.params.markId);
   if (!Number.isInteger(markId) || markId < 1) return res.status(400).json({ error: "Invalid mark ID" });
   const label = String(req.body?.label ?? "").trim().normalize("NFKC");
   if (label.length > 48) return res.status(400).json({ error: "A name is at most 48 characters" });
-  const mark = relabelMark(req.user.username, markId, label || null);
+  const mark = relabelMark(req.user.username, markId, label, requestedLang(req));
   if (!mark) return res.status(404).json({ error: "No such mark", code: "MARK_NOT_FOUND" });
   res.json({ mark });
+});
+
+// The list emptied, addressed at the list rather than at a mark in it — which is
+// the difference between this and the line below, and the whole of what it is
+// for: a file read in by mistake is undone here in one press instead of one press
+// per spot it brought.
+//
+// Answered with what it let go rather than with 204, unlike the single delete.
+// That one is pressed on a row the reader is looking at and the row going is the
+// answer; this one is pressed on a count, and the count is what there is to say
+// back. Not an error where the list was already empty: what was asked for is a
+// list with nothing in it, and there is one.
+app.delete("/api/marks", requireSession, (req, res) => {
+  res.json({ removed: clearMarks(req.user.username), count: 0 });
 });
 
 app.delete("/api/marks/:markId", requireSession, (req, res) => {

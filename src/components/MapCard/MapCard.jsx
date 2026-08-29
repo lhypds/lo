@@ -8,7 +8,7 @@ import { MARK_PIN_EYE, MARK_PIN_PATH, MARK_PIN_TIP_Y, PIN_GLYPHS } from "../../u
 import { directionsLink, searchLink } from "../../utils/maps.js";
 import { pickedLang } from "../../utils/lang.js";
 import { cycleMapStyle, mapStyleId, mapStyleUrl, useMapStyle } from "../../utils/mapstyle.js";
-import { placeName } from "../../utils/place.js";
+import { labelName } from "../../utils/label.js";
 import { venueParts } from "../../utils/venues.js";
 import { useAuth } from "../AuthProvider/index.js";
 import { useHere } from "../LocationProvider/index.js";
@@ -17,16 +17,44 @@ import styles from "./map.module.css";
 const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 const DEFAULT_ZOOM = 15;
 
-const LANG_MAP = { en: "en", ja: "ja", zh: "zh-Hans" };
+// How near an edge a pin may sit and still count as being on screen, for a map
+// asked to hold still (see the focus effect). The same 48 the scatter is fitted
+// with: a pin ten pixels from the edge is on the map in the arithmetic sense and
+// nowhere at all in the sense the reader means.
+const FOCUS_MARGIN = 48;
+
+// And how far out the reader has to have pulled before a pan alone stops being
+// an answer. Below this the tile is showing a region rather than a
+// neighbourhood, where every post in the list is within a few pixels of every
+// other and sliding one of them to the middle says nothing — so a press from
+// out there comes in as far as this and no further. Above it the scale is the
+// reader's own and is left exactly as they set it.
+const MIN_FOCUS_ZOOM = 14;
+
+const LANG_MAP = { en: "en", ja: "ja", zh: "zh-Hans", fr: "fr", es: "es", de: "de" };
 
 // A pick in the switcher wins. Until then the map follows the system: "auto"
 // hands the choice to Mapbox, which reads navigator.language — so a machine set
-// to Korean gets Korean labels even though lo only ships en/ja/zh. Which is why
+// to Korean gets Korean labels even though lo does not ship Korean. Which is why
 // it asks whether a language has been *picked* rather than which one is showing
 // (see pickedLang).
 function mapLanguage(uiLanguage) {
   if (!pickedLang()) return "auto";
   return LANG_MAP[uiLanguage] ?? "auto";
+}
+
+// Whether a spot is somewhere the reader can already see it — asked of the tile
+// in pixels rather than of the viewport in degrees, because what is wanted is
+// clear of the edges and not merely inside them.
+function inFrame(map, spot) {
+  const at = map.project([spot.longitude, spot.latitude]);
+  const box = map.getContainer();
+  return (
+    at.x >= FOCUS_MARGIN &&
+    at.y >= FOCUS_MARGIN &&
+    at.x <= box.clientWidth - FOCUS_MARGIN &&
+    at.y <= box.clientHeight - FOCUS_MARGIN
+  );
 }
 
 // Near enough anywhere, and the halo is drawn from the accuracy the device
@@ -226,59 +254,103 @@ function popupSearchElement(to, label, name) {
   return popupLinkElement(searchLink(to), label, name);
 }
 
-// Last on the line, furthest from the two the reader means to press often,
-// because it is the one control in a bubble that takes something away. And all
-// it does is ask: what it opens is the same confirmation the row in the list
-// opens, which is where the deleting is agreed to and done (see MarksPage). A
-// bubble is a preview, and no place to be told a thing cannot be undone.
-function popupDeleteElement(mark, label, name, remove) {
+// The two words in a bubble that are pressed rather than followed. Both of them
+// do the same small thing: they ask the page for a sheet, which is where the
+// answering happens — a bubble is a preview, and a preview that grew a text
+// field or told somebody a thing cannot be undone would have stopped being one.
+//
+// Buttons and not links, so the box a browser gives them has to be taken off;
+// what is pressed is the word, set exactly as the two links beside it are.
+function popupSheetElement(subject, className, label, name, open) {
   const button = document.createElement("button");
   button.type = "button";
-  button.className = styles.popupDelete;
+  button.className = className;
   button.textContent = label;
   button.setAttribute("aria-label", `${label} ${name}`);
   button.addEventListener("click", (event) => {
     // Short of the map, which reads a click as "put the chosen bubble away" —
     // the same stop every pressable thing in a bubble makes.
     event.stopPropagation();
-    remove(mark);
+    open(subject);
   });
   return button;
+}
+
+// Saying what the thing is: naming a spot, or rewriting a post. Both were things
+// only the row in the list could ask for until now — and a pin picked out of a
+// scatter is exactly the moment somebody knows what they want to say, which is a
+// poor moment to be sent to find the same thing again in the list underneath.
+function popupEditElement(subject, label, name, edit) {
+  return popupSheetElement(subject, styles.popupEdit, label, name, edit);
+}
+
+// And the one control in a bubble that takes something away, last on the line
+// and furthest from everything else. All it does is ask: what it opens is the
+// same confirmation the row in the list opens, which is where the deleting is
+// agreed to and done (see MarksPage and PostsPage).
+function popupDeleteElement(subject, label, name, remove) {
+  return popupSheetElement(subject, styles.popupDelete, label, name, remove);
 }
 
 // Built out of nodes rather than a string of HTML: the name is whatever the
 // reader typed into the rename box, and setHTML would run it.
 //
-// Under the three lines that say which spot this is, the things that can be done
-// with it, in the order they are worth asking: look it up, go to it, be rid of
-// it. Three of the four actions the row in the list carries — renaming is the
-// one left behind, since a bubble that grew a text field would stop being a
-// preview — and they are here because on this page the map is where a mark is
-// found. A pin the reader has just picked out of a scatter should not have to be
-// found a second time in the list underneath to be acted on.
+// Under the lines that say which spot this is, everything that can be done with
+// it — all four of the actions the row in the list carries, because on this page
+// the map is where a mark is found. A pin the reader has just picked out of a
+// scatter should not have to be found a second time in the list underneath to be
+// acted on.
 //
-// `remove` is a way to ask for the deleting, or nothing where the page has no
-// answer to give — a control that did nothing would be worse than no control.
-function markPopupElement(mark, name, coords, iso, when, labels, remove) {
+// In two groups, and the split is what they are about rather than how often they
+// are pressed. Out on the left, the two that leave for somewhere else: look the
+// spot up, and go to it. Over on the right, the two that are about the mark
+// itself: what it is called, and whether it is kept at all. Apart, because a
+// press meant for one kind is not a press to be made by accident on the other —
+// they sit at opposite ends of the line, with delete on the outside of its own
+// pair, furthest from the words the reader means to press often.
+//
+// `edit` and `remove` are ways to ask the page for the two sheets, or nothing
+// where it has no answer to give — a control that did nothing would be worse
+// than no control.
+//
+// `coords` arrives empty on a spot nobody named: the coordinates are then the
+// title itself, and a line of them underneath would be the bubble saying the
+// same thing twice. The title wears the numbers' own type in that case, which is
+// the type they were wearing on the line they came up from.
+function markPopupElement(mark, name, coords, iso, when, labels, edit, remove) {
   const wrapper = document.createElement("div");
   wrapper.className = styles.markPopup;
   const label = document.createElement("strong");
+  if (!coords) label.className = styles.markPopupNumbers;
   label.textContent = name;
-  const position = document.createElement("span");
-  position.className = styles.markPopupMeta;
-  position.textContent = coords;
   const time = document.createElement("time");
   time.className = styles.markPopupMeta;
   time.dateTime = iso;
   time.textContent = when;
   const actions = document.createElement("span");
   actions.className = styles.markPopupActions;
-  actions.append(
+  const going = document.createElement("span");
+  going.className = styles.popupGroup;
+  going.append(
     popupSearchElement(mark, labels.search, name),
     popupNavElement(mark, labels.nav, name),
   );
-  if (remove) actions.append(popupDeleteElement(mark, labels.remove, name, remove));
-  wrapper.append(label, position, time, actions);
+  actions.append(going);
+  if (edit || remove) {
+    const keeping = document.createElement("span");
+    keeping.className = styles.popupGroup;
+    if (edit) keeping.append(popupEditElement(mark, labels.edit, name, edit));
+    if (remove) keeping.append(popupDeleteElement(mark, labels.remove, name, remove));
+    actions.append(keeping);
+  }
+  wrapper.append(label);
+  if (coords) {
+    const position = document.createElement("span");
+    position.className = styles.markPopupMeta;
+    position.textContent = coords;
+    wrapper.append(position);
+  }
+  wrapper.append(time, actions);
   return wrapper;
 }
 
@@ -347,8 +419,14 @@ function venuePopupElement(venue, note, away, comments, navLabel) {
 //
 // `comments` is a word and a way to open the sheet, or nothing where the page
 // has nowhere to open one — the marks page draws no posts at all, and a count
-// nothing answers would be a control that does nothing.
-function postPopupElement(post, headline, place, iso, when, navigate, comments, navLabel) {
+// nothing answers would be a control that does nothing. `edit` and `remove` are
+// the same kind of thing and come with a second condition on them: they are the
+// author's, and a bubble on somebody else's post is handed neither.
+//
+// The line they all stand on is the mark bubble's, split the same way: what is
+// there to read and where the post is, out on the left; what the author can do
+// to their own, over on the right.
+function postPopupElement(post, headline, place, iso, when, navigate, comments, labels, edit, remove) {
   const wrapper = document.createElement("div");
   wrapper.className = styles.postPopup;
   if (post.image) {
@@ -402,6 +480,8 @@ function postPopupElement(post, headline, place, iso, when, navigate, comments, 
   time.textContent = when;
   const actions = document.createElement("span");
   actions.className = styles.postPopupActions;
+  const reading = document.createElement("span");
+  reading.className = styles.popupGroup;
   if (comments) {
     const open = document.createElement("button");
     open.type = "button";
@@ -417,9 +497,19 @@ function postPopupElement(post, headline, place, iso, when, navigate, comments, 
       event.stopPropagation();
       comments.open(post);
     });
-    actions.append(open);
+    reading.append(open);
   }
-  actions.append(popupNavElement(post, navLabel, headline));
+  reading.append(popupNavElement(post, labels.nav, headline));
+  actions.append(reading);
+  if (edit || remove) {
+    const writing = document.createElement("span");
+    writing.className = styles.popupGroup;
+    // The composer the post was written in, opened on the post — rewriting one
+    // is the same act as writing it, which is why it is the same sheet.
+    if (edit) writing.append(popupEditElement(post, labels.edit, headline, edit));
+    if (remove) writing.append(popupDeleteElement(post, labels.remove, headline, remove));
+    actions.append(writing);
+  }
   wrapper.append(label, who, time, actions);
   return wrapper;
 }
@@ -500,9 +590,10 @@ function wearChosen(marker, chosen) {
 // `expanded` is owned by the page rather than by the map: expanding hides the
 // rest of the dashboard, which is not the map's call to make.
 //
-// The same square tile on both pages: the dashboard passes no marks at all and
-// gets the here and now, the marks page passes every saved spot and `fitMarks`
-// and gets a history, with the list of them underneath.
+// The same square tile on every page that draws one: the dashboard passes no
+// marks at all and gets the here and now, the marks page passes every saved spot
+// and gets that same here with the history standing on it, and the posts page
+// asks for `fitMarks` besides, which opens the view over the whole scatter.
 export default function MapCard({
   marks = [],
   posts = [],
@@ -513,6 +604,11 @@ export default function MapCard({
   // passes nothing, because a page about where the reader has been is not the
   // place to be told where lunch is.
   venues = [],
+  // The one spot the page is asking for, as a fresh object every time so that
+  // asking twice for the same one lands twice. It opens that pin's bubble and,
+  // by default, brings the map to it. `still: true` on the object asks for the
+  // first half only — show me where it is without taking away what I am looking
+  // at — which the map honours whenever the pin is already on screen.
   focus = null,
   hovered = null,
   fitMarks = false,
@@ -522,10 +618,19 @@ export default function MapCard({
   onSelectPin,
   onOpenComments,
   onOpenVenueComments,
-  // Asked for from a mark's bubble, answered by the page: the map says which
-  // spot, and the page is where the confirmation stands and where the list it
-  // would be taken out of lives. Nothing passed is no delete control at all,
-  // which is the dashboard, where the map draws no marks in the first place.
+  // The same pair a mark's bubble asks for, asked for from a post's — and only
+  // ever on the reader's own posts, which is a question the map can answer for
+  // itself: it knows who is signed in, and every post says whose it is. Nothing
+  // passed is no such control on any of them, which is the dashboard, where a
+  // post can be read but not worked on.
+  onEditPost,
+  onDeletePost,
+  // Both asked for from a mark's bubble and both answered by the page: the map
+  // says which spot, and the page is where the name sheet and the confirmation
+  // stand, and where the list they change lives. Nothing passed is no such
+  // control at all, which is the dashboard — where the map draws no marks in the
+  // first place.
+  onRenameMark,
   onDeleteMark,
 }) {
   const { t, i18n } = useTranslation();
@@ -543,8 +648,15 @@ export default function MapCard({
   commentsRef.current = onOpenComments;
   const venueCommentsRef = useRef(onOpenVenueComments);
   venueCommentsRef.current = onOpenVenueComments;
-  // And the same for the delete in a mark's bubble, for the same reason: the
-  // listener is on a node mapbox owns, and it outlives the render that built it.
+  const editPostRef = useRef(onEditPost);
+  editPostRef.current = onEditPost;
+  const deletePostRef = useRef(onDeletePost);
+  deletePostRef.current = onDeletePost;
+  // And the same for the two sheets a mark's bubble asks for, for the same
+  // reason: the listeners are on nodes mapbox owns, and they outlive the render
+  // that built them.
+  const renameMarkRef = useRef(onRenameMark);
+  renameMarkRef.current = onRenameMark;
   const deleteMarkRef = useRef(onDeleteMark);
   deleteMarkRef.current = onDeleteMark;
   const containerRef = useRef(null);
@@ -862,28 +974,40 @@ export default function MapCard({
     const map = mapRef.current;
     if (!map) return;
     markMarkersRef.current.forEach(({ marker }) => marker.remove());
-    // The words on the bubble's action line, and the way to ask for a deleting,
-    // built once for the whole redraw rather than per pin — the same shape the
-    // posts' comments control below is handed.
-    const labels = { search: t("map.search"), nav: t("map.nav"), remove: t("map.delete") };
+    // The words on the bubble's action line, and the ways to ask for the two
+    // sheets, built once for the whole redraw rather than per pin — the same
+    // shape the posts' comments control below is handed.
+    const labels = {
+      search: t("map.search"),
+      nav: t("map.nav"),
+      edit: t("map.edit"),
+      remove: t("map.delete"),
+    };
+    const edit = onRenameMark ? (mark) => renameMarkRef.current?.(mark) : null;
     const remove = onDeleteMark ? (mark) => deleteMarkRef.current?.(mark) : null;
     // Kept with the id it was drawn for, so a row hovered in the list can be
     // answered by the one pin that belongs to it.
     markMarkersRef.current = marks.map((mark) => {
-      const name = mark.label || placeName(mark, i18n.language) || t("marks.unnamed");
+      // A spot nobody named is read by where it is: the coordinates become the
+      // bubble's title, and the line of them under it goes rather than being
+      // printed twice (see markPopupElement).
+      const named = labelName(mark, i18n.language);
+      const coords = formatCoords(mark.latitude, mark.longitude);
       const marker = preview(
-        // The label, not `name`: the pin wears only what somebody wrote on it.
-        new mapboxgl.Marker({ element: markElement(mark.label || ""), anchor: "bottom" })
+        // The name, not the title: the pin wears only what somebody wrote on it,
+        // and wears nothing at all where nobody wrote anything.
+        new mapboxgl.Marker({ element: markElement(named), anchor: "bottom" })
           .setLngLat([mark.longitude, mark.latitude])
           .setPopup(
             previewPopup().setDOMContent(
               markPopupElement(
                 mark,
-                name,
-                formatCoords(mark.latitude, mark.longitude),
+                named || coords,
+                named ? coords : "",
                 mark.time,
                 formatDateTime(mark.time, i18n.language),
                 labels,
+                edit,
                 remove,
               ),
             ),
@@ -893,12 +1017,12 @@ export default function MapCard({
       );
       return { id: mark.id, marker };
     });
-    // `onDeleteMark` only for whether there is a control at all — which page
-    // this is does not change while it is on screen — and the handler itself is
-    // read off the ref, so a new one on every render of the page above does not
-    // tear every pin on the map down and build it again.
+    // The two handlers only for whether there is a control at all — which page
+    // this is does not change while it is on screen — and they are themselves
+    // read off their refs, so a new one on every render of the page above does
+    // not tear every pin on the map down and build it again.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [marks, t, i18n.language, preview, Boolean(onDeleteMark)]);
+  }, [marks, t, i18n.language, preview, Boolean(onRenameMark), Boolean(onDeleteMark)]);
 
   useEffect(() => {
     hoverPinRef.current = onHoverPin;
@@ -915,12 +1039,15 @@ export default function MapCard({
     const map = mapRef.current;
     if (!map) return;
     postMarkersRef.current.forEach(({ marker }) => marker.remove());
-    // The word on the count and the way to open the sheet behind it, built once
-    // for the whole redraw rather than per pin. Nothing at all where the page
-    // has nowhere to open one.
+    // The word on the count and the way to open the sheet behind it, and the
+    // words on the rest of the line, built once for the whole redraw rather than
+    // per pin. Nothing at all where the page has nowhere to open one.
     const comments = onOpenComments
       ? { label: t("comments.short"), open: (post) => commentsRef.current?.(post) }
       : null;
+    const labels = { nav: t("map.nav"), edit: t("map.edit"), remove: t("map.delete") };
+    const edit = onEditPost ? (post) => editPostRef.current?.(post) : null;
+    const remove = onDeletePost ? (post) => deletePostRef.current?.(post) : null;
     postMarkersRef.current = posts.map((post) => {
       const element = postElement();
       // The same three things the row in the list carries, chosen the same way:
@@ -931,6 +1058,10 @@ export default function MapCard({
       // headline is the post's own words, since otherwise the headline is that
       // very place and the bubble would say it twice.
       const place = post.body ? post.place : "";
+      // Rewriting and deleting are the author's, and nobody else's bubble is
+      // handed either — the same condition the row in the list is given as
+      // `mine`, answered here from who is signed in.
+      const mine = Boolean(user && post.username === user.username);
       const marker = preview(
         new mapboxgl.Marker({ element, anchor: "bottom" })
           .setLngLat([post.longitude, post.latitude])
@@ -944,7 +1075,9 @@ export default function MapCard({
                 formatDateTime(post.time, i18n.language),
                 navigate,
                 comments,
-                t("map.nav"),
+                labels,
+                mine ? edit : null,
+                mine ? remove : null,
               ),
             ),
           )
@@ -953,12 +1086,24 @@ export default function MapCard({
       );
       return { id: post.id, marker };
     });
-    // `onOpenComments` only for whether there is a control at all — which page
-    // this is does not change while it is on screen — and the handler itself is
-    // read off the ref, so a new one on every render of the page above does not
-    // tear every pin on the map down and build it again.
+    // The three handlers only for whether there is a control at all — which page
+    // this is does not change while it is on screen — and they are themselves
+    // read off their refs, so a new one on every render of the page above does
+    // not tear every pin on the map down and build it again. `user` is in for
+    // the name on it rather than the object: signing in as somebody else is what
+    // changes which bubbles carry the author's two words.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [posts, t, i18n.language, preview, navigate, Boolean(onOpenComments)]);
+  }, [
+    posts,
+    t,
+    i18n.language,
+    preview,
+    navigate,
+    user?.username,
+    Boolean(onOpenComments),
+    Boolean(onEditPost),
+    Boolean(onDeletePost),
+  ]);
 
   // Somewhere to eat and somewhere for coffee, drawn the same wholesale way and
   // for the same reason — two dozen of each at most, and the whole list is
@@ -1037,11 +1182,17 @@ export default function MapCard({
     }
   }, [hovered, marks, posts, hide, restore]);
 
-  // A list map opens on the whole list: one fit over every pin it was given, so
-  // a mark left in another city — or a post two suburbs over — is on screen
-  // without anyone having to go and look for it. It happens once, on the first
-  // list that has anything in it; after that the view belongs to the reader, and
-  // following the fix is off for the same reason a deliberate pan turns it off.
+  // A map asked for it opens on the whole list: one fit over every pin it was
+  // given, so a post two suburbs over is on screen without anyone having to go
+  // and look for it. It happens once, on the first list that has anything in it;
+  // after that the view belongs to the reader, and following the fix is off for
+  // the same reason a deliberate pan turns it off.
+  //
+  // Only a list of other people's things asks. A page about the reader's own
+  // spots opens where the reader is — the fit is drawn to the outermost pin, and
+  // one mark kept in another city would spend the whole tile on the distance
+  // between them — and a row pressed there pans to its pin instead (see
+  // MarksPage).
   useEffect(() => {
     const map = mapRef.current;
     const pins = [...marks, ...posts];
@@ -1090,6 +1241,15 @@ export default function MapCard({
       }
     }
 
+    // A press that asked the map to hold still gets to keep the frame it is
+    // looking at, as long as the pin is in it. The posts page is where this
+    // matters: its map opens over the whole scatter of what is around you, and
+    // going to a post the reader can already see would trade that view away for
+    // a thing they had — the list is the index to the map, and an index that
+    // rearranges the book is no index. Off screen there is nothing to preserve,
+    // so it pans as any other focus does.
+    if (focus.still && inFrame(map, focus)) return;
+
     // The pan is aimed at the middle of the map and nowhere else. The chosen spot
     // is what was asked for, so that is what goes under the centre of the tile —
     // it used to be pushed down by half the bubble's height, to leave the preview
@@ -1097,9 +1257,16 @@ export default function MapCard({
     // was already waiting for it. Two rows pressed in turn moved the map by
     // different amounts, since the two bubbles are different heights. The bubble
     // can be cropped by the top edge; where the pin is cannot be argued with.
+    //
+    // Holding still and having to move anyway means moving as little as will do:
+    // the map slides, and the scale it slides at is the one the reader chose.
+    // The one exception is a reader who has pulled right out — see
+    // MIN_FOCUS_ZOOM. A focus that did not ask to hold still is an arrival from
+    // somewhere else, which has no frame worth keeping and gets a close one.
+    const zoom = focus.still ? Math.max(map.getZoom(), MIN_FOCUS_ZOOM) : 16;
     map.easeTo({
       center: [focus.longitude, focus.latitude],
-      zoom: 16,
+      zoom,
       duration: 700,
     });
   }, [focus, keep, release]);

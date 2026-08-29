@@ -112,9 +112,8 @@ export default function UserProfile({ username }) {
   // read as one that had failed rather than as one that means none.
   //
   // The count goes to the word as well as into the figure: one follower is a
-  // follower, and English is the only one of the three languages that has an
-  // opinion about it — the other two answer with the one word they have,
-  // whatever number is standing in front of it.
+  // follower, and the languages that distinguish singular from plural receive
+  // the count so i18next can choose the right word.
   const figure = (mode) => (
     <button type="button" className={styles.figure} onClick={() => setListing(mode)}>
       <b>{follows[mode]}</b>

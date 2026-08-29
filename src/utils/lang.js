@@ -12,7 +12,7 @@ import { noteSetting, registerSetting } from "./settings.js";
 // written before the others and readers are holding it; renaming it would put
 // every one of them back to being guessed at.
 const KEY = "lang";
-export const LANGS = ["en", "zh", "ja"];
+export const LANGS = ["en", "zh", "ja", "fr", "es", "de"];
 
 // The language the reader has chosen, or null where they have not chosen. Null and
 // not the default: what lo is showing without a choice is the browser's own

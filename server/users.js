@@ -94,6 +94,26 @@ function parseJson(text) {
   }
 }
 
+// The same forgiveness for the bytes as for the JSON above, and for the same
+// reason. Its one caller is the migration at the end of the marks section, which
+// reads a file to find out whether it would write it differently; nothing to
+// compare against is an answer that leaves the folder alone.
+function readText(file) {
+  try {
+    return fs.readFileSync(file, "utf8");
+  } catch {
+    return "";
+  }
+}
+
+// How one of these files is laid out, in one place, because two of them ask: the
+// write below, and the migration, which has to know what the write would produce
+// without doing it. Two spaces and a closing newline — these are files meant to
+// be opened and read.
+function jsonText(value) {
+  return `${JSON.stringify(value, null, 2)}\n`;
+}
+
 // Written beside the file and renamed onto it, because a rename is the one file
 // operation that cannot half-happen: a process that dies mid-write leaves a
 // stray .tmp rather than a truncated marks.json. The trailing newline is for
@@ -101,7 +121,7 @@ function parseJson(text) {
 function writeJson(file, value) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
   const temporary = `${file}.tmp`;
-  fs.writeFileSync(temporary, `${JSON.stringify(value, null, 2)}\n`);
+  fs.writeFileSync(temporary, jsonText(value));
   fs.renameSync(temporary, file);
 }
 
@@ -114,32 +134,50 @@ function writeJson(file, value) {
 // list that renumbered itself would break both.
 const MARK_LABEL_MAX = 48;
 
-// The language codes a spot's name can be kept under — lo's own three, the same
+// The language codes a spot's name can be kept under — lo's own six, the same
 // list utils/lang.js holds for the client. A file arriving with anything else
-// keeps only these: `places` is a fixed handful of names for one spot, not a
+// keeps only these: a label is a fixed handful of names for one spot, not a
 // place where a hand-written import can grow the file without bound.
-const PLACE_LANGS = ["en", "zh", "ja"];
+const LABEL_LANGS = ["en", "zh", "ja", "fr", "es", "de"];
 
 function markFile(username) {
   return fileIn(username, "marks.json");
 }
 
-// What the spot is called in each language it is known in, or null where it is
-// known in none.
+// What the spot is called, in each language somebody has given it a name in —
+// and only in those. A spot named once carries one key; a spot named twice
+// carries two; a spot kept in one tap and never named carries none, and its label
+// is `{}`.
 //
-// Null is an ordinary answer here and not a broken mark: a spot kept before this
-// field existed has none, and neither does one converted out of an export that
-// only ever had the single name its own app wrote. `place` beside it is what
-// those are read by — which is the reason that field stayed the plain string it
-// has always been rather than becoming this one.
-function readPlaces(value) {
-  if (!value || typeof value !== "object") return null;
-  const places = {};
-  for (const lang of PLACE_LANGS) {
-    const line = typeof value[lang] === "string" ? value[lang].trim() : "";
-    if (line) places[lang] = line;
+// A name per language rather than a name, because the reader who typed it was
+// reading lo in a language at the time and wrote in that one. A spot called 家 by
+// somebody reading in Japanese is a name the English reading of the same list can
+// do little with, and lo has six readings of every list. So a name is written
+// under the language it was written in — the marks endpoints take that off the
+// request — and read back under the language it is being read in, which is what
+// utils/label.js is for.
+//
+// A language with no name in it is left out rather than written in empty. What
+// stands in the file is then the names there are and nothing else, which is what
+// a file meant to be opened and read should hold — and it is what makes a fourth
+// language cost nothing: adding one is a key appearing in the marks that have a
+// name in it, not a fourth blank line in every mark that does not.
+//
+// Two older shapes are read as well as this one, since a file written before it —
+// by lo itself, or by somebody's AI off the conversion prompt — is still
+// somebody's list. A plain string is a name in a language nothing wrote down, and
+// it goes under English, which is where every reader's fallback runs next.
+// `places`, the spot's name as another app knew it, fills any language the label
+// has nothing of its own for.
+function readLabel(value, places) {
+  const written = typeof value === "string" ? { en: value } : value;
+  const label = {};
+  for (const lang of LABEL_LANGS) {
+    const name = written?.[lang] || places?.[lang];
+    const named = typeof name === "string" ? name.trim().slice(0, MARK_LABEL_MAX) : "";
+    if (named) label[lang] = named;
   }
-  return Object.keys(places).length > 0 ? places : null;
+  return label;
 }
 
 // Newest first, which is the order the list page reads them in and the order the
@@ -160,16 +198,25 @@ function readMark(value) {
   const longitude = Number(value.longitude);
   if (!Number.isSafeInteger(id) || id < 1) return null;
   if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
-  const accuracy = Number(value.accuracy);
+  // Nothing is not read as a number, because `Number(null)` is 0 and a fix good
+  // to 0 metres is a claim about how well the phone knew where it was rather than
+  // an admission that it did not say. A mark saved without one is written null and
+  // has to still be null the next time the file is read — which, now that a start
+  // rewrites these files (see migrateMarks), is the difference between a missing
+  // figure and a made-up one spreading through every list lo keeps.
+  const accuracy = value.accuracy == null ? NaN : Number(value.accuracy);
   return {
     id,
     time: typeof value.time === "string" ? value.time : new Date(0).toISOString(),
     latitude,
     longitude,
     accuracy: Number.isFinite(accuracy) ? accuracy : null,
-    label: typeof value.label === "string" ? value.label.slice(0, MARK_LABEL_MAX) : null,
-    place: typeof value.place === "string" ? value.place : null,
-    places: readPlaces(value.places),
+    // And `place` is not read at all. A file from when lo looked the spot up as
+    // it saved it carries the geocoder's line for where the phone was — "下京區 ·
+    // 京都市 · 京都府" — which is a name for several thousand doorways and for
+    // none of them well. It is dropped on the way past rather than folded into a
+    // name somebody chose, and the file loses it the next time one is written.
+    label: readLabel(value.label, value.places),
   };
 }
 
@@ -197,11 +244,26 @@ export function getMarks(username, limit = 200) {
   return readMarkFile(username).marks.slice(0, limit);
 }
 
+// The folder's own marks.json, whole and in the order the file is written in.
+// What the export beside the list hands over, and the one reading here that is
+// not cut to a length: getMarks above answers a page and stops where the page
+// does, and a copy of somebody's spots that quietly ended at the 500th is not a
+// copy of anything.
+export function getMarkFile(username) {
+  const { marks, nextId } = readMarkFile(username);
+  return { nextId, marks };
+}
+
 export function countMarks(username) {
   return readMarkFile(username).marks.length;
 }
 
-export function createMark(username, { time, latitude, longitude, accuracy, label, place, places }) {
+// No place name among the arguments, and none looked up: the only name a mark lo
+// saves has is the one the reader typed on it, and it is written under the
+// language they were reading in when they typed it. A spot kept in one tap and
+// not named — which is most of them — goes into the file with an empty label,
+// which is a spot no language has a word for yet rather than a spot missing two.
+export function createMark(username, { time, latitude, longitude, accuracy, label, lang }) {
   const file = readMarkFile(username);
   const mark = readMark({
     id: file.nextId,
@@ -209,9 +271,7 @@ export function createMark(username, { time, latitude, longitude, accuracy, labe
     latitude,
     longitude,
     accuracy: accuracy ?? null,
-    label: label ?? null,
-    place: place ?? null,
-    places: places ?? null,
+    label: label ? { [lang]: label } : null,
   });
   // The endpoint checks the coordinates before it gets here, so nothing should
   // ever be turned down at this line. Thrown rather than written: a mark that
@@ -224,11 +284,17 @@ export function createMark(username, { time, latitude, longitude, accuracy, labe
 
 // Null when there is no such mark, which is how the endpoint tells a stale id
 // from a saved one — the same answer the UPDATE ... changes === 0 gave.
-export function renameMark(username, markId, label) {
+//
+// One language of the name and not the name: what was typed goes under the
+// language it was typed in, and the others are left holding whatever they
+// were. A reader renaming in Japanese a spot an import named in Chinese has
+// added a Japanese name to it, not replaced a name they cannot read; and an empty
+// box takes the Japanese name off again without touching the Chinese one.
+export function renameMark(username, markId, label, lang) {
   const file = readMarkFile(username);
   const mark = file.marks.find((item) => item.id === markId);
   if (!mark) return null;
-  const renamed = { ...mark, label: label ?? null };
+  const renamed = { ...mark, label: readLabel({ ...mark.label, [lang]: label ?? "" }) };
   writeMarkFile(username, {
     ...file,
     marks: file.marks.map((item) => (item.id === markId ? renamed : item)),
@@ -242,6 +308,25 @@ export function deleteMark(username, markId) {
   if (kept.length === file.marks.length) return false;
   writeMarkFile(username, { ...file, marks: kept });
   return true;
+}
+
+// The whole list at once. Not a thing the line above can be asked a thousand
+// times to do: a reader who has just read in the wrong file wants the list gone,
+// and a thousand presses is a different request that happens to end in the same
+// place.
+//
+// `nextId` is kept rather than wound back, for the reason it is kept at all (see
+// readMarkFile). A counter that went back to 1 would hand the next mark an id the
+// client was told a moment ago was gone — and an emptied list is exactly when
+// that client is still holding the old numbers.
+//
+// The number that was let go is the answer, since the file after this reads the
+// same whether it emptied a thousand marks or none.
+export function clearMarks(username) {
+  const file = readMarkFile(username);
+  if (file.marks.length === 0) return 0;
+  writeMarkFile(username, { ...file, marks: [] });
+  return file.marks.length;
 }
 
 // What makes two rows the same spot: where it was and the moment it was kept,
@@ -315,6 +400,63 @@ export function importMarks(username, rows) {
   return true;
 }
 
+// Every account's marks.json brought up to the shape above, once, on the way up
+// (see the call in index.js).
+//
+// Nothing here that readMark does not already do on its own: a file from before
+// the label was kept per language is read correctly every time it is read, and
+// it is written out in the new shape the next moment anything is kept, renamed or
+// deleted in that folder. What this adds is the moment. A folder nobody has
+// touched since keeps the old shape indefinitely, and these files are not only
+// lo's — they are the thing the reader downloads, hands to another account, opens
+// in an editor, reads in a terminal. Leaving half of them in a shape lo no longer
+// writes means the reader who opens two of them sees two answers to what a mark
+// is, and every later reading of them has to go on allowing for both.
+//
+// What changes in a file: `place`, the geocoder's line for where the phone was,
+// goes; a plain-string label becomes a label in a language; and `places` folds
+// into the languages the label has nothing for, its empty strings — the three a
+// mark carried to say it had no name — not written down again.
+//
+// The one thing it cannot know is which language a plain-string label was typed
+// in — no version of the file recorded that. English is where it goes, which is a
+// guess with a reason behind it (see readLabel) and still a guess: a reader whose
+// spots were named in Chinese can rename one in Chinese and clear the English it
+// was filed under, and both are a sheet each from the row.
+//
+// Rewritten only where the writing would differ, so a second start over the same
+// folder touches nothing and the files keep the times they were last written at.
+export function migrateMarks() {
+  if (!fs.existsSync(usersDir)) return 0;
+  let rewritten = 0;
+  for (const entry of fs.readdirSync(usersDir, { withFileTypes: true })) {
+    if (!entry.isDirectory() || !isSafeName(entry.name)) continue;
+    const before = readText(markFile(entry.name));
+    const stored = parseJson(before);
+    // No file, or one that is not a marks.json at all. A file that cannot be
+    // parsed is left exactly as it is rather than written over with an empty
+    // list: whatever is in there is somebody's, and a boot is no place to decide
+    // it is nothing.
+    if (!Array.isArray(stored?.marks)) continue;
+    const { marks, nextId } = readMarkFile(entry.name);
+    // A row this cannot read is a row the rewrite would drop, so a file holding
+    // one is left alone and said out loud instead. The list goes on being read
+    // the way it always is — a bad row is passed over — and the tidying happens
+    // whenever the reader next keeps a spot, which is their own doing rather than
+    // a start-up's.
+    if (marks.length !== stored.marks.length) {
+      const lost = stored.marks.length - marks.length;
+      console.warn(`data/users/${entry.name}/marks.json: ${lost} unreadable rows, left as it is`);
+      continue;
+    }
+    if (jsonText({ nextId, marks }) === before) continue;
+    writeMarkFile(entry.name, { marks, nextId });
+    rewritten += 1;
+    console.log(`tidied ${marks.length} marks in data/users/${entry.name}`);
+  }
+  return rewritten;
+}
+
 /* ------------------------------------------------------------------ settings */
 
 // What the reader has decided about how lo is shown to them, kept for the
@@ -336,7 +478,7 @@ const DEFAULT_SETTINGS = {
   layout: {},
 };
 
-const LANGS = new Set(["en", "zh", "ja"]);
+const LANGS = new Set(["en", "zh", "ja", "fr", "es", "de"]);
 const MAP_STYLES = new Set(["simple", "detailed", "satellite"]);
 // The rungs a panel can stand on, in squares (see utils/cards.js). Held here as
 // a range rather than as the list, since what this file is for is refusing a

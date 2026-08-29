@@ -153,7 +153,7 @@ export default function Warnings() {
                         written against — the word beside it says what was issued,
                         this says how far up the scale it is.
                         Written short, as L2 rather than Level 2, and the same two
-                        characters in all three languages. This tile is a single
+                        characters in every language. This tile is a single
                         square and never anything else, and of the three things in
                         the group this is the one that goes over the end and takes
                         the line with it. What it can give up is the word, because

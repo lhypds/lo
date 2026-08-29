@@ -153,16 +153,21 @@
   gap: 3px;
 }
 
+/* Grey, over the black line beneath it. Who the exchange is with is the label on
+   the row; a name set as dark as the words it heads reads as somebody being
+   addressed rather than named, which turns an inbox into a page of mentions. */
 .who {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: var(--muted);
   font-size: 13px;
 }
 
-/* When it was said, then one line of what was said. Grey, because what is being
-   read down this column is the names — the line under each is how the reader
-   tells one exchange from another, not the exchange itself. */
+/* When it was said, then one line of what was said. The time keeps the grey it
+   shares with the name above it and the words themselves take the black: what is
+   read down this column is the last thing said in each exchange, told apart by
+   the name standing over it. */
 .preview {
   min-width: 0;
   display: flex;
@@ -177,6 +182,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: var(--ink);
 }
 
 .when {

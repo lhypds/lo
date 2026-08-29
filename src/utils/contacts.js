@@ -107,7 +107,10 @@ export function contactsFor(language, filled = {}) {
 // Chinese is still that account's WeChat ID when the same person comes back in
 // English, and a form that sent only what it drew would take it down for them.
 export function profileFields(source = {}) {
-  const fields = { bio: source.bio ?? "" };
+  // The two that are about the person rather than about how to reach them. What
+  // they do is one field however it was answered — a slug off the menu or a word
+  // of their own, and nothing on the account says which (see utils/work.js).
+  const fields = { bio: source.bio ?? "", work: source.work ?? "" };
   for (const contact of CONTACTS) fields[contact.field] = source[contact.field] ?? "";
   // The two that are not a line of text. The picture is carried as the name it is
   // stored under, because that is what writing one takes: the profile hands it

@@ -420,6 +420,14 @@
   color: var(--muted);
 }
 
+/* A spot nobody named wears its coordinates where its name would be. The
+   numbers' own type, because that is what they were wearing on the line below
+   before they moved up here — but the bubble's size and colour, because this is
+   its title now and not the small print under one. */
+.markPopupNumbers {
+  font-family: var(--mono);
+}
+
 /* The same small, underlined hand-off at the foot of every kind of pin. The
    popup itself stays deaf so a pointer can move between neighbouring pins; this
    is the one hole through it that belongs to every popup, and a press leaves lo
@@ -441,22 +449,36 @@
   }
 }
 
-/* The three things that can be done with a marked spot, on one line under what
-   the bubble says about it. A plain row with a gap rather than the posts' line,
-   which pushes its two ends apart: this bubble is only as wide as the longest of
-   the three lines above it, so spreading the words to the edges would set them a
-   different distance apart on every pin. Together and in a fixed order, they can
-   be reached for the same way twice. */
+/* Everything that can be done with a marked spot, on one line under what the
+   bubble says about it — pushed to the two ends, because the line holds two
+   kinds of thing and not four of one. Leaving for somewhere else sits on the
+   left, and what the mark itself is called or whether it is kept at all sits on
+   the right, out of the way of a press meant for the other pair.
+
+   What that costs is the posts' line's own cost: this bubble is only as wide as
+   the longest line above it, so the gap in the middle is a different width on
+   every pin. The two ends are fixed, which is what a reader reaches by, and the
+   ends are what they reach for. */
 .markPopupActions {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+/* Each end of that line: two words, together, in a fixed order. A post's bubble
+   ends the same way and wears the same span (see postPopupActions). */
+.popupGroup {
   display: flex;
   align-items: baseline;
   gap: 10px;
 }
 
-/* The one control in a bubble that takes something away, wearing exactly what
-   the two links beside it wear. It is a button and not a link, so the box a
-   browser gives it has to be taken off; what it does is ask, and the modal it
-   opens is where the weight of the question belongs. */
+/* The two words in a bubble that are pressed rather than followed, wearing
+   exactly what the two links beside them wear. They are buttons and not links,
+   so the box a browser gives them has to be taken off; what they do is ask, and
+   the sheet each opens is where the weight of the question belongs. */
+.popupEdit,
 .popupDelete {
   padding: 0;
   border: 0;
@@ -471,6 +493,7 @@
 }
 
 @media (hover: hover) {
+  .popupEdit:hover,
   .popupDelete:hover {
     color: var(--ink);
     text-decoration: none;

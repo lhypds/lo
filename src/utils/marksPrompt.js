@@ -15,7 +15,7 @@
 // characters it cuts a label at.
 //
 // Written in English, whatever the sheet around it is read in. It is one document
-// rather than three because it is addressed to a model rather than to the reader
+// rather than six because it is addressed to a model rather than to the reader
 // — the model takes the instruction in English and answers in JSON, and what the
 // reader says to it around this is their own business and their own language.
 export const MARKS_PROMPT = `# Convert a location export into lo's marks.json
@@ -39,12 +39,9 @@ trailing note.
       "latitude": 35.6812,
       "longitude": 139.7671,
       "accuracy": null,
-      "label": "Tokyo Station",
-      "place": "Chiyoda, Tokyo, Japan",
-      "places": {
-        "en": "Chiyoda, Tokyo, Japan",
-        "zh": "千代田区, 东京都, 日本",
-        "ja": "千代田区, 東京都, 日本"
+      "label": {
+        "en": "Tokyo Station",
+        "ja": "東京駅"
       }
     }
   ]
@@ -63,26 +60,44 @@ trailing note.
   !3dLAT!4dLNG or ?q=LAT,LNG in it.
 - accuracy — how good the fix was, in metres, as a number; null when the export
   does not say. Never guess one.
-- label — what the place is called, or null. Prefer the name the person gave it
-  over one the export generated. 48 characters at most, which is where lo cuts
-  it.
-- place — where it is, in words: district, city, country, or as much of that as
-  the export knows, in whatever language the export wrote it in. null when it
-  knows none of it.
-- places — the same words keyed by language code: "en", "zh" and "ja". lo shows
-  the reader whichever of the three they are reading in, and falls back to "en"
-  and then to place. Include a language only where you are confident of the
-  name; leave the whole field null rather than transliterating blind.
+- label — what the place is called, keyed by language code: "en", "zh", "ja",
+  "fr", "es" or "de". Only the languages the export actually names the place
+  in, and {} for a place it names in none — but as many of the six as it does
+  name it in, which is often more than one. Write each name under the language
+  it is written in, and prefer the name the person gave the place over one the
+  export generated. lo shows the reader whichever of the six they are reading
+  in, and where there is no name in that one falls back to "en", "zh", "ja",
+  "fr", "es" and then "de" — so a place named in one language only is still
+  read by that name in the other five. 48 characters at most in each, which is
+  where lo cuts it.
 
 ## Rules
 
 - One mark per saved place. Do not invent places and do not merge two that are
   close together.
 - A row with no usable coordinates is left out rather than guessed at.
-- A missing field is written as null. Never drop the key.
-- Do not invent a place name that is not in the export, in any language. A spot
-  the export gives no words for keeps place and places both null; lo shows its
-  coordinates, which is the truth about it.
+- A missing field is written as null and its key kept — label is the exception,
+  where a language with no name is left out of the object rather than written in
+  empty.
+- Take every language the export gives you. A place is often named twice in
+  one file and in more than one way: a local name and an English one in the
+  next column, a "name" tag beside a "name:en" or "name:fr" one, a KML <name>
+  in one language and a <description> in another, a note the person typed in
+  their own. That is one mark carrying two names, not two marks and not a
+  choice between them — lo reads a list in six languages, and a name it is
+  handed today is one it can show a reader who arrives in that language later.
+- Do not invent a name that is not in the export, in any language, and do not
+  transliterate one blind into a language the export did not write it in.
+  Filling the six is worth doing where the export supports it and not worth
+  guessing at: a language has a name of its own for a well-known place —
+  Tokyo Station, 東京駅, Gare de Tokyo — and that one can be written down where
+  you are certain of it, but a name you would be sounding out character by
+  character is a guess, and lo would sooner show coordinates than a guess.
+- A name is what the place is called, not where it sits. Do not put a district,
+  city or country in label because the export knew one — an address names
+  several thousand doorways and none of them well. A spot the export gives no
+  name for has "label": {}; lo shows its coordinates, which is the truth about
+  it.
 - Do not round coordinates any further than the export already has.
 - Latitude is between -90 and 90, longitude between -180 and 180. A row that
   fails that has its pair the wrong way round or is not a place at all: fix it

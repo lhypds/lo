@@ -25,7 +25,7 @@ const LONG_PRESS_SLOP = 10;
 // the same gesture on the same square because they are the same question
 // answered at two lengths.
 export default function MarkButton({ onMarked, onUnmarked, onRenamed, onLongPress }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { coords } = useHere();
   // A tile like any other on the grid, and named like one, so a card being
   // carried across the dashboard can take its place (see HomePage). It cannot be
@@ -269,7 +269,10 @@ export default function MarkButton({ onMarked, onUnmarked, onRenamed, onLongPres
           isOpen={editing}
           title={t("mark.nameTitle")}
           submitLabel={t("common.save")}
-          initialValue={saved?.label ?? ""}
+          // The name in the language it is being typed in, which on a spot
+          // saved a moment ago is empty anyway — a mark lo saves is saved with
+          // no name at all (see the marks endpoint).
+          initialValue={saved?.label?.[i18n.language] ?? ""}
           onClose={closeEdit}
           onSubmit={rename}
         />,

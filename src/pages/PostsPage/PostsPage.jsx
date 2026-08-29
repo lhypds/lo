@@ -134,6 +134,11 @@ export default function PostsPage() {
       <div className="posts-map">
         <Suspense fallback={<div className="posts-map-placeholder" />}>
           {/* Filtered with the list, for the reason the marks map is */}
+          {/* The edit and the delete in a square's bubble open the very sheets
+              the row's own two buttons open — one composer, one confirmation,
+              whichever half of the page they were asked for from. The map hands
+              them out on the reader's own posts only; on anyone else's, the
+              bubble is what it always was. */}
           <MapCard
             fitMarks
             posts={shown}
@@ -142,6 +147,8 @@ export default function PostsPage() {
             onHoverPin={setHovered}
             onSelectPin={setChosen}
             onOpenComments={setCommenting}
+            onEditPost={setEditing}
+            onDeletePost={setDeleting}
           />
         </Suspense>
       </div>
@@ -177,12 +184,20 @@ export default function PostsPage() {
                   onHover={setHovered}
                   onEdit={setEditing}
                   onDelete={setDeleting}
-                  // Pressing the row is what sends the map, the way pressing a
-                  // mark's name does. A fresh object every time rather than the
-                  // post itself: the map pans on a new `focus`, and asking twice
-                  // for the same spot — after wandering off it — has to move the
-                  // map twice.
-                  onShowOnMap={(target) => setFocus({ ...target })}
+                  // Pressing the row opens that post's bubble up on the map, the
+                  // way pressing a mark's name does — but without moving the
+                  // ground under it. This map opens over the whole scatter of
+                  // what is around you, and the list is the index to it: a row
+                  // pressed is "which one is that?", not "take me there", and a
+                  // map that flew to the pin answered a question by throwing
+                  // away the picture that made it worth asking. `still` is that
+                  // request; the map still comes when the pin is off screen,
+                  // where there is no view to keep (see MapCard).
+                  //
+                  // A fresh object every time rather than the post itself: the
+                  // map acts on a new `focus`, and asking twice for the same
+                  // spot — after wandering off it — has to answer twice.
+                  onShowOnMap={(target) => setFocus({ ...target, still: true })}
                 />
               ))}
             </ul>

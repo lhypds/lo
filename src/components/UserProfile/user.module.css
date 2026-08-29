@@ -28,9 +28,9 @@
    is a grid of squares.
    96 rather than the 64 it was: on its own line it is not being sized against a
    heading any more, and this is a picture of somebody rather than a marker
-   saying there is one. The sheet that uploads it stores a 192px square (see
-   ProfileForm), which is this at twice the pixels — and square, so what
-   object-fit crops away here is a rounding error rather than half the file. */
+   saying there is one. The sheet that uploads it stores a 160px square (see
+   ProfileForm), a little over this — and square, so what object-fit crops away
+   here is a rounding error rather than half the file. */
 .avatar {
   align-self: flex-start;
   width: 96px;

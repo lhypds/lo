@@ -5,6 +5,7 @@ import { Link, Modal, showToast, useNavigate } from "../../ui/index.js";
 import { formatUsername } from "../../utils/format.js";
 import { useAuth } from "../AuthProvider/index.js";
 import ProfileForm from "../ProfileForm/index.js";
+import DeleteAllMarks from "./DeleteAllMarks.jsx";
 import ImportHelp from "./ImportHelp.jsx";
 import styles from "./account.module.css";
 
@@ -41,6 +42,9 @@ export default function AccountModal({ isOpen, onClose }) {
   // Reading a file in, which is the one thing on this sheet that takes long
   // enough to be pressed twice.
   const [importing, setImporting] = useState(false);
+  // And writing one out, which is quick but is still a press that can be spent
+  // twice before the file appears.
+  const [exporting, setExporting] = useState(false);
   const marksFileRef = useRef(null);
 
   // Asked again each time the sheet opens rather than once on mount: the top bar
@@ -122,6 +126,23 @@ export default function AccountModal({ isOpen, onClose }) {
     }
   }
 
+  // The list saved as the file the import reads, which is the whole of it: no
+  // sheet asking first, since a download takes nothing away and the file it
+  // writes is the reader's own. Nothing is said when it works either — the file
+  // landing in the folder is the report, and a toast about it would be lo saying
+  // what the browser has already shown.
+  async function exportMarks() {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      await api.downloadMarks();
+    } catch (error) {
+      showToast(error.message || t("account.exportFailed"));
+    } finally {
+      setExporting(false);
+    }
+  }
+
   async function handleLogout() {
     await logout();
     onClose();
@@ -178,6 +199,35 @@ export default function AccountModal({ isOpen, onClose }) {
                   what it is — a question about the verb, not a second one beside
                   it. */}
               <ImportHelp />
+              {/* The way back out, beside the way in. The zip in the top bar is
+                  the whole folder and a thing to be unpacked; this is the one
+                  file in it this line is about, saved on its own — and it is the
+                  file the verb before it reads, so the two words are one round
+                  trip between devices rather than two unrelated errands. */}
+              {" / "}
+              <button
+                type="button"
+                className={styles.action}
+                onClick={exportMarks}
+                disabled={exporting}
+              >
+                {exporting ? t("account.exporting") : t("account.export")}
+              </button>
+              {/* The last thing that can be done to the list, and the only one
+                  that cannot be undone. In the brackets with the verbs it undoes
+                  rather than off on a rule of its own, because it is the same
+                  sentence: this line is the count and what can be done to it.
+
+                  There from the moment the count is read, and in full ink even
+                  where the count is nought — the panel it opens says there is
+                  nothing to delete, which is a sentence, where a greyed word is
+                  a refusal the reader has to work out for themselves. */}
+              {markCount !== null && (
+                <>
+                  {" / "}
+                  <DeleteAllMarks count={markCount} onCleared={() => setMarkCount(0)} />
+                </>
+              )}
               {")"}
               {/* Out of the way and reached by the word above it: the browser's
                   own file control cannot be made to read as a word in a
@@ -230,6 +280,18 @@ export default function AccountModal({ isOpen, onClose }) {
                   {")"}
                 </>
               )}
+              {/* What the word cannot say, on the line under it: "on" sounds
+                  like a pin on a map to anybody who has not read what lo does
+                  with a position, and the reader deciding whether to be found is
+                  exactly the reader who cannot afford to guess. Written out
+                  rather than hidden behind a mark to press — a note about what
+                  is being switched has to be read before the switch, and a
+                  panel that opens is a note that gets skipped.
+                  The star is the note saying it is a note; it is only a shape,
+                  so nothing reads it out. */}
+              <p className={styles.hint}>
+                <span aria-hidden="true">*</span> {t("account.discoverableNote")}
+              </p>
             </dd>
           </div>
         </dl>

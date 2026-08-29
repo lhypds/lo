@@ -88,11 +88,16 @@
   min-width: 0;
 }
 
+/* Grey, and the remark under it black. A name set as dark as the words below it
+   stops reading as a byline and starts reading as an address — a column of
+   people being called out rather than a column of things they said. Who spoke is
+   the label on the remark; the remark is what was come here to read. */
 .who {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: var(--muted);
   font-size: 12px;
   text-decoration: none;
 }
@@ -106,6 +111,10 @@
 
 .body {
   margin: 0;
+  /* Said rather than inherited: this is the black half of the pair the name is
+     the grey half of (see .who), and neither is worth leaving to whatever the
+     sheet around it happens to be set in. */
+  color: var(--ink);
   font-size: 13px;
   line-height: 1.5;
   /* Somebody else's writing, so it can be a pasted address with no spaces in it:

@@ -970,8 +970,16 @@ html:has(.home-main:not(.home-main-map) .card-pager) {
 
 /* A row is a control rather than a passage of text: pressing it sends the map,
    so a press-and-drag on it is a mis-hit to swallow rather than a selection to
-   start. */
+   start.
+
+   Two lines rather than one: what the spot is, and what can be done with it. The
+   padding is the row's own now instead of the top line's, so the two stand
+   inside one block of it. */
 .mark-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 0;
   border-bottom: 1px solid var(--line);
   user-select: none;
   -webkit-user-select: none;
@@ -1000,11 +1008,10 @@ html:has(.home-main:not(.home-main-map) .card-pager) {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 14px 0;
 }
 
 /* The name and its numbers are the button that sends the map here — stripped
-   back to the text, so the row keeps three visible actions rather than four */
+   back to the text, so the one press the top line answers is the obvious one */
 .mark-copy {
   flex: 1;
   min-width: 0;
@@ -1025,6 +1032,17 @@ html:has(.home-main:not(.home-main-map) .card-pager) {
   font-size: 14px;
 }
 
+/* A spot nobody named wears its coordinates where a name would be, and then
+   there is no line of them underneath. The numbers' own type, because that is
+   what they were wearing on the line they came up from — and a size down, since
+   a full pair of them set in the title's face is wider than the row is on a
+   phone and would be cut off by the ellipsis above. Still the row's ink: it is
+   the title of the row now, not the small print under one. */
+.mark-copy strong.mark-numbers {
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
 .mark-copy .mark-coords,
 .mark-copy time {
   color: var(--muted);
@@ -1033,7 +1051,8 @@ html:has(.home-main:not(.home-main-map) .card-pager) {
 }
 
 .mark-distance,
-.post-distance {
+.post-distance,
+.post-comments {
   flex: 0 0 auto;
   color: var(--muted);
   font-family: var(--mono);
@@ -1041,19 +1060,46 @@ html:has(.home-main:not(.home-main-map) .card-pager) {
   white-space: nowrap;
 }
 
-/* Distance over actions rather than beside them: three buttons and a figure in
-   one line leave the name almost nothing on a narrow phone */
-.mark-side {
-  flex: 0 0 auto;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 8px;
-}
-
+/* The four words under the row, pushed to its two ends: leaving lo for
+   somewhere else on the left, what the mark itself is called and whether it is
+   kept at all on the right. The line the bubble on the pin carries, laid out the
+   way the bubble lays it out — one arrangement to learn for the two halves of
+   this page (see markPopupActions in MapCard). */
 .mark-actions {
   display: flex;
-  gap: 6px;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+/* Each end of that line: two words, together, in a fixed order. */
+.mark-action-group {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+/* Set as the small print they stand among rather than as buttons, because a
+   box drawn round each of four words is a row that reads as a toolbar. The
+   underline is what says they can be pressed; the padding is not seen at all
+   and is there so a finger has more than ten pixels of height to land on. */
+.mark-action {
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  text-decoration: underline;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .mark-action:hover {
+    color: var(--ink);
+    text-decoration: none;
+  }
 }
 
 /* --------------------------------------------------------------- posts -- */
@@ -1152,6 +1198,16 @@ html:has(.home-main:not(.home-main-map) .card-pager) {
   flex-direction: column;
   align-items: flex-end;
   gap: 8px;
+}
+
+/* The two figures above the controls, side by side on one line. Either of them
+   can be missing — a post with no ground to measure from, a post nobody has
+   answered — and what is left keeps its end of the line rather than sliding
+   across it, which is why the gap sits between them and not around them. */
+.post-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
 }
 
 /* Above the stretched hit area of .post-copy, so the navigate/edit/delete

@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
 import { Modal } from "../../ui/index.js";
 import { formatCoords } from "../../utils/format.js";
-import { placeName, placeNames } from "../../utils/place.js";
+import { labelName, labelNames } from "../../utils/label.js";
 import { filterBy } from "../../utils/search.js";
 import Header from "../../components/Header/index.js";
 import MarkItem from "../../components/MarkItem/index.js";
@@ -72,7 +72,19 @@ export default function MarksPage() {
     }
   }
 
-  const deletingName = deleting?.label || placeName(deleting, i18n.language) || t("marks.unnamed");
+  // What the confirmation calls the spot, which is what its row calls it: the
+  // name somebody gave it, or where it is when nobody has (see MarkItem).
+  const deletingName = deleting
+    ? labelName(deleting, i18n.language) || formatCoords(deleting.latitude, deleting.longitude)
+    : "";
+
+  // What the name box opens on: the name in the language it is about to write
+  // one in, and not the name the row is showing. A box that opened on the Chinese
+  // name a Japanese reading is standing in for would have them save that Chinese
+  // name into Japanese by pressing the button they came to press. An empty box on
+  // a row reading 我家 is the truth about the spot — it has no Japanese name yet,
+  // and this is where one is written.
+  const renamingName = renaming?.label?.[i18n.language] ?? "";
 
   // What each row shows is what it is searched by, the coordinates included: an
   // unnamed spot has nothing else written on it, and they are what the row is
@@ -80,12 +92,11 @@ export default function MarksPage() {
   //
   // Every name the spot has and not only the one on the row, which is the one
   // place the two part company: a spot is searched by what the reader might call
-  // it, and that is not always the language they are reading in (see placeNames).
+  // it, and that is not always the language they are reading in (see labelNames).
   const shown = useMemo(
     () =>
       filterBy(marks, query, (mark) => [
-        mark.label,
-        ...placeNames(mark),
+        ...labelNames(mark),
         formatCoords(mark.latitude, mark.longitude),
       ]),
     [marks, query],
@@ -98,13 +109,21 @@ export default function MarksPage() {
         <Suspense fallback={<div className="marks-map-placeholder" />}>
           {/* The map narrows with the list: they are two halves of one answer,
               and a search that left every pin standing would be showing spots
-              the list has just said are not the ones. The fit happens once, on
-              the first list that had anything in it, so typing thins the pins
-              out where they stand rather than throwing the view about. */}
-          {/* The delete in a pin's bubble opens the very modal the row's own
-              delete opens: one confirmation, one place the deleting is done,
-              whichever half of the page it was asked for from. */}
-          <MapCard fitMarks marks={shown} focus={focus} hovered={hovered} onHoverPin={setHovered} onSelectPin={setChosen} onDeleteMark={setDeleting} />
+              the list has just said are not the ones. Typing thins the pins out
+              where they stand rather than throwing the view about. */}
+          {/* And it opens where the reader is standing rather than fitted over
+              everything they have ever kept. A fit is drawn to the outermost
+              pin, so one mark left in another city pulls the view out until the
+              ground actually underfoot is a few pixels wide and the spots near
+              at hand are a single smudge — a page asked to say where the reader
+              is answering with a country. The history is all still drawn on it,
+              and a row pressed in the list pans to its own pin, which is how a
+              spot far off is meant to be reached. */}
+          {/* The edit and the delete in a pin's bubble open the very sheets the
+              row's own two buttons open: one name box, one confirmation, one
+              place each is done, whichever half of the page it was asked for
+              from. */}
+          <MapCard marks={shown} focus={focus} hovered={hovered} onHoverPin={setHovered} onSelectPin={setChosen} onRenameMark={setRenaming} onDeleteMark={setDeleting} />
         </Suspense>
       </div>
       <main className="marks-list">
@@ -157,7 +176,7 @@ export default function MarksPage() {
         isOpen={Boolean(renaming)}
         title={t("marks.renameTitle")}
         submitLabel={t("common.save")}
-        initialValue={renaming?.label ?? ""}
+        initialValue={renamingName}
         onClose={() => setRenaming(null)}
         onSubmit={rename}
       />
