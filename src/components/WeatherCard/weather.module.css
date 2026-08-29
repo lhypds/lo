@@ -181,12 +181,17 @@
    as a list that happens to stop — and so that the last of them lands on the
    card's edge instead of leaving a gap under it.
 
-   How many rows there are is not this stylesheet's answer but the tile's, counted
-   out of this box's own height (see WeatherHours): whatever the square can hold
-   at a height they can be read at, which is six hours on the narrowest tile the
-   grid ever deals and sixteen on a desktop square. So the height is fixed at the
-   body's and the tracks divide it exactly — minmax(0, 1fr) and not 1fr, so that a
-   row can never grow on its contents and push the last of them off the card.
+   The whole day ahead is in here and the tile is the window on it: the run
+   scrolls, and how tall a row is drawn is the tile's answer rather than this
+   stylesheet's — the height that fits a whole number of rows across the opening,
+   measured and handed in as --hour-row (see WeatherHours). Which is what makes
+   the scroll an hourly one: every row is the same height, the window is a whole
+   number of them, and each stop the snapping settles on is an hour rather than
+   somewhere between two of them. Six of them at a time on the narrowest tile the
+   grid ever deals, sixteen on a desktop square, and the rest a scroll away.
+
+   The fallback is only for a browser with no ResizeObserver to measure with,
+   where a fixed row and a scroll is still a readable card.
 
    The same three parts as the readings on the front — what it is on the left,
    what it comes to on the right — with the day's shape drawn in the space
@@ -198,10 +203,13 @@
   list-style: none;
   display: grid;
   grid-template-columns: auto auto 1fr auto;
-  grid-auto-rows: minmax(0, 1fr);
-  align-items: center;
+  grid-auto-rows: var(--hour-row, 16px);
   column-gap: 7px;
-  overflow: hidden;
+  overflow-y: auto;
+  /* The card is the end of this gesture: the dashboard behind it is a strip
+     turned sideways and has nothing to give a wheel that has run out of hours. */
+  overscroll-behavior: contain;
+  scroll-snap-type: y mandatory;
 }
 
 /* A day with rain in it grows a column for the chance of it — and a second line
@@ -212,11 +220,19 @@
   grid-template-columns: auto auto auto 1fr auto;
 }
 
-/* The row is not a box of its own: every cell in it is the grid's, so the hours
-   line up down the tile column by column — the same reason the days ahead on the
-   front are one grid rather than three rows */
+/* The row is a box of its own, and it borrows the list's columns rather than
+   setting any: subgrid is what lets the hour be one thing the scroll can stop on
+   while the times, the glyphs and the temperatures still line up down the tile
+   column by column, each column as wide as the widest hour in the whole run
+   rather than the widest in view. Cells centred here, in the row, so the row
+   itself is free to stand the full height of its track — which is what makes the
+   stop it offers the top of the hour rather than the top of its lettering. */
 .hours li {
-  display: contents;
+  display: grid;
+  grid-template-columns: subgrid;
+  grid-column: 1 / -1;
+  align-items: center;
+  scroll-snap-align: start;
 }
 
 .hourTime {

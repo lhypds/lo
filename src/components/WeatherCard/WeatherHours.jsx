@@ -19,15 +19,9 @@ import styles from "./weather.module.css";
 
 // The shortest a row may be drawn and still be read: ten point type on one line,
 // the hour's glyph beside it, and enough air between one row and the next that
-// the run reads as a column rather than as a block. What it is for is the count
-// below — everything else about a row's height is worked out from the tile.
+// the run reads as a column rather than as a block. What it decides is how many
+// rows a tile is cut into, and from that how tall each one is.
 const ROW_MIN = 14;
-
-// How many rows to draw before the tile has been measured. Never seen in a
-// browser that has a ResizeObserver — the first measurement lands before the
-// first paint — so what this is really for is the one that has not: an opening
-// hand that suits a middling tile, rather than a card that arrives empty.
-const ROWS_UNMEASURED = 12;
 
 // Below this the chance of rain is not worth reporting — the model says "5%" of
 // a great many dry afternoons, and a figure and a line against every one of them
@@ -64,19 +58,19 @@ function hourNow(zone) {
 }
 
 export default function WeatherHours({ hours, zone, degrees }) {
-  // As many hours as the tile will hold, which is a question only the tile can
-  // answer. A ladder of container queries would answer it too, and answer it in
-  // the stylesheet where the rest of the card's sizing lives — but the count is
-  // needed here as a number and not only as a set of rows to hide: the spread the
-  // warmth is drawn against and whether there is rain to report are both readings
-  // of the hours actually on the tile, and a card that scaled its lines to eight
-  // hours while showing six would be drawing a shape nobody can see the ends of.
+  // Every hour is on the tile; how many of them are in the window at once is what
+  // the tile decides. The list scrolls, and what the measurement below is for is
+  // that it should scroll by whole hours: a row is drawn at exactly the height
+  // that puts a whole number of them across the opening, so the run is never cut
+  // through the middle of a row at the bottom edge, and every stop the scroll
+  // snaps to is an hour rather than somewhere between two of them.
   //
   // The list is measured rather than the card, because the list is what the rows
   // have to fit in — the heading above it and the padding around it are already
   // taken off. Its own height is fixed at the body's (see .hours in
-  // weather.module.css), so nothing it draws can change what it is being asked.
-  const [rows, setRows] = useState(ROWS_UNMEASURED);
+  // weather.module.css), so however tall the run inside it grows, what it is being
+  // asked here does not change and the measurement cannot chase itself.
+  const [rowHeight, setRowHeight] = useState(0);
   const listRef = useRef(null);
 
   useEffect(() => {
@@ -86,9 +80,9 @@ export default function WeatherHours({ hours, zone, degrees }) {
       const height = entry.contentRect.height;
       // A tile that is not being drawn at all measures nought — expanding the map
       // takes every other card off the page with display:none (see .home-main-map
-      // in styles.css) — and a card is not asked to become a single row on its way
-      // out of sight. What it was showing stands until it is on screen again.
-      if (height > 0) setRows(Math.max(1, Math.floor(height / ROW_MIN)));
+      // in styles.css) — and a card is not asked to redraw itself on its way out
+      // of sight. What it was showing stands until it is on screen again.
+      if (height > 0) setRowHeight(height / Math.max(1, Math.floor(height / ROW_MIN)));
     });
     observer.observe(list);
     return () => observer.disconnect();
@@ -103,12 +97,17 @@ export default function WeatherHours({ hours, zone, degrees }) {
   // an hour ago is worth more than a blank card.
   const now = zone ? hourNow(zone) : "";
   const ahead = hours.filter((hour) => hour.time.slice(0, 13) > now);
-  const shown = (ahead.length > 0 ? ahead : hours).slice(0, rows);
+  const shown = ahead.length > 0 ? ahead : hours;
 
-  // The spread is taken off the reading itself and not off the figure printed
-  // against it: the figures are whole degrees, and a settled evening can round to
-  // the same number a dozen times over and flatten a curve that is really there.
-  // Which scale they are in makes no difference to a share of the spread, so the
+  // The spread is that of the whole run and not of the hours in the window, so
+  // that a line means the same thing wherever the reader has scrolled to: a scale
+  // that were re-read at every stop would have the lines change length under a
+  // gesture that is meant only to move along them.
+  //
+  // It is taken off the reading itself and not off the figure printed against it:
+  // the figures are whole degrees, and a settled evening can round to the same
+  // number a dozen times over and flatten a curve that is really there. Which
+  // scale they are in makes no difference to a share of the spread, so the
   // conversion the rest of the tile goes through is not wanted here.
   const temperatures = shown.map((hour) => hour.temperature).filter((value) => Number.isFinite(value));
   const low = Math.min(...temperatures);
@@ -133,10 +132,18 @@ export default function WeatherHours({ hours, zone, degrees }) {
   // draws the lower line is one where the upper one needs no telling apart. So
   // the pair arrive together or not at all — which is also what makes the figure
   // the lower line's label the first time anyone turns the card over.
+  //
+  // Asked of the whole run, like the spread above and for the same reason: a
+  // column that came and went as the reader scrolled past the weather would move
+  // every other column on the tile with it.
   const wet = shown.some((hour) => hour.rain >= RAIN_FLOOR);
 
   return (
-    <ul ref={listRef} className={`${styles.hours} ${wet ? styles.hoursWet : ""}`.trim()}>
+    <ul
+      ref={listRef}
+      className={`${styles.hours} ${wet ? styles.hoursWet : ""}`.trim()}
+      style={rowHeight ? { "--hour-row": `${rowHeight}px` } : undefined}
+    >
       {shown.map((hour) => {
         const temperature = degrees(hour.temperature);
         const rain = hour.rain >= RAIN_FLOOR ? hour.rain : 0;
