@@ -5,7 +5,7 @@
   "type": "module",
   "packageManager": "pnpm@11.22.0",
   "bin": {
-    "ol": "./ol.js"
+    "lo": "./lo.js"
   },
   "scripts": {
     "dev": "node --watch-path=server --watch-path=src server/index.js",

@@ -3,14 +3,14 @@
 // VITE_ADMIN_EMAIL in .env.example) — starting with opening and closing an
 // account by hand.
 //
-//   npx ol user add <username> <password>
-//   npx ol user delete <username>
+//   npx lo user add <username> <password>
+//   npx lo user delete <username>
 
 import { createUser, deleteUser, getUser } from "./server/db.js";
 
 const USAGE = `Usage:
-  ol user add <username> <password>
-  ol user delete <username>`;
+  lo user add <username> <password>
+  lo user delete <username>`;
 
 function fail(message) {
   console.error(message);
