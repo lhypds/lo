@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
-import { AuthImage, TextArea, showToast } from "../../ui/index.js";
+import { AuthImage, Select, TextArea, showToast } from "../../ui/index.js";
 import { contactsFor, profileFields } from "../../utils/contacts.js";
 import { compressToWebp, preload, uploadImage } from "../../utils/image.js";
 import { LINK_KINDS } from "../../utils/links.js";
@@ -49,6 +49,21 @@ const AVATAR_BOX = 64;
 // bio is that height: the two boxes start on a line and end on one, and the only
 // thing that moves in here is what the reader moves with the handle.
 const BIO_MIN_HEIGHT = AVATAR_BOX + 6 + 22;
+
+// The table as a menu: every platform lo has a name for, in the order that table
+// is written in (see utils/links.js).
+const KIND_OPTIONS = LINK_KINDS.map((entry) => ({ value: entry.kind, label: entry.name }));
+
+// And what one row is offered. Whatever it was saved under stays takeable even
+// where this build of lo no longer has a name for it — at the head of the list,
+// shown as the slug it arrived as, the way the profile itself shows it (see
+// linkName). The alternative is a menu that quietly refiles somebody's link
+// under X, which is the first row of the table and would be nobody's answer.
+function kindOptions(kind) {
+  return LINK_KINDS.some((entry) => entry.kind === kind)
+    ? KIND_OPTIONS
+    : [{ value: kind, label: kind }, ...KIND_OPTIONS];
+}
 
 // The half of the account page that can be written to. The list above it is what
 // lo knows about you and cannot be argued with — the name, the day you turned
@@ -326,24 +341,17 @@ export default function ProfileForm({ user, onSaved }) {
           // filled in, and nothing about a row is its identity.
           // eslint-disable-next-line react/no-array-index-key
           <div className="profile-link-row" key={index}>
-            <select
+            {/* lo's own menu rather than the browser's — see ui/Select. The
+                closed box was already drawn to the field beside it; what used to
+                open out of it was the operating system's list, which is the one
+                thing on this sheet no stylesheet could reach. */}
+            <Select
               className="profile-select"
+              options={kindOptions(link.kind)}
               value={link.kind}
-              onChange={(event) => editLink(index, { kind: event.target.value })}
-              aria-label={t("profile.linkKind")}
-            >
-              {/* Whatever it was saved under stays selectable even where this
-                  build of lo no longer has a name for it: the alternative is a
-                  menu that quietly refiles somebody's link under X. */}
-              {!LINK_KINDS.some((entry) => entry.kind === link.kind) && (
-                <option value={link.kind}>{link.kind}</option>
-              )}
-              {LINK_KINDS.map((entry) => (
-                <option key={entry.kind} value={entry.kind}>
-                  {entry.name}
-                </option>
-              ))}
-            </select>
+              onChange={(kind) => editLink(index, { kind })}
+              label={t("profile.linkKind")}
+            />
             <input
               className="profile-input"
               type="text"

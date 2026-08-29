@@ -3,6 +3,7 @@ export { default as AuthImage } from "./AuthImage/index.js";
 export { default as Card, TileId } from "./Card/index.js";
 export { default as Modal } from "./Modal/index.js";
 export { default as PageModal, sheetLink } from "./PageModal/index.js";
+export { default as Select } from "./Select/index.js";
 export { default as Skeleton } from "./Skeleton/index.js";
 export { default as TextArea } from "./TextArea/index.js";
 export { default as Toast, show as showToast, hide as hideToast } from "./Toast/index.js";

@@ -64,6 +64,12 @@
   cursor: default;
 }
 
+/* Off the page, and pressed by the word in the brackets beside it: a file picker
+   is the one control in here no stylesheet can reach. */
+.file {
+  display: none;
+}
+
 .section {
   display: flex;
   flex-direction: column;

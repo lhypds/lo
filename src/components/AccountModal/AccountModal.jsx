@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
-import { Link, Modal, useNavigate } from "../../ui/index.js";
+import { Link, Modal, showToast, useNavigate } from "../../ui/index.js";
 import { formatUsername } from "../../utils/format.js";
 import { useAuth } from "../AuthProvider/index.js";
 import ProfileForm from "../ProfileForm/index.js";
+import ImportHelp from "./ImportHelp.jsx";
 import styles from "./account.module.css";
 
 // Your own account, over whatever page you were on. It used to be a page at
@@ -37,6 +38,10 @@ export default function AccountModal({ isOpen, onClose }) {
   // who is hidden.
   const [discoverable, setDiscoverable] = useState(null);
   const [saving, setSaving] = useState(false);
+  // Reading a file in, which is the one thing on this sheet that takes long
+  // enough to be pressed twice.
+  const [importing, setImporting] = useState(false);
+  const marksFileRef = useRef(null);
 
   // Asked again each time the sheet opens rather than once on mount: the top bar
   // this hangs off is on every page and never unmounts, so a count read when the
@@ -87,6 +92,36 @@ export default function AccountModal({ isOpen, onClose }) {
     }
   }
 
+  // The other end of the export: a marks.json chosen out of a folder and read
+  // back into the account. No sheet asking first, unlike the download — the
+  // picker is the question, and what comes back cannot overwrite anything, since
+  // a spot the account is already keeping is one the server passes over (see
+  // mergeMarks). What it did is said afterwards in a toast, because the number of
+  // marks that were actually new is the whole of what there is to report.
+  //
+  // The file is handed over as its own text: what a marks.json is allowed to say
+  // is the server's to decide, and a browser that read it first would only be
+  // deciding it twice.
+  async function importMarks(event) {
+    const file = event.target.files?.[0];
+    // Cleared either way, so choosing the same file twice in a row is twice a
+    // press rather than once.
+    event.target.value = "";
+    if (!file || importing) return;
+    setImporting(true);
+    try {
+      const merged = await api.importMarks(await file.text());
+      setMarkCount(merged.count);
+      showToast(
+        merged.added > 0 ? t("account.imported", { count: merged.added }) : t("account.importedNone"),
+      );
+    } catch (error) {
+      showToast(error.message || t("account.importFailed"));
+    } finally {
+      setImporting(false);
+    }
+  }
+
   async function handleLogout() {
     await logout();
     onClose();
@@ -118,9 +153,42 @@ export default function AccountModal({ isOpen, onClose }) {
             <dt>{t("account.joined")}</dt>
             <dd>{new Date(user.createdAt).toLocaleDateString(i18n.language)}</dd>
           </div>
+          {/* The count, and in brackets after it the one thing that can be done
+              to the list from here — the same shape the line below wears, which
+              is how lo writes a fact that has a verb attached. Reading a file in
+              belongs on this line rather than beside the export in the top bar:
+              the export is about the whole folder and this is about the marks,
+              and the number it changes is the number it is written after. */}
           <div>
             <dt>{t("account.marks")}</dt>
-            <dd>{markCount ?? "—"}</dd>
+            <dd>
+              {markCount ?? "—"}
+              {" ("}
+              <button
+                type="button"
+                className={styles.action}
+                onClick={() => marksFileRef.current?.click()}
+                disabled={importing}
+              >
+                {importing ? t("account.importing") : t("account.import")}
+              </button>
+              {")"}
+              {/* What the verb cannot say: that the file it wants is lo's own,
+                  and what to do when the spots are in somebody else's app. It is
+                  outside the brackets because it is not a second thing to do to
+                  the list — it is a question about the first. */}
+              <ImportHelp />
+              {/* Out of the way and reached by the word above it: the browser's
+                  own file control cannot be made to read as a word in a
+                  sentence. */}
+              <input
+                ref={marksFileRef}
+                type="file"
+                accept=".json,application/json"
+                className={styles.file}
+                onChange={importMarks}
+              />
+            </dd>
           </div>
           <div>
             <dt>{t("account.posts")}</dt>

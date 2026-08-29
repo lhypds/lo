@@ -59,8 +59,8 @@
    imagery, neither of which knows about light and dark mode. */
 .person {
   position: relative;
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
 }
 
 /* A plain black disc, with no ring: a ring is what lifts a grey dot off road
@@ -69,8 +69,8 @@
    centred in the wrapper the marker is positioned by, so the dot stays over the
    coordinate and the name stays under the dot. */
 .personDot {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   margin: 2px;
   border-radius: 50%;
   background: #000;
@@ -79,7 +79,7 @@
 
 .personName {
   position: absolute;
-  top: 19px;
+  top: 18px;
   left: 50%;
   transform: translateX(-50%);
   padding: 1px 4px;

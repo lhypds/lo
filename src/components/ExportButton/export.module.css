@@ -34,6 +34,11 @@
   stroke-linejoin: round;
 }
 
+/* Hard against the trigger, and closing its own top edge all the same (see
+   .option below): the button's bottom border and the list's top one stack into a
+   two-pixel rule under the button, which is the seam between the thing pressed
+   and the thing it opened — heavier than any line inside the list, so the list
+   reads as hung off the button rather than as another row of it. */
 .dropdown {
   display: none;
   position: absolute;
@@ -67,6 +72,14 @@
   line-height: 1;
   white-space: nowrap;
   text-align: center;
+}
+
+/* The line across the top of the list, drawn once and by the first row — the
+   half of the seam that belongs to the list. Every row after this one goes on
+   leaning on the one before: a border of its own on each would double every rule
+   inside the list, where the doubling is wanted only at the top. */
+.option:first-child {
+  border-top: 1px solid var(--ink);
 }
 
 @media (hover: hover) {

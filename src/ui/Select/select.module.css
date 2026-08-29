@@ -1,0 +1,166 @@
+.wrapper {
+  position: relative;
+  display: block;
+}
+
+/* The closed box, drawn to the fields either side of it: the same 32px, the same
+   hairline, the same mono at 12px. A row here is a platform and a handle, and it
+   should read as a pair of boxes rather than as a control beside a field.
+
+   Those numbers are .profile-input's, in styles.css, and they are repeated here
+   rather than shared because this is the house control and that is one page's
+   form: the next form to want a menu should get this box without having to bring
+   the profile page's stylesheet with it. */
+.trigger {
+  width: 100%;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px;
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  outline: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* The name takes the room and gives way, so a long platform is cut short rather
+   than pushing the chevron out through the border. */
+.value {
+  flex: 1;
+  min-width: 0;
+}
+
+.shown {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Every name in the list, stacked and drawn to nothing. It is here to be
+   measured and for no other reason: a box with only the chosen name in it is as
+   wide as that name, so picking Instagram after X would widen the control and
+   shove the handle beside it along — and a column of these, one per row, would
+   be a different width on every line. The native menu sized itself to the
+   longest thing it held, which is what the row wants and what this puts back.
+
+   Inside the name's own box rather than beside the button, so the width it asks
+   for is the width of a name: the padding, the gap and the chevron are the
+   button's to add, and adding them here would be this rule keeping a copy of
+   numbers that live thirty lines up. */
+.sizer {
+  /* Block, or the height below is a declaration an inline box is entitled to
+     ignore — and it does: the stack then stands its full height inside the
+     button and pushes the one name that is meant to be read out of the bottom
+     of it. */
+  display: block;
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+}
+
+.sizer > span {
+  display: block;
+  white-space: nowrap;
+}
+
+/* Drawn rather than set as a background image, which is what the native box's
+   replacement used to be: in currentColor it is the same ink as the name beside
+   it and turns over with the box, where a colour written into a data URI is one
+   the stylesheet can never reach again. */
+.chevron {
+  flex: none;
+  width: 8px;
+  height: 6px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Turned over while the list is up, so the box says which of its two states it
+   is in from across the sheet rather than only by what is under it */
+.open .chevron {
+  transform: rotate(180deg);
+}
+
+/* The keyboard's own mark. Everything in this app is a hairline in one ink, so a
+   ring cannot be drawn in a second colour — the box turns over instead, which is
+   the same thing every other chosen thing in lo wears. Only for the keyboard: a
+   pointer already knows where it is. */
+.trigger:focus-visible {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+/* Fixed to the window rather than hung off the box above it. The field this
+   opens from stands near the foot of the account sheet, and that sheet scrolls —
+   a menu positioned inside a scroller is clipped by it, which for this one means
+   cut off exactly where it is most likely to open. So it is measured and placed
+   (see Select.jsx), and told again wherever anything moves under it.
+
+   The height is a cap and not a size: a list of platforms is as long as the
+   table behind it, and past about eight rows a menu stops being something read
+   at a glance and starts being a page of its own. */
+.menu {
+  position: fixed;
+  z-index: 999;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--ink);
+  background: var(--paper);
+  /* The list takes the focus as it opens, and a focused box is one the browser
+     draws its own ring around — which on this sheet is the system showing
+     through again, in the system's blue, around the very thing that was written
+     to keep the system out. What says where the keyboard is here is the bar on
+     the row it is standing on (see .active), which is the listbox's own answer
+     and the only one that can be drawn in this app's ink. */
+  outline: 0;
+  overflow-y: auto;
+  /* The sheet behind it has scrolled far enough already: a run off the end of
+     this list is not something to hand back to the page underneath. */
+  overscroll-behavior: contain;
+}
+
+.option {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 28px;
+  /* The gutter on the left is the dot's, below, so the names line up down the
+     menu whether or not one of them is the one in force. */
+  padding: 6px 8px 6px 18px;
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* The row the arrows are on — and the row under the pointer, which is the same
+   mark because they are the same question. lo's highlight is its ink turned
+   over, as in the language switcher; there is no second colour in this app to
+   draw a selection in. */
+.active {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+/* Which one is actually set, which is a different question from which row is
+   being pointed at: a dot in the margin rather than a second bar, so a list being
+   walked has exactly one highlight on it and still says where the answer stands. */
+.chosen::before {
+  content: "•";
+  position: absolute;
+  left: 7px;
+}

@@ -74,6 +74,7 @@ import {
   getMarks as readMarks,
   getSettings as readSettings,
   hasUserDir,
+  mergeMarks,
   renameMark as relabelMark,
   saveSettings as writeSettings,
   userDir,
@@ -946,6 +947,35 @@ app.post("/api/marks", requireSession, async (req, res, next) => {
     next(error);
   }
 });
+
+// How big a marks.json may be on the way in. A spot is about 150 bytes written
+// out, so this is a folder holding several thousand of them — past anything a
+// person keeps by hand, and small enough that a file picked by mistake is turned
+// away rather than read. It has a limit of its own because the body here is a
+// file rather than a request: 32kb, which is the ceiling every JSON body in lo is
+// held to, is about 200 marks and would refuse a perfectly ordinary list.
+const MARKS_IMPORT_MAX = "1mb";
+
+// A marks.json read back into the account it came out of — the other end of the
+// export, and the only way a list of spots gets from one device, or one account,
+// into another.
+//
+// The file arrives as its own text under its own parser, the way an image does
+// and for the same reason. Said to be text rather than JSON so that the parse is
+// done where it is known what a marks.json is meant to look like (see
+// mergeMarks): a body parser that refused the file would leave the endpoint with
+// nothing to say beyond "bad JSON", which is not what the reader picked a file
+// to be told.
+app.post(
+  "/api/marks/import",
+  requireSession,
+  express.text({ type: () => true, limit: MARKS_IMPORT_MAX }),
+  (req, res) => {
+    const merged = mergeMarks(req.user.username, req.body);
+    if (!merged) return res.status(400).json({ error: "That is not a marks.json" });
+    res.json(merged);
+  },
+);
 
 app.patch("/api/marks/:markId", requireSession, (req, res) => {
   const markId = Number(req.params.markId);

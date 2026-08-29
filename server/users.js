@@ -82,6 +82,18 @@ function readJson(file, fallback) {
   }
 }
 
+// The same forgiveness for text that arrived as for text that was on disk: a
+// file somebody picked out of a folder is no likelier to be JSON than one that
+// has been hand-edited, and null is an answer the caller has something to say
+// about.
+function parseJson(text) {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
 // Written beside the file and renamed onto it, because a rename is the one file
 // operation that cannot half-happen: a process that dies mid-write leaves a
 // stray .tmp rather than a truncated marks.json. The trailing newline is for
@@ -204,6 +216,65 @@ export function deleteMark(username, markId) {
   if (kept.length === file.marks.length) return false;
   writeMarkFile(username, { ...file, marks: kept });
   return true;
+}
+
+// What makes two rows the same spot: where it was and the moment it was kept,
+// which is the whole of what a mark is. Not the id, which is a counter per file
+// — the same afternoon is a different number in two folders, and two different
+// afternoons share a number across them. Not the name either: a spot renamed on
+// one device and not the other is exactly the case where a file and a folder
+// disagree about something they both hold, and the two are still one spot.
+function markKey(mark) {
+  return `${mark.time}|${mark.latitude}|${mark.longitude}`;
+}
+
+// A marks.json read back in: the file the export handed out, put into the folder
+// it came from — after a mistake, or onto a second account, or into the same one
+// on a machine that has been keeping its own list since.
+//
+// A merge and not a replacement, because both sides are somebody's spots and
+// neither is the draft of the other: what is in the folder stays, and what the
+// file has that the folder does not is added to it. Which is also what makes the
+// same file safe to read in twice — the second time matches every row and adds
+// nothing.
+//
+// Ids are reissued from this folder's own counter rather than carried in. A mark
+// arriving as 7 beside one that is already 7 would be two rows the endpoints
+// address as one, and the id of a spot is the folder's business anyway.
+//
+// Null when what arrived was not a marks.json at all, which is the one outcome
+// the reader has something to do about; everything else is a number of marks.
+export function mergeMarks(username, incoming) {
+  const stored = typeof incoming === "string" ? parseJson(incoming) : incoming;
+  // The whole file as it is written, and a bare list too: what lo hands out is
+  // the object, and the array inside it is what somebody assembling a file by
+  // hand is likely to write.
+  const rows = Array.isArray(stored) ? stored : Array.isArray(stored?.marks) ? stored.marks : null;
+  if (!rows) return null;
+
+  const file = readMarkFile(username);
+  const seen = new Set(file.marks.map(markKey));
+  const added = [];
+  let nextId = file.nextId;
+  for (const row of rows) {
+    const mark = readMark({ ...row, id: nextId });
+    // A row that is not a mark is passed over rather than refused for the file
+    // it came in: one unreadable line is no reason to turn away the spots around
+    // it, and the reader is told how many of them arrived.
+    if (!mark || seen.has(markKey(mark))) continue;
+    seen.add(markKey(mark));
+    added.push(mark);
+    nextId += 1;
+  }
+
+  // Nothing written where nothing was added, so reading a file back in twice
+  // leaves the folder's own file untouched the second time.
+  if (added.length > 0) writeMarkFile(username, { marks: [...added, ...file.marks], nextId });
+  return {
+    added: added.length,
+    skipped: rows.length - added.length,
+    count: file.marks.length + added.length,
+  };
 }
 
 // The one-way door out of the marks table (see db.js). Rows that were kept in

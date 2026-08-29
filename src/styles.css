@@ -1461,26 +1461,21 @@ html:has(.home-main:not(.home-main-map) .card-pager) {
   flex: 1;
 }
 
-/* Drawn to the boxes beside it rather than to the browser's own idea of a menu:
-   appearance: none is what makes a select a box in lo's ink, and the arrow is
-   drawn back on as a background so there is still something saying it opens. */
+/* How much of the row the menu takes, and nothing about how it looks: it is
+   lo's own control now rather than the browser's (see ui/Select), and the box it
+   draws — the hairline, the 32px, the mono at 12px — is the house's answer
+   rather than this form's. What is left here is the one thing this form knows
+   and that control does not, which is that the handle beside it is the part of
+   the row worth reading.
+
+   It used to be a <select> pulled back to a square with appearance: none and a
+   chevron painted on as a background image. That got the closed box right and
+   could never get the rest: what opened out of it was the operating system's
+   menu, in the operating system's type, on the one sheet in lo where everything
+   else is drawn in one ink. */
 .profile-select {
   flex: none;
   max-width: 40%;
-  height: 32px;
-  padding: 0 22px 0 8px;
-  appearance: none;
-  border: 1px solid var(--ink);
-  border-radius: 0;
-  outline: 0;
-  background-color: var(--paper);
-  /* A chevron, in the ink the type is set in, 6px of it against the right edge */
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%230b0b0b' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 8px center;
-  background-size: 8px 6px;
-  color: var(--ink);
-  font-size: 12px;
 }
 
 /* The way a row comes off, and the size of the buttons in a card's heading: the

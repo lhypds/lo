@@ -268,6 +268,17 @@ export const deleteConversation = (username) =>
 export const getMarks = (limit) => request(limit ? `/api/marks?limit=${limit}` : "/api/marks");
 export const createMark = (mark) =>
   request(`/api/marks?lang=${i18n.language || "en"}`, { method: "POST", body: JSON.stringify(mark) });
+// A marks.json read back in, merged with the list the account is already keeping
+// rather than put over it (see mergeMarks on the server). The file's own text is
+// the body, said to be text so that it arrives under that endpoint's limit
+// instead of the 32kb every JSON body here is held to — a file is not a request,
+// and this one can be a few thousand spots.
+export const importMarks = (text) =>
+  request("/api/marks/import", {
+    method: "POST",
+    body: text,
+    headers: { "Content-Type": "text/plain" },
+  });
 export const renameMark = (markId, label) =>
   request(`/api/marks/${markId}`, { method: "PATCH", body: JSON.stringify({ label }) });
 export const deleteMark = (markId) => request(`/api/marks/${markId}`, { method: "DELETE" });
