@@ -24,25 +24,6 @@ function localMinutes(value) {
   return Number.isFinite(hours) && Number.isFinite(minutes) ? hours * 60 + minutes : null;
 }
 
-// Sunrise and sunset said the way the hour above them is said: a tile reading
-// 3:07 PM at the top and 18:40 along the bottom would be speaking two dialects
-// of the same thing. The twenty-four hour reading is the slice as it stands; the
-// twelve-hour one has to go through Intl for the word and for where the language
-// puts it, and nothing here may hand it a real instant to do that with — so the
-// minutes are dressed as a date in UTC and read back in UTC. The numbers go in
-// and come out in the reader's own convention, having never been in a timezone.
-function formatClockTime(value, locale, hour12) {
-  if (!hour12) return localClockTime(value);
-  const minutes = localMinutes(value);
-  if (minutes === null) return "";
-  return new Intl.DateTimeFormat(locale, {
-    timeZone: "UTC",
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  }).format(Date.UTC(2000, 0, 1, Math.floor(minutes / 60), minutes % 60));
-}
-
 // The wall clock at the coordinates, not in the browser — h23 rather than
 // hour12:false because some locales still render midnight as 24:00. Read as
 // numbers rather than as a line of type because three things want it that way:
@@ -213,10 +194,14 @@ export default function ClockCard() {
           </div>
           {hasSun && (
             <div>
+              {/* Sunrise and sunset are always the twenty-four hour reading —
+                  the press on the hour above turns that face and only that
+                  face. They are two marks on the same day rather than a time
+                  anyone is asked to read off a watch, and 05:12 - 18:40 is a
+                  span you can see the length of at a glance in a way that
+                  5:12 AM - 6:40 PM is not. */}
               <dt>{`${t("clock.rise")} - ${t("clock.set")}`}</dt>
-              <dd>
-                {`${formatClockTime(today.sunrise, locale, hour12)} - ${formatClockTime(today.sunset, locale, hour12)}`}
-              </dd>
+              <dd>{`${localClockTime(today.sunrise)} - ${localClockTime(today.sunset)}`}</dd>
             </div>
           )}
           {hasSun && (
