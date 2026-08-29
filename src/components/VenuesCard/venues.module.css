@@ -1,0 +1,102 @@
+/* Same shape as the events and trending panels beside it: a panel one tile tall
+   that the list scrolls inside, and like them one that hands the gesture back to
+   the page at either end rather than containing it — a thumb that has run this
+   list out should carry on down the dashboard. */
+.scroll {
+  height: 100%;
+  overflow-y: auto;
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.list li + li {
+  border-top: 1px solid var(--line);
+}
+
+/* Two columns rather than the events row's one, because this list has a sort
+   key and that one does not: the name and what it serves on the left, and how
+   far off it is pinned to the right, where twenty-four of them read down the
+   edge as the ladder they are. */
+.item {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 8px 10px;
+  text-decoration: none;
+}
+
+.body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* One line and clipped, unlike the two a headline is allowed: a shop name is
+   short, and rows of an even height are what let the column of distances beside
+   them be read as a single falling line rather than as a figure per paragraph. */
+.name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.meta {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+}
+
+.meta span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meta > * + *::before {
+  content: "·";
+  margin-right: 8px;
+}
+
+/* Never clipped and never wrapped — the figure is the one thing on the row that
+   is the reason the row is where it is. Tabular so the column lines up. */
+.distance {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.empty {
+  margin: 0;
+  padding: 34px 12px;
+  color: var(--muted);
+  text-align: center;
+  font-size: 11px;
+}
+
+@media (hover: hover) {
+  .item:hover {
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  .item:hover .meta,
+  .item:hover .distance {
+    color: var(--paper);
+  }
+}

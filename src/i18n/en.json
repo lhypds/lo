@@ -176,14 +176,29 @@
     "unavailable": "Could not reach Google Trends",
     "loading": "Reading Google Trends"
   },
+  "food": {
+    "title": "Food",
+    "empty": "Nowhere to eat within {{distance}} of here",
+    "unavailable": "Could not reach OpenStreetMap",
+    "loading": "Looking for somewhere to eat"
+  },
+  "cafe": {
+    "title": "Cafés",
+    "empty": "No cafés within {{distance}} of here",
+    "unavailable": "Could not reach OpenStreetMap",
+    "loading": "Looking for somewhere for coffee"
+  },
+  "venues": {
+    "category": {
+      "restaurant": "Restaurant",
+      "fast_food": "Fast food",
+      "food_court": "Food court",
+      "cafe": "Café"
+    }
+  },
   "map": {
     "title": "Map",
-    "canvas": "{{current}} map. Double-click or press Enter for {{next}}.",
-    "style": {
-      "simple": "Simple",
-      "detailed": "Detailed",
-      "satellite": "Satellite"
-    },
+    "turn": "Double-click to change the map",
     "noToken": "Add VITE_MAPBOX_TOKEN to .env to display the map.",
     "recenter": "Back to my position",
     "expand": "Full map",

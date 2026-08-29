@@ -30,7 +30,7 @@ const PRESENCE_REFRESH_MS = 60 * 1000;
 // in server/countries.js and arrives with the place name. This is only what the
 // page assumes while that first request is in the air: the cards no country has
 // ever been without. Anything that stops at a border waits to be named.
-const WORLDWIDE_COMPONENTS = ["clock", "weather", "map", "nearby", "events"];
+const WORLDWIDE_COMPONENTS = ["clock", "weather", "map", "nearby", "events", "food", "cafe"];
 
 // …unless we have stood somewhere before. The last answer is kept beside the
 // last fix (see restoreLastFix in utils/location.js) and for the same reason: a

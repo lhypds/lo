@@ -107,6 +107,8 @@ export const CARDS = [
   { id: "nearby", label: "news.title", off: true, opens: LARGE },
   { id: "events", label: "events.title", off: true },
   { id: "trends", label: "trends.title", off: true },
+  { id: "food", label: "food.title", off: true },
+  { id: "cafe", label: "cafe.title", off: true },
   { id: "direction", label: "direction.title", own: true, off: true, min: TINY, max: TINY },
 ];
 

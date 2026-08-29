@@ -287,3 +287,75 @@
 .rear {
   transform: rotateY(180deg);
 }
+
+/* ---------------------------------------------------- cycling card turn -- */
+
+/* Some cards change one live surface rather than reveal a second copy of it.
+   The map is one canvas, so it turns to its edge, changes its cartography while
+   no face is visible, and returns from the opposite edge. These are two names
+   for the same frames so a second turn always restarts, just as the two-sided
+   card uses separate names for its way out and its way home. */
+@keyframes cycleTurnA {
+  0% {
+    transform: perspective(calc(var(--tile, 260px) * 6)) rotateY(0deg) scale(1);
+  }
+  25% {
+    transform: perspective(calc(var(--tile, 260px) * 6)) rotateY(45deg) scale(0.936);
+  }
+  49.99% {
+    transform: perspective(calc(var(--tile, 260px) * 6)) rotateY(90deg) scale(0.916);
+  }
+  50% {
+    transform: perspective(calc(var(--tile, 260px) * 6)) rotateY(-90deg) scale(0.916);
+  }
+  75% {
+    transform: perspective(calc(var(--tile, 260px) * 6)) rotateY(-45deg) scale(0.936);
+  }
+  100% {
+    transform: perspective(calc(var(--tile, 260px) * 6)) rotateY(0deg) scale(1);
+  }
+}
+
+@keyframes cycleTurnB {
+  0% {
+    transform: perspective(calc(var(--tile, 260px) * 6)) rotateY(0deg) scale(1);
+  }
+  25% {
+    transform: perspective(calc(var(--tile, 260px) * 6)) rotateY(45deg) scale(0.936);
+  }
+  49.99% {
+    transform: perspective(calc(var(--tile, 260px) * 6)) rotateY(90deg) scale(0.916);
+  }
+  50% {
+    transform: perspective(calc(var(--tile, 260px) * 6)) rotateY(-90deg) scale(0.916);
+  }
+  75% {
+    transform: perspective(calc(var(--tile, 260px) * 6)) rotateY(-45deg) scale(0.936);
+  }
+  100% {
+    transform: perspective(calc(var(--tile, 260px) * 6)) rotateY(0deg) scale(1);
+  }
+}
+
+.cycleTurnA,
+.cycleTurnB {
+  transform-origin: center;
+  animation-duration: 560ms;
+  animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
+  animation-fill-mode: both;
+}
+
+.cycleTurnA {
+  animation-name: cycleTurnA;
+}
+
+.cycleTurnB {
+  animation-name: cycleTurnB;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cycleTurnA,
+  .cycleTurnB {
+    animation: none;
+  }
+}

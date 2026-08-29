@@ -138,6 +138,11 @@ export const getLocal = (coords) => request(`/api/local?${geoQuery(coords)}`);
 export const getNearby = (coords) => request(`/api/nearby?${geoQuery(coords)}`);
 export const getEvents = (coords) => request(`/api/events?${geoQuery(coords)}`);
 export const getTrends = (coords) => request(`/api/trends?${geoQuery(coords)}`);
+// Somewhere to eat and somewhere for a coffee, nearest first. Two addresses
+// rather than one with a kind hung off it, because they are two cards and a
+// reader may well carry one of them without the other.
+export const getFood = (coords) => request(`/api/food?${geoQuery(coords)}`);
+export const getCafes = (coords) => request(`/api/cafe?${geoQuery(coords)}`);
 
 // The words behind a headline, asked for by the row's own link rather than by
 // the id the list came back with. The row carries the id as a hint — whether

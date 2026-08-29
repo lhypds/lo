@@ -5,10 +5,12 @@ import { Card, Skeleton, TileId, showToast, useNavigate, useSearchParams } from 
 import { arrangeCards, cardLabel, cardSpan, useCards } from "../../utils/cards.js";
 import { paginate } from "../../utils/pages.js";
 import { getLocationState, refreshLocation } from "../../utils/location.js";
+import CafeCard from "../../components/CafeCard/index.js";
 import ClockCard from "../../components/ClockCard/index.js";
 import CommentsModal from "../../components/CommentsModal/index.js";
 import DirectionCard from "../../components/DirectionCard/index.js";
 import EventsCard from "../../components/EventsCard/index.js";
+import FoodCard from "../../components/FoodCard/index.js";
 import Header from "../../components/Header/index.js";
 import HereStrip from "../../components/HereStrip/index.js";
 import LocationGate from "../../components/LocationGate/index.js";
@@ -395,6 +397,8 @@ export default function HomePage() {
       shown("nearby") && sized("nearby", <NewsCard />),
       shown("events") && sized("events", <EventsCard />),
       shown("trends") && sized("trends", <TrendsCard />),
+      shown("food") && sized("food", <FoodCard />),
+      shown("cafe") && sized("cafe", <CafeCard />),
       shown("direction") && sized("direction", <DirectionCard />),
     ].filter(Boolean),
   );

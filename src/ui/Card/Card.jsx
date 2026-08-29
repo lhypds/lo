@@ -1,4 +1,4 @@
-import { createContext, useContext, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import styles from "./card.module.css";
 
 // What counts as two presses rather than one, when they are made with a finger.
@@ -10,6 +10,8 @@ import styles from "./card.module.css";
 const TAP_GAP = 400;
 const TAP_SLOP = 10;
 const TAP_NEAR = 24;
+const CYCLE_DURATION = 560;
+const CYCLE_MIDPOINT = CYCLE_DURATION / 2;
 
 // Which card of a set of tiles this one is, said by whatever laid them out rather
 // than by each tile about itself — the dashboard grid is the only thing that deals
@@ -54,8 +56,10 @@ export default function Card({
   action,
   back,
   flipHint,
+  cycleHint,
   defaultFlipped = false,
   onFlip,
+  onCycle,
   square = false,
   half = false,
   tall = false,
@@ -74,6 +78,7 @@ export default function Card({
   // card standing as it was dealt is resting rather than mid-way through coming
   // back, and it must not play a turn the moment it mounts.
   const [turns, setTurns] = useState(0);
+  const [cycling, setCycling] = useState(false);
   const flipped = (turns + (dealt ? 1 : 0)) % 2 === 1;
   // The first of a pair of taps, where it landed and when — and the place the
   // finger in hand went down, which is what tells a tap from the start of a drag.
@@ -82,10 +87,40 @@ export default function Card({
   const tapRef = useRef({ at: 0, x: 0, y: 0 });
   const downRef = useRef(null);
   const turnedAtRef = useRef(0);
+  const cycleTimersRef = useRef([]);
+  const turnable = Boolean(back || onCycle);
+
+  function clearCycleTimers() {
+    cycleTimersRef.current.forEach((timer) => window.clearTimeout(timer));
+    cycleTimersRef.current = [];
+  }
+
+  useEffect(() => clearCycleTimers, []);
 
   function turn() {
+    // A two-sided card changes sides immediately and lets the pane animation
+    // reveal the one now facing the reader. A cycling card has one live surface
+    // — the map canvas — so its content changes at the invisible, edge-on frame
+    // halfway through the same length of turn.
+    if (!back && onCycle && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      onCycle();
+      return;
+    }
     setTurns((count) => count + 1);
-    onFlip?.(!flipped);
+    if (back) {
+      onFlip?.(!flipped);
+      return;
+    }
+    if (!onCycle) return;
+    clearCycleTimers();
+    setCycling(true);
+    cycleTimersRef.current = [
+      window.setTimeout(onCycle, CYCLE_MIDPOINT),
+      window.setTimeout(() => {
+        setCycling(false);
+        cycleTimersRef.current = [];
+      }, CYCLE_DURATION),
+    ];
   }
 
   // Two presses on the heading, read from the finger itself rather than waited
@@ -135,6 +170,7 @@ export default function Card({
     wide ? styles.wide : "",
     back ? styles.flip : "",
     back && flipped ? styles.flipped : "",
+    onCycle && cycling ? (turns % 2 === 1 ? styles.cycleTurnA : styles.cycleTurnB) : "",
     className,
   ];
   const tile = useContext(TileId);
@@ -144,14 +180,14 @@ export default function Card({
   const head = (
     <header
       className={styles.head}
-      title={back ? flipHint : undefined}
+      title={turnable ? (back ? flipHint : cycleHint) : undefined}
       // The heading is already the card's handle: held for half a second it picks
       // the card up, and dragged it turns the page (see HomePage). Two quick
       // presses are neither — the second is well inside the half-second the hold
       // wants, and neither of them travels — so the one strip carries all three.
       // The buttons standing in it keep their own presses.
       onDoubleClick={
-        back
+        turnable
           ? (event) => {
               if (event.target.closest("button")) return;
               // A device that raises this after a double tap has already been
@@ -163,10 +199,10 @@ export default function Card({
             }
           : undefined
       }
-      onTouchStart={back ? touchDown : undefined}
-      onTouchEnd={back ? touchUp : undefined}
+      onTouchStart={turnable ? touchDown : undefined}
+      onTouchEnd={turnable ? touchUp : undefined}
       onTouchCancel={
-        back
+        turnable
           ? () => {
               downRef.current = null;
             }

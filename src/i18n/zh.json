@@ -176,14 +176,29 @@
     "unavailable": "无法连接 Google 趋势",
     "loading": "正在读取 Google 趋势"
   },
+  "food": {
+    "title": "餐饮",
+    "empty": "此处{{distance}}以内没有餐馆",
+    "unavailable": "无法连接 OpenStreetMap",
+    "loading": "正在查找吃饭的地方"
+  },
+  "cafe": {
+    "title": "咖啡",
+    "empty": "此处{{distance}}以内没有咖啡馆",
+    "unavailable": "无法连接 OpenStreetMap",
+    "loading": "正在查找咖啡馆"
+  },
+  "venues": {
+    "category": {
+      "restaurant": "餐馆",
+      "fast_food": "快餐",
+      "food_court": "美食广场",
+      "cafe": "咖啡馆"
+    }
+  },
   "map": {
     "title": "地图",
-    "canvas": "{{current}}地图。双击或按 Enter 键切换为{{next}}。",
-    "style": {
-      "simple": "简洁",
-      "detailed": "详细",
-      "satellite": "卫星"
-    },
+    "turn": "双击切换地图",
     "noToken": "请在 .env 中设置 VITE_MAPBOX_TOKEN 以显示地图。",
     "recenter": "回到我的位置",
     "expand": "全屏地图",

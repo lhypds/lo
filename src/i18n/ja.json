@@ -176,14 +176,29 @@
     "unavailable": "Google トレンドに接続できません",
     "loading": "Google トレンドを読み込み中"
   },
+  "food": {
+    "title": "食事",
+    "empty": "ここから{{distance}}以内に飲食店はありません",
+    "unavailable": "OpenStreetMap に接続できません",
+    "loading": "食事のできる場所を探しています"
+  },
+  "cafe": {
+    "title": "カフェ",
+    "empty": "ここから{{distance}}以内にカフェはありません",
+    "unavailable": "OpenStreetMap に接続できません",
+    "loading": "カフェを探しています"
+  },
+  "venues": {
+    "category": {
+      "restaurant": "レストラン",
+      "fast_food": "ファストフード",
+      "food_court": "フードコート",
+      "cafe": "カフェ"
+    }
+  },
   "map": {
     "title": "地図",
-    "canvas": "{{current}}地図。ダブルクリックまたは Enter キーで{{next}}に切り替えます。",
-    "style": {
-      "simple": "シンプル",
-      "detailed": "詳細",
-      "satellite": "衛星"
-    },
+    "turn": "ダブルクリックで地図を切り替える",
     "noToken": "地図を表示するには .env に VITE_MAPBOX_TOKEN を設定してください。",
     "recenter": "現在地に戻る",
     "expand": "全画面地図",
