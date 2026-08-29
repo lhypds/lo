@@ -260,8 +260,21 @@
   box-shadow: none;
 }
 
+/* The Mapbox wordmark, off. It is drawn over the bottom-left corner of the
+   ground at every size the map is offered at, which on the square tile is a
+   corner of a card 178px across — and lo's own name is the two letters in the
+   top bar, so a second mark on the page is somebody else's signature on it. The
+   attribution stays where it is, in the corner opposite: what is being said there
+   is where the ground came from, which is a credit rather than a logo.
+
+   Mapbox ask for the wordmark in their terms of service — see the note in
+   MapCard, which is where the map is built. */
+.wrapper :global(.mapboxgl-ctrl-logo) {
+  display: none;
+}
+
 /* On the square tile the zoom buttons cover a tenth of the map for a gesture
-   the reader already has; attribution and the Mapbox logo stay, as they must */
+   the reader already has; the attribution stays, as it must */
 @container (max-width: 320px) {
   .wrapper :global(.mapboxgl-ctrl-group) {
     display: none;

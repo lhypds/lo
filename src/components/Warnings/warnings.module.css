@@ -246,7 +246,17 @@
      between rows once it is standing between them */
   row-gap: 2px;
   /* The row is the whole of a row now, so it is spaced like one: the 2px under it
-     was the gap before a detail line that is no longer there */
+     was the gap before a detail line that is no longer there.
+     The dashboard's own row height (--row in styles.css), which the people square
+     next to this one is cut to as well: the two lists are read across the pair of
+     tiles, and rows that are a pixel or two apart read as two lists that failed
+     to line up rather than as two answers about here. A minimum rather than a
+     height, because this row is the one that can still go over — a heading no
+     line can hold puts the strength and the level under it, and a row of two
+     lines is taller than a row than can be read is worth. Centred in the box
+     while it is one line, which is what it is in Japanese and in Chinese. */
+  min-height: var(--row);
+  align-content: center;
   padding: 8px 10px;
 }
 

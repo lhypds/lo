@@ -139,3 +139,151 @@
   padding: 0;
   overflow: hidden;
 }
+
+/* --------------------------------------------------------- two-sided card -- */
+
+/* A card with a back is the same box with something written on both sides of it,
+   and what turns over is the card — the rule around it and the heading on it go
+   round too, not just the contents. So the border and the paper come off the tile
+   and onto each face, and the tile is left holding the things that cannot turn:
+   the square, its span of the grid, and the depth the turn is seen in. Cards
+   without a back are the flat section above, untouched — which is why these are
+   modifiers and not a second component.
+   After .card in the file rather than beside it, because that is what lets a
+   single class undo the border it sets. */
+.flip {
+  border: 0;
+  background: none;
+  /* Six squares back. A fixed depth would be a different turn on a 175px phone
+     tile and a 290px desktop one; counted off the module instead (--tile,
+     published by .card-grid in styles.css) it is one turn at every width, which
+     is also what lets the turn below cancel it with numbers rather than guesses.
+     The fallback is for a card standing on a page rather than in the dashboard
+     grid — nothing else publishes --tile — where a square's worth is close
+     enough. */
+  perspective: calc(var(--tile, 260px) * 6);
+}
+
+.pane {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  transform-style: preserve-3d;
+}
+
+/* The turn, and the reason it is an animation rather than a transition.
+   Under perspective the edge swinging towards the reader is drawn larger than
+   the tile it belongs to, and the grid clips at its own bounds — no gutter above
+   the top row (see .card-grid in styles.css) — so the corners of that edge were
+   being sheared off for the length of the turn. What the reader sees is a card
+   whose border goes missing halfway round.
+   A transition cannot answer that: it interpolates between two ends and the
+   swelling is all in the middle. So the card is drawn a little smaller as it
+   turns, by exactly as much as the perspective is about to magnify it — with the
+   depth at six squares, the near edge is scaled by 1/(1 - sin0/12), and these are
+   its reciprocals at the quarters. The projection lands inside the tile at every
+   angle, which is what a grid of tiles wants; what it reads as is a card lifted
+   off the page to be turned, which is what it is.
+   Interpolating between the quarters is a straight line where the truth is a
+   sine, so each of these is set a shade under what the angle it is paired with
+   actually needs — 0.944 and 0.923 exactly, and the difference is what the line
+   between them gives back. Measured round the whole turn, the card stays inside
+   its tile at every angle rather than reaching a pixel past it.
+   Written out twice, forwards and back, rather than once with the way home
+   played in reverse. A browser keys a running animation by its name: leave the
+   name alone and change only the direction and there is nothing to restart —
+   the animation is already finished, so it re-reads its own end, which under
+   reverse is the frame it started from, and the card arrives back at the front
+   in one jump with no turn at all. Two names is what makes each turn a new
+   animation. */
+@keyframes turnToBack {
+  0% {
+    transform: rotateY(0deg) scale(1);
+  }
+  25% {
+    transform: rotateY(45deg) scale(0.936);
+  }
+  50% {
+    transform: rotateY(90deg) scale(0.916);
+  }
+  75% {
+    transform: rotateY(135deg) scale(0.936);
+  }
+  100% {
+    transform: rotateY(180deg) scale(1);
+  }
+}
+
+@keyframes turnToFront {
+  0% {
+    transform: rotateY(180deg) scale(1);
+  }
+  25% {
+    transform: rotateY(135deg) scale(0.936);
+  }
+  50% {
+    transform: rotateY(90deg) scale(0.916);
+  }
+  75% {
+    transform: rotateY(45deg) scale(0.936);
+  }
+  100% {
+    transform: rotateY(0deg) scale(1);
+  }
+}
+
+/* Long enough to read as a sheet being turned rather than as one card swapped
+   for another, and eased symmetrically because a turn starts and ends at rest
+   at both ends of it. Set as longhands so that naming the two directions below
+   cannot be undone by a shorthand resetting what it did not mention. Both fill
+   modes, so the pane holds the frame it ended on. */
+.toBack,
+.toFront {
+  animation-duration: 560ms;
+  animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
+  animation-fill-mode: both;
+}
+
+.toBack {
+  animation-name: turnToBack;
+}
+
+.toFront {
+  animation-name: turnToFront;
+}
+
+/* Where a turned card rests once its animation is done with it. Both say
+   rotateY(180deg), so nothing moves at the hand-over — this is here for the
+   turn that never animates at all. */
+.flipped .pane {
+  transform: rotateY(180deg);
+}
+
+/* The global rule at the foot of styles.css takes every transition in the app to
+   nothing, but an animation has its own duration and is not covered by it. A
+   reader who has asked for less movement gets the other side of the card and no
+   journey to it. */
+@media (prefers-reduced-motion: reduce) {
+  .toBack,
+  .toFront {
+    animation-duration: 0.01ms;
+  }
+}
+
+/* Each face is the card the section used to be, laid over the same square: the
+   same rule, the same paper, a head over a body. The one facing away is not drawn
+   at all, and is inert besides (see Card.jsx). */
+.face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--ink);
+  background: var(--paper);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+.rear {
+  transform: rotateY(180deg);
+}

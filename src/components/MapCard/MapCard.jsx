@@ -530,6 +530,16 @@ export default function MapCard({
       return undefined;
     }
     map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), "top-right");
+    // The credit, in the corner opposite the zoom: where the ground came from,
+    // which is Mapbox's and OpenStreetMap's to be told. Compact, because on a
+    // square tile the full line is a sentence across the bottom of the map.
+    //
+    // The wordmark that mapbox-gl draws in the other corner is taken off in the
+    // stylesheet — it is the one control the library adds on its own, and there
+    // is no constructor option for it. Mapbox ask for it in their terms of
+    // service, so this is a decision about lo rather than a detail of its
+    // layout: it is off at the owner's word, and the attribution above — the part
+    // that says whose ground this is — is left standing.
     map.addControl(new mapboxgl.AttributionControl({ compact: true }), "bottom-right");
     mapRef.current = map;
 

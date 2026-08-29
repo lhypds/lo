@@ -79,6 +79,7 @@
   },
   "clock": {
     "title": "Time",
+    "turn": "Double-click to turn the card over",
     "timezone": "Time zone",
     "rise": "Rise",
     "set": "Set",

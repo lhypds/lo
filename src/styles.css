@@ -13,6 +13,15 @@
      come out the same. */
   --figure: clamp(24px, 20cqi, 44px);
   --topbar: 48px;
+  /* One row of a list on the dashboard. The two squares at the foot of the
+     opening page — who is around here and what is in force — stand side by side
+     and are read across as much as down, so their rows have to be one height:
+     left to their own contents they come out a pixel or two apart, a name's line
+     box against a boxed level number, which is exactly the distance at which two
+     lists stop looking like one block and start looking misaligned. Set here
+     rather than in either stylesheet because it is an agreement between two
+     cards, and a number one of them owned would be the other one guessing. */
+  --row: 32px;
   /* The action button's box and what is drawn inside it (see ui/ActionButton).
      Two sizes, and which one a button is depends on where it stands rather than
      on what it does: this is the smaller, which is what a card's own heading

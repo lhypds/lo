@@ -41,7 +41,10 @@ export default function WeatherCard() {
   // The day's range goes in the header and the condition under the temperature,
   // which puts this tile in the same three parts as the clock beside it: a big
   // number, a line naming what it is, and the readings along the bottom.
-  const range = today ? `${round(today.tempMax)}° / ${round(today.tempMin)}°` : null;
+  //
+  // Hard against the slash, as in the days ahead below: a range is one reading
+  // said at both its ends, and spaces around the stroke set it out as two.
+  const range = today ? `${round(today.tempMax)}°/${round(today.tempMin)}°` : null;
 
   return (
     <Card title={t("weather.title")} meta={range} square>

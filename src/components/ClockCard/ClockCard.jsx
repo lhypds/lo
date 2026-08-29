@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Card } from "../../ui/index.js";
+import { cardTurned, turnCard } from "../../utils/cards.js";
 import { useHere } from "../LocationProvider/index.js";
+import ClockDial from "./ClockDial.jsx";
 import styles from "./clock.module.css";
 
 // Open-Meteo hands back sunrise/sunset already in the location's own local time
@@ -22,17 +24,26 @@ function localMinutes(value) {
 }
 
 // The wall clock at the coordinates, not in the browser — h23 rather than
-// hour12:false because some locales still render midnight as 24:00.
-function zonedMinutes(date, zone) {
+// hour12:false because some locales still render midnight as 24:00. Read as
+// numbers rather than as a line of type because three things want it that way:
+// the sun rows below compare it against dawn and dusk, the seconds on the front
+// are set apart from the hour and minute, and the dial on the back is three
+// angles (see ClockDial).
+function zonedParts(date, zone) {
   const parts = new Intl.DateTimeFormat("en-GB", {
     timeZone: zone,
     hour: "2-digit",
     minute: "2-digit",
+    second: "2-digit",
     hourCycle: "h23",
   }).formatToParts(date);
-  const hours = Number(parts.find((part) => part.type === "hour")?.value);
-  const minutes = Number(parts.find((part) => part.type === "minute")?.value);
-  return Number.isFinite(hours) && Number.isFinite(minutes) ? hours * 60 + minutes : null;
+  const read = (type) => Number(parts.find((part) => part.type === type)?.value);
+  const hour = read("hour");
+  const minute = read("minute");
+  const second = read("second");
+  return Number.isFinite(hour) && Number.isFinite(minute) && Number.isFinite(second)
+    ? { hour: hour % 24, minute, second }
+    : null;
 }
 
 function formatDuration(minutes, t) {
@@ -73,13 +84,14 @@ export default function ClockCard() {
   const zone = weather?.timezone?.id || Intl.DateTimeFormat().resolvedOptions().timeZone;
   const locale = i18n.language;
 
+  const wall = zonedParts(now, zone);
   const time = new Intl.DateTimeFormat(locale, {
     timeZone: zone,
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
   }).format(now);
-  const seconds = new Intl.DateTimeFormat("en-GB", { timeZone: zone, second: "2-digit" }).format(now);
+  const seconds = wall ? String(wall.second).padStart(2, "0") : "";
   const date = new Intl.DateTimeFormat(locale, {
     timeZone: zone,
     year: "numeric",
@@ -97,7 +109,7 @@ export default function ClockCard() {
   const sunrise = localMinutes(today?.sunrise);
   const sunset = localMinutes(today?.sunset);
   const hasSun = sunrise !== null && sunset !== null;
-  const clockNow = zonedMinutes(now, zone);
+  const clockNow = wall ? wall.hour * 60 + wall.minute : null;
   const night = hasSun && clockNow !== null && (clockNow < sunrise || clockNow >= sunset);
   // Before dawn the wait is today's sunrise; after dusk it is tomorrow's, which
   // the three-day forecast already carries — barring that, today's stands in.
@@ -106,7 +118,25 @@ export default function ClockCard() {
   const light = hasSun && !night ? sunset - sunrise : null;
 
   return (
-    <Card title={t("clock.title")} meta={offset} square>
+    // The other side of this card is the same hour with hands on it, a
+    // double-click on the heading away (see ui/Card). Two readings of one thing
+    // rather than two things: the front is the tile you glance at, the back is
+    // the one you look at.
+    //
+    // Which of them is up is kept with the rest of what the reader has settled
+    // about this tile (see utils/cards.js), for the reason its size is: the
+    // dashboard is unmounted whenever they go anywhere else in the app, and a
+    // reader who left a clock with hands on it should not come back to a row of
+    // digits.
+    <Card
+      title={t("clock.title")}
+      meta={offset}
+      square
+      flipHint={t("clock.turn")}
+      defaultFlipped={cardTurned("clock")}
+      onFlip={(turned) => turnCard("clock", turned)}
+      back={wall && <ClockDial {...wall} label={time} />}
+    >
       <div className={styles.inner}>
         <div className={styles.top}>
           <div className={styles.face}>

@@ -79,6 +79,7 @@
   },
   "clock": {
     "title": "时间",
+    "turn": "双击可翻转卡片",
     "timezone": "时区",
     "rise": "日出",
     "set": "日落",

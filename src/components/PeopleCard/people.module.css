@@ -27,11 +27,26 @@
 
 /* One line: the name takes what it needs, and the reading of it sits hard right.
    A link, like the rows of posts and headlines that go somewhere — so it takes
-   their hover state too, and their underline removed. */
+   their hover state too, and their underline removed.
+
+   The height is the dashboard's own (--row in styles.css), not the sum of the
+   type and the padding: the warnings square beside this one carries a boxed
+   number that stands taller than a name does, and the two lists are meant to be
+   read across. Stated rather than left to whichever font the handset has, since
+   the point of it is that the row next door comes out the same.
+
+   Allowed to wrap so that it can be told not to: `align-content` is the only way
+   to centre a baseline-aligned line in a box taller than itself, and it is a
+   rule about lines, which a flex row has none of until it may have two. Nothing
+   in the row can actually go over — the name gives way instead (see .who), and
+   the reading beside it is one unbroken run. */
 .item {
   display: flex;
   align-items: baseline;
+  flex-wrap: wrap;
+  align-content: center;
   gap: 8px;
+  height: var(--row);
   padding: 8px 10px;
   text-decoration: none;
 }

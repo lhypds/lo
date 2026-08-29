@@ -90,3 +90,81 @@
     display: none;
   }
 }
+
+/* ---------------------------------------------------------------- back -- */
+
+/* liveboard's Clock, rule for rule (see ClockDial). The one thing that is lo's
+   is the ink: #000 there, --ink here, which is the same black to the eye and
+   the same black as the border around the card it is drawn on. */
+
+.back {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Four fifths of the face, not the whole of it: at full size the dial ran from
+   edge to edge of the body and read as a clock jammed into a box. The svg keeps
+   its own square inside whatever that leaves, so the round drawing centres
+   itself and the slack falls evenly around it.
+   overflow is visible because the rim's shadow lands outside the 200-unit
+   square — the 10% of the body left over on the short side is what catches it. */
+.dial {
+  display: block;
+  width: 80%;
+  height: 80%;
+  overflow: visible;
+  font-family: var(--display);
+}
+
+/* White with a black rule and a hard black shadow two pixels down and across:
+   no blur, no spread, the drop the whole of liveboard is drawn with. */
+.rim {
+  fill: var(--paper);
+  stroke: var(--ink);
+  stroke-width: 2;
+  filter: drop-shadow(2px 2px 0 var(--ink));
+}
+
+.tick,
+.majorTick,
+.hourHand,
+.minuteHand,
+.secondHand {
+  stroke: var(--ink);
+  stroke-linecap: square;
+}
+
+.tick {
+  stroke-width: 1;
+}
+
+.majorTick {
+  stroke-width: 2;
+}
+
+.numeral {
+  fill: var(--ink);
+  font-size: 12px;
+  font-weight: 600;
+  user-select: none;
+}
+
+.hourHand {
+  stroke-width: 5;
+}
+
+.minuteHand {
+  stroke-width: 3;
+}
+
+.secondHand {
+  stroke-width: 1;
+}
+
+.pin {
+  fill: var(--paper);
+  stroke: var(--ink);
+  stroke-width: 2;
+}

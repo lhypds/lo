@@ -126,6 +126,7 @@ function restore() {
       if (!BY_ID.has(id) || !value || typeof value !== "object") continue;
       const choice = {};
       if (typeof value.on === "boolean") choice.on = value.on;
+      if (typeof value.turned === "boolean") choice.turned = value.turned;
       if (SIZES.includes(value.size)) choice.size = value.size;
       if (Number.isSafeInteger(value.added) && value.added > 0) choice.added = value.added;
       if (Number.isSafeInteger(value.rank) && value.rank >= 0) choice.rank = value.rank;
@@ -243,6 +244,27 @@ export function toggleCard(id) {
 
 export function resizeCard(id, size) {
   if (cardSizes(id).includes(size)) decide({ [id]: { size } });
+}
+
+// Which side of a two-sided card is up — at present the clock, whose back is the
+// same hour with hands on it (see ClockCard). Kept here with the rest of the
+// layout because it is the same kind of answer as how tall a panel stands: a
+// thing the reader decided about a tile, which should still be true when they
+// come back to the dashboard from another screen. The tile is unmounted while
+// they are away, so nothing the card remembers by itself would survive the trip.
+export function turnCard(id, turned) {
+  if (BY_ID.has(id)) decide({ [id]: { turned } });
+}
+
+// Read rather than subscribed to, unlike the size beside it. Once a card is on
+// the page the turning is its own — it is an animation with a direction, and a
+// side arriving from outside has no direction to come from (see ui/Card) — so
+// what this answers is only which face the tile is dealt showing. Which is the
+// whole of what is wanted: a tile built again, whether on coming back to the
+// dashboard or on being carried to another page of the strip, comes back the way
+// it was left.
+export function cardTurned(id) {
+  return decided[id]?.turned === true;
 }
 
 // Where the tiles stand, as ids, first to last — the answer to a card having been
