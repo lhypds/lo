@@ -130,6 +130,22 @@ export default function HomePage() {
   const requestedPage = pageIn(searchParams);
   const [page, setPage] = useState(requestedPage);
   const [grid, setGrid] = useState(null);
+  // Whether the strip has been turned yet, which is the whole of what decides
+  // whether it slides. A dashboard opened at page three — where the reader was
+  // standing when they left it, written into the route on the way out — is
+  // measured before it is drawn, so the first transform the track is given is
+  // already the one that puts page three under the window. Left to the
+  // stylesheet that is a swipe across two pages on arrival, and a page seen to
+  // turn is a page being turned: this one was turned a while ago, by a reader
+  // who has since been somewhere else and come back to where they left off.
+  //
+  // Set by the two gestures that are a turn — a finger dragged across the strip,
+  // a dot pressed — and never unset: from the first of them on, wherever the
+  // strip stands is somewhere the reader moved it to, and moving is worth
+  // showing. Everything else that changes which page is under the window is the
+  // dashboard being re-dealt rather than turned — a card added, a panel grown, a
+  // window resized — and lands the same way this does.
+  const [turned, setTurned] = useState(false);
   // The window the pages are seen through, the row of them behind it, the first
   // page — which is the one the module is measured off — and the gesture in
   // progress, if a finger is down.
@@ -403,6 +419,7 @@ export default function HomePage() {
 
   function turnTo(index) {
     const next = Math.max(0, Math.min(index, pages.length - 1));
+    setTurned(true);
     setPage(next);
 
     // Replace rather than push: a run of swipes is still one place in browser
@@ -433,6 +450,10 @@ export default function HomePage() {
     if (expanded) return;
     if (target?.closest?.(".mapboxgl-map")) return;
     swipeRef.current = { x, y, axis: null };
+    // At the start of the gesture rather than at the end of it: the strip has to
+    // be a thing that slides again by the time the finger is lifted, since what
+    // settles the page it is let go on is the same transition (see endSwipe).
+    setTurned(true);
   }
 
   // The axis is decided once, on the first few pixels, and the rest of the
@@ -760,7 +781,10 @@ export default function HomePage() {
         >
           <div
             ref={trackRef}
-            className="card-track"
+            // Placed, until the reader turns it: the page the route asks for is
+            // under the window from the first frame rather than swiped to (see
+            // `turned` above, and .card-track.placing in styles.css).
+            className={`card-track${turned ? "" : " placing"}`}
             style={{ transform: expanded ? undefined : `translateX(${-current * 100}%)` }}
           >
             {pages.map((cards, index) => (

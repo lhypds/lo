@@ -511,6 +511,18 @@ a {
   transition: transform 260ms ease;
 }
 
+/* Before the reader has turned it, the strip is put where it belongs rather than
+   moved there. The dashboard is measured before it is drawn, so a visit that
+   opens on page three has the track's transform jump from nought to two pages
+   over in the frame the measurement lands — with the transition above, that is a
+   swipe nobody made, played to a reader who has just come back from a post to the
+   part of the dashboard they left. The class comes off at the first real turn
+   (see HomePage), which is also before the finger that made it is lifted: the
+   settle at the end of a drag is this same transition. */
+.card-track.placing {
+  transition: none;
+}
+
 /* Two columns on mobile. The tiles are squares, so the column count is what
    sets their size — dropping to one would make each tile as tall as the screen
    is wide, which is the opposite of compact. The web breakpoint below raises
