@@ -407,7 +407,7 @@ function venuePopupElement(venue, note, away, comments, navLabel) {
 //
 // The first is the name on the byline, and where it goes is the person: a post
 // says somebody was standing here, and who that is, is a fair next question to
-// have an answer to. The second is the count in the bottom corner, and what it
+// have an answer to. The second is the count on the bottom line, and what it
 // opens is what everyone who came past had to say back — the half of a post that
 // does not fit in a bubble 180px wide.
 //
@@ -482,6 +482,10 @@ function postPopupElement(post, headline, place, iso, when, navigate, comments, 
   actions.className = styles.postPopupActions;
   const reading = document.createElement("span");
   reading.className = styles.popupGroup;
+  // Getting there comes first, and the remarks after it: the bubble is on a map,
+  // and the question a pin raises before any other is how to reach the place it
+  // is stuck in.
+  reading.append(popupNavElement(post, labels.nav, headline));
   if (comments) {
     const open = document.createElement("button");
     open.type = "button";
@@ -499,7 +503,6 @@ function postPopupElement(post, headline, place, iso, when, navigate, comments, 
     });
     reading.append(open);
   }
-  reading.append(popupNavElement(post, labels.nav, headline));
   actions.append(reading);
   if (edit || remove) {
     const writing = document.createElement("span");
