@@ -69,9 +69,9 @@ export function AuthProvider({ children }) {
         const data = await api.getSession();
         signedIn = data.user;
       } catch {
-        // Nobody is signed in here, or the server restarted and dropped the
-        // session it had. Either way the login screen is the answer: a password
-        // is not something this browser is holding on anybody's behalf.
+        // Nobody is signed in here, or the saved session expired or was revoked.
+        // Either way the login screen is the answer: a password is not something
+        // this browser is holding on anybody's behalf.
       }
 
       // A key is spent only where there is nothing to spend it on. A link will

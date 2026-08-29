@@ -459,6 +459,20 @@ function showing(marker) {
   return Boolean(marker.getPopup()?.isOpen());
 }
 
+// The chosen pin, filled in. Crossing a pin already turns it over — black head,
+// white line — and this holds that same turn on the one the reader picked, so
+// the pin goes on saying "this one" after the pointer has moved off it and after
+// its bubble has been lent to whatever the pointer crossed next. Which is the
+// half the bubble cannot do: only one of those is up at a time, so with the
+// pointer elsewhere there is nothing on the map left pointing at the choice.
+//
+// A class on the element the marker was built from, rather than anything the
+// pin is drawn from again: the pins are DOM nodes the map owns and outlive the
+// render that made them, which is why the choice itself is kept in a ref below.
+function wearChosen(marker, chosen) {
+  marker?.getElement().classList.toggle(styles.pinChosen, chosen);
+}
+
 // `expanded` is owned by the page rather than by the map: expanding hides the
 // rest of the dashboard, which is not the map's call to make.
 //
@@ -593,7 +607,11 @@ export default function MapCard({
     const previous = keptRef.current;
     keptRef.current = marker;
     selectPinRef.current?.(id);
-    if (previous && previous !== marker && showing(previous)) previous.togglePopup();
+    if (previous && previous !== marker) {
+      wearChosen(previous, false);
+      if (showing(previous)) previous.togglePopup();
+    }
+    wearChosen(marker, true);
     if (!showing(marker)) marker.togglePopup();
   }, []);
 
@@ -617,6 +635,7 @@ export default function MapCard({
     const marker = keptRef.current;
     keptRef.current = null;
     selectPinRef.current?.(null);
+    wearChosen(marker, false);
     if (close && marker && showing(marker)) marker.togglePopup();
   }, []);
 

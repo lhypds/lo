@@ -113,6 +113,20 @@ db.exec(`
     created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
   );
 
+  -- A browser keeps the random session token and presents it as a bearer
+  -- credential on each request. Only its digest is kept here: enough to find
+  -- the account when the credential comes back, but not a usable credential if
+  -- somebody reads the database. Sessions belong in SQLite rather than process
+  -- memory so an ordinary server restart does not sign every device out.
+  CREATE TABLE IF NOT EXISTS sessions (
+    token_hash TEXT PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    expires_at INTEGER NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  ) WITHOUT ROWID;
+
+  CREATE INDEX IF NOT EXISTS sessions_expires_idx ON sessions(expires_at);
+
   CREATE TABLE IF NOT EXISTS marks (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -491,6 +505,30 @@ const updateLastLogin = db.prepare(`
   UPDATE users
   SET last_ip = ?, last_login_at = ?
   WHERE id = ?
+`);
+
+/* ----------------------------------------------------------------- sessions */
+
+const insertSession = db.prepare(`
+  INSERT INTO sessions (token_hash, user_id, expires_at)
+  VALUES (?, ?, ?)
+`);
+
+const selectSession = db.prepare(`
+  SELECT s.user_id AS userId, u.username, s.expires_at AS expiresAt
+  FROM sessions s
+  JOIN users u ON u.id = s.user_id
+  WHERE s.token_hash = ?
+`);
+
+const deleteSessionByHash = db.prepare(`
+  DELETE FROM sessions
+  WHERE token_hash = ?
+`);
+
+const deleteExpiredSessionRows = db.prepare(`
+  DELETE FROM sessions
+  WHERE expires_at <= ?
 `);
 
 const countMarksForUser = db.prepare(`
@@ -1116,6 +1154,22 @@ export function setLinkKey(userId, key) {
 // column and not two — the rule every other optional field here follows.
 export function recordLogin(userId, ip) {
   updateLastLogin.run(ip || null, new Date().toISOString(), userId);
+}
+
+export function saveSession(tokenHash, userId, expiresAt) {
+  insertSession.run(tokenHash, userId, expiresAt);
+}
+
+export function getSession(tokenHash) {
+  return selectSession.get(tokenHash) ?? null;
+}
+
+export function deleteSession(tokenHash) {
+  deleteSessionByHash.run(tokenHash);
+}
+
+export function deleteExpiredSessions(now) {
+  deleteExpiredSessionRows.run(now);
 }
 
 export function countMarks(userId) {

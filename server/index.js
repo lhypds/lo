@@ -14,9 +14,11 @@ import {
   createMessage,
   createPost,
   createUser,
+  deleteExpiredSessions,
   deleteMark,
   deleteConversation,
   deletePost,
+  deleteSession,
   followUser,
   getComments,
   getConversation,
@@ -32,6 +34,7 @@ import {
   getPostsNear,
   getProfile,
   getRecentPosts,
+  getSession,
   getThreads,
   getUser,
   getUserByLinkKey,
@@ -42,6 +45,7 @@ import {
   recordLogin,
   renameMark,
   savePosition,
+  saveSession,
   setDiscoverable,
   setLinkKey,
   setPassword,
@@ -112,8 +116,12 @@ const PASSWORD_HINT = `A password is ${PASSWORD_MIN}–${PASSWORD_MAX} character
 // account called "posts" would be one the router sends to the posts page and
 // nothing could ever link to. Kept in step with RESERVED in src/App.jsx.
 const RESERVED_NAMES = new Set(["login", "marks", "posts", "account"]);
-const sessions = new Map();
 const sessionAgeMs = 30 * 24 * 60 * 60 * 1000;
+
+// Expired sessions are normally removed when they are presented or when a new
+// one is opened. Sweep once at boot as well, so abandoned credentials do not
+// accumulate on a quiet server.
+deleteExpiredSessions(Date.now());
 
 const LANGS = new Set(["en", "zh", "ja"]);
 
@@ -188,15 +196,20 @@ function sessionToken(req) {
   return /^Bearer\s+([^\s]+)$/i.exec(String(req.headers.authorization ?? ""))?.[1] ?? null;
 }
 
+function sessionHash(token) {
+  return crypto.createHash("sha256").update(token).digest("base64url");
+}
+
 function currentSession(req) {
   const token = sessionToken(req);
-  const session = token ? sessions.get(token) : null;
+  const tokenHash = token ? sessionHash(token) : null;
+  const session = tokenHash ? getSession(tokenHash) : null;
   if (!session) return null;
   if (session.expiresAt <= Date.now()) {
-    sessions.delete(token);
+    deleteSession(tokenHash);
     return null;
   }
-  return { token, ...session };
+  return { tokenHash, ...session };
 }
 
 // The address a request came from, as well as it can be known from behind a
@@ -226,7 +239,9 @@ function clientIp(req) {
 // time somebody signed in rather than the last time they were about.
 function startSession(user, req) {
   const token = crypto.randomBytes(32).toString("base64url");
-  sessions.set(token, { userId: user.id, username: user.username, expiresAt: Date.now() + sessionAgeMs });
+  const now = Date.now();
+  deleteExpiredSessions(now);
+  saveSession(sessionHash(token), user.id, now + sessionAgeMs);
   recordLogin(user.id, clientIp(req));
   return token;
 }
@@ -252,7 +267,7 @@ function linkKeyFor(user) {
 // copy it was holding; this throws away the one that made it mean anything.
 function clearSession(req) {
   const session = currentSession(req);
-  if (session) sessions.delete(session.token);
+  if (session) deleteSession(session.tokenHash);
 }
 
 function requireSession(req, res, next) {

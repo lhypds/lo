@@ -68,9 +68,9 @@ async function request(path, options = {}) {
   if (response.status === 204) return null;
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    // A token the server no longer knows, because it restarted or the session
-    // aged out. Thrown away here rather than presented on every request from now
-    // on, so that what follows is a login screen rather than a loop.
+    // A token the server no longer knows because it aged out or was revoked.
+    // Thrown away here rather than presented on every request from now on, so
+    // that what follows is a login screen rather than a loop.
     if (response.status === 401 && data.code === "LOGIN_REQUIRED") dropSession();
     const error = new Error(data.error || "Request failed");
     error.status = response.status;

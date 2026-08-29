@@ -159,7 +159,15 @@
   stroke-linejoin: round;
 }
 
-.pin:hover svg {
+/* Under the pointer, and — the same turn held rather than a second way of saying
+   it — on the pin the reader chose by clicking it (see wearChosen in
+   MapCard.jsx). The two mean the same thing about the same pin, "this one", and
+   differ only in how long it is held for: the pointer's goes with the pointer,
+   the choice stays until another pin is chosen or the map is clicked off. So a
+   pin the pointer crosses on its way past a chosen one comes up black beside it,
+   and falls back to paper when it is left; the chosen one does not. */
+.pin:hover svg,
+.pinChosen svg {
   fill: #000;
   stroke: #fff;
 }
@@ -185,8 +193,8 @@
 
 /* The two shades a part can ask for instead (see PIN_GLYPHS in utils/icons.js).
    Ink is the dark of the outline and paper the light of the head, which is to
-   say the pin's own two colours — so both turn over with it under the pointer,
-   the way the plain circle in a mark's head does.
+   say the pin's own two colours — so both turn over with it under the pointer
+   and on the chosen pin, the way the plain circle in a mark's head does.
 
    Paper is not the same as leaving a shape unfilled, though on a white head the
    two look alike: an unfilled shape shows what is under it, and the cup is drawn
@@ -200,11 +208,13 @@
   fill: #fff;
 }
 
-.pin:hover .pinGlyph .ink {
+.pin:hover .pinGlyph .ink,
+.pinChosen .pinGlyph .ink {
   fill: #fff;
 }
 
-.pin:hover .pinGlyph .paper {
+.pin:hover .pinGlyph .paper,
+.pinChosen .pinGlyph .paper {
   fill: #000;
 }
 
