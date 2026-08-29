@@ -100,8 +100,8 @@ export default function Card({
   const downRef = useRef(null);
   const turnedAtRef = useRef(0);
   const cycleTimersRef = useRef([]);
-  // The mouse's own pair of presses, counted here the way the finger's are and
-  // for the same reason a host might not raise a dblclick at all (see clickUp).
+  // The pointer's own pair of presses, counted here the way the finger's are and
+  // for the same reason a host might not raise a dblclick at all (see pointerUp).
   const clickRef = useRef({ at: 0, x: 0, y: 0 });
   const turnable = Boolean(back || onCycle);
 
@@ -177,17 +177,22 @@ export default function Card({
     }
   }
 
-  // Two clicks on the heading, counted the same way the two taps are and for a
-  // reason that only shows up away from a plain desktop tab: not every host
-  // raises the browser's own dblclick. lo runs inside the Even Hub WebView as a
-  // frame (see utils/host.js), and a double press forwarded into a frame can
-  // arrive as two bare clicks with no dblclick coalesced on top — so the card
-  // never turned however many times its title was clicked. The pair is counted
-  // here as well, off the one event every host is sure about.
-  function clickUp(event) {
-    if (event.target.closest("button")) return;
+  // Two presses on the heading from a mouse, a pen, or whatever a host dispatches
+  // into the frame as a bare pointer — counted off pointerup for the same reason
+  // the finger's taps are counted off touchend: not every host raises the
+  // browser's own dblclick, and a click is only synthesized on top of real user
+  // input, not on the pointer events a WebView forwards. lo runs inside the Even
+  // Hub WebView as a frame (see utils/host.js), where a double press could arrive
+  // as two bare pointerups with no click or dblclick behind them — so the card
+  // never turned however many times its title was pressed. The pair is read here
+  // off the one event that always arrives, the way the dashboard reads the same
+  // gesture (see HomePage): the touch family answers the finger above, the pointer
+  // family answers everything else here, and the two are split so a finger — which
+  // raises both — is not counted twice.
+  function pointerUp(event) {
+    if (event.pointerType === "touch" || event.target.closest("button")) return;
     // A host that also raises the native dblclick, or a finger whose taps already
-    // turned the card and are now delivering their synthesized clicks, has been
+    // turned the card and are now delivering their pointer events, has been
     // answered — this press is the same gesture arriving again under another name.
     if (Date.now() - turnedAtRef.current <= TAP_GAP + TAP_GAP) return;
     const last = clickRef.current;
@@ -239,9 +244,10 @@ export default function Card({
             }
           : undefined
       }
-      // The mouse's two presses, counted off plain clicks so a host that forwards
-      // them into a frame without a dblclick on top still turns the card.
-      onClick={turnable ? clickUp : undefined}
+      // The mouse, the pen, and whatever a host forwards into the frame as a bare
+      // pointer, counted off pointerup so a double press still turns the card
+      // where no click or dblclick is synthesized behind it.
+      onPointerUp={turnable ? pointerUp : undefined}
       onTouchStart={turnable ? touchDown : undefined}
       onTouchEnd={turnable ? touchUp : undefined}
       onTouchCancel={
