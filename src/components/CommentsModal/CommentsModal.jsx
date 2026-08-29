@@ -10,19 +10,20 @@ import styles from "./comments.module.css";
 // out at the moment the submit would be refused rather than after it.
 const BODY_MAX = 300;
 
-// What has been said back about one post, and the box to say something yourself.
+// What has been said back about one post or OSM venue, and the box to say
+// something yourself.
 //
-// A post is left on the ground for whoever comes past it, and until this sheet
-// existed finding one was the end of the exchange — the bubble on the map said
-// its piece and there was nothing to answer with. This is the other half of it:
-// a column of what passers-by wrote, oldest first, because it is a conversation
-// and a conversation is read from the top.
+// A post or public venue is on the ground for whoever comes past it. The bubble
+// on the map says its piece; this is the other half of the exchange: a column of
+// what passers-by wrote, oldest first, because a conversation is read from the
+// top.
 //
-// `post` is the whole of what says the sheet is up — there is no state where it
-// is open and about nothing — and it is the post itself rather than an id,
-// because the sheet names what it is about at the head of the column and the row
-// that opened it is already holding one.
-export default function CommentsModal({ post, onClose, onAdded }) {
+// The subject itself is the whole of what says the sheet is up — there is no
+// state where it is open and about nothing — because the sheet names what it is
+// about at the head of the column and the pin that opened it already holds the
+// object. `post` remains the ordinary path in; `venue` selects the parallel OSM
+// endpoints while reusing every pixel and state transition below.
+export default function CommentsModal({ post = null, venue = null, onClose, onAdded }) {
   const { t, i18n } = useTranslation();
   // Opening this column is what reads it — a remark under your post waits in the
   // same inbox a letter does — and the answer says how much is left waiting
@@ -36,29 +37,33 @@ export default function CommentsModal({ post, onClose, onAdded }) {
   const [sending, setSending] = useState(false);
   const listRef = useRef(null);
 
-  const postId = post?.id ?? null;
+  const subject = venue ?? post;
+  const subjectId = subject?.id ?? null;
+  const venueThread = Boolean(venue);
 
-  // Asked for when the sheet opens rather than with the post: a post is drawn a
-  // hundred at a time on the map, and the words under one are wanted only by the
-  // reader who pressed its count.
+  // Asked for when the sheet opens rather than with the map list: pins are drawn
+  // many at a time, and the words under one are wanted only by the reader who
+  // pressed its count.
   //
-  // Cleared on the way in, so a sheet opened on one post and then on another
+  // Cleared on the way in, so a sheet opened on one subject and then on another
   // never shows the first column under the second — the same care every list in
-  // lo takes. The half-typed line goes with it: a draft belongs to the post it
+  // lo takes. The half-typed line goes with it: a draft belongs to the thing it
   // was being written under.
   useEffect(() => {
-    if (!postId) return undefined;
+    if (!subjectId) return undefined;
     let cancelled = false;
     setComments([]);
     setDraft("");
     setError("");
     setLoading(true);
-    api
-      .getComments(postId)
+    const read = venueThread ? api.getVenueComments(subjectId) : api.getComments(subjectId);
+    read
       .then((data) => {
         if (cancelled) return;
         setComments(data.comments ?? []);
-        noteUnread?.(data.unread ?? 0);
+        // Venue threads have no owner and therefore no inbox notification to
+        // mark read. A post response carries the updated global unread figure.
+        if (!venueThread) noteUnread?.(data.unread ?? 0);
       })
       .catch((requestError) => {
         if (!cancelled) setError(requestError.message);
@@ -69,7 +74,7 @@ export default function CommentsModal({ post, onClose, onAdded }) {
     return () => {
       cancelled = true;
     };
-  }, [postId, noteUnread]);
+  }, [subjectId, venueThread, noteUnread]);
 
   // The end of the column, which is the part being added to: a comment that
   // landed off screen would read as one that had not been submitted.
@@ -85,15 +90,17 @@ export default function CommentsModal({ post, onClose, onAdded }) {
     setSending(true);
     setError("");
     try {
-      const data = await api.addComment(postId, body);
+      const data = venueThread
+        ? await api.addVenueComment(subjectId, body)
+        : await api.addComment(subjectId, body);
       // Straight onto the end of the column rather than through a second read of
-      // it: the writer is looking at the post they have just written under.
+      // it: the writer is looking at the subject they have just written under.
       setComments((current) => [...current, data.comment]);
       setDraft("");
-      // And the figure back to whatever is holding the post, which on both pages
+      // And the figure back to whatever is holding the subject, which on both paths
       // is the map: the count in the corner of a bubble is what said there was
       // anything here to open, and it has just changed by one.
-      onAdded?.(post, data.comments);
+      onAdded?.(subject, data.comments);
     } catch (requestError) {
       setError(requestError.message);
     } finally {
@@ -103,7 +110,7 @@ export default function CommentsModal({ post, onClose, onAdded }) {
 
   return (
     <Modal
-      isOpen={Boolean(post)}
+      isOpen={Boolean(subject)}
       title={t("comments.title")}
       onClose={onClose}
       closeOnOverlay
@@ -112,12 +119,12 @@ export default function CommentsModal({ post, onClose, onAdded }) {
       wide
     >
       <div className={styles.sheet}>
-        {/* Which post this is about, at the head of the column. The bubble that
-            opened the sheet is behind it now, and a page of remarks with nothing
-            saying what they are remarks on is a conversation walked in on. */}
-        {post && (
+        {/* What this is about, at the head of the column. The bubble that opened
+            the sheet is behind it now, and a page of remarks with nothing saying
+            what they are remarks on is a conversation walked in on. */}
+        {subject && (
           <p className={styles.about}>
-            {post.body || post.place || t("comments.aboutPost")}
+            {venue ? venue.name : post.body || post.place || t("comments.aboutPost")}
           </p>
         )}
 

@@ -190,6 +190,18 @@ export const getComments = (postId) => request(`/api/posts/${postId}/comments`);
 export const addComment = (postId, body) =>
   request(`/api/posts/${postId}/comments`, { method: "POST", body: JSON.stringify({ body }) });
 
+// The same column under an OpenStreetMap venue. Its id is `type/number`; kept as
+// two path pieces so the slash is structure rather than an encoded character a
+// proxy might decide to decode early.
+function venueCommentsPath(venueId) {
+  const [type, osmId] = String(venueId).split("/");
+  return `/api/venues/${encodeURIComponent(type)}/${encodeURIComponent(osmId)}/comments`;
+}
+
+export const getVenueComments = (venueId) => request(venueCommentsPath(venueId));
+export const addVenueComment = (venueId, body) =>
+  request(venueCommentsPath(venueId), { method: "POST", body: JSON.stringify({ body }) });
+
 // The inbox and the figure the letter in the top bar wears, in one answer: the
 // dot says somebody wrote and the list is who and about what — a row is either a
 // person you have traded letters with or a post somebody has been writing under.

@@ -55,6 +55,21 @@ export function publishVenues(kind, items) {
   for (const listener of listeners) listener();
 }
 
+// A comment written from a map popup changes lo's own figure, not the OSM row.
+// Put that one field back into the published copy immediately so the pin behind
+// the sheet is redrawn with the new count; the card's next server answer will
+// carry the same figure from the database and take over normally.
+export function updateVenueComments(kind, id, comments) {
+  const current = byKind[kind];
+  if (!Array.isArray(current) || !current.some((item) => item.id === id)) return;
+  byKind = {
+    ...byKind,
+    [kind]: current.map((item) => (item.id === id ? { ...item, comments } : item)),
+  };
+  published = [...byKind.food, ...byKind.cafe];
+  for (const listener of listeners) listener();
+}
+
 export function useVenues() {
   return useSyncExternalStore(subscribe, snapshot);
 }

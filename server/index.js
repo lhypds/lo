@@ -9,6 +9,7 @@ import {
   countPosts,
   countUnread,
   createComment,
+  createVenueComment,
   createMark,
   createMessage,
   createPost,
@@ -34,6 +35,8 @@ import {
   getThreads,
   getUser,
   getUserByLinkKey,
+  getVenueCommentCounts,
+  getVenueComments,
   readComments,
   readConversation,
   recordLogin,
@@ -700,7 +703,16 @@ function venuesRoute(kind) {
     const coords = parseCoords(req.query);
     if (!coords) return res.status(400).json({ error: "Invalid coordinates" });
     try {
-      res.json(await lookupVenues(kind, coords.latitude, coords.longitude, requestedLang(req)));
+      const result = await lookupVenues(kind, coords.latitude, coords.longitude, requestedLang(req));
+      // The upstream answer is cached independently of lo's own conversation
+      // counts. Add the current figures after that cache, so a new comment is
+      // visible on the next reading without another Overpass request and without
+      // mutating the shared cached venue rows.
+      const counts = getVenueCommentCounts(result.items.map((item) => item.id));
+      res.json({
+        ...result,
+        items: result.items.map((item) => ({ ...item, comments: counts[item.id] ?? 0 })),
+      });
     } catch (error) {
       if (isUpstreamDown(error)) {
         return res.status(504).json({ error: "Timed out looking up what is around here" });
@@ -988,6 +1000,43 @@ app.post("/api/posts/:postId/comments", requireSession, (req, res) => {
   // different things on screen — the column in the sheet and the count in the
   // corner of the bubble on the map (see createComment in db.js).
   const { comment, count } = createComment(req.user.id, post.id, body);
+  res.status(201).json({ comment, comments: count });
+});
+
+// OSM numbers nodes, ways and relations in separate spaces. The pair is the
+// stable identity the venue cards already carry (`node/123`, for example), and
+// spelling it as two path segments avoids relying on an encoded slash surviving
+// every proxy between the app and Express.
+const VENUE_COMMENT_TYPES = new Set(["node", "way", "relation"]);
+
+function venueCommentTarget(req, res) {
+  const type = String(req.params.type ?? "");
+  const osmId = String(req.params.osmId ?? "");
+  if (!VENUE_COMMENT_TYPES.has(type) || !/^[1-9]\d{0,19}$/.test(osmId)) {
+    res.status(400).json({ error: "Invalid venue ID" });
+    return null;
+  }
+  return `${type}/${osmId}`;
+}
+
+// Venue columns are public like post columns, but they do not participate in
+// the personal inbox: an OSM place has no author to notify. Opening one simply
+// reads the shared column as it stands.
+app.get("/api/venues/:type/:osmId/comments", requireSession, (req, res) => {
+  const venueId = venueCommentTarget(req, res);
+  if (!venueId) return;
+  res.json({ comments: getVenueComments(venueId, COMMENTS_MAX) });
+});
+
+app.post("/api/venues/:type/:osmId/comments", requireSession, (req, res) => {
+  const venueId = venueCommentTarget(req, res);
+  if (!venueId) return;
+  const body = String(req.body?.body ?? "").trim().normalize("NFKC");
+  if (!body) return res.status(400).json({ error: "Write something" });
+  if (body.length > COMMENT_BODY_MAX) {
+    return res.status(400).json({ error: `A comment is at most ${COMMENT_BODY_MAX} characters` });
+  }
+  const { comment, count } = createVenueComment(req.user.id, venueId, body);
   res.status(201).json({ comment, comments: count });
 });
 

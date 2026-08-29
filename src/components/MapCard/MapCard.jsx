@@ -5,6 +5,7 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import { ActionButton, Card, useNavigate } from "../../ui/index.js";
 import { formatCoords, formatDateTime, formatDistance, formatUsername } from "../../utils/format.js";
 import { MARK_PIN_EYE, MARK_PIN_PATH, MARK_PIN_TIP_Y, PIN_GLYPHS } from "../../utils/icons.js";
+import { directionsLink } from "../../utils/maps.js";
 import { venueParts } from "../../utils/venues.js";
 import { useAuth } from "../AuthProvider/index.js";
 import { useHere } from "../LocationProvider/index.js";
@@ -221,9 +222,27 @@ function venueElement(kind) {
   return pinElement(styles.venuePin, glyphElement(kind));
 }
 
+// The one action every kind of pin carries. Kept as a real anchor so a phone
+// can hand Google's https directions URL to the Maps app; on a desktop the same
+// helper opens the directions page in a new tab. With no origin in the URL,
+// Maps itself uses the device's current position, which is fresher than the fix
+// that happened to be on screen when Mapbox built this popup.
+function popupNavElement(to, label, name) {
+  const link = document.createElement("a");
+  link.className = styles.popupNav;
+  link.textContent = label;
+  link.setAttribute("aria-label", `${label} ${name}`);
+  const attributes = directionsLink(to);
+  for (const [key, value] of Object.entries(attributes)) link.setAttribute(key, value);
+  // A tap on the link belongs to Google Maps, not to the map underneath, whose
+  // click handler would otherwise read it as a request to close the popup.
+  link.addEventListener("click", (event) => event.stopPropagation());
+  return link;
+}
+
 // Built out of nodes rather than a string of HTML: the name is whatever the
 // reader typed into the rename box, and setHTML would run it.
-function markPopupElement(name, coords, iso, when) {
+function markPopupElement(mark, name, coords, iso, when, navLabel) {
   const wrapper = document.createElement("div");
   wrapper.className = styles.markPopup;
   const label = document.createElement("strong");
@@ -235,7 +254,7 @@ function markPopupElement(name, coords, iso, when) {
   time.className = styles.markPopupMeta;
   time.dateTime = iso;
   time.textContent = when;
-  wrapper.append(label, position, time);
+  wrapper.append(label, position, time, popupNavElement(mark, navLabel, name));
   return wrapper;
 }
 
@@ -245,15 +264,14 @@ function markPopupElement(name, coords, iso, when) {
 // small print under it — and a second stylesheet for the same box would be two
 // boxes to keep looking alike.
 //
-// Nothing in it can be pressed, as in a mark's. The way to a place is the row in
-// the card, which is a directions link; a bubble on a map that quietly took over
-// as the way there would be a second answer to a question already answered, and
-// this one is deaf to the pointer besides (see .markPopup in map.module.css).
-function venuePopupElement(name, note, away) {
+// The final line carries the same two actions a post does: the public comments
+// about the place and the directions hand-off. They remain reachable when the
+// venue card itself is on another dashboard page.
+function venuePopupElement(venue, note, away, comments, navLabel) {
   const wrapper = document.createElement("div");
   wrapper.className = styles.markPopup;
   const label = document.createElement("strong");
-  label.textContent = name;
+  label.textContent = venue.name;
   wrapper.append(label);
   if (note) {
     const serves = document.createElement("span");
@@ -264,7 +282,21 @@ function venuePopupElement(name, note, away) {
   const distance = document.createElement("span");
   distance.className = styles.markPopupMeta;
   distance.textContent = away;
-  wrapper.append(distance);
+  const actions = document.createElement("span");
+  actions.className = styles.postPopupActions;
+  if (comments) {
+    const open = document.createElement("button");
+    open.type = "button";
+    open.className = styles.postPopupComments;
+    open.textContent = `${comments.label} ${venue.comments ?? 0}`;
+    open.addEventListener("click", (event) => {
+      event.stopPropagation();
+      comments.open(venue);
+    });
+    actions.append(open);
+  }
+  actions.append(popupNavElement(venue, navLabel, venue.name));
+  wrapper.append(distance, actions);
   return wrapper;
 }
 
@@ -274,9 +306,8 @@ function venuePopupElement(name, note, away) {
 // are clamped and the picture is small — and the click that opens it properly
 // is still there underneath.
 //
-// Two things in a bubble can be pressed and the rest of it stays deaf to the
-// pointer — see .postPopupWho and .postPopupComments in map.module.css, which
-// are the two holes in that.
+// Three things in a bubble can be pressed and the rest of it stays deaf to the
+// pointer — the author's name, the comments count and the navigation link.
 //
 // The first is the name on the byline, and where it goes is the person: a post
 // says somebody was standing here, and who that is, is a fair next question to
@@ -293,7 +324,7 @@ function venuePopupElement(name, note, away) {
 // `comments` is a word and a way to open the sheet, or nothing where the page
 // has nowhere to open one — the marks page draws no posts at all, and a count
 // nothing answers would be a control that does nothing.
-function postPopupElement(post, headline, place, iso, when, navigate, comments) {
+function postPopupElement(post, headline, place, iso, when, navigate, comments, navLabel) {
   const wrapper = document.createElement("div");
   wrapper.className = styles.postPopup;
   if (post.image) {
@@ -337,16 +368,16 @@ function postPopupElement(post, headline, place, iso, when, navigate, comments) 
     at.textContent = ` · ${place}`;
     who.append(at);
   }
-  // When it was left at one end of the last line and what was said back at the
-  // other. One row rather than two: the corner of the bubble is where the count
-  // belongs, and the time was already standing in it.
-  const foot = document.createElement("div");
-  foot.className = styles.postPopupFoot;
+  // When it was left remains part of the post's metadata. The things a reader
+  // can do sit together on their own line underneath it, so comments and
+  // navigation read as one action row rather than as something attached to the
+  // timestamp.
   const time = document.createElement("time");
   time.className = styles.markPopupMeta;
   time.dateTime = iso;
   time.textContent = when;
-  foot.append(time);
+  const actions = document.createElement("span");
+  actions.className = styles.postPopupActions;
   if (comments) {
     const open = document.createElement("button");
     open.type = "button";
@@ -362,9 +393,10 @@ function postPopupElement(post, headline, place, iso, when, navigate, comments) 
       event.stopPropagation();
       comments.open(post);
     });
-    foot.append(open);
+    actions.append(open);
   }
-  wrapper.append(label, who, foot);
+  actions.append(popupNavElement(post, navLabel, headline));
+  wrapper.append(label, who, time, actions);
   return wrapper;
 }
 
@@ -451,6 +483,7 @@ export default function MapCard({
   onHoverPin,
   onSelectPin,
   onOpenComments,
+  onOpenVenueComments,
 }) {
   const { t, i18n } = useTranslation();
   const { coords } = useHere();
@@ -465,6 +498,8 @@ export default function MapCard({
   // containing block of any fixed box mounted in here.
   const commentsRef = useRef(onOpenComments);
   commentsRef.current = onOpenComments;
+  const venueCommentsRef = useRef(onOpenVenueComments);
+  venueCommentsRef.current = onOpenVenueComments;
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const hereMarkerRef = useRef(null);
@@ -781,10 +816,12 @@ export default function MapCard({
           .setPopup(
             previewPopup().setDOMContent(
               markPopupElement(
+                mark,
                 name,
                 formatCoords(mark.latitude, mark.longitude),
                 mark.time,
                 formatDateTime(mark.time, i18n.language),
+                t("map.nav"),
               ),
             ),
           )
@@ -839,6 +876,7 @@ export default function MapCard({
                 formatDateTime(post.time, i18n.language),
                 navigate,
                 comments,
+                t("map.nav"),
               ),
             ),
           )
@@ -867,6 +905,9 @@ export default function MapCard({
     const map = mapRef.current;
     if (!map) return;
     venueMarkersRef.current.forEach(({ marker }) => marker.remove());
+    const comments = onOpenVenueComments
+      ? { label: t("comments.short"), open: (venue) => venueCommentsRef.current?.(venue) }
+      : null;
     venueMarkersRef.current = venues.map((venue) => {
       const { category, cuisine } = venueParts(venue, t);
       const marker = preview(
@@ -875,9 +916,11 @@ export default function MapCard({
           .setPopup(
             previewPopup().setDOMContent(
               venuePopupElement(
-                venue.name,
+                venue,
                 [category, cuisine].filter(Boolean).join(" · "),
                 formatDistance(venue.distance),
+                comments,
+                t("map.nav"),
               ),
             ),
           )
@@ -885,7 +928,7 @@ export default function MapCard({
       );
       return { id: venue.id, marker };
     });
-  }, [venues, t, preview]);
+  }, [venues, t, preview, Boolean(onOpenVenueComments)]);
 
   // The pairing the other way round: a row under the pointer in the list opens
   // the bubble on its own pin, so whichever half the reader is looking at, the

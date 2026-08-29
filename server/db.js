@@ -7,6 +7,34 @@ const databasePath = path.resolve(__dirname, "..", "db.sqlite");
 
 export const db = new DatabaseSync(databasePath);
 
+// Both tables were named when a comment could only be under a post, and the plain
+// names stopped being true when venues grew comments of their own: what is in
+// these two is a post's column and nothing else, and venue_comments is the reason
+// saying so is now worth the words. The renames have to happen before the schema
+// below rather than beside the other migrations after it, because that schema now
+// asks for the new names — on a database made before this line, CREATE TABLE IF
+// NOT EXISTS would put an empty post_comments beside the full comments and the
+// rename would then have nowhere to land.
+//
+// The indexes come down with the table they are on. SQLite keeps an index through
+// a rename under the name it was made with, so leaving them would mean the schema
+// below building a second copy of each under the new name; dropping them here
+// hands that job back to the CREATE INDEX lines, which is where an index on
+// post_comments is spelled out.
+const tables = new Set(
+  db.prepare(`SELECT name FROM sqlite_master WHERE type = 'table'`).all().map((table) => table.name),
+);
+if (tables.has("comment_reads") && !tables.has("post_comment_reads")) {
+  db.exec(`ALTER TABLE comment_reads RENAME TO post_comment_reads`);
+}
+if (tables.has("comments") && !tables.has("post_comments")) {
+  db.exec(`
+    ALTER TABLE comments RENAME TO post_comments;
+    DROP INDEX IF EXISTS comments_post_idx;
+    DROP INDEX IF EXISTS comments_user_idx;
+  `);
+}
+
 db.exec(`
   PRAGMA journal_mode = WAL;
   PRAGMA foreign_keys = ON;
@@ -201,7 +229,7 @@ db.exec(`
   -- No place and no fix of its own for the same reason: a comment is written
   -- wherever its writer happens to be, which is nobody's business but theirs,
   -- and a pin for it would be a second claim on ground the post already holds.
-  CREATE TABLE IF NOT EXISTS comments (
+  CREATE TABLE IF NOT EXISTS post_comments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -213,13 +241,13 @@ db.exec(`
   -- of every other list in lo: the rows below a post are an exchange, and an
   -- exchange read newest first is one read backwards. The same index answers the
   -- count on the preview.
-  CREATE INDEX IF NOT EXISTS comments_post_idx ON comments(post_id, created_at);
+  CREATE INDEX IF NOT EXISTS post_comments_post_idx ON post_comments(post_id, created_at);
 
   -- The other way a comment column is read: everything one account has written
   -- under other people's posts, which is what puts those posts in their inbox
   -- (see selectPostThreads). The post index above cannot answer it — it is
   -- filed under the post, and this question comes with a person in hand.
-  CREATE INDEX IF NOT EXISTS comments_user_idx ON comments(user_id, post_id);
+  CREATE INDEX IF NOT EXISTS post_comments_user_idx ON post_comments(user_id, post_id);
 
   -- When each account last had a post's comment column open in front of them.
   -- The counterpart of messages.read_at, and a table rather than a column for
@@ -235,12 +263,31 @@ db.exec(`
   -- Written by whoever opens the column, including a passer-by with nothing in
   -- it — a row here is what stops their own first comment from arriving in their
   -- inbox with everything said before it marked as waiting.
-  CREATE TABLE IF NOT EXISTS comment_reads (
+  CREATE TABLE IF NOT EXISTS post_comment_reads (
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
     read_at TEXT NOT NULL,
     PRIMARY KEY (user_id, post_id)
   ) WITHOUT ROWID;
+
+  -- What people have said about a restaurant or café from OpenStreetMap. Kept
+  -- beside post comments rather than forced into them: a venue has OSM's stable
+  -- type/id pair but no row in lo for a foreign key to point at, while a post is
+  -- one of lo's own numbered rows and disappears with its author.
+  --
+  -- The name and position stay with OSM and with the venue object in the
+  -- browser. Only the stable id is identity here, so a mapper correcting a
+  -- spelling does not strand the conversation under the old name.
+  CREATE TABLE IF NOT EXISTS venue_comments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    venue_id TEXT NOT NULL,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    body TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+
+  CREATE INDEX IF NOT EXISTS venue_comments_venue_idx
+    ON venue_comments(venue_id, created_at);
 
   -- What lo has read of a story it put on the dashboard. The words themselves
   -- are not here: they are a document, read whole by the one reader who opened
@@ -526,7 +573,7 @@ const POST_COLUMNS = `
   -- rather than a request of its own: the figure is drawn in the corner of the
   -- bubble on the map, which is already holding the post, and a count fetched
   -- separately would land after the thing it is counting for.
-  (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id) AS comments
+  (SELECT COUNT(*) FROM post_comments c WHERE c.post_id = p.id) AS comments
 `;
 
 const selectPostById = db.prepare(`
@@ -658,7 +705,7 @@ const selectFollowing = db.prepare(`
 /* ----------------------------------------------------------------- comments */
 
 const insertComment = db.prepare(`
-  INSERT INTO comments (post_id, user_id, body)
+  INSERT INTO post_comments (post_id, user_id, body)
   VALUES (?, ?, ?)
 `);
 
@@ -676,7 +723,7 @@ const COMMENT_COLUMNS = `
 
 const selectCommentById = db.prepare(`
   SELECT ${COMMENT_COLUMNS}
-  FROM comments c
+  FROM post_comments c
   JOIN users u ON u.id = c.user_id
   WHERE c.id = ?
 `);
@@ -686,7 +733,7 @@ const selectCommentById = db.prepare(`
 // been happening", where this one answers "what was said".
 const selectComments = db.prepare(`
   SELECT ${COMMENT_COLUMNS}
-  FROM comments c
+  FROM post_comments c
   JOIN users u ON u.id = c.user_id
   WHERE c.post_id = ?
   ORDER BY c.created_at ASC, c.id ASC
@@ -695,8 +742,46 @@ const selectComments = db.prepare(`
 
 const countCommentsOnPost = db.prepare(`
   SELECT COUNT(*) AS count
-  FROM comments
+  FROM post_comments
   WHERE post_id = ?
+`);
+
+// Venue comments are the same public column of names, times and words as post
+// comments, filed under an OSM id instead of a post id. Separate statements
+// keep the post table's foreign-key guarantees intact.
+const insertVenueComment = db.prepare(`
+  INSERT INTO venue_comments (venue_id, user_id, body)
+  VALUES (?, ?, ?)
+`);
+
+const VENUE_COMMENT_COLUMNS = `
+  c.id,
+  c.body,
+  c.created_at AS time,
+  u.username,
+  CASE WHEN u.avatar IS NULL THEN NULL ELSE '/api/images/' || u.avatar END AS avatar
+`;
+
+const selectVenueCommentById = db.prepare(`
+  SELECT ${VENUE_COMMENT_COLUMNS}
+  FROM venue_comments c
+  JOIN users u ON u.id = c.user_id
+  WHERE c.id = ?
+`);
+
+const selectVenueComments = db.prepare(`
+  SELECT ${VENUE_COMMENT_COLUMNS}
+  FROM venue_comments c
+  JOIN users u ON u.id = c.user_id
+  WHERE c.venue_id = ?
+  ORDER BY c.created_at ASC, c.id ASC
+  LIMIT ?
+`);
+
+const countCommentsOnVenue = db.prepare(`
+  SELECT COUNT(*) AS count
+  FROM venue_comments
+  WHERE venue_id = ?
 `);
 
 // Opening a column reads it, the same way opening a thread does — so what is
@@ -704,7 +789,7 @@ const countCommentsOnPost = db.prepare(`
 // Overwritten rather than added to: this is where the reader got to, not a
 // history of their visits.
 const upsertCommentRead = db.prepare(`
-  INSERT INTO comment_reads (user_id, post_id, read_at)
+  INSERT INTO post_comment_reads (user_id, post_id, read_at)
   VALUES (?, ?, ?)
   ON CONFLICT(user_id, post_id) DO UPDATE SET read_at = excluded.read_at
 `);
@@ -720,7 +805,7 @@ const INVOLVED_POSTS = `
   WITH involved AS (
     SELECT id AS post_id FROM posts WHERE user_id = ?
     UNION
-    SELECT post_id FROM comments WHERE user_id = ?
+    SELECT post_id FROM post_comments WHERE user_id = ?
   )
 `;
 
@@ -742,7 +827,7 @@ const selectPostThreads = db.prepare(`
   ${INVOLVED_POSTS},
   latest AS (
     SELECT c.post_id, MAX(c.id) AS id
-    FROM comments c
+    FROM post_comments c
     JOIN involved i ON i.post_id = c.post_id
     GROUP BY c.post_id
   )
@@ -757,15 +842,15 @@ const selectPostThreads = db.prepare(`
     u.username,
     (
       SELECT COUNT(*)
-      FROM comments unread
+      FROM post_comments unread
       WHERE unread.post_id = p.id AND unread.user_id <> ?
         AND (r.read_at IS NULL OR unread.created_at > r.read_at)
     ) AS unread
   FROM latest
-  JOIN comments c ON c.id = latest.id
+  JOIN post_comments c ON c.id = latest.id
   JOIN posts p ON p.id = latest.post_id
   JOIN users u ON u.id = c.user_id
-  LEFT JOIN comment_reads r ON r.post_id = p.id AND r.user_id = ?
+  LEFT JOIN post_comment_reads r ON r.post_id = p.id AND r.user_id = ?
   ORDER BY c.id DESC
   LIMIT ?
 `);
@@ -777,9 +862,9 @@ const selectPostThreads = db.prepare(`
 const countUnreadComments = db.prepare(`
   ${INVOLVED_POSTS}
   SELECT COUNT(*) AS count
-  FROM comments c
+  FROM post_comments c
   JOIN involved i ON i.post_id = c.post_id
-  LEFT JOIN comment_reads r ON r.post_id = c.post_id AND r.user_id = ?
+  LEFT JOIN post_comment_reads r ON r.post_id = c.post_id AND r.user_id = ?
   WHERE c.user_id <> ?
     AND (r.read_at IS NULL OR c.created_at > r.read_at)
 `);
@@ -1193,6 +1278,28 @@ export function createComment(userId, postId, body) {
     comment: selectCommentById.get(Number(result.lastInsertRowid)),
     count: countCommentsOnPost.get(postId)?.count ?? 0,
   };
+}
+
+export function getVenueComments(venueId, limit = 200) {
+  return selectVenueComments.all(venueId, limit);
+}
+
+export function createVenueComment(userId, venueId, body) {
+  const result = insertVenueComment.run(venueId, userId, body);
+  return {
+    comment: selectVenueCommentById.get(Number(result.lastInsertRowid)),
+    count: countCommentsOnVenue.get(venueId)?.count ?? 0,
+  };
+}
+
+// The food and café answers carry their figures with them, as posts do. At most
+// forty-eight ids arrive here (two cards of twenty-four), so indexed point
+// readings are both simpler and cheaper than preparing a different IN statement
+// for every possible list length.
+export function getVenueCommentCounts(venueIds) {
+  return Object.fromEntries(
+    [...new Set(venueIds)].map((venueId) => [venueId, countCommentsOnVenue.get(venueId)?.count ?? 0]),
+  );
 }
 
 // SQLite answers a comparison in 0 and 1; every reader of a message wants a yes

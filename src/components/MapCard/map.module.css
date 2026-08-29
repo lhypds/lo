@@ -302,11 +302,12 @@
   z-index: 3;
 }
 
-/* Deaf to the pointer, which is what opens it: nothing in one of these bubbles
-   is to be pressed, and one that took the pointer would sit between the pin and
-   the reader — entered, the pin is left and the bubble closes; closed, the pin
-   is entered again and it opens, over and over. It is out of the way of a drag
-   across the map for the same reason. */
+/* Deaf to the pointer around its few explicit links, which is what opens it: a
+   bubble that took the pointer wholesale would sit between the pin and the
+   reader — entered, the pin is left and the bubble closes; closed, the pin is
+   entered again and it opens, over and over. It is out of the way of a drag
+   across the map for the same reason. The links below punch their own small
+   holes back through this rule. */
 .wrapper :global(.mapboxgl-popup) {
   z-index: 5;
   pointer-events: none;
@@ -409,6 +410,27 @@
   color: var(--muted);
 }
 
+/* The same small, underlined hand-off at the foot of every kind of pin. The
+   popup itself stays deaf so a pointer can move between neighbouring pins; this
+   is the one hole through it that belongs to every popup, and a press leaves lo
+   for Google Maps rather than falling through to the map canvas underneath. */
+.popupNav {
+  align-self: flex-start;
+  pointer-events: auto;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .popupNav:hover {
+    color: var(--ink);
+    text-decoration: none;
+  }
+}
+
 /* A post's popup is the mark's with a picture on top of it, and it is given a
    width to work with: a mark's bubble is a name and two short numbers, where
    this one is somebody's sentence and has to be told where to wrap. */
@@ -434,9 +456,8 @@
   object-fit: cover;
 }
 
-/* The one thing in a bubble that takes the pointer, which is why it is the only
-   rule undoing the pointer-events above. A post says somebody was standing here,
-   and their name is the way to the rest of them.
+/* One of the few things in a bubble that takes the pointer. A post says somebody
+   was standing here, and their name is the way to the rest of them.
 
    The bubble sits clear above its own pin, so a name that takes the pointer
    cannot start the open-close loop that rule is there to prevent: leaving the pin
@@ -462,22 +483,20 @@
   }
 }
 
-/* The last line of the bubble: when the post was left at one end, and what was
-   said back at the other. The count goes in the corner because that is the one
-   place in a bubble this small that is not already carrying a sentence — and
-   because it is the corner an eye leaves the bubble by. */
-.postPopupFoot {
+/* Comments and navigation get a line of their own beneath the popup metadata —
+   a post's timestamp or a venue's distance. They stay together wherever either
+   kind of pin is drawn. */
+.postPopupActions {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 8px;
 }
 
-/* The second of the two things in a bubble that take the pointer — see
-   .postPopupWho above, which is the same undoing for the same reason and carries
-   the whole argument. Set as the grey line it stands in rather than as a button:
-   what is pressed is the word and the figure, and a box drawn round them would
-   be a control in a bubble that has none. */
+/* The comments control makes the same small pointer-events exception as the
+   byline and navigation link. Set as the grey line it stands in rather than as
+   a button: what is pressed is the word and the figure, and a box drawn round
+   them would be a control in a bubble that has none. */
 .postPopupComments {
   flex: 0 0 auto;
   padding: 0;

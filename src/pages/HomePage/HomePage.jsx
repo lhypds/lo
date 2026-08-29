@@ -4,7 +4,7 @@ import * as api from "../../api.js";
 import { Card, Skeleton, TileId, showToast, useNavigate, useSearchParams } from "../../ui/index.js";
 import { arrangeCards, cardLabel, cardSpan, useCards } from "../../utils/cards.js";
 import { paginate } from "../../utils/pages.js";
-import { useVenues } from "../../utils/venues.js";
+import { updateVenueComments, useVenues } from "../../utils/venues.js";
 import { getLocationState, refreshLocation } from "../../utils/location.js";
 import CafeCard from "../../components/CafeCard/index.js";
 import ClockCard from "../../components/ClockCard/index.js";
@@ -187,6 +187,10 @@ export default function HomePage() {
   // container-sized box, which would be the containing block of any fixed sheet
   // mounted inside it.
   const [commenting, setCommenting] = useState(null);
+  // The same sheet opened from a food or café pin. Separate from the post in
+  // hand because the two use different API identities: lo numbers a post, while
+  // OpenStreetMap names a venue with a type/id pair.
+  const [venueCommenting, setVenueCommenting] = useState(null);
 
   // A dashboard reached through browser history while it is already mounted
   // follows the page written in that history entry as well. Usually the trip to
@@ -368,6 +372,7 @@ export default function HomePage() {
             expanded={expanded}
             onToggleExpanded={() => setMapExpanded((value) => !value)}
             onOpenComments={setCommenting}
+            onOpenVenueComments={setVenueCommenting}
           />
         </Suspense>,
       ),
@@ -879,6 +884,15 @@ export default function HomePage() {
         post={commenting}
         onClose={() => setCommenting(null)}
         onAdded={(post, comments) => replacePost({ ...post, comments })}
+      />
+
+      {/* Restaurants and cafés use the same conversation sheet. Their count
+          goes back to the small venue store shared by the cards and the map,
+          rather than to the post provider. */}
+      <CommentsModal
+        venue={venueCommenting}
+        onClose={() => setVenueCommenting(null)}
+        onAdded={(venue, comments) => updateVenueComments(venue.kind, venue.id, comments)}
       />
     </div>
   );
