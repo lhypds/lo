@@ -16,6 +16,13 @@
 // message apart by `type` and ignores every type it does not know (a phone running
 // an older package is a phone that has to go on working), so a new notice is a new
 // `type` rather than a new shape for an old one.
+// Whether lo is running inside a frame — the Even Hub WebView, or any other page
+// that has embedded it. A link that would navigate in place has to be told to
+// open a browsing context of its own when this is true (see mapsLink).
+export function framed() {
+  return typeof window !== "undefined" && window.parent !== window;
+}
+
 export function tellHost(type, detail = null) {
   if (window.parent === window) return;
   try {

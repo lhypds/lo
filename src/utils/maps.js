@@ -1,4 +1,5 @@
 import { distanceMeters } from "./format.js";
+import { framed } from "./host.js";
 
 // Past this, a route is not a walk however willing a router is to draw one — ask
 // for a walk between two cities and it answers with a nine-hour footpath along
@@ -79,6 +80,14 @@ export function placeSearchUrl(to) {
 // target="_blank" is the known way to stop Safari passing a link to the app, and
 // where coming back is a gesture rather than a tab to go and find.
 function mapsLink(href) {
+  // Inside a frame the bare href is a dead end: it would navigate the frame in
+  // place onto Google's frame-ancestors wall, which refuses to draw Maps inside
+  // a foreign frame, and the reader gets a blank pane instead of directions. lo
+  // lives in exactly that frame under the Even Hub WebView (see utils/host.js),
+  // so a framed link opens a browsing context of its own — a new tab on a
+  // desktop, the way out of the frame on a handheld — the same as a desktop tab
+  // does, rather than trusting the handheld shortcut that stays in place.
+  if (framed()) return { href, target: "_blank", rel: "noopener noreferrer" };
   return handheld() ? { href } : { href, target: "_blank", rel: "noopener noreferrer" };
 }
 

@@ -100,6 +100,9 @@ export default function Card({
   const downRef = useRef(null);
   const turnedAtRef = useRef(0);
   const cycleTimersRef = useRef([]);
+  // The mouse's own pair of presses, counted here the way the finger's are and
+  // for the same reason a host might not raise a dblclick at all (see clickUp).
+  const clickRef = useRef({ at: 0, x: 0, y: 0 });
   const turnable = Boolean(back || onCycle);
 
   function clearCycleTimers() {
@@ -163,8 +166,7 @@ export default function Card({
     if (Math.abs(touch.clientY - down.y) > TAP_SLOP) return;
     const last = tapRef.current;
     const at = Date.now();
-    const near =
-      Math.abs(touch.clientX - last.x) <= TAP_NEAR && Math.abs(touch.clientY - last.y) <= TAP_NEAR;
+    const near = Math.abs(touch.clientX - last.x) <= TAP_NEAR && Math.abs(touch.clientY - last.y) <= TAP_NEAR;
     if (at - last.at <= TAP_GAP && near) {
       tapRef.current = { at: 0, x: 0, y: 0 };
       turnedAtRef.current = at;
@@ -172,6 +174,31 @@ export default function Card({
     } else {
       // The first of a pair, or a single tap that will turn out to be nothing.
       tapRef.current = { at, x: touch.clientX, y: touch.clientY };
+    }
+  }
+
+  // Two clicks on the heading, counted the same way the two taps are and for a
+  // reason that only shows up away from a plain desktop tab: not every host
+  // raises the browser's own dblclick. lo runs inside the Even Hub WebView as a
+  // frame (see utils/host.js), and a double press forwarded into a frame can
+  // arrive as two bare clicks with no dblclick coalesced on top — so the card
+  // never turned however many times its title was clicked. The pair is counted
+  // here as well, off the one event every host is sure about.
+  function clickUp(event) {
+    if (event.target.closest("button")) return;
+    // A host that also raises the native dblclick, or a finger whose taps already
+    // turned the card and are now delivering their synthesized clicks, has been
+    // answered — this press is the same gesture arriving again under another name.
+    if (Date.now() - turnedAtRef.current <= TAP_GAP + TAP_GAP) return;
+    const last = clickRef.current;
+    const at = Date.now();
+    const near = Math.abs(event.clientX - last.x) <= TAP_NEAR && Math.abs(event.clientY - last.y) <= TAP_NEAR;
+    if (at - last.at <= TAP_GAP && near) {
+      clickRef.current = { at: 0, x: 0, y: 0 };
+      turnedAtRef.current = at;
+      turn();
+    } else {
+      clickRef.current = { at, x: event.clientX, y: event.clientY };
     }
   }
 
@@ -212,6 +239,9 @@ export default function Card({
             }
           : undefined
       }
+      // The mouse's two presses, counted off plain clicks so a host that forwards
+      // them into a frame without a dblclick on top still turns the card.
+      onClick={turnable ? clickUp : undefined}
       onTouchStart={turnable ? touchDown : undefined}
       onTouchEnd={turnable ? touchUp : undefined}
       onTouchCancel={
