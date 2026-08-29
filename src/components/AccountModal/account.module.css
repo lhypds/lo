@@ -25,7 +25,12 @@
   border-top: 1px solid var(--ink);
 }
 
-.facts div {
+/* Direct children only, and positioned: a row is where a note about that row
+   hangs from (see .tip), and the note is itself a div sitting in the second
+   column — left as a descendant selector it would be dealt a row's grid, a row's
+   padding and a row's rule across the bottom. */
+.facts > div {
+  position: relative;
   display: grid;
   grid-template-columns: 88px 1fr;
   gap: 16px;
@@ -68,6 +73,114 @@
    is the one control in here no stylesheet can reach. */
 .file {
   display: none;
+}
+
+/* The one round thing in a square app, and round on purpose: a question mark in
+   a circle is the mark every app uses for "there is more to this", and the
+   reader knows it before they have read anything on the line.
+
+   In full ink, never the muted grey a small mark usually gets. Grey is how lo
+   writes a reading nobody has to act on, and this is the opposite — the reader
+   whose spots are in another app has nothing here but this to press, and a
+   footnote-coloured circle is exactly what such a reader skips over. Smaller
+   than the sentence, which is the whole of what keeps it from shouting.
+
+   It fills rather than darkens under the pointer, since there is no darker for
+   black to go: the same turn-over the way out at the foot of this sheet does. */
+.help {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  margin: 0 2px 0 6px;
+  padding: 0;
+  border: 1px solid var(--ink);
+  border-radius: 50%; /* radius-ok */
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  font-size: 10px;
+  line-height: 1;
+  vertical-align: middle;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .help:hover {
+    background: var(--ink);
+    color: var(--paper);
+  }
+}
+
+/* The note itself, hung under the row it is about rather than beside the mark
+   that opens it. Anchored to the row's two edges instead of to the circle, which
+   is what gives it a width without ever being given one: it is as wide as the
+   record at any size of sheet, and on a phone that is the whole of what stops a
+   box hung off a mark two thirds of the way along a line from hanging off the
+   end of it.
+
+   Paper over paper, so the rows it covers are covered rather than showing
+   through, and the rule around it in full ink — this is a thing laid on top of
+   the record, and the hairlines inside the record are the quieter grey. */
+.tip {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  left: 0;
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--ink);
+  background: var(--paper);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.tipLine {
+  margin: 0;
+}
+
+/* The way across, in the order it happens. Numbers rather than bullets, and the
+   room for them taken out of the box's own inset rather than added to it. */
+.steps {
+  margin: 0;
+  padding-left: 18px;
+  line-height: 1.6;
+}
+
+.steps li + li {
+  margin-top: 6px;
+}
+
+/* What is true about the prompt and would otherwise be found out by opening it.
+   Quiet, because it changes nothing about what to do. */
+.note {
+  margin: 0;
+  color: var(--muted);
+}
+
+/* The way out of the note, in the corner every answer in lo is given from and
+   only as wide as its words — the logout button at the foot of this sheet, at
+   the size the note is set in. */
+.download {
+  align-self: flex-end;
+  padding: 6px 16px;
+  border: 1px solid var(--ink);
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  line-height: 1;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .download:hover {
+    background: var(--ink);
+    color: var(--paper);
+  }
 }
 
 .section {

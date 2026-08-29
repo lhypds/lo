@@ -172,12 +172,13 @@ export default function AccountModal({ isOpen, onClose }) {
               >
                 {importing ? t("account.importing") : t("account.import")}
               </button>
-              {")"}
               {/* What the verb cannot say: that the file it wants is lo's own,
-                  and what to do when the spots are in somebody else's app. It is
-                  outside the brackets because it is not a second thing to do to
-                  the list — it is a question about the first. */}
+                  and what to do when the spots are in somebody else's app. Inside
+                  the brackets with the word it is asking about, because that is
+                  what it is — a question about the verb, not a second one beside
+                  it. */}
               <ImportHelp />
+              {")"}
               {/* Out of the way and reached by the word above it: the browser's
                   own file control cannot be made to read as a word in a
                   sentence. */}
