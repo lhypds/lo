@@ -91,13 +91,16 @@ export default function MarksPage() {
   // and this is where one is written.
   const renamingName = renaming?.label?.[i18n.language] ?? "";
 
-  // What each row shows is what it is searched by, the coordinates included: an
-  // unnamed spot has nothing else written on it, and they are what the row is
-  // wearing until somebody gives it a name.
+  // Searched by name, and by name alone. The coordinates are what a row wears
+  // until somebody names it, but they are not something anyone types: a query is
+  // a spot half-remembered by what it is called, and digits in the haystack only
+  // answer the wrong question — "35" would pull up every mark in Japan, and the
+  // one spot actually named 35 would be standing among them.
   //
-  // Every name the spot has and not only the one on the row, which is the one
-  // place the two part company: a spot is searched by what the reader might call
-  // it, and that is not always the language they are reading in (see labelNames).
+  // Every name the spot has and not only the one on the row: a spot is searched
+  // by what the reader might call it, and that is not always the language they
+  // are reading in (see labelNames). A spot with no name at all matches nothing,
+  // which is the honest answer — there is nothing to have remembered it by.
   //
   // Ordered after it is narrowed, which is the cheaper way round and the same
   // answer either way: the sort is over the rows that are left rather than over
@@ -106,10 +109,7 @@ export default function MarksPage() {
   const shown = useMemo(
     () =>
       sortRows(
-        filterBy(marks, query, (mark) => [
-          ...labelNames(mark),
-          formatCoords(mark.latitude, mark.longitude),
-        ]),
+        filterBy(marks, query, (mark) => labelNames(mark)),
         sort,
         coords,
       ),
