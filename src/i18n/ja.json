@@ -101,6 +101,7 @@
   },
   "weather": {
     "title": "天気",
+    "turn": "ダブルクリックでカードを裏返す",
     "toFahrenheit": "クリックで華氏に切り替え",
     "toCelsius": "クリックで摂氏に切り替え",
     "feelsLike": "体感",

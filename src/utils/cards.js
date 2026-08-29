@@ -315,12 +315,14 @@ export function resizeCard(id, size) {
   if (cardSizes(id).includes(size)) decide({ [id]: { size } });
 }
 
-// Which side of a two-sided card is up — at present the clock, whose back is the
-// same hour with hands on it (see ClockCard). Kept here with the rest of the
-// layout because it is the same kind of answer as how tall a panel stands: a
-// thing the reader decided about a tile, which should still be true when they
-// come back to the dashboard from another screen. The tile is unmounted while
-// they are away, so nothing the card remembers by itself would survive the trip.
+// Which side of a two-sided card is up — the clock, whose back is the same hour
+// with hands on it (see ClockCard), the bearing, whose back is the same reading
+// on a compass rose, and the weather, whose back is the same sky read hour by
+// hour instead of day by day. Kept here with the rest of the layout because it
+// is the same kind of answer as how tall a panel stands: a thing the reader
+// decided about a tile, which should still be true when they come back to the
+// dashboard from another screen. The tile is unmounted while they are away, so
+// nothing the card remembers by itself would survive the trip.
 export function turnCard(id, turned) {
   if (BY_ID.has(id)) decide({ [id]: { turned } });
 }

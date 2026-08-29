@@ -114,6 +114,13 @@ export default function HomePage() {
   // Posts come from the provider rather than from here: they are a reading of
   // the fix, like the place name is, and the refresh in the top bar has to be
   // able to reach them without knowing which page it is sitting on.
+  //
+  // Read rather than asked for — useHere and not useNearbyPosts. The page draws
+  // no posts of its own; what it does is hand whatever list is standing to the
+  // map, and the thing that makes there be one is the posts panel below, if the
+  // reader has put it on the dashboard. So an untouched dashboard is a map of
+  // marks, and nothing is fetched on behalf of a reader who has not asked to see
+  // what is around them (see LocationProvider).
   const { coords, place, posts, addPost, replacePost, supports, reloadToken } = useHere();
   // Which cards are on the page, and how much of the grid each of them covers.
   // Both halves of the first in one question — what this country can feed and
@@ -361,10 +368,13 @@ export default function HomePage() {
             </Card>
           }
         >
-          {/* Everything that is here: the posts whoever came past left, the
-              spots you kept, and you standing among them. The marks page
-              answers a different question — where have I been, in order —
-              which is why that one carries a list and this one does not. */}
+          {/* Everything that is here: the spots you kept and you standing among
+              them, and — where the reader has added the panel that asks for
+              them — the posts whoever came past left, and where lunch is where
+              they have added those cards. Three lists on the same square, each
+              of them on it exactly when its card is on the page. The marks page
+              answers a different question — where have I been, in order — which
+              is why that one carries a list and this one does not. */}
           <MapCard
             posts={posts}
             marks={marks}

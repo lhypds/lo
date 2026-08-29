@@ -101,6 +101,7 @@
   },
   "weather": {
     "title": "Weather",
+    "turn": "Double-click to turn the card over",
     "toFahrenheit": "Click for Fahrenheit",
     "toCelsius": "Click for Celsius",
     "feelsLike": "Feels like",

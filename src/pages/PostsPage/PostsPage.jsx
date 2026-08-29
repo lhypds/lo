@@ -10,7 +10,7 @@ import Header from "../../components/Header/index.js";
 import PostItem from "../../components/PostItem/index.js";
 import PostModal from "../../components/PostModal/index.js";
 import SearchField from "../../components/SearchField/index.js";
-import { useHere } from "../../components/LocationProvider/index.js";
+import { useNearbyPosts } from "../../components/LocationProvider/index.js";
 
 // For the same reason the other two pages load it lazily: mapbox-gl is by far
 // the heaviest thing lo ships.
@@ -24,8 +24,11 @@ export default function PostsPage() {
   const { t } = useTranslation();
   // The list itself belongs to the provider: it is asked for again when the
   // ground changes and when the refresh in the top bar is pressed, neither of
-  // which this page is in a position to notice.
-  const { coords, posts, postsError, dropPost, replacePost } = useHere();
+  // which this page is in a position to notice. Asking through useNearbyPosts is
+  // what gets it fetched at all — a page that is nothing but posts is one of the
+  // two things in lo that draws them, and nothing is fetched on behalf of a
+  // reader who is not looking at either (see LocationProvider).
+  const { coords, posts, postsError, dropPost, replacePost } = useNearbyPosts();
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
   // Arriving with one person in mind: the name comes over on the URL and the

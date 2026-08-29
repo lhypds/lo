@@ -1,1 +1,1 @@
-export { LocationProvider, useHere } from "./LocationProvider.jsx";
+export { LocationProvider, useHere, useNearbyPosts } from "./LocationProvider.jsx";

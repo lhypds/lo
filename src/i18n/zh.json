@@ -101,6 +101,7 @@
   },
   "weather": {
     "title": "天气",
+    "turn": "双击可翻转卡片",
     "toFahrenheit": "点击切换为华氏度",
     "toCelsius": "点击切换为摄氏度",
     "feelsLike": "体感",

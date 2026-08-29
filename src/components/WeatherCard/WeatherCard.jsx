@@ -1,9 +1,11 @@
 import { useTranslation } from "react-i18next";
 import { Card, Skeleton } from "../../ui/index.js";
+import { cardTurned, turnCard } from "../../utils/cards.js";
 import { toFahrenheit, toggleFahrenheit, useFahrenheit } from "../../utils/units.js";
 import { weatherIcon, weatherLabelKey } from "../../utils/weather.js";
 import { useHere } from "../LocationProvider/index.js";
 import WeatherGlyph from "./WeatherGlyph.jsx";
+import WeatherHours from "./WeatherHours.jsx";
 import styles from "./weather.module.css";
 
 function round(value) {
@@ -36,7 +38,7 @@ export default function WeatherCard() {
     );
   }
 
-  const { current, today, upcoming, units } = weather;
+  const { current, today, upcoming, hours, units } = weather;
   // Every temperature on this tile goes through one reading, so that the figure,
   // the range in the heading, the feel of it and the days ahead are never in two
   // scales at once. The server's own unit is what the conversion is decided on
@@ -59,7 +61,24 @@ export default function WeatherCard() {
   const range = today ? `${degrees(today.tempMax)}°/${degrees(today.tempMin)}°` : null;
 
   return (
-    <Card title={t("weather.title")} meta={range} square>
+    // The other side of this card is the same sky hour by hour, a double-click on
+    // the heading away (see ui/Card) — the glance turned into the look. A server
+    // that answered without the hours leaves the card one-sided rather than
+    // two-sided with nothing on the back of it.
+    //
+    // Which face is up is kept with the rest of what the reader has settled about
+    // this tile (see utils/cards.js), for the reason the clock's is: the dashboard
+    // is unmounted whenever they go anywhere else in the app, and a reader who
+    // left the hours showing should not come back to the day.
+    <Card
+      title={t("weather.title")}
+      meta={range}
+      square
+      flipHint={t("weather.turn")}
+      defaultFlipped={cardTurned("weather")}
+      onFlip={(turned) => turnCard("weather", turned)}
+      back={hours?.length > 0 && <WeatherHours hours={hours} zone={weather.timezone?.id} degrees={degrees} />}
+    >
       <div className={styles.inner}>
         <div className={styles.top}>
           <div className={styles.current}>

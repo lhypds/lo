@@ -173,6 +173,126 @@
   }
 }
 
+/* ------------------------------------------------------ the hours, behind -- */
+
+/* The back of the tile: one row an hour, filling the card from the line under the
+   heading to its bottom edge. The rows share the height out between them rather
+   than each taking what it needs, so the run reads as a column of hours and not
+   as a list that happens to stop — and so that the last of them lands on the
+   card's edge instead of leaving a gap under it.
+
+   How many rows there are is not this stylesheet's answer but the tile's, counted
+   out of this box's own height (see WeatherHours): whatever the square can hold
+   at a height they can be read at, which is six hours on the narrowest tile the
+   grid ever deals and sixteen on a desktop square. So the height is fixed at the
+   body's and the tracks divide it exactly — minmax(0, 1fr) and not 1fr, so that a
+   row can never grow on its contents and push the last of them off the card.
+
+   The same three parts as the readings on the front — what it is on the left,
+   what it comes to on the right — with the day's shape drawn in the space
+   between, which on the front is empty. */
+.hours {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: auto auto 1fr auto;
+  grid-auto-rows: minmax(0, 1fr);
+  align-items: center;
+  column-gap: 7px;
+  overflow: hidden;
+}
+
+/* A day with rain in it grows a column for the chance of it — and a second line
+   an hour under the warmth, which needs no column of its own. Both come out of
+   the room the lines are drawn in, and both are gone from a dry one (see
+   WeatherHours) */
+.hoursWet {
+  grid-template-columns: auto auto auto 1fr auto;
+}
+
+/* The row is not a box of its own: every cell in it is the grid's, so the hours
+   line up down the tile column by column — the same reason the days ahead on the
+   front are one grid rather than three rows */
+.hours li {
+  display: contents;
+}
+
+.hourTime {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* A shade smaller than the one the days ahead carry on the front, because the
+   rows behind are packed twice as close: at fourteen pixels a row the glyph is
+   most of the height of it, and two pixels off is the air between one hour and
+   the next. */
+.hourGlyph {
+  display: block;
+  width: 11px;
+  height: 11px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.hourRain {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* The two lines of the hour, hung from the same left edge so their lengths can be
+   read against each other and, down the tile, as two curves over the same
+   afternoon. Nothing is drawn behind them: a rule the full width of the column
+   under each would be two dozen more lines across a tile that already has one
+   under its heading, and what is being read here is the lines against each other
+   rather than any of them against a scale.
+
+   Stacked about the middle of the row rather than hung from its top, so that the
+   pair sit on the same line as the hour and the temperature either side of them. */
+.hourLines {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  min-width: 0;
+}
+
+/* Two weights rather than two colours, because the tile has no colour on it
+   anywhere else — and the ink goes to the rain. The warmth is the ground the
+   afternoon is read against and it is already written out in figures down the
+   right-hand edge; the chance of rain is the reading that changes what anybody
+   does about it, and it is the one the eye should find first with the card at
+   arm's length. So the warmth is ruled in the light grey the app draws its
+   hairlines in, and the rain in full ink under it. */
+.hourWarmth {
+  height: 2px;
+  background: var(--line);
+}
+
+.hourChance {
+  height: 2px;
+  background: var(--ink);
+}
+
+.hourTemp {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
 .empty {
   margin: 0;
   height: 100%;

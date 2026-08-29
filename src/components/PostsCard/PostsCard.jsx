@@ -3,7 +3,7 @@ import { AuthImage, Card, Link, Skeleton, useSearchParams } from "../../ui/index
 import { LARGE, SMALL, TALL, TINY, useCardSize } from "../../utils/cards.js";
 import { distanceMeters, formatCoords, formatDistance, formatUsername, relativeTime } from "../../utils/format.js";
 import CardSize from "../CardSize/index.js";
-import { useHere } from "../LocationProvider/index.js";
+import { useNearbyPosts } from "../LocationProvider/index.js";
 import styles from "./posts.module.css";
 
 // What people have left around here, as a list — the same answer the map beside
@@ -11,8 +11,13 @@ import styles from "./posts.module.css";
 // post is and the bubble says what it is; this says what there is, in the order
 // it was written, which is the one thing a map cannot show.
 //
-// The list is the provider's, already in hand for the map, so the panel costs no
-// request of its own.
+// The list is the provider's, and this panel is what asks for it: nothing on the
+// dashboard draws posts until the reader adds this card from the plus in the top
+// bar, so the request goes out when the tile arrives and the list is dropped
+// again when it goes. Which is also where the map's post pins come from — it
+// draws whatever list is standing (see the note on `posts` in LocationProvider),
+// so putting this panel on the page is what puts the squares on the ground, and
+// a dashboard without it is a map of the spots you kept and nothing else.
 //
 // A row leads to the posts page rather than opening anything here: that page is
 // this list with room to breathe and a map that pans to whichever post is asked
@@ -23,7 +28,7 @@ import styles from "./posts.module.css";
 export default function PostsCard() {
   const { t, i18n } = useTranslation();
   const [searchParams] = useSearchParams();
-  const { coords, posts, loadingPosts } = useHere();
+  const { coords, posts, loadingPosts } = useNearbyPosts();
   const page = Number(searchParams.get("page"));
   const fromPage = Number.isSafeInteger(page) && page > 1 ? page : null;
   // How tall the reader has left it, anywhere from a single square to six. A

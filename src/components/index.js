@@ -14,7 +14,7 @@ export { default as HereStrip } from "./HereStrip/index.js";
 export { default as LanguageSwitcher } from "./LanguageSwitcher/index.js";
 export { default as Loading } from "./Loading/index.js";
 export { default as LocationGate } from "./LocationGate/index.js";
-export { LocationProvider, useHere } from "./LocationProvider/index.js";
+export { LocationProvider, useHere, useNearbyPosts } from "./LocationProvider/index.js";
 // MapCard is deliberately absent: the pages import it lazily, and naming it
 // here would pull mapbox-gl back into the entry chunk through this barrel.
 export { default as MarkButton } from "./MarkButton/index.js";

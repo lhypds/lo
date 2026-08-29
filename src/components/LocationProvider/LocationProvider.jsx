@@ -44,6 +44,13 @@ const WORLDWIDE_COMPONENTS = ["clock", "weather", "map", "nearby", "events", "fo
 // wrong about for the second or so before the sensor answers.
 const COMPONENTS_KEY = "lo:lastComponents";
 
+// One empty array for every empty answer, so that "no posts around here" keeps
+// the same identity from render to render. The map tears its pins down and
+// builds them again whenever the list it is handed changes, and a fresh [] each
+// time would be every marker redrawn on every render of the page — the same
+// reasoning the food and café pins are published under (see utils/venues.js).
+const NO_POSTS = [];
+
 function restoreComponents() {
   try {
     const parsed = JSON.parse(localStorage.getItem(COMPONENTS_KEY));
@@ -78,15 +85,33 @@ export function LocationProvider({ children }) {
   // had arrived, which it would have to read as a failure.
   const [loadingLocal, setLoadingLocal] = useState(() => Boolean(position.coords));
   const [people, setPeople] = useState([]);
-  const [posts, setPosts] = useState([]);
+  const [posts, setPosts] = useState(NO_POSTS);
   const [postsError, setPostsError] = useState(null);
   // Both lists live here, so whether they have been answered yet has to as
   // well: the panels that draw them cannot otherwise tell an empty street from
   // one they have not heard about, and "nobody else out here right now" is a
-  // claim, not a way of saying nothing has arrived. Both start out true — the
-  // requests go out on mount — so the first paint is a panel that is waiting.
+  // claim, not a way of saying nothing has arrived. Both start out true, so the
+  // first paint is a panel that is waiting — the presence trade goes out on
+  // mount, and the posts wait for something that draws them to ask, which is a
+  // panel that arrives waiting rather than one that arrives answered with
+  // nothing.
   const [loadingPosts, setLoadingPosts] = useState(true);
   const [loadingPeople, setLoadingPeople] = useState(true);
+  // How many things on the page are drawing posts, which is the whole of what
+  // decides whether lo asks for any. Nothing on the dashboard draws them by
+  // default: the map opens as the spots you kept and you standing among them,
+  // and the posts around here are a panel the reader adds from the plus in the
+  // top bar (see utils/cards.js) — or the posts page, which is nothing but them.
+  // Until one of those is on screen there is no list, no request goes out on any
+  // fix, and the map has no post pins to draw. Which is the bargain the food and
+  // café pins are already on (see utils/venues.js): a list is on the ground
+  // exactly when it is on the page.
+  //
+  // A count rather than a flag, because the two ends of a trip overlap — the
+  // panel on the dashboard lets go in the same commit the posts page takes hold
+  // — and a flag would drop the list in between and ask again for what was
+  // already in hand.
+  const [wanted, setWanted] = useState(0);
   // How many messages are waiting, which is nothing to do with where anybody is
   // standing and lives here anyway: it comes back on the presence trade, so the
   // dot on the letter in the top bar keeps itself current on a loop that was
@@ -112,6 +137,7 @@ export function LocationProvider({ children }) {
   // fix itself is a new object every reading, which would restart them.
   const hasFix = Boolean(position.coords);
   const username = user?.username ?? null;
+  const wantsPosts = wanted > 0;
 
   const load = useCallback(
     async (coords) => {
@@ -194,6 +220,9 @@ export function LocationProvider({ children }) {
   //
   // With no fix there is still an answer worth having, so this asks either way;
   // the server falls back to the newest posts anywhere.
+  //
+  // Asked for only while something is drawing them — see `wanted` above and the
+  // effect below.
   const loadPosts = useCallback(async (coords) => {
     const ticket = ++postsRequestRef.current;
     setLoadingPosts(true);
@@ -202,7 +231,8 @@ export function LocationProvider({ children }) {
       // A slower earlier request must not overwrite a newer answer — two
       // triggers reach this, the fix moving and the reader asking.
       if (ticket !== postsRequestRef.current) return;
-      setPosts(data.posts ?? []);
+      const rows = data.posts;
+      setPosts(Array.isArray(rows) && rows.length > 0 ? rows : NO_POSTS);
       setPostsError(null);
     } catch (error) {
       if (ticket !== postsRequestRef.current) return;
@@ -214,7 +244,33 @@ export function LocationProvider({ children }) {
     }
   }, []);
 
+  // Said by whatever draws posts, for as long as it is on the page, and let go
+  // of on the way out — both ends of it are the effect in useNearbyPosts below,
+  // which is how a panel asks without having to know it is the only one asking.
+  const wantPosts = useCallback(() => {
+    setWanted((count) => count + 1);
+    return () => setWanted((count) => count - 1);
+  }, []);
+
   useEffect(() => {
+    // Nothing on screen is drawing them, which is the dashboard as it opens: no
+    // request on this fix or any other. Whatever was in hand goes with the panel
+    // that went, the way a food card taken off the page takes its pins with it —
+    // a map that has stopped drawing posts should not be one post out of date
+    // either.
+    if (!wantsPosts) {
+      // An answer already in the air belongs to a panel that has left, and
+      // spending its ticket is what keeps it from landing in a list nothing is
+      // drawing.
+      postsRequestRef.current += 1;
+      setPosts(NO_POSTS);
+      setPostsError(null);
+      // Waiting rather than answered-and-empty, so the next panel to arrive puts
+      // its bars up until its own request lands instead of opening on "nothing
+      // around here yet" about a street nobody has asked about.
+      setLoadingPosts(true);
+      return;
+    }
     // Signed out there is nothing to ask for, and the panel is done waiting
     // rather than left on a request that is never going to be made.
     if (!username) {
@@ -222,7 +278,7 @@ export function LocationProvider({ children }) {
       return;
     }
     loadPosts(getLocationState().coords);
-  }, [key, username, loadPosts]);
+  }, [key, username, wantsPosts, loadPosts]);
 
   // One turn of the loop: hand over whatever the sensor last read and take back
   // everyone else's. Skipped while the tab is in the background — the server
@@ -264,15 +320,27 @@ export function LocationProvider({ children }) {
   // every card that fetches for itself, which is what the token reaches. Whether
   // any of it turns out to be different from what is already on screen is the
   // server's business; the reader asked, so all of it is asked again.
+  //
+  // The posts among them only while something is drawing them: the button asks
+  // again for what is on screen, and a dashboard with no posts panel on it has
+  // not been shown any.
   const refresh = useCallback(async () => {
     const coords = getLocationState().coords;
     setReloadToken((token) => token + 1);
-    await Promise.all([load(coords), syncPeople(coords), loadPosts(coords)]);
-  }, [load, syncPeople, loadPosts]);
+    await Promise.all([load(coords), syncPeople(coords), wantsPosts && loadPosts(coords)]);
+  }, [load, syncPeople, loadPosts, wantsPosts]);
 
   // A post the reader just wrote, rewrote or deleted, into the list without a
   // round trip: they are looking at the spot it is about.
-  const addPost = useCallback((post) => setPosts((current) => [post, ...current]), []);
+  //
+  // The first of the three only where there is a list to put it in. With nothing
+  // on the page drawing posts, one just written would be a single pin on a map
+  // that is showing none — and gone again on the next fix, since the list it
+  // joined is not one anybody is keeping.
+  const addPost = useCallback(
+    (post) => setPosts((current) => (wantsPosts ? [post, ...current] : current)),
+    [wantsPosts],
+  );
   const dropPost = useCallback(
     (postId) => setPosts((current) => current.filter((post) => post.id !== postId)),
     [],
@@ -304,7 +372,12 @@ export function LocationProvider({ children }) {
     // otherwise the dot would go on saying there is something waiting until the
     // next turn of the presence loop.
     noteUnread: setUnread,
+    // Whatever is around here that somebody has drawn, which is an empty list
+    // until something on the page asks for one — the panel and the posts page do
+    // it through useNearbyPosts, and everything else, the map included, reads
+    // whatever list that has left standing.
     posts,
+    wantPosts,
     postsError,
     localError,
     loadingLocal,
@@ -325,4 +398,19 @@ export function LocationProvider({ children }) {
 
 export function useHere() {
   return useContext(LocationContext);
+}
+
+// The same context, and a standing request for the posts around here while
+// whatever asked for them is on the page. Anything that draws posts reads them
+// through this rather than through useHere, and that is the whole of what
+// fetches them: the list is asked for because something is showing it, asked
+// again as the ground moves under it, and dropped when the last thing showing it
+// goes. So the pins on the map and the rows in the panel are the same answer to
+// the same question, and a reader who never added the panel is never asked about
+// on their behalf.
+export function useNearbyPosts() {
+  const here = useContext(LocationContext);
+  const { wantPosts } = here;
+  useEffect(() => wantPosts(), [wantPosts]);
+  return here;
 }

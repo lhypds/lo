@@ -38,6 +38,14 @@ const PLACE_GRID = 2; // ~1.1 km — a city name does not change street by stree
 const WEATHER_GRID = 2;
 const NEWS_GRID = 1; // ~11 km — local news is a city-wide question
 
+// How far ahead the hour-by-hour reading runs — the back of the weather card
+// (see WeatherHours). Twice what the tallest tile can show, because the run is
+// sliced here when the answer is fetched and read up to twenty minutes later:
+// ten in this cache and ten more in the browser's own (see LocationProvider).
+// The hours already gone are dropped at that end, and the spare is what keeps
+// twelve of them still standing when they are.
+const HOURLY_HOURS = 24;
+
 const cache = new Map(); // key -> { expiresAt, value } | { pending: Promise }
 
 function gridKey(latitude, longitude, digits) {
@@ -218,6 +226,10 @@ export function lookupWeather(latitude, longitude) {
       "temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,is_day",
     );
     url.searchParams.set("daily", "weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset");
+    // The hours themselves, for the other face of the weather tile. Three
+    // readings and no more: what it will be, how warm, and how likely it is to
+    // rain — which is the whole of what an hourly forecast is asked.
+    url.searchParams.set("hourly", "weather_code,temperature_2m,precipitation_probability");
     // timezone=auto is what makes the clock card local rather than the visitor's:
     // the response carries the IANA zone of the coordinates themselves.
     url.searchParams.set("timezone", "auto");
@@ -236,6 +248,30 @@ export function lookupWeather(latitude, longitude) {
       tempMin: daily.temperature_2m_min?.[index] ?? null,
       sunrise: daily.sunrise?.[index] ?? null,
       sunset: daily.sunset?.[index] ?? null,
+    }));
+
+    // Open-Meteo answers the hourly readings a whole forecast day at a time,
+    // midnight to midnight, so the run opens hours behind the reading rather
+    // than ahead of it. What the card's other face is for is the hours still to
+    // come, so it starts at the hour the reading itself falls in.
+    //
+    // Sliced rather than parsed, for the reason the clock slices sunrise: these
+    // are the location's own wall clock, and Date would read them back as the
+    // visitor's (see ClockCard). Which also makes the comparison below a
+    // string one — the times are fixed-width and written largest part first, so
+    // later reads as greater.
+    const hourly = data.hourly ?? {};
+    const times = hourly.time ?? [];
+    // A reading with no time to it leaves nothing to start from; the day itself
+    // is then the honest answer, and the browser drops whatever is behind it.
+    const start = Math.max(0, times.findIndex((time) => time >= `${(current.time ?? "").slice(0, 13)}:00`));
+    const hours = times.slice(start, start + HOURLY_HOURS).map((time, index) => ({
+      time,
+      weatherCode: hourly.weather_code?.[start + index] ?? null,
+      temperature: hourly.temperature_2m?.[start + index] ?? null,
+      // Per cent, and null where the model has nothing to say rather than zero:
+      // "no chance of rain" and "not asked" are different answers.
+      rain: hourly.precipitation_probability?.[start + index] ?? null,
     }));
 
     return {
@@ -262,6 +298,7 @@ export function lookupWeather(latitude, longitude) {
       },
       today: days[0] ?? null,
       upcoming: days.slice(1),
+      hours,
       units: {
         temperature: data.current_units?.temperature_2m ?? "°C",
         wind: data.current_units?.wind_speed_10m ?? "km/h",
