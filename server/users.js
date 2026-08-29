@@ -159,9 +159,9 @@ function markFile(username) {
 //
 // A language with no name in it is left out rather than written in empty. What
 // stands in the file is then the names there are and nothing else, which is what
-// a file meant to be opened and read should hold — and it is what makes a fourth
-// language cost nothing: adding one is a key appearing in the marks that have a
-// name in it, not a fourth blank line in every mark that does not.
+// a file meant to be opened and read should hold — and it is what makes another
+// language cost nothing: adding one is a key appearing only in the marks that
+// have a name in it, not a blank line in every mark that does not.
 //
 // Two older shapes are read as well as this one, since a file written before it —
 // by lo itself, or by somebody's AI off the conversion prompt — is still

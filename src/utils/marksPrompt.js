@@ -41,7 +41,8 @@ trailing note.
       "accuracy": null,
       "label": {
         "en": "Tokyo Station",
-        "ja": "東京駅"
+        "ja": "東京駅",
+        "fr": "gare de Tokyo"
       }
     }
   ]
@@ -90,7 +91,7 @@ trailing note.
   transliterate one blind into a language the export did not write it in.
   Filling the six is worth doing where the export supports it and not worth
   guessing at: a language has a name of its own for a well-known place —
-  Tokyo Station, 東京駅, Gare de Tokyo — and that one can be written down where
+  Tokyo Station, 東京駅, gare de Tokyo — and that one can be written down where
   you are certain of it, but a name you would be sounding out character by
   character is a guess, and lo would sooner show coordinates than a guess.
 - A name is what the place is called, not where it sits. Do not put a district,

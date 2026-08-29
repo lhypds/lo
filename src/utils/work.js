@@ -9,8 +9,9 @@
 // platforms next door (see utils/links.js): a platform is a name and is written
 // the same way in every language, and a trade is a common noun — photographer is
 // 摄影师 to a reader in Chinese and 写真家 to one in Japanese, and lo speaks
-// several languages. So the words live in the translations under work.<kind>, and what is
-// kept here is only which of them there are and the order they are offered in.
+// several languages. So the words live in the translations under work.<kind>,
+// and what is kept here is only which of them there are and the order they are
+// offered in.
 //
 // Loosely grouped rather than sorted: alphabetical is an order in one language
 // and a shuffle in the others, so what this keeps instead is a
