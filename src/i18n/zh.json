@@ -18,6 +18,14 @@
     "bigger": "变大",
     "smaller": "变小"
   },
+  "export": {
+    "title": "导出",
+    "zip": "ZIP",
+    "confirm": "将你的记录和设置下载为 ZIP 文件？",
+    "download": "下载",
+    "working": "打包中",
+    "failed": "无法生成导出文件"
+  },
   "auth": {
     "tagline": "此刻，你在哪里。",
     "username": "用户名",

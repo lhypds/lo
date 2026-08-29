@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@fontsource/fira-code": "^5.3.0",
+    "archiver": "^8.0.0",
     "express": "^5.2.1",
     "i18next": "^26.3.6",
     "mapbox-gl": "^3.18.0",

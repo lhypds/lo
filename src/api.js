@@ -110,6 +110,51 @@ export const getMe = () => request("/api/me");
 // one rather than an untouched one.
 export const updateProfile = (profile) =>
   request("/api/me", { method: "PATCH", body: JSON.stringify(profile) });
+// How lo is shown to this reader, kept for the account rather than for the
+// browser: a patch of the fields being answered and never the whole object, so
+// that a device saving the map style does not undo what another one has just
+// decided about the dashboard (see utils/settings.js and server/users.js).
+export const saveSettings = (settings) =>
+  request("/api/me/settings", { method: "PUT", body: JSON.stringify(settings) });
+
+// Everything lo is holding for this account, as a zip of its own folder.
+//
+// Fetched here rather than followed as a link, for the reason the pictures are
+// (see authImageUrl): nothing in lo is authenticated by anything the browser
+// attaches on its own, so a navigation to this address would arrive without the
+// session and come back a 401. The bytes are fetched where the header can be
+// put on, and the download is started from the blob.
+export async function downloadExport(username) {
+  const response = await fetch(`/api/users/${encodeURIComponent(username)}/export.zip`, {
+    credentials: "omit",
+    headers: authHeaders(),
+  });
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    const error = new Error(data.error || "Export failed");
+    error.status = response.status;
+    throw error;
+  }
+  // The name the server chose, which carries the account and the moment. Read off
+  // the header rather than built again here, so the file is called what the
+  // server says it is called.
+  const disposition = response.headers.get("Content-Disposition") ?? "";
+  const encoded = /filename\*=UTF-8''([^;]+)/i.exec(disposition)?.[1];
+  const plain = /filename="([^"]+)"/i.exec(disposition)?.[1];
+  const filename = (encoded ? decodeURIComponent(encoded) : plain) || "lo-export.zip";
+
+  const url = URL.createObjectURL(await response.blob());
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  // Freed on the next turn rather than straight away: revoking it in the same
+  // tick can beat the browser to the download it has just been handed.
+  setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
 // Whether you are one of the dots on everybody else's map. Its own address
 // rather than a field of the profile above, because the profile is sent whole
 // and an emptied field there means "cleared" — a switch has no such state, and

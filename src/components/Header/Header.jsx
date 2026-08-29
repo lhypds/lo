@@ -6,6 +6,7 @@ import { useAuth } from "../AuthProvider/index.js";
 import { useHere } from "../LocationProvider/index.js";
 import AccountModal from "../AccountModal/index.js";
 import AddCard from "../AddCard/index.js";
+import ExportButton from "../ExportButton/index.js";
 import LanguageSwitcher from "../LanguageSwitcher/index.js";
 import MessagesModal from "../MessagesModal/index.js";
 
@@ -114,6 +115,12 @@ export default function Header({ back = false, backTo = "/", cards = false }) {
               {unread > 0 && <span className="topbar-dot" aria-hidden="true" />}
             </span>
           )}
+          {/* Out of lo altogether: everything the account is holding, as a zip of
+              its own folder (see ExportButton). Beside the account rather than
+              inside it, because it is about the reader's things rather than about
+              the reader — and it is the last of the buttons that do something
+              with them. */}
+          {user && <ExportButton />}
           {/* Your own account, on the same terms as everything else up here: a
               sheet over the page you were reading rather than a page you have to
               come back from. */}

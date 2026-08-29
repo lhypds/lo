@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { noteSetting, registerSetting } from "./settings.js";
 
 // How much of the grid a panel covers, counted in squares. One is the square the
 // clock and the weather stand in, the smallest tile there is; two is the width of
@@ -140,21 +141,30 @@ const KEY = "lo:layout";
 //
 // One record per card rather than one key per question, so a card the reader has
 // resized and never hidden reads back as exactly that.
+//
+// Read the same way whichever shelf it comes off — this browser's localStorage,
+// or the account's settings.json (see utils/settings.js) — because the catalog
+// above is the vocabulary of both. A stored id outside it is dropped: it is an
+// answer to a question nobody is asking any more.
+function read(parsed) {
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+  const kept = {};
+  for (const [id, value] of Object.entries(parsed)) {
+    if (!BY_ID.has(id) || !value || typeof value !== "object") continue;
+    const choice = {};
+    if (typeof value.on === "boolean") choice.on = value.on;
+    if (typeof value.turned === "boolean") choice.turned = value.turned;
+    if (SIZES.includes(value.size)) choice.size = value.size;
+    if (Number.isSafeInteger(value.added) && value.added > 0) choice.added = value.added;
+    if (Number.isSafeInteger(value.rank) && value.rank >= 0) choice.rank = value.rank;
+    if (Object.keys(choice).length > 0) kept[id] = choice;
+  }
+  return kept;
+}
+
 function restore() {
   try {
-    const parsed = JSON.parse(localStorage.getItem(KEY));
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
-    const kept = {};
-    for (const [id, value] of Object.entries(parsed)) {
-      if (!BY_ID.has(id) || !value || typeof value !== "object") continue;
-      const choice = {};
-      if (typeof value.on === "boolean") choice.on = value.on;
-      if (typeof value.turned === "boolean") choice.turned = value.turned;
-      if (SIZES.includes(value.size)) choice.size = value.size;
-      if (Number.isSafeInteger(value.added) && value.added > 0) choice.added = value.added;
-      if (Number.isSafeInteger(value.rank) && value.rank >= 0) choice.rank = value.rank;
-      if (Object.keys(choice).length > 0) kept[id] = choice;
-    }
+    const kept = read(JSON.parse(localStorage.getItem(KEY)));
 
     // Layouts saved before addition order was recorded already have an order on
     // screen: the catalog order. Preserve that as their historical addition
@@ -244,11 +254,8 @@ function sizeOf(choices, id) {
 // As many cards at a time as the decision covers, rather than one: turning a card
 // on is a decision about that card, and dragging one across the grid is a
 // decision about the line all of them are standing in.
-function decide(changes) {
-  decided = { ...decided };
-  for (const [id, change] of Object.entries(changes)) {
-    decided[id] = { ...decided[id], ...change };
-  }
+function keep(next) {
+  decided = next;
   try {
     localStorage.setItem(KEY, JSON.stringify(decided));
   } catch {
@@ -257,6 +264,28 @@ function decide(changes) {
   }
   for (const listener of listeners) listener();
 }
+
+function decide(changes) {
+  const next = { ...decided };
+  for (const [id, change] of Object.entries(changes)) {
+    next[id] = { ...next[id], ...change };
+  }
+  keep(next);
+  // And up, so the dashboard is the shape this reader left it in on their next
+  // device rather than only in this browser (see utils/settings.js).
+  noteSetting("layout", decided);
+}
+
+// The account's layout, on signing in — over this browser's, one card at a time.
+// Per card rather than wholesale because a card is the unit the reader decides
+// about: what the account has an answer for wins, and a card only this browser
+// has ever been asked about keeps the answer it was given here. Which is what
+// makes signing in on a dashboard you have already arranged an addition to it
+// rather than a reset of it.
+registerSetting("layout", {
+  read: () => decided,
+  adopt: (value) => keep({ ...decided, ...read(value) }),
+});
 
 export function toggleCard(id) {
   const card = BY_ID.get(id);

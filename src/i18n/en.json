@@ -18,6 +18,14 @@
     "bigger": "Bigger",
     "smaller": "Smaller"
   },
+  "export": {
+    "title": "Export",
+    "zip": "ZIP",
+    "confirm": "Download your marks and settings as a ZIP file?",
+    "download": "Download",
+    "working": "Packing",
+    "failed": "Could not build the export"
+  },
   "auth": {
     "tagline": "Where you are, right now.",
     "username": "Username",

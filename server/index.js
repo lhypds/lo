@@ -4,18 +4,16 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import express from "express";
+import { ZipArchive } from "archiver";
 import {
-  countMarks,
   countPosts,
   countUnread,
   createComment,
   createVenueComment,
-  createMark,
   createMessage,
   createPost,
   createUser,
   deleteExpiredSessions,
-  deleteMark,
   deleteConversation,
   deletePost,
   deleteSession,
@@ -26,7 +24,6 @@ import {
   getFollowers,
   getFollowing,
   getLinkKey,
-  getMarks,
   getOtherPositions,
   getPassword,
   getPost,
@@ -43,7 +40,6 @@ import {
   readComments,
   readConversation,
   recordLogin,
-  renameMark,
   savePosition,
   saveSession,
   setDiscoverable,
@@ -66,6 +62,22 @@ import {
 } from "./geo.js";
 import { MAX_IMAGE_BYTES, imageFile, isStoredName, storeImage } from "./images.js";
 import { articleId, harvest, readStoredArticle } from "./articles.js";
+// The account's own folder: what only that account ever reads back, kept as
+// files rather than as rows (see users.js). Named on the way in, because half of
+// these words are already taken by something in db.js — `createMark` was a row
+// in a table until this shelf existed, and `getSettings` is about to be read
+// beside `getSession`.
+import {
+  countMarks as countUserMarks,
+  createMark as saveMark,
+  deleteMark as removeMark,
+  getMarks as readMarks,
+  getSettings as readSettings,
+  hasUserDir,
+  renameMark as relabelMark,
+  saveSettings as writeSettings,
+  userDir,
+} from "./users.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "..");
@@ -304,7 +316,11 @@ app.get("/api/session", (req, res) => {
   const session = currentSession(req);
   const user = session ? getUser(session.username) : null;
   if (!user) return res.status(401).json({ error: "Not signed in", code: "LOGIN_REQUIRED" });
-  res.json({ user });
+  // The settings ride along here as well as with the three requests that hand out
+  // a token: this is the one a browser that is already signed in makes on every
+  // load, and what it comes back with is what the page is drawn from. Asking for
+  // them separately would mean a first paint in the wrong scale.
+  res.json({ user, settings: readSettings(user.username) });
 });
 
 // Signing in is asked in two goes — the name, then the password — and this is the
@@ -350,8 +366,9 @@ app.post("/api/login", (req, res) => {
 
   // `key` alongside the session: the link this account can be signed in from
   // anywhere else with, which is a password that has already been given rather
-  // than a new secret being disclosed to anybody.
-  res.json({ user, token: startSession(user, req), key: linkKeyFor(user) });
+  // than a new secret being disclosed to anybody. And the settings, so that the
+  // first screen after a sign-in is already in this reader's own scale.
+  res.json({ user, token: startSession(user, req), key: linkKeyFor(user), settings: readSettings(user.username) });
 });
 
 app.post("/api/logout", (req, res) => {
@@ -371,7 +388,7 @@ app.post("/api/logout", (req, res) => {
 app.post("/api/link", (req, res) => {
   const user = getUserByLinkKey(String(req.body?.key ?? ""));
   if (!user) return res.status(401).json({ error: "That link no longer works", code: "LINK_INVALID" });
-  res.json({ user, token: startSession(user, req), key: linkKeyFor(user) });
+  res.json({ user, token: startSession(user, req), key: linkKeyFor(user), settings: readSettings(user.username) });
 });
 
 // Taking a key back, for a link that got somewhere it should not have. Whichever
@@ -414,7 +431,15 @@ app.post("/api/users", (req, res) => {
 
   try {
     const user = createUser(username, password);
-    res.status(201).json({ user, token: startSession(user, req), key: linkKeyFor(user) });
+    // The defaults, since there is no folder yet and nothing to read out of one.
+    // Sent all the same, so every answer that opens a session has the same shape
+    // and the client has one path through it rather than two.
+    res.status(201).json({
+      user,
+      token: startSession(user, req),
+      key: linkKeyFor(user),
+      settings: readSettings(user.username),
+    });
   } catch (error) {
     console.error("create user failed", error);
     res.status(500).json({ error: "Could not create the account" });
@@ -424,9 +449,97 @@ app.post("/api/users", (req, res) => {
 app.get("/api/me", requireSession, (req, res) => {
   res.json({
     user: req.user,
-    markCount: countMarks(req.user.id),
+    markCount: countUserMarks(req.user.username),
     postCount: countPosts(req.user.id),
+    settings: readSettings(req.user.username),
   });
+});
+
+/* ---------------------------------------------------------------- settings */
+
+// How lo is shown to this reader — the scale the weather is in, the dial the
+// clock is on, which language, which face of the map, and the shape of the
+// dashboard — kept for the account rather than for the browser it was decided in
+// (see users.js and utils/settings.js).
+//
+// The browser still keeps its own copy and still draws from it first: the page
+// has to be the shape it was left in before any request has come back, and a
+// reader with no account has nowhere else to keep it. This is the copy that
+// crosses to the next device, so it rides along with every answer that opens a
+// session — there is no separate errand to run at sign-in, which is what stops
+// the first paint being the wrong one.
+//
+// Null where the account has never saved any, which is not the same as the
+// defaults and is why it is not sent as them: a browser that has been used
+// signed out is holding answers this account has never been asked, and null is
+// what tells it to offer those up instead of taking a blank set over them.
+//
+// A patch rather than the whole object, always. Two devices are two sets of
+// answers to the same questions, and a save that carried the fields it had not
+// been asked about would let the one that saved last undo the other (see
+// saveSettings).
+app.put("/api/me/settings", requireSession, (req, res) => {
+  if (!req.body || typeof req.body !== "object" || Array.isArray(req.body)) {
+    return res.status(400).json({ error: "Invalid settings" });
+  }
+  res.json({ settings: writeSettings(req.user.username, req.body) });
+});
+
+/* ------------------------------------------------------------------ export */
+
+// Everything lo is holding for one account, as a zip: the folder itself, which
+// is the whole point of the folder. marks.json and settings.json are already the
+// files a reader would want out of lo, so the export is the directory rather
+// than a report assembled for the occasion — what comes down is what is on disk,
+// readable in any editor, and re-readable by lo if it is ever put back.
+//
+// Owner only, and the name in the path has to be the name on the session: a zip
+// of somebody's own things is not a thing to hand out on request.
+app.get("/api/users/:username/export.zip", requireSession, (req, res) => {
+  if (normalizeUsername(req.params.username) !== normalizeUsername(req.user.username)) {
+    return res.status(403).json({ error: "That is not your account" });
+  }
+  // The name on the session rather than the one in the path, now that they are
+  // known to be the same account: the folder is named after the row, and the path
+  // is whatever the client typed.
+  const username = req.user.username;
+  // An account that has never kept a mark or changed a setting has no folder to
+  // zip. Said as an empty archive rather than as a 404: the reader pressed a
+  // button about their own things and nothing is wrong — there is simply nothing
+  // in there yet, and a zip that opens on an empty folder says so.
+  const dir = hasUserDir(username) ? userDir(username) : null;
+
+  const now = new Date();
+  const pad = (value) => String(value).padStart(2, "0");
+  const stamp =
+    `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}` +
+    `-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+  const filename = `lo-${username}-${stamp}.zip`;
+  res.setHeader("Content-Type", "application/zip");
+  // Twice over, because a username can be CJK: the plain filename is the ASCII
+  // fallback for a client that reads only that, and filename* is the one that
+  // carries the name itself.
+  res.setHeader(
+    "Content-Disposition",
+    `attachment; filename="lo-export-${stamp}.zip"; filename*=UTF-8''${encodeURIComponent(filename)}`,
+  );
+
+  const archive = new ZipArchive({ zlib: { level: 9 } });
+  archive.on("error", (error) => {
+    // Headers are long gone by the time an archive fails, so there is no status
+    // left to send: the connection is dropped, which is what tells the browser
+    // the download did not finish rather than handing it a truncated zip.
+    console.error("export failed", error);
+    res.destroy(error);
+  });
+  archive.pipe(res);
+  // The folder either way, even where there is nothing in it: an archive with a
+  // named empty folder in it opens, and one with nothing in it at all is a file
+  // some tools will not open at all. What the reader gets is the truth about
+  // their account said in a form that can be read.
+  if (dir) archive.directory(dir, username);
+  else archive.append(null, { name: `${username}/` });
+  archive.finalize();
 });
 
 // Whether this account is one of the dots on everybody else's map.
@@ -799,10 +912,15 @@ app.get("/api/warnings", async (req, res, next) => {
 
 /* ------------------------------------------------------------------- marks */
 
+// Every one of these four is about one account's own list and nobody else's,
+// which is why the list is a file in that account's folder rather than rows in a
+// table (see users.js). They are addressed by name here instead of by id for the
+// same reason: the folder is named after the account.
+
 app.get("/api/marks", requireSession, (req, res) => {
   const parsedLimit = Number(req.query.limit);
   const limit = Number.isInteger(parsedLimit) ? Math.min(500, Math.max(1, parsedLimit)) : 200;
-  res.json({ marks: getMarks(req.user.id, limit) });
+  res.json({ marks: readMarks(req.user.username, limit) });
 });
 
 app.post("/api/marks", requireSession, async (req, res, next) => {
@@ -817,7 +935,7 @@ app.post("/api/marks", requireSession, async (req, res, next) => {
     // The name of the spot is looked up here rather than trusted from the
     // client, so a mark reads the same however it was saved.
     const place = await lookupPlace(location.latitude, location.longitude, requestedLang(req)).catch(() => null);
-    const mark = createMark(req.user.id, {
+    const mark = saveMark(req.user.username, {
       ...location,
       time: suppliedTime.toISOString(),
       label: label || null,
@@ -834,7 +952,7 @@ app.patch("/api/marks/:markId", requireSession, (req, res) => {
   if (!Number.isInteger(markId) || markId < 1) return res.status(400).json({ error: "Invalid mark ID" });
   const label = String(req.body?.label ?? "").trim().normalize("NFKC");
   if (label.length > 48) return res.status(400).json({ error: "A name is at most 48 characters" });
-  const mark = renameMark(req.user.id, markId, label || null);
+  const mark = relabelMark(req.user.username, markId, label || null);
   if (!mark) return res.status(404).json({ error: "No such mark", code: "MARK_NOT_FOUND" });
   res.json({ mark });
 });
@@ -842,7 +960,7 @@ app.patch("/api/marks/:markId", requireSession, (req, res) => {
 app.delete("/api/marks/:markId", requireSession, (req, res) => {
   const markId = Number(req.params.markId);
   if (!Number.isInteger(markId) || markId < 1) return res.status(400).json({ error: "Invalid mark ID" });
-  if (!deleteMark(req.user.id, markId)) {
+  if (!removeMark(req.user.username, markId)) {
     return res.status(404).json({ error: "No such mark", code: "MARK_NOT_FOUND" });
   }
   res.status(204).end();

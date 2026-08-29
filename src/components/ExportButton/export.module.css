@@ -1,0 +1,86 @@
+/* The language switcher's shape, which is the shape of every list hung off a
+   button in the top bar (see lang.module.css and add.module.css): the same box as
+   the buttons it stands among, and rows only as wide as the word they carry.
+   Anchored left, so the list lies over its own row rather than off the right edge
+   of the bar. */
+.wrapper {
+  position: relative;
+  display: inline-flex;
+}
+
+.trigger {
+  width: var(--action-w);
+  height: var(--action-h);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--ink);
+  background: var(--paper);
+  color: var(--ink);
+  padding: 2px;
+  font: inherit;
+  cursor: pointer;
+  line-height: 1;
+  user-select: none;
+}
+
+.icon {
+  width: var(--action-icon);
+  height: var(--action-icon);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.dropdown {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 999;
+  flex-direction: column;
+}
+
+.wrapper[data-open="true"] .dropdown {
+  display: flex;
+}
+
+/* Wider than the trigger by the width of a format's name, which is what the row
+   is for: a list of one that could not be read would be a button with a step in
+   front of it. */
+.option {
+  min-width: 44px;
+  height: var(--action-h);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--ink);
+  border-top: none;
+  background: var(--paper);
+  color: var(--ink);
+  padding: 2px 6px;
+  font: inherit;
+  font-size: var(--action-glyph);
+  cursor: pointer;
+  line-height: 1;
+  white-space: nowrap;
+  text-align: center;
+}
+
+@media (hover: hover) {
+  .wrapper:hover .trigger {
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  .wrapper:hover .dropdown {
+    display: flex;
+  }
+
+  .option:hover {
+    background: var(--ink);
+    color: var(--paper);
+  }
+}

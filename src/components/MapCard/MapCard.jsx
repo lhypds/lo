@@ -6,54 +6,25 @@ import { ActionButton, Card, useNavigate } from "../../ui/index.js";
 import { formatCoords, formatDateTime, formatDistance, formatUsername } from "../../utils/format.js";
 import { MARK_PIN_EYE, MARK_PIN_PATH, MARK_PIN_TIP_Y, PIN_GLYPHS } from "../../utils/icons.js";
 import { directionsLink } from "../../utils/maps.js";
+import { pickedLang } from "../../utils/lang.js";
+import { cycleMapStyle, mapStyleId, mapStyleUrl, useMapStyle } from "../../utils/mapstyle.js";
 import { venueParts } from "../../utils/venues.js";
 import { useAuth } from "../AuthProvider/index.js";
 import { useHere } from "../LocationProvider/index.js";
 import styles from "./map.module.css";
 
 const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
-// Three readings of the same ground. The light map is the quiet face the tile
-// opens on; streets spends more ink on buildings and road classes; satellite
-// keeps labels over the photograph so a place remains navigable. A double-click
-// on the card's title walks this line and the next visit starts where the reader
-// left it.
-const MAP_STYLE_KEY = "lo:map-style";
-const MAP_STYLES = [
-  { id: "simple", url: "mapbox://styles/mapbox/light-v11" },
-  { id: "detailed", url: "mapbox://styles/mapbox/streets-v12" },
-  { id: "satellite", url: "mapbox://styles/mapbox/satellite-streets-v12" },
-];
 const DEFAULT_ZOOM = 15;
-
-function storedMapStyle() {
-  try {
-    const stored = localStorage.getItem(MAP_STYLE_KEY);
-    return MAP_STYLES.some((style) => style.id === stored) ? stored : MAP_STYLES[0].id;
-  } catch {
-    return MAP_STYLES[0].id;
-  }
-}
-
-function mapStyle(id) {
-  return MAP_STYLES.find((style) => style.id === id) ?? MAP_STYLES[0];
-}
-
-function nextMapStyle(id) {
-  const current = MAP_STYLES.findIndex((style) => style.id === id);
-  return MAP_STYLES[(current + 1) % MAP_STYLES.length];
-}
 
 const LANG_MAP = { en: "en", ja: "ja", zh: "zh-Hans" };
 
 // A pick in the switcher wins. Until then the map follows the system: "auto"
 // hands the choice to Mapbox, which reads navigator.language — so a machine set
-// to Korean gets Korean labels even though lo only ships en/ja/zh.
+// to Korean gets Korean labels even though lo only ships en/ja/zh. Which is why
+// it asks whether a language has been *picked* rather than which one is showing
+// (see pickedLang).
 function mapLanguage(uiLanguage) {
-  try {
-    if (!localStorage.getItem("lang")) return "auto";
-  } catch {
-    return "auto";
-  }
+  if (!pickedLang()) return "auto";
   return LANG_MAP[uiLanguage] ?? "auto";
 }
 
@@ -533,23 +504,22 @@ export default function MapCard({
   const followRef = useRef(true);
   const fittedRef = useRef(false);
   const [broken, setBroken] = useState(false);
-  const styleRef = useRef(null);
-  if (styleRef.current === null) styleRef.current = storedMapStyle();
+  // Which face the ground is wearing, and it is not this card's to remember: the
+  // store keeps it (see utils/mapstyle.js), so the choice survives the trip to
+  // another page and crosses to the reader's other devices.
+  const style = useMapStyle();
+  // What the live canvas is already showing, so the effect below can tell a
+  // change from the style the map was created with. The title is interactive from
+  // the first render, even in the brief interval before Mapbox has finished
+  // creating its canvas — a press in there is remembered by the store and read
+  // back when the map is built, rather than lost.
+  const shownStyleRef = useRef(null);
 
-  const cycleMapStyle = useCallback(() => {
-    const next = nextMapStyle(styleRef.current);
-    styleRef.current = next.id;
-    try {
-      localStorage.setItem(MAP_STYLE_KEY, next.id);
-    } catch {
-      // The choice still holds for this visit when storage is unavailable.
-    }
-    // The title is interactive from the first render, even during the brief
-    // interval before Mapbox has finished creating its canvas. In that case the
-    // ref above still becomes the map's starting style; once the map exists we
-    // can switch the live canvas immediately.
-    mapRef.current?.setStyle(next.url);
-  }, []);
+  useEffect(() => {
+    if (!mapRef.current || shownStyleRef.current === style) return;
+    shownStyleRef.current = style;
+    mapRef.current.setStyle(mapStyleUrl(style));
+  }, [style]);
 
   // Told to the page as an id, which is all it needs to find the row: the pin
   // and the row are the same mark or the same post, and the pin is the half that
@@ -688,11 +658,17 @@ export default function MapCard({
     if (!containerRef.current || !TOKEN) return undefined;
     mapboxgl.accessToken = TOKEN;
     const start = coords ?? { latitude: 35.6895, longitude: 139.7517 };
+    // Read rather than subscribed to: the style the canvas is created with is
+    // whatever the store holds at that moment, and every change after it reaches
+    // the live map through the effect above — which is why the same id is written
+    // down here as the one being shown.
+    const startStyle = mapStyleId();
+    shownStyleRef.current = startStyle;
     let map;
     try {
       map = new mapboxgl.Map({
         container: containerRef.current,
-        style: mapStyle(styleRef.current).url,
+        style: mapStyleUrl(startStyle),
         center: [start.longitude, start.latitude],
         zoom: coords ? DEFAULT_ZOOM : 9,
         // Set here as well as on style.load, so the first tiles already come

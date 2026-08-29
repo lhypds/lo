@@ -18,6 +18,14 @@
     "bigger": "大きく",
     "smaller": "小さく"
   },
+  "export": {
+    "title": "書き出し",
+    "zip": "ZIP",
+    "confirm": "記録と設定を ZIP ファイルとしてダウンロードしますか？",
+    "download": "ダウンロード",
+    "working": "作成中",
+    "failed": "書き出しを作成できませんでした"
+  },
   "auth": {
     "tagline": "いま、あなたのいる場所。",
     "username": "ユーザー名",

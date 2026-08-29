@@ -1,6 +1,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
+import { forgetUser, importMarks } from "./users.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const databasePath = path.resolve(__dirname, "..", "db.sqlite");
@@ -32,6 +33,41 @@ if (tables.has("comments") && !tables.has("post_comments")) {
     ALTER TABLE comments RENAME TO post_comments;
     DROP INDEX IF EXISTS comments_post_idx;
     DROP INDEX IF EXISTS comments_user_idx;
+  `);
+}
+
+// Marks have left the database altogether. They are the one thing in lo that is
+// private, read back only by the account that wrote it and joined to nothing, so
+// they are a file in that account's own folder now — data/users/<name>/marks.json
+// (see users.js) — which is also what makes them something the reader can be
+// handed as a zip.
+//
+// Whatever was in the table goes with them, once: every account's rows are
+// written into its file, and then the table goes. Here rather than below with the
+// column migrations because it has to run before the schema — the whole point is
+// that there is no CREATE TABLE marks any more, so a database that still has one
+// has to be emptied out on the way past. importMarks writes nothing over a folder
+// that already has a marks.json, which is what makes a second run harmless.
+if (tables.has("marks")) {
+  const kept = db
+    .prepare(
+      `SELECT u.username, m.id, m.time, m.latitude, m.longitude, m.accuracy, m.label, m.place
+       FROM marks m
+       JOIN users u ON u.id = m.user_id
+       ORDER BY m.user_id, m.time DESC, m.id DESC`,
+    )
+    .all();
+  const byUser = new Map();
+  for (const row of kept) {
+    if (!byUser.has(row.username)) byUser.set(row.username, []);
+    byUser.get(row.username).push(row);
+  }
+  for (const [username, marks] of byUser) {
+    if (importMarks(username, marks)) console.log(`moved ${marks.length} marks to data/users/${username}`);
+  }
+  db.exec(`
+    DROP TABLE marks;
+    DROP INDEX IF EXISTS marks_user_time_idx;
   `);
 }
 
@@ -126,20 +162,6 @@ db.exec(`
   ) WITHOUT ROWID;
 
   CREATE INDEX IF NOT EXISTS sessions_expires_idx ON sessions(expires_at);
-
-  CREATE TABLE IF NOT EXISTS marks (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    time TEXT NOT NULL,
-    latitude REAL NOT NULL,
-    longitude REAL NOT NULL,
-    accuracy REAL,
-    label TEXT,
-    place TEXT,
-    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
-  );
-
-  CREATE INDEX IF NOT EXISTS marks_user_time_idx ON marks(user_id, time DESC);
 
   -- A mark is private and says only "I was here"; a post is public and says
   -- something about the spot, so it carries words, maybe a photo, and the name
@@ -447,9 +469,10 @@ const insertUser = db.prepare(`
   VALUES (?, ?)
 `);
 
-// Everything the account touched goes with it: marks, posts, comments, messages,
+// Everything the account touched in here goes with it: posts, comments, messages,
 // follows — every one of them references users(id) ON DELETE CASCADE, so this
-// one statement is the whole of leaving.
+// one statement is the whole of leaving the database. What it holds outside the
+// database leaves beside it (see deleteUser).
 const deleteUserByName = db.prepare(`
   DELETE FROM users
   WHERE username = ?
@@ -531,16 +554,11 @@ const deleteExpiredSessionRows = db.prepare(`
   WHERE expires_at <= ?
 `);
 
-const countMarksForUser = db.prepare(`
-  SELECT COUNT(*) AS count
-  FROM marks
-  WHERE user_id = ?
-`);
-
-// The other half of what an account has left behind. Two statements rather than
-// one with a join, because they count two unrelated tables and the account sheet
-// draws them as two figures — a mark is private and a post is not, which is the
-// whole difference between them and is worth reading as two lines.
+// Half of what an account has left behind; the other half is a count of the
+// lines in its own marks.json (see countMarks in users.js). The account sheet
+// draws them as two figures, and they are now read off two different shelves for
+// the reason they were always two statements: a mark is private and a post is
+// not, which is the whole difference between them.
 const countPostsForUser = db.prepare(`
   SELECT COUNT(*) AS count
   FROM posts
@@ -554,36 +572,6 @@ const updateDiscoverable = db.prepare(`
   UPDATE users
   SET discoverable = ?
   WHERE id = ?
-`);
-
-const insertMark = db.prepare(`
-  INSERT INTO marks (user_id, time, latitude, longitude, accuracy, label, place)
-  VALUES (?, ?, ?, ?, ?, ?, ?)
-`);
-
-const selectMarkById = db.prepare(`
-  SELECT id, time, latitude, longitude, accuracy, label, place
-  FROM marks
-  WHERE id = ? AND user_id = ?
-`);
-
-const selectMarks = db.prepare(`
-  SELECT id, time, latitude, longitude, accuracy, label, place
-  FROM marks
-  WHERE user_id = ?
-  ORDER BY time DESC, id DESC
-  LIMIT ?
-`);
-
-const updateMarkLabel = db.prepare(`
-  UPDATE marks
-  SET label = ?
-  WHERE id = ? AND user_id = ?
-`);
-
-const deleteMarkById = db.prepare(`
-  DELETE FROM marks
-  WHERE id = ? AND user_id = ?
 `);
 
 /* --------------------------------------------------------------------- posts */
@@ -1108,8 +1096,15 @@ export function createUser(username, password) {
 
 // True where there was an account to remove, so the caller can tell that apart
 // from a name that was never there.
+//
+// Both shelves, because an account is on both: the row cascades through every
+// table that references it, and the folder holding its marks and its settings
+// goes with it. The folder last, so a database that refuses the delete leaves the
+// files where they were rather than half a departure.
 export function deleteUser(username) {
-  return deleteUserByName.run(username).changes > 0;
+  if (deleteUserByName.run(username).changes === 0) return false;
+  forgetUser(username);
+  return true;
 }
 
 // Nothing back where there is no such account, and null where there is one with
@@ -1172,10 +1167,6 @@ export function deleteExpiredSessions(now) {
   deleteExpiredSessionRows.run(now);
 }
 
-export function countMarks(userId) {
-  return countMarksForUser.get(userId)?.count ?? 0;
-}
-
 export function countPosts(userId) {
   return countPostsForUser.get(userId)?.count ?? 0;
 }
@@ -1183,32 +1174,6 @@ export function countPosts(userId) {
 export function setDiscoverable(userId, on) {
   updateDiscoverable.run(on ? 1 : 0, userId);
   return on;
-}
-
-export function createMark(userId, { time, latitude, longitude, accuracy, label, place }) {
-  const result = insertMark.run(
-    userId,
-    time,
-    latitude,
-    longitude,
-    accuracy ?? null,
-    label ?? null,
-    place ?? null,
-  );
-  return selectMarkById.get(Number(result.lastInsertRowid), userId);
-}
-
-export function getMarks(userId, limit = 200) {
-  return selectMarks.all(userId, limit);
-}
-
-export function renameMark(userId, markId, label) {
-  if (updateMarkLabel.run(label, markId, userId).changes === 0) return null;
-  return selectMarkById.get(markId, userId);
-}
-
-export function deleteMark(userId, markId) {
-  return deleteMarkById.run(markId, userId).changes > 0;
 }
 
 export function createPost(userId, post) {
@@ -1271,7 +1236,7 @@ export function getPostsByUser(username, limit = 20) {
 }
 
 // Nothing back rather than a row when the id is somebody else's or nobody's,
-// which is how renameMark answers the same question.
+// which is how renameMark in users.js answers the same question about a mark.
 export function updatePost(userId, postId, post) {
   const changed = updatePostContent.run(
     post.body ?? "",

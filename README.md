@@ -30,3 +30,10 @@ addressed to one person wherever they are. The envelope in the top bar opens the
 whatever you were looking at, and wears a small mark when one is waiting — a row there is a
 person, and pressing one opens the exchange with a box at the foot of it to answer in. The
 button beside Follow on somebody's page opens the same thing from the other end.
+
+What is yours alone is kept as files rather than as rows: `data/users/<name>/marks.json` is
+the spots you have marked, and `settings.json` beside it is how lo is shown to you — the
+scale the weather is in, the dial the clock is on, the language, which face of the map, the
+shape of the dashboard. Signing in reads that file, so the second device starts where the
+first one left off. The arrow in the top bar hands the folder back: press it, choose ZIP,
+and the whole of it comes down as an archive you can open in anything.

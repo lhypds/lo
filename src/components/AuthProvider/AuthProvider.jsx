@@ -2,6 +2,21 @@ import { createContext, useContext, useEffect, useState } from "react";
 import i18n from "../../i18n/index.js";
 import { showToast, useNavigate } from "../../ui/index.js";
 import { tellHost } from "../../utils/host.js";
+import { adoptSettings, forgetSettings } from "../../utils/settings.js";
+// Imported for the side effect of registering, since nothing on this path reads
+// them: every store that keeps one of the reader's answers has to be in the map
+// before a session arrives (see utils/settings.js). A store that turns up late is
+// handed the account's answer on the way in, so this is not about the adopting —
+// it is about the other direction. The first sign-in on an account with no file
+// yet offers this browser's answers up as its answers, and a store that had not
+// been imported when that went out would have offered nothing.
+//
+// Which is exactly the case on the login screen: nothing there draws a clock, a
+// dashboard or a map, so nothing there would have imported the four stores.
+import "../../utils/cards.js";
+import "../../utils/lang.js";
+import "../../utils/mapstyle.js";
+import "../../utils/units.js";
 import * as api from "../../api.js";
 
 const storageKey = "lo:user";
@@ -68,6 +83,11 @@ export function AuthProvider({ children }) {
       try {
         const data = await api.getSession();
         signedIn = data.user;
+        // What this account has decided about how lo is shown to it, which came
+        // down with the session rather than being asked for after it: the stores
+        // have already drawn this page from the copy in localStorage, and this is
+        // the answer from whichever device was last used (see utils/settings.js).
+        adoptSettings(data.user.username, data.settings);
       } catch {
         // Nobody is signed in here, or the saved session expired or was revoked.
         // Either way the login screen is the answer: a password is not something
@@ -84,6 +104,7 @@ export function AuthProvider({ children }) {
           const data = await api.loginWithKey(key);
           signedIn = data.user;
           localStorage.setItem(storageKey, data.user.username);
+          adoptSettings(data.user.username, data.settings);
         } catch {
           // A key that was withdrawn, or replaced by a newer link. Said out loud
           // rather than swallowed: the login screen on its own looks like a link
@@ -127,13 +148,18 @@ export function AuthProvider({ children }) {
   async function login(username, password) {
     const data = await api.login(username, password);
     localStorage.setItem(storageKey, data.user.username);
+    adoptSettings(data.user.username, data.settings);
     setUser(data.user);
     return data.user;
   }
 
+  // A brand-new account has no file to adopt, and adoptSettings knows what to do
+  // about that: this browser's answers go up as the account's, so the reader's
+  // second device starts where their first one left off rather than at defaults.
   async function register(username, password) {
     const data = await api.createUser(username, password);
     localStorage.setItem(storageKey, data.user.username);
+    adoptSettings(data.user.username, data.settings);
     setUser(data.user);
     return data.user;
   }
@@ -141,6 +167,9 @@ export function AuthProvider({ children }) {
   async function logout() {
     await api.logout().catch(() => {});
     localStorage.removeItem(storageKey);
+    // Nothing further is written against a session that has ended. The page keeps
+    // the shape it is in — signing out is not a request for a different dashboard.
+    forgetSettings();
     setUser(null);
     // The host is holding a session of its own, minted at the same sign-in against
     // the same account, and nothing about this one ending reaches it (see

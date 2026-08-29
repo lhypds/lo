@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { useState, useRef, useEffect } from "react";
-import { tellHost } from "../../utils/host.js";
+import { chooseLang } from "../../utils/lang.js";
 import styles from "./lang.module.css";
 
 const LANGS = [
@@ -25,15 +25,12 @@ export default function LanguageSwitcher() {
     return () => document.removeEventListener("pointerdown", handleOutside);
   }, []);
 
+  // Everything a picked language means is one call, because it means the same
+  // whoever picked it: the words on this page, the copy this browser keeps, the
+  // glasses, and the account's own file (see utils/lang.js).
   function switchLang(code) {
-    i18n.changeLanguage(code);
-    localStorage.setItem("lang", code);
+    chooseLang(code);
     setOpen(false);
-    // A reader who picks a language here has picked it for the glasses too. The
-    // host keeps its own copy of this choice — every feed it asks for is keyed on
-    // it, and the words on the display are drawn from a list of its own — and it
-    // has no way of reading this one (see utils/host.js), so it is told.
-    tellHost("setlang", { language: code });
   }
 
   return (
