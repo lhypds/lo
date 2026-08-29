@@ -12,6 +12,21 @@ function round(value) {
   return Number.isFinite(value) ? Math.round(value) : null;
 }
 
+// The middle of a day's range, for the tile that has not the room to say both
+// ends of it (see weather.module.css). Taken in the scale the server answered in
+// and converted afterwards, which comes to the same figure either way — the
+// conversion is a straight line — and leaves the rounding where every other
+// reading on this tile has it, in `degrees`.
+//
+// Nothing where either end is missing: a day that only knows its high has no
+// middle, and half a range averaged with nothing is a temperature lo would be
+// making up.
+function midpoint(day) {
+  return Number.isFinite(day.tempMax) && Number.isFinite(day.tempMin)
+    ? (day.tempMax + day.tempMin) / 2
+    : null;
+}
+
 function dayName(date, locale) {
   const parsed = Date.parse(`${date}T12:00:00`);
   if (Number.isNaN(parsed)) return date;
@@ -99,16 +114,26 @@ export default function WeatherCard() {
           {/* The days ahead ride in the corner opposite the temperature
               rather than under the readings: they are the same kind of thing as
               the range in the header — a short forecast — and up here they read
-              beside now instead of competing with the bottom rows for the eye. */}
+              beside now instead of competing with the bottom rows for the eye.
+
+              Both readings of a day are written out and the tile shows the one
+              it has room for — the range where there is room for seven
+              characters, the middle of it where there is only room for three,
+              and neither where the week itself is all that will fit (see
+              weather.module.css). In the stylesheet rather than measured here
+              because it is a question about the tile's width, which is what a
+              container query is: no observer, no second render, and the answer
+              is right on the first paint at every size the grid deals. */}
           {upcoming?.length > 0 && (
             <ul className={styles.forecast}>
               {upcoming.map((day) => (
                 <li key={day.date}>
                   <span className={styles.forecastDay}>{dayName(day.date, i18n.language)}</span>
                   <WeatherGlyph icon={weatherIcon(day.weatherCode)} className={styles.forecastGlyph} />
-                  <span className={styles.forecastTemp}>
+                  <span className={styles.forecastRange}>
                     {degrees(day.tempMax)}°/{degrees(day.tempMin)}°
                   </span>
+                  <span className={styles.forecastMean}>{degrees(midpoint(day))}°</span>
                 </li>
               ))}
             </ul>

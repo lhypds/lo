@@ -157,7 +157,13 @@
   stroke-linejoin: round;
 }
 
-.forecastTemp {
+/* The day's two ends, and the middle of them — the same reading at two lengths,
+   set in the same type so that narrowing the tile shortens the column without
+   changing what it looks like. Both are written into every row and the tile shows
+   whichever it has room for; the middle is the one that waits (see the widths
+   below). */
+.forecastRange,
+.forecastMean {
   font-family: var(--mono);
   font-size: 10px;
   font-variant-numeric: tabular-nums;
@@ -165,9 +171,69 @@
   white-space: nowrap;
 }
 
-/* A phone-sized tile has room for now and the three readings, and no more —
-   the days ahead are the first thing to go */
-@container (max-width: 230px) {
+.forecastMean {
+  display: none;
+}
+
+/* The days ahead give their reading up a piece at a time rather than all at
+   once, because most of what they are for survives the loss: a column of
+   weekdays with a glyph against each is still the shape of the week, and the
+   figures are the part of it that a narrow tile has no room for.
+
+   Both ends of the range down to the middle of them first. A day is "somewhere
+   around twenty" long before it stops being "a high of twenty-four and a low of
+   sixteen" — the middle is the reading anybody takes from a range at a glance,
+   and it is three characters where the range is seven.
+
+   Then the figure altogether, at the width where those three characters are the
+   only thing standing between the week and the reading beside it. What is left
+   is the week and its weather, which still answers what the next three days look
+   like.
+
+   And only under that does the block go, by which point there is nothing left in
+   it to cut. It used to go at the first of these widths, whole — a phone had room
+   for now and the three readings and no more — and what changed is that the days
+   ahead can now be narrow instead of absent. A phone tile shows the week without
+   its figures; the range comes back on a tablet and on the four-column grid.
+
+   What the widths are is where each piece actually stops fitting, measured
+   rather than rounded to something tidy, and what it stops fitting against is
+   not the tile but what is left of the tile: the reading on the left grows with
+   it (see --figure), so the room in this corner is the difference between the
+   two and closes faster than the tile narrows. Taken on the widest weekday
+   abbreviations lo is asked for — the Chinese 周一 over the English Mon — since a
+   rung set on the narrower one is a rung that clips in the other language.
+
+   The last of them has the other constraint on it as well, and it is the one
+   that binds: a tile is square, so the corner runs out of height at much the
+   same width it runs out of room, and three rows of weekday are 51px against a
+   top that is only that deep from about here up.
+
+   Written widest first, so each rung down the ladder overrides the one above. */
+@container (max-width: 231px) {
+  .forecastRange {
+    display: none;
+  }
+
+  .forecastMean {
+    display: block;
+  }
+}
+
+@container (max-width: 194px) {
+  /* The column goes with the figure that was in it. Left standing it would be an
+     empty track, which is nothing to look at but still has the grid's gap on the
+     near side of it — 8px of the width this rung was reached to save. */
+  .forecast {
+    grid-template-columns: auto auto;
+  }
+
+  .forecastMean {
+    display: none;
+  }
+}
+
+@container (max-width: 174px) {
   .forecast {
     display: none;
   }
