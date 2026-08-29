@@ -81,12 +81,52 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* On a single square the row is cut to what a cube can hold and still answer
+   with, which is the name and how far off it is — everything this list is for.
+   What goes is the middle line, the amenity and the cuisine: they tell one row
+   from the next on a panel where the reader is choosing between them, and a cube
+   is not a tile anyone chooses on, it is one they glance at to see whether there
+   is anything near.
+
+   The two that stay stop being columns and become lines. Side by side they would
+   be splitting about ninety pixels between a name and a figure, which leaves the
+   name four characters; stacked, the name has the row's whole width and the
+   figure sits where the middle line used to, so the row is the same height it
+   was and the same four of them still fit. The ladder of distances reads down
+   the left edge instead of the right, which on a column this narrow is the only
+   edge there is.
+
+   A class the card hands down rather than a container query, as on the posts
+   square: a cube and a panel are within a few pixels of each other at the
+   extremes, and the card already knows which of the two it is. */
+.square .item {
+  display: block;
+  padding: 6px 8px;
+}
+
+.square .meta {
+  display: none;
+}
+
+.square .distance {
+  display: block;
+  margin-top: 4px;
+}
+
 .empty {
   margin: 0;
   padding: 34px 12px;
   color: var(--muted);
   text-align: center;
   font-size: 11px;
+}
+
+/* The sentence that stands in for the list is a sentence and not a word — it
+   names the distance that was searched — so on a cube it is given the room
+   instead of the air around it, or most of it would be below the fold of a tile
+   nobody scrolls. */
+.square .empty {
+  padding: 12px 8px;
 }
 
 @media (hover: hover) {

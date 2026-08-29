@@ -154,14 +154,20 @@
 .flip {
   border: 0;
   background: none;
-  /* Six squares back. A fixed depth would be a different turn on a 175px phone
-     tile and a 290px desktop one; counted off the module instead (--tile,
-     published by .card-grid in styles.css) it is one turn at every width, which
-     is also what lets the turn below cancel it with numbers rather than guesses.
-     The fallback is for a card standing on a page rather than in the dashboard
-     grid — nothing else publishes --tile — where a square's worth is close
-     enough. */
-  perspective: calc(var(--tile, 260px) * 6);
+  /* Six of the card's own widths back. A fixed depth would be a different turn on
+     a 175px phone tile and a 290px desktop one; counted off the card instead it is
+     one turn at every size, which is also what lets the turn below cancel it with
+     numbers rather than guesses — those numbers are the reciprocals of what a
+     depth of six widths magnifies the near edge by, and they are right only while
+     the depth is counted off the same width the edge swings out from.
+     A card is one tile wide unless it says otherwise, and --tile is the module the
+     grid publishes (see .card-grid in styles.css). A card that is not one tile
+     wide says so with --turn-width — the expanded map is the one that does (see
+     map.module.css), and left at six tiles its turn swung out through the top and
+     bottom of the grid. The last fallback is for a card standing on a page rather
+     than in the dashboard grid — nothing else publishes --tile — where a square's
+     worth is close enough. */
+  perspective: calc(var(--turn-width, var(--tile, 260px)) * 6);
 }
 
 .pane {
@@ -180,10 +186,17 @@
    A transition cannot answer that: it interpolates between two ends and the
    swelling is all in the middle. So the card is drawn a little smaller as it
    turns, by exactly as much as the perspective is about to magnify it — with the
-   depth at six squares, the near edge is scaled by 1/(1 - sin0/12), and these are
-   its reciprocals at the quarters. The projection lands inside the tile at every
-   angle, which is what a grid of tiles wants; what it reads as is a card lifted
-   off the page to be turned, which is what it is.
+   depth at six card-widths, the near edge is scaled by 1/(1 - sin0/12), and these
+   are its reciprocals at the quarters. The projection lands inside the tile at
+   every angle, which is what a grid of tiles wants; what it reads as is a card
+   lifted off the page to be turned, which is what it is.
+   Six *widths*, and so these numbers hold whatever shape the card is. The near
+   edge is magnified about the middle, so it is the top and bottom corners of it
+   that reach furthest — by half the card's height times that same figure — and
+   cancelling the figure itself is what puts them back inside the card's own
+   height, however much taller than it is wide the card happens to be. A depth
+   counted off anything but the card's width is only right for one size of card
+   (see .flip above, and the expanded map, which is the card that is another).
    Interpolating between the quarters is a straight line where the truth is a
    sine, so each of these is set a shade under what the angle it is paired with
    actually needs — 0.944 and 0.923 exactly, and the difference is what the line
@@ -294,51 +307,58 @@
    The map is one canvas, so it turns to its edge, changes its cartography while
    no face is visible, and returns from the opposite edge. These are two names
    for the same frames so a second turn always restarts, just as the two-sided
-   card uses separate names for its way out and its way home. */
+   card uses separate names for its way out and its way home.
+   The depth is named rather than written out at every frame — twelve copies of
+   the same calc is twelve places for the one number that matters to drift apart.
+   It is set on the class below, on the card itself, which is where --turn-width
+   is answered. */
 @keyframes cycleTurnA {
   0% {
-    transform: perspective(calc(var(--tile, 260px) * 6)) rotateY(0deg) scale(1);
+    transform: perspective(var(--turn-depth)) rotateY(0deg) scale(1);
   }
   25% {
-    transform: perspective(calc(var(--tile, 260px) * 6)) rotateY(45deg) scale(0.936);
+    transform: perspective(var(--turn-depth)) rotateY(45deg) scale(0.936);
   }
   49.99% {
-    transform: perspective(calc(var(--tile, 260px) * 6)) rotateY(90deg) scale(0.916);
+    transform: perspective(var(--turn-depth)) rotateY(90deg) scale(0.916);
   }
   50% {
-    transform: perspective(calc(var(--tile, 260px) * 6)) rotateY(-90deg) scale(0.916);
+    transform: perspective(var(--turn-depth)) rotateY(-90deg) scale(0.916);
   }
   75% {
-    transform: perspective(calc(var(--tile, 260px) * 6)) rotateY(-45deg) scale(0.936);
+    transform: perspective(var(--turn-depth)) rotateY(-45deg) scale(0.936);
   }
   100% {
-    transform: perspective(calc(var(--tile, 260px) * 6)) rotateY(0deg) scale(1);
+    transform: perspective(var(--turn-depth)) rotateY(0deg) scale(1);
   }
 }
 
 @keyframes cycleTurnB {
   0% {
-    transform: perspective(calc(var(--tile, 260px) * 6)) rotateY(0deg) scale(1);
+    transform: perspective(var(--turn-depth)) rotateY(0deg) scale(1);
   }
   25% {
-    transform: perspective(calc(var(--tile, 260px) * 6)) rotateY(45deg) scale(0.936);
+    transform: perspective(var(--turn-depth)) rotateY(45deg) scale(0.936);
   }
   49.99% {
-    transform: perspective(calc(var(--tile, 260px) * 6)) rotateY(90deg) scale(0.916);
+    transform: perspective(var(--turn-depth)) rotateY(90deg) scale(0.916);
   }
   50% {
-    transform: perspective(calc(var(--tile, 260px) * 6)) rotateY(-90deg) scale(0.916);
+    transform: perspective(var(--turn-depth)) rotateY(-90deg) scale(0.916);
   }
   75% {
-    transform: perspective(calc(var(--tile, 260px) * 6)) rotateY(-45deg) scale(0.936);
+    transform: perspective(var(--turn-depth)) rotateY(-45deg) scale(0.936);
   }
   100% {
-    transform: perspective(calc(var(--tile, 260px) * 6)) rotateY(0deg) scale(1);
+    transform: perspective(var(--turn-depth)) rotateY(0deg) scale(1);
   }
 }
 
 .cycleTurnA,
 .cycleTurnB {
+  /* The same six widths the two-sided card is turned at, and read the same way:
+     a card is one tile wide unless it says otherwise with --turn-width. */
+  --turn-depth: calc(var(--turn-width, var(--tile, 260px)) * 6);
   transform-origin: center;
   animation-duration: 560ms;
   animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);

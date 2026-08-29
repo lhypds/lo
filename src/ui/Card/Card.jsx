@@ -78,6 +78,18 @@ export default function Card({
   // card standing as it was dealt is resting rather than mid-way through coming
   // back, and it must not play a turn the moment it mounts.
   const [turns, setTurns] = useState(0);
+  // Whether a turn is actually under way, which is not the same question as
+  // which side is up and is why it is asked separately. The frames are only on
+  // the pane while it is being turned: a card left holding the last frame of a
+  // finished animation plays it again the moment the tile is drawn again after
+  // not being drawn at all — expanding the map takes every other tile off the
+  // page with display:none (see .home-main-map in styles.css), and an element
+  // that comes back from that comes back with its animations restarted. What
+  // the reader saw was the clock turning itself over on the way back from a
+  // full-screen map. Where the card rests is a rule and not a frame (see
+  // .flipped .pane in card.module.css), so letting go of the animation moves
+  // nothing.
+  const [turning, setTurning] = useState(false);
   const [cycling, setCycling] = useState(false);
   const flipped = (turns + (dealt ? 1 : 0)) % 2 === 1;
   // The first of a pair of taps, where it landed and when — and the place the
@@ -108,6 +120,7 @@ export default function Card({
     }
     setTurns((count) => count + 1);
     if (back) {
+      setTurning(true);
       onFlip?.(!flipped);
       return;
     }
@@ -231,8 +244,18 @@ export default function Card({
         // dealt, not arriving from the other side. After that each turn is the one
         // set of frames, run forwards or in reverse (see card.module.css), and the
         // two names alternate, which is what makes a turn taken mid-turn start again.
+        //
+        // And nothing to play once a turn is over either: the frames come off the
+        // pane the moment the browser says they have finished, and what holds the
+        // card the way round it now is is the resting rule rather than the last
+        // frame of an animation (see `turning` above). Only the pane's own turn is
+        // listened for — an animation belonging to anything inside the card
+        // bubbles through here as well, and it is not this one.
         <div
-          className={`${styles.pane} ${turns === 0 ? "" : flipped ? styles.toBack : styles.toFront}`.trim()}
+          className={`${styles.pane} ${turning ? (flipped ? styles.toBack : styles.toFront) : ""}`.trim()}
+          onAnimationEnd={(event) => {
+            if (event.target === event.currentTarget) setTurning(false);
+          }}
         >
           {/* The face turned away is taken off the page as well as out of the
               picture: inert is what keeps the heading behind the card from being

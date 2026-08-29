@@ -6,9 +6,20 @@
    is what lands it there without ever overflowing into a horizontal scroll. Its
    height comes from the grid row, which the page hands the whole viewport once
    everything else is hidden. */
+/* The one card on the dashboard that is not a tile wide, which is also the one
+   that turns: double-pressing the heading walks the map through its three
+   cartographies, and the turn is seen from six of the card's own widths back (see
+   card.module.css, where the depth and the scale that cancels it are set out). A
+   card that does not say how wide it is is taken for one tile, and expanded this
+   one is the whole window — at six *tiles* the perspective was far too near for a
+   card this size, and the near edge swung out past the top and bottom of the grid,
+   which clips at its own bounds. What the reader saw was a map whose border went
+   missing down one side for the length of the turn. So the width is said once and
+   the card is laid out from it. */
 .cardExpanded {
   --gutter: 12px;
-  width: calc(100vw - 2 * var(--gutter));
+  --turn-width: calc(100vw - 2 * var(--gutter));
+  width: var(--turn-width);
   height: 100%;
   margin-inline: calc(50% - 50vw + var(--gutter));
 }

@@ -50,20 +50,32 @@ const SIZES = [TINY, SMALL, LARGE, TALL];
 // squares unless a card says otherwise, because most of these panels are lists
 // that need the width of a line to read; the three that answer at a glance — a
 // count of people, a warning or none, a needle — say `min: TINY` and stand in a
-// single square. The posts panel says it too, and is the one list that does: a
-// row cut to a thumbnail, a line of what was written and how far off still
-// answers what is around here, which is the trade the people panel already makes
-// at that size (the trimming is in posts.module.css). What the reader does from
-// either default — a card added, a panel given more room — is the only thing the
-// layout below remembers.
+// single square.
+//
+// Three lists say it too, and each of them can because its row survives being
+// cut to a cube. The posts panel: a thumbnail, a line of what was written and
+// how far off still answers what is around here, which is the trade the people
+// panel already makes at that size. Food and cafés: the name and the distance,
+// stacked rather than set side by side, which is the whole of what "where is the
+// nearest coffee" is asking. Each does its own trimming in its own stylesheet.
+// What the reader does from either default — a card added, a panel given more
+// room — is the only thing the layout below remembers.
 //
 // `opens` parts the two questions where a card wants them parted: the size it
-// arrives at, when that is not the smallest it can be cut to. Only the newswire
-// says it. A headline is a sentence and a panel two squares tall holds three of
-// them, which is a card that has to be grown before it can be read — so it
-// arrives at four, a tile down the page rather than a strip across it, and the
-// two-square rung stays on the ladder underneath for a reader who wants the
-// dashboard back.
+// arrives at, when that is not the smallest it can be cut to.
+//
+// The newswire says it upwards. A headline is a sentence and a panel two squares
+// tall holds three of them, which is a card that has to be grown before it can be
+// read — so it arrives at four, a tile down the page rather than a strip across
+// it, and the two-square rung stays on the ladder underneath for a reader who
+// wants the dashboard back.
+//
+// Food and cafés say it downwards, and are the reason the two questions are worth
+// parting at all rather than a single rule with an exception. A cube of either is
+// a real answer and the reader is welcome to cut one to it, but it is not the
+// answer to open with: at two squares the same four rows are read at the width of
+// a line, names uncut, and a panel that arrives already trimmed is one whose full
+// row the reader has to discover the existence of.
 //
 // `max` is the other end of the same ladder, and it is six squares — a third tile
 // down, the tallest thing on the grid — unless a card says otherwise. Every panel
@@ -107,8 +119,8 @@ export const CARDS = [
   { id: "nearby", label: "news.title", off: true, opens: LARGE },
   { id: "events", label: "events.title", off: true },
   { id: "trends", label: "trends.title", off: true },
-  { id: "food", label: "food.title", off: true },
-  { id: "cafe", label: "cafe.title", off: true },
+  { id: "food", label: "food.title", off: true, min: TINY, opens: SMALL },
+  { id: "cafe", label: "cafe.title", off: true, min: TINY, opens: SMALL },
   { id: "direction", label: "direction.title", own: true, off: true, min: TINY, max: TINY },
 ];
 

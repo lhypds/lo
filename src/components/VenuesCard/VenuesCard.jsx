@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
 import { Card, Skeleton } from "../../ui/index.js";
-import { LARGE, SMALL, TALL, useCardSize } from "../../utils/cards.js";
+import { LARGE, SMALL, TALL, TINY, useCardSize } from "../../utils/cards.js";
 import { formatDistance } from "../../utils/format.js";
 import { directionsLink } from "../../utils/maps.js";
 import CardSize from "../CardSize/index.js";
@@ -64,11 +64,17 @@ function rowParts(item, t) {
 export default function VenuesCard({ kind }) {
   const { t, i18n } = useTranslation();
   const { coords, reloadToken } = useHere();
-  // A list as long as the street is, in a tile the reader sizes from two squares
-  // to six — the same ladder every panel that holds a list gets. At the smallest
-  // it is a window onto the nearest three or four, which for "where is the
-  // closest coffee" is very often the whole answer.
+  // A list as long as the street is, in a tile the reader sizes from a single
+  // square to six. It arrives at two — see `opens` in utils/cards.js — because
+  // that is where a row is read at the width of a line; the rung below is there
+  // because the nearest three or four is very often the whole of what "where is
+  // the closest coffee" was asking, and that fits in a cube.
   const size = useCardSize(kind);
+  // The bottom rung, where the panel stands among the opening squares rather
+  // than across the column. Worth naming because it is three answers at once:
+  // the shape of the tile, what its heading has room for, and how a row is cut
+  // (see venues.module.css).
+  const cube = size === TINY;
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const requestRef = useRef(0);
@@ -156,13 +162,21 @@ export default function VenuesCard({ kind }) {
   return (
     <Card
       title={t(`${kind}.title`)}
-      meta={result?.place?.name}
+      // Dropped on a cube, where the heading is sharing one column with the pair
+      // of size buttons: the place name is the line that can go, because every
+      // row under it is already carrying a distance from here, and a tile among
+      // tiles that are all about here does not have to say so twice.
+      meta={cube ? null : result?.place?.name}
       action={<CardSize id={kind} />}
-      wide
+      // A cube is the one size that is not the width of the panel column: a
+      // square standing in a single column of the grid, which is what `square`
+      // without `wide` means (see ui/Card).
+      wide={!cube}
       half={size === SMALL}
-      square={size === LARGE}
+      square={size === LARGE || cube}
       tall={size === TALL}
       flush
+      className={cube ? styles.square : undefined}
     >
       <div className={styles.scroll}>{body}</div>
     </Card>
