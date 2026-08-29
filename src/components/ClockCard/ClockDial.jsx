@@ -3,15 +3,15 @@ import styles from "./clock.module.css";
 // The back of the time card: the same reading as the digits on the front, drawn
 // instead of written. This is liveboard's Clock face, brought across as it
 // stands — the 200-unit square it is set out on, the radii the ticks run
-// between, the lengths and weights of the three hands, the four numerals, and
-// the hard 2px shadow the rim casts. Nothing here is lo's own but the ink it is
-// drawn in, and that only because #000 and lo's --ink are the same black to
-// anyone looking at it.
+// between, the lengths and weights of the three hands, and the four numerals.
+// Nothing here is lo's own but the ink it is drawn in, and that only because
+// #000 and lo's --ink are the same black to anyone looking at it. Liveboard's
+// rim also casts a hard 2px shadow; lo's does not (see clock.module.css).
 //
 // Everything is in user units, so the whole drawing — strokes included — scales
-// with the box it lands in. That is liveboard's behaviour and it is the reason
-// the shadow reads: a rim held at a hairline while its shadow grew would come
-// apart at the sizes a dashboard tile puts it at.
+// with the box it lands in. That is liveboard's behaviour and it is why the face
+// holds together at the sizes a dashboard tile puts it at: nothing on it is
+// fixed at a pixel length while everything around it grows.
 const TICKS = Array.from({ length: 60 }, (_, index) => {
   const angle = (index * Math.PI) / 30;
   const major = index % 5 === 0;
@@ -58,9 +58,7 @@ export default function ClockDial({ hour, minute, second, label }) {
     // a clock on a wall with wall around it. How much wall is in clock.module.css
     // and is the one number here that is not liveboard's — a share of the tile
     // reads well on a desktop square and leaves a phone with a dial too small to
-    // read, so the air gives way as the tile narrows. The shadow needs room of its
-    // own as well: it falls outside the 200-unit square, which is why the drawing
-    // does not clip its own overflow.
+    // read, so the air gives way as the tile narrows.
     <div className={styles.back}>
       <svg className={styles.dial} viewBox="0 0 200 200" role="img" aria-label={label}>
         <circle className={styles.rim} cx="100" cy="100" r="96" />

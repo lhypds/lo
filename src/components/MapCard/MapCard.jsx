@@ -4,7 +4,7 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { ActionButton, Card, useNavigate } from "../../ui/index.js";
 import { formatCoords, formatDateTime, formatDistance, formatUsername } from "../../utils/format.js";
-import { MARK_PIN_EYE, MARK_PIN_PATH, MARK_PIN_TIP_Y } from "../../utils/icons.js";
+import { MARK_PIN_EYE, MARK_PIN_PATH, MARK_PIN_TIP_Y, PIN_GLYPHS } from "../../utils/icons.js";
 import { venueParts } from "../../utils/venues.js";
 import { useAuth } from "../AuthProvider/index.js";
 import { useHere } from "../LocationProvider/index.js";
@@ -113,16 +113,17 @@ function personElement(username) {
   return wrapper;
 }
 
-// The same glyph on every saved spot rather than a number: the list is not
-// ordered by anything the map can show, so a rank on the pin invites a reading
-// of the map that isn't there. What the pin has to say is "a mark is here", and
-// the name is a tap away in the popup.
+// Everything the map stands on the ground is this one drawing: the pin the rest
+// of the app marks a spot with — the button on the dashboard, the link in the
+// top bar, all of them from one path — with something in its head to say which
+// kind of thing is standing there. A spot the reader kept says it with the plain
+// circle, and the other three carry a drawing of what they are (see PIN_GLYPHS
+// in utils/icons.js).
 //
-// It says it with the drawing the rest of the app marks a spot with — the button
-// on the dashboard, the link in the top bar, all three from one path — where a
-// post, which has no drawing of its own anywhere, keeps its letter. It stands on
-// its own with no box behind it: the square it used to sit in was a second shape
-// competing with the one that means something.
+// One shape and not four, because they are all answering the same question and a
+// reader should not have to learn a second alphabet to read a map. What tells
+// them apart is the head and the size, which is as much difference as a thing
+// standing in the same street as three others should have.
 //
 // What the map adds is where the point goes. The grid runs to 24 and the point
 // is at 21, so a marker anchored by the bottom of its box would hang the pin
@@ -133,20 +134,53 @@ function personElement(username) {
 const STROKE_UNITS = 1.2;
 const MARK_VIEWBOX = `0 0 24 ${MARK_PIN_TIP_Y + STROKE_UNITS / 2}`;
 
-function markElement(label = "") {
+function pinElement(size, head) {
   const pin = document.createElement("div");
-  pin.className = styles.markPin;
-  const glyph = document.createElementNS(SVG_NS, "svg");
-  glyph.setAttribute("viewBox", MARK_VIEWBOX);
-  glyph.setAttribute("aria-hidden", "true");
+  pin.className = `${styles.pin} ${size}`;
+  const drawing = document.createElementNS(SVG_NS, "svg");
+  drawing.setAttribute("viewBox", MARK_VIEWBOX);
+  drawing.setAttribute("aria-hidden", "true");
   const body = document.createElementNS(SVG_NS, "path");
   body.setAttribute("d", MARK_PIN_PATH);
-  // Filled white rather than left hollow like the button's copy: on a button the
-  // pin sits on a known background, on a map it has to carry its own.
+  drawing.append(body, head);
+  pin.append(drawing);
+  return pin;
+}
+
+// The hole in a plain pin's head. Filled white rather than left hollow like the
+// button's copy: on a button the pin sits on a known background, on a map it has
+// to carry its own.
+function eyeElement() {
   const eye = document.createElementNS(SVG_NS, "circle");
   for (const [name, value] of Object.entries(MARK_PIN_EYE)) eye.setAttribute(name, value);
-  glyph.append(body, eye);
-  pin.append(glyph);
+  return eye;
+}
+
+// …and what goes there instead on the pins that are about something. The glyph
+// arrives as the shapes it is drawn with rather than as markup, which is what
+// lets the post's parts be the same numbers the top bar's button spreads into
+// its own JSX: one drawing, read twice, instead of a copy here that nobody
+// remembers to change.
+function glyphElement(kind) {
+  const { transform, parts } = PIN_GLYPHS[kind];
+  const group = document.createElementNS(SVG_NS, "g");
+  group.setAttribute("class", styles.pinGlyph);
+  group.setAttribute("transform", transform);
+  for (const { tag, solid, ...attributes } of parts) {
+    const shape = document.createElementNS(SVG_NS, tag);
+    for (const [name, value] of Object.entries(attributes)) shape.setAttribute(name, value);
+    if (solid) shape.setAttribute("class", styles.solid);
+    group.append(shape);
+  }
+  return group;
+}
+
+// The same pin on every saved spot rather than a number: the list is not ordered
+// by anything the map can show, so a rank on the pin invites a reading of the
+// map that isn't there. What the pin has to say is "a mark is here", and the
+// name is a tap away in the popup.
+function markElement(label = "") {
+  const pin = pinElement(styles.markPin, eyeElement());
   // A name the reader typed stays on the map, the way the people's do: a spot
   // they chose and named is not one they should have to hover to tell from the
   // pin beside it. Only a typed one — a mark left as it was found is wearing the
@@ -162,32 +196,27 @@ function markElement(label = "") {
   return pin;
 }
 
-// A post is the same square saying p — the two are the same size of thing on
-// the map, and what differs is only what opens when one is pressed.
+// A post carries the picture in a frame the top bar wears, which is the drawing
+// lo already uses for "somebody left something here". A shade smaller than a
+// mark, on the same terms as ever: a mark is a spot the reader chose, a post is
+// one they are passing.
 function postElement() {
-  const pin = document.createElement("div");
-  pin.className = styles.postDot;
-  pin.textContent = "p";
-  return pin;
+  return pinElement(styles.postPin, glyphElement("post"));
 }
 
-// Somewhere to eat or somewhere for coffee: the same square a post is, a size
-// down and wearing an initial instead of a letter of its own.
+// Somewhere to eat or somewhere for coffee, wearing a fork and a cup — the one
+// pair on the map that says what it is rather than that it is there, because
+// these are the only two kinds standing in the same street as each other.
 //
-// A size down because of what these are. Everything else the map draws is lo's
-// — the reader, where they stood, what they wrote, what they kept — and these
-// are the ground itself, which nobody put here. They are also the only pins that
-// arrive two dozen at a time, so they are the ones that have to sit back: at the
-// post's own 20px a city centre would be a wall of squares with the reader's own
-// marks lost among them. Small, and underneath (see the stack in
-// map.module.css), which is the same thought said in the other direction.
-const VENUE_INITIAL = { food: "f", cafe: "c" };
-
+// The smallest of them, and for what they are. Everything else the map draws is
+// lo's — the reader, where they stood, what they wrote, what they kept — and
+// these are the ground itself, which nobody put here. They are also the only
+// pins that arrive two dozen at a time, so they are the ones that have to sit
+// back: at a mark's own 28px a city centre would be a wall of them with the
+// reader's own spots lost inside it. Small, and underneath (see the stack in
+// map.module.css), which is the same thought said the other way round.
 function venueElement(kind) {
-  const pin = document.createElement("div");
-  pin.className = styles.venueDot;
-  pin.textContent = VENUE_INITIAL[kind] ?? "";
-  return pin;
+  return pinElement(styles.venuePin, glyphElement(kind));
 }
 
 // Built out of nodes rather than a string of HTML: the name is whatever the
@@ -364,12 +393,12 @@ const HOVERS = window.matchMedia("(hover: hover)").matches;
 // happens to be. Near the top edge it is cropped by the tile instead, which is
 // at least the truth about where the pin is.
 //
-// The offset is measured off the pins in map.module.css, which are anchored by
-// their bottom edge and so stand that far up from the spot they report: 25.2px
-// for the mark pin — 28 wide by the cropped viewBox's ratio — and 20 for a post's
-// square. One number covers both. A post's bubble a few pixels clear of its
-// square is no worse off than one resting on it, and two offsets would be one
-// more pair of numbers to keep in step with the stylesheet.
+// The offset is measured off the pins in map.module.css, which are all anchored
+// by their point and so stand that far up from the spot they report: 25.2px for
+// a mark — 28 wide by the cropped viewBox's ratio — down to 19.8 for a place.
+// One number covers all three. A bubble a few pixels clear of the smaller pins
+// is no worse off than one resting on them, and three offsets would be three
+// more numbers to keep in step with the stylesheet.
 const POPUP_OFFSET = 26;
 
 // An opened bubble is left where it is put rather than being handed the focus.
@@ -840,7 +869,7 @@ export default function MapCard({
     venueMarkersRef.current = venues.map((venue) => {
       const { category, cuisine } = venueParts(venue, t);
       const marker = preview(
-        new mapboxgl.Marker({ element: venueElement(venue.kind) })
+        new mapboxgl.Marker({ element: venueElement(venue.kind), anchor: "bottom" })
           .setLngLat([venue.longitude, venue.latitude])
           .setPopup(
             previewPopup().setDOMContent(

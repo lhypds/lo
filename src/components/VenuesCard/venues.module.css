@@ -113,20 +113,31 @@
   margin-top: 4px;
 }
 
+/* The sentence that stands in for the list stands in the middle of the tile,
+   not at the top of it. Set near the top it reads as the first row of a list
+   whose other rows are still on their way — which is exactly what it is not: it
+   is the whole answer, and the tile is up to three tiles deep, so all of what
+   would be under it is nothing. Centred, the empty tile reads as an empty tile.
+
+   The height is a floor rather than a height so that a long sentence in a small
+   tile still grows the way it always did and scrolls at the bottom of the tile,
+   instead of being centred over its own overflow. */
 .empty {
   margin: 0;
-  padding: 34px 12px;
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
   color: var(--muted);
   text-align: center;
   font-size: 11px;
 }
 
-/* The sentence that stands in for the list is a sentence and not a word — it
-   names the distance that was searched — so on a cube it is given the room
-   instead of the air around it, or most of it would be below the fold of a tile
-   nobody scrolls. */
+/* Narrower on a cube, where the sentence is wrapping across about ninety pixels
+   and every one of them it is not given is a line more of wrapping. */
 .square .empty {
-  padding: 12px 8px;
+  padding: 8px;
 }
 
 @media (hover: hover) {

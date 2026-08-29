@@ -95,114 +95,112 @@
   pointer-events: none;
 }
 
-/* A post is a square with a p in it, held close to the letter: 20px around a
-   14px glyph leaves 2px inside the border, which is about as tight as the box
-   can go before it reads as drawn on the p rather than around it. Smaller than
-   the mark pin beside it on purpose — a mark is a spot you chose, a post is one
-   you are passing — but no longer the 14px square it was, which was a fair
-   drawing and a poor target: a pin on a map is something to be pressed, and 14px
-   of it is under half of what a thumb lands on.
+/* Every pin the map stands on the ground, whatever it is standing there about
+   (see pinElement in MapCard.jsx). One shape, three sizes, and a head that says
+   which of them this is.
 
-   The padding is not air. Centring a line box puts the *box* in the middle, and
-   a lowercase p has no ascender to balance the tail it hangs below the baseline
-   — so left alone, the letter sits low and what ends up centred is the gap above
-   it. Two pixels off the bottom of the content area lifts the glyph back to
-   where the eye expects it, without the square growing to pay for it: the whole
-   page is border-box, so this comes out of the inside. */
-.postDot {
-  width: 20px;
-  height: 20px;
-  padding-bottom: 2px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid #000;
-  background: #fff;
-  color: #000;
-  font-family: var(--mono);
-  font-size: 14px;
-  line-height: 1;
+   No height on any of them. It comes from the cropped viewBox instead — see
+   MARK_VIEWBOX in MapCard.jsx, which ends at the pin's own point — so the ink
+   fills the box to its bottom edge and that edge is the coordinate the marker is
+   anchored by, whatever width the rules below ask for. Any px height here would
+   be a second statement of the same ratio, wrong by a fraction, and the pin
+   would float or sink by it.
+
+   The colours are fixed rather than themed, the same bargain the dots make: a
+   pin has to read against road fill and park green, and neither of those knows
+   about dark mode. */
+.pin {
+  position: relative;
+  aspect-ratio: 24 / 21.6;
   cursor: pointer;
+}
+
+.pin svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  fill: #fff;
+  stroke: #000;
+  /* Round, and not miter: a mitred join at the point would run it to a spike
+     well past the box, and the crop above is measured off this one */
+  stroke-linejoin: round;
+}
+
+.pin:hover svg {
+  fill: #000;
+  stroke: #fff;
+}
+
+/* The drawing in the head, shrunk out of an icon drawn full size on the 24-unit
+   grid (see PIN_GLYPHS in utils/icons.js). Unfilled, so an outline glyph reads
+   as a line drawing over the white of the head rather than as a blot, and the
+   parts that are meant to be solid say so for themselves below.
+
+   The stroke is the one thing not allowed to come down with the drawing. A glyph
+   sits under two scalings — the head's, and the pin's own 24 units into 22-28px
+   — and a hairline through both of those is a sixth of a pixel. Held out of them
+   it is 1px wherever it is drawn, at any size of pin, which is what every other
+   line in lo is and what the pin around it is carefully worked out to be. */
+.pinGlyph {
+  fill: none;
+  stroke-width: 1;
+}
+
+.pinGlyph :is(path, rect, circle) {
+  vector-effect: non-scaling-stroke;
+}
+
+.pinGlyph .solid {
+  fill: #000;
+  stroke: none;
+}
+
+.pin:hover .pinGlyph .solid {
+  fill: #fff;
 }
 
 /* 28 wide, against the 20 it was drawn at first. The old one was the size the
    shape wants on a 300px tile and not the size a target wants under a finger,
    and of the two a pin has to be the second: everything the map has to say about
    a mark is behind a press on it. This is about as far as that can go before two
-   pins in the same street stand on each other.
-
-   No height. It comes from the cropped viewBox instead — see MARK_VIEWBOX in
-   MapCard.jsx, which ends at the pin's own point — so the ink fills the box to
-   its bottom edge and that edge is the coordinate the marker is anchored by,
-   whatever width this rule asks for. Any px height here would be a second
-   statement of the same ratio, wrong by a fraction, and the pin would float or
-   sink by it.
-
-   Its colours are fixed rather than themed, the same bargain the dots make: a
-   pin has to read against road fill and park green, and neither of those knows
-   about dark mode. */
+   pins in the same street stand on each other. */
 .markPin {
-  position: relative;
   width: 28px;
-  aspect-ratio: 24 / 21.6;
-  cursor: pointer;
 }
 
 .markPin svg {
-  display: block;
-  width: 100%;
-  height: 100%;
-  fill: #fff;
-  stroke: #000;
-  /* The one thing that did not grow with the box. A stroke on the 24-unit grid
-     is scaled along with everything else on it, so the 1.2 the button's copy of
-     this pin is drawn with would come out at 1.4px here — a fatter line than any
-     other icon on the page, on the one drawing that is meant to read as the same
-     object as those. 24/28 of it renders as the 1px hairline the 20px pin had. */
+  /* A stroke on the 24-unit grid is scaled along with everything else on it, so
+     the 1.2 the button's copy of this pin is drawn with would come out at 1.4px
+     here — a fatter line than any other icon on the page, on the one drawing
+     meant to read as the same object as those. 24/28 of it renders as the 1px
+     hairline the 20px pin had, and the two rules under this one are that same
+     sum at their own widths. */
   stroke-width: 0.857;
-  /* Round, and not miter: a mitred join at the point would run it to a spike
-     well past the box, and the crop above is measured off this one */
-  stroke-linejoin: round;
 }
 
-.markPin:hover svg {
-  fill: #000;
-  stroke: #fff;
+/* A shade under a mark and for the same reason it always was: a mark is a spot
+   the reader chose, a post is one they are passing. Two pixels is as much
+   difference as that deserves — it was a square of another size once, and the
+   size was doing work the shape can now do on its own. */
+.postPin {
+  width: 26px;
 }
 
-.postDot:hover {
-  background: #000;
-  color: #fff;
+.postPin svg {
+  stroke-width: 0.923;
 }
 
-/* Somewhere to eat or somewhere for coffee: the post's square at three quarters
-   of its size, wearing the initial of the card it came off. Black and white and
-   fixed, like everything else the map draws its own marks with — these have to
-   read against road fill and park green, neither of which knows about dark mode.
-
-   Smaller than everything around it on purpose, and the only pin here that is.
-   Two dozen of each arrive at once where the other lists arrive in ones and
-   twos, so at the post's own 20px a city centre would be a wall of squares with
-   the reader's own marks lost somewhere inside it. Centred on the spot rather
-   than standing on it: a square is not a pin, it has no point to put anywhere. */
-.venueDot {
-  width: 16px;
-  height: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid #000;
-  background: #fff;
-  color: #000;
-  font-family: var(--mono);
-  font-size: 10px;
-  line-height: 1;
-  cursor: pointer;
+/* The ground's own, and the small ones: two dozen at a time where everything
+   else arrives in ones and twos, so this is where a pin gives way. 22px is the
+   floor a cup and a fork survive — under it the head has no room to hold either
+   — and the rest of the sitting back is done by the stack below, which puts
+   these under everything. */
+.venuePin {
+  width: 22px;
 }
 
-.venueDot:hover {
-  background: #000;
-  color: #fff;
+.venuePin svg {
+  stroke-width: 1.09;
 }
 
 /* The name on a mark somebody renamed, drawn as the people's names are drawn —
@@ -277,11 +275,11 @@
    there — a café is on the corner whether or not lo is running — and because it
    is the crowded one: two dozen places will cover a mark or a post between them
    long before the reverse is true. */
-.venueDot {
+.venuePin {
   z-index: 0;
 }
 
-.postDot,
+.postPin,
 .markPin {
   z-index: 1;
 }

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ActionButton, Link, useNavigate } from "../../ui/index.js";
-import { MARK_PIN_EYE, MARK_PIN_PATH } from "../../utils/icons.js";
+import { MARK_PIN_EYE, MARK_PIN_PATH, POST_ICON } from "../../utils/icons.js";
 import { useAuth } from "../AuthProvider/index.js";
 import { useHere } from "../LocationProvider/index.js";
 import AccountModal from "../AccountModal/index.js";
@@ -76,15 +76,16 @@ export default function Header({ back = false, backTo = "/", cards = false }) {
             </ActionButton>
           )}
           {/* A picture in a frame, for what a post mostly is — a photo left on
-              the ground — and drawn like every other icon in the bar rather than
-              as the letter the map's own squares carry. */}
+              the ground — and the same drawing the map now stands in a pin's
+              head, which is why it comes out of utils/icons.js rather than
+              being written out here. */}
           {user && (
             <span className="topbar-post">
               <ActionButton tooltip={t("header.posts")} onClick={() => navigate("/posts")}>
                 <svg viewBox="0 0 24 24">
-                  <rect x="3" y="4" width="18" height="16" />
-                  <circle cx="8.5" cy="9.5" r="1.5" />
-                  <path d="M21 15l-5-4-5 4-3-2-5 4" />
+                  <rect {...POST_ICON.frame} />
+                  <circle {...POST_ICON.sun} />
+                  <path d={POST_ICON.ridge} />
                 </svg>
               </ActionButton>
             </span>

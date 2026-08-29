@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
 import { Card, Skeleton } from "../../ui/index.js";
 import { LARGE, SMALL, TALL, TINY, useCardSize } from "../../utils/cards.js";
-import { formatDistance } from "../../utils/format.js";
+import { distanceMeters, formatDistance } from "../../utils/format.js";
 import { directionsLink } from "../../utils/maps.js";
 import { publishVenues, venueParts } from "../../utils/venues.js";
 import CardSize from "../CardSize/index.js";
@@ -21,16 +21,21 @@ const FETCH = { food: api.getFood, cafe: api.getCafes };
 // utils/venues.js, where the same reasoning is spelled out).
 const NONE = [];
 
-// Unlike the news beside it, this list goes stale the moment the reader walks:
-// the rows are sorted by how far off they are and the distances are measured
-// from the fix itself. Three decimals is ~110 m, which is about the distance at
-// which the order of the nearest few actually changes. Standing still asks for
-// nothing; walking a block asks again, and the server answers that out of the
-// same list it already had (see lookupVenues in server/geo.js).
-function coordKey(coords) {
-  if (!coords) return "";
-  return `${coords.latitude.toFixed(3)},${coords.longitude.toFixed(3)}`;
-}
+// How far the reader has to have actually gone before this list is worth asking
+// for again. Unlike the news beside it, this one does go stale by walking: the
+// rows are sorted by how far off they are and the distances are measured from
+// the fix. But it goes stale by walking and by nothing else — a hundred and
+// fifty metres is about where the order of the nearest few starts to change,
+// and under that the answer is the same names in the same order, off the same
+// hour-old square on the server (see lookupVenues in server/geo.js).
+//
+// Measured from where the list on screen was asked from, rather than by rounding
+// each fix to a grid and watching for the square to change. A grid is only a
+// stand-in for distance and a poor one at the edges: a phone sitting still on a
+// table reads a slightly different pair of numbers every thirty seconds, and a
+// table that happens to be a few metres from a boundary would have every one of
+// those twitches count as having moved.
+const MOVED_M = 150;
 
 // The one panel lo draws twice. Somewhere to eat and somewhere for a coffee are
 // the same question asked about two sets of amenities — the same rows, the same
@@ -57,14 +62,28 @@ export default function VenuesCard({ kind }) {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const requestRef = useRef(0);
+  // The fix this card is standing on: the one the list below was asked from,
+  // which is not the one the sensor last read. Seeded from the fix that is
+  // already in hand, so a card mounting with a position asks its question on the
+  // first pass rather than a render later.
+  const [anchor, setAnchor] = useState(() => coords ?? null);
 
-  const key = coordKey(coords);
   const language = i18n.language;
 
+  // Has the reader gone anywhere? The fix arrives again every thirty seconds
+  // whether they have or not, so this is where standing still is told from
+  // walking, and it is the whole of what keeps the card from re-asking a
+  // question whose answer cannot have changed. Returning the old anchor is
+  // returning the same object, which React reads as nothing having happened.
   useEffect(() => {
     if (!coords) return;
+    setAnchor((from) => (from && distanceMeters(from, coords) < MOVED_M ? from : coords));
+  }, [coords]);
+
+  useEffect(() => {
+    if (!anchor) return;
     const ticket = ++requestRef.current;
-    FETCH[kind](coords)
+    FETCH[kind](anchor)
       .then((data) => {
         if (ticket !== requestRef.current) return;
         setResult(data);
@@ -74,10 +93,14 @@ export default function VenuesCard({ kind }) {
         if (ticket !== requestRef.current) return;
         setError(requestError);
       });
-    // The rounded key and the language are the only things that make this a
-    // different question — and the token, which is the reader asking again.
+    // The anchor and the language are the only things that make this a different
+    // question — and the token, which is the reader asking again. That one asks
+    // from the anchor rather than from wherever they are standing at the moment
+    // they press it: within the distance above the two are the same list, and
+    // re-anchoring here as well would put a second request in the air behind
+    // this one for it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [kind, key, language, reloadToken]);
+  }, [kind, anchor, language, reloadToken]);
 
   const items = result?.items ?? NONE;
 

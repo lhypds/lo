@@ -157,28 +157,27 @@
    through a 143px tile — the narrowest the grid ever deals, at a 320px viewport —
    coming out at 102px, and a 286px desktop tile at 185px, which is the size that
    was already right. In between, a 393px iPhone goes from 101px to 123px.
-   The small end is against the stop: 102px of a 111px opening is as much as the
-   card can give once the shadow has its 2px. To take it the dial spills over the
-   body's own padding, which is what the overflow below is for as well as the
-   shadow — that padding is there to hold lines of type off the card's edge, and
-   there is no type on this face. The height is the whole of it, the body being
-   wider than it is tall and the drawing round: the svg centres its own square in
-   whatever it is given. */
+   The small end is against the stop: 102px is as much as a 111px opening can
+   give. To take it the dial spills over the body's own padding — that padding is
+   there to hold lines of type off the card's edge, and there is no type on this
+   face. The height is the whole of it, the body being wider than it is tall and
+   the drawing round: the svg centres its own square in whatever it is given. */
 .dial {
   display: block;
   width: 100%;
   height: calc(58cqi + 19px);
-  overflow: visible;
   font-family: var(--display);
 }
 
-/* White with a black rule and a hard black shadow two pixels down and across:
-   no blur, no spread, the drop the whole of liveboard is drawn with. */
+/* White with a black rule and nothing behind it. The rim's weight is the stroke
+   itself and not an offset copy of it: an instrument face is a flat thing, and
+   every other edge in lo — the card this is drawn on included — is a single
+   line. A drop-shadow would also have to be answered for at every size the tile
+   is dealt, being the one length here that does not scale with the drawing. */
 .rim {
   fill: var(--paper);
   stroke: var(--ink);
   stroke-width: 2;
-  filter: drop-shadow(2px 2px 0 var(--ink));
 }
 
 .tick,
