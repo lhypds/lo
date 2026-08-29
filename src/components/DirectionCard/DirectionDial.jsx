@@ -51,6 +51,9 @@ export default function DirectionDial({ heading, label }) {
   return (
     <div className={styles.compassBack}>
       <div className={styles.compassDial} role="img" aria-label={label}>
+        <svg className={styles.compassFrame} viewBox="0 0 200 200" aria-hidden="true">
+          <circle className={styles.compassRim} cx="100" cy="100" r="96" />
+        </svg>
         <span className={styles.indexMark} aria-hidden="true" />
         <span className={styles.compassMarks} aria-hidden="true">
           {TICKS}

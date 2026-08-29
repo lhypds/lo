@@ -71,10 +71,6 @@ export default function VenuesCard({ kind }) {
   const size = useCardSize(kind);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
-  // Waiting from the first render rather than from the first effect: with a fix
-  // in hand the request below is as good as sent, and starting at false would
-  // show "nothing around here" for the frame in between.
-  const [loading, setLoading] = useState(() => Boolean(coords));
   const requestRef = useRef(0);
 
   const key = coordKey(coords);
@@ -83,7 +79,6 @@ export default function VenuesCard({ kind }) {
   useEffect(() => {
     if (!coords) return;
     const ticket = ++requestRef.current;
-    setLoading(true);
     FETCH[kind](coords)
       .then((data) => {
         if (ticket !== requestRef.current) return;
@@ -93,9 +88,6 @@ export default function VenuesCard({ kind }) {
       .catch((requestError) => {
         if (ticket !== requestRef.current) return;
         setError(requestError);
-      })
-      .finally(() => {
-        if (ticket === requestRef.current) setLoading(false);
       });
     // The rounded key and the language are the only things that make this a
     // different question — and the token, which is the reader asking again.
@@ -104,19 +96,28 @@ export default function VenuesCard({ kind }) {
 
   const items = result?.items ?? [];
 
+  // No `loading` flag, unlike the panels beside this one, because there is
+  // nothing here it would be needed to tell apart: an answer is a list or it is
+  // an empty one, and both of those arrive in `result`. Anything before that —
+  // the request in the air, or no fix yet to send with it — is the same state,
+  // which is that the tile has not been answered, and a tile that has not been
+  // answered puts its bars up.
+  //
+  // Which is also what keeps the empty sentence honest. It names the distance
+  // that was actually searched, and it can only do that once the search has
+  // come back and said how far it went.
   let body;
-  if (loading && items.length === 0) {
-    body = <Skeleton rows={4} label={t(`${kind}.loading`)} />;
-  } else if (error) {
+  if (error) {
     body = <p className={styles.empty}>{t(`${kind}.unavailable`)}</p>;
+  } else if (!result) {
+    body = <Skeleton rows={4} label={t(`${kind}.loading`)} />;
   } else if (items.length === 0) {
-    // How far was actually looked is the server's answer and not a figure this
-    // card should be assuming: nothing found near here widens the search before
-    // it gives up, so the sentence names the ring that really came back empty.
+    // How far lo actually looked is the server's answer and not a figure this
+    // card should be assuming: a place with nothing near it widens the search
+    // before giving up, so the sentence names the ring that really came back
+    // empty rather than the one it started with.
     body = (
-      <p className={styles.empty}>
-        {t(`${kind}.empty`, { distance: formatDistance(result?.radius ?? 0) })}
-      </p>
+      <p className={styles.empty}>{t(`${kind}.empty`, { distance: formatDistance(result.radius) })}</p>
     );
   } else {
     body = (

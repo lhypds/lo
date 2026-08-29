@@ -401,16 +401,18 @@ export default function MapCard({
   if (styleRef.current === null) styleRef.current = storedMapStyle();
 
   const cycleMapStyle = useCallback(() => {
-    const map = mapRef.current;
-    if (!map) return;
     const next = nextMapStyle(styleRef.current);
     styleRef.current = next.id;
-    map.setStyle(next.url);
     try {
       localStorage.setItem(MAP_STYLE_KEY, next.id);
     } catch {
       // The choice still holds for this visit when storage is unavailable.
     }
+    // The title is interactive from the first render, even during the brief
+    // interval before Mapbox has finished creating its canvas. In that case the
+    // ref above still becomes the map's starting style; once the map exists we
+    // can switch the live canvas immediately.
+    mapRef.current?.setStyle(next.url);
   }, []);
 
   // Told to the page as an id, which is all it needs to find the row: the pin
@@ -943,7 +945,7 @@ export default function MapCard({
       title={t("map.title")}
       action={actions}
       cycleHint={t("map.turn")}
-      onCycle={live ? cycleMapStyle : undefined}
+      onCycle={cycleMapStyle}
       square={!expanded}
       wide={expanded}
       flush

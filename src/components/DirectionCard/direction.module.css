@@ -145,14 +145,18 @@
 
 /* Allowed to wrap, which a button in this app otherwise is not: the words are a
    sentence's worth and the tile is one square, so two lines of them is the shape
-   it takes rather than a label cut off at the border. */
+   it takes rather than a label cut off at the border.
+   Set at the size of the notice above rather than a step over it, because the
+   two stand in the same place: whichever of them the sensors have left to say
+   fills the same half-square, and a button that read larger than the sentence it
+   replaces would make the tile change weight depending on which one it got. */
 .enable {
-  padding: 7px 10px;
+  padding: 5px 8px;
   border: 1px solid var(--ink);
   border-radius: 0;
   background: var(--paper);
   font-family: var(--sans);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   line-height: 1.35;
   letter-spacing: 0.01em;
@@ -178,21 +182,37 @@
 }
 
 .compassDial {
-  /* ClockDial is a 200-unit drawing: its two-unit rim and shadow become one
-     hundredth of the rendered dial. Keep that same proportion here instead of
-     holding both at two CSS pixels, which made the compass heavy on phone-size
-     tiles. */
+  /* ClockDial is a 200-unit drawing. The frame below now uses that exact
+     coordinate system; this proportional rule remains for the HTML ticks and
+     pin that sit over it. */
   --compass-rule: clamp(1px, calc(0.58cqi + 0.19px), 1.9px);
   --compass-hairline: clamp(0.5px, calc(0.29cqi + 0.095px), 0.95px);
   position: relative;
   width: calc(58cqi + 19px);
   max-width: 100%;
   aspect-ratio: 1;
-  border: var(--compass-rule) solid var(--ink);
-  border-radius: 50%;
-  background: var(--paper);
-  box-shadow: var(--compass-rule) var(--compass-rule) 0 var(--ink);
   font-family: var(--display);
+}
+
+/* The clock's border, literally measured the same way: a circle of radius 96
+   in a 200-unit face, a two-unit stroke, and a two-unit hard shadow. Drawing it
+   as SVG instead of a CSS border also gives both instruments the same small
+   margin between the rim and the edge of their box. */
+.compassFrame {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.compassRim {
+  fill: var(--paper);
+  stroke: var(--ink);
+  stroke-width: 2;
+  filter: drop-shadow(2px 2px 0 var(--ink));
 }
 
 .compassMarks {
