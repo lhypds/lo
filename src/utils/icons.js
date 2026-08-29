@@ -46,14 +46,19 @@ export const POST_ICON = {
 const inHead = (scale) => `translate(${HEAD.x} ${HEAD.y}) scale(${scale}) translate(-12 -12)`;
 
 // The two the ground itself put there are filled, where lo's own two are drawn
-// in outline like every other icon in the app. Not a whim: these are the small
-// pins — 22px against a mark's 28 — and two dozen of them land at once. A cup in
+// in outline like every other icon in the app. Not a whim: two dozen of these
+// land at once, at the size of a head about fifteen pixels across. A cup in
 // outline at that size is four hairlines with a pixel between them, which is a
 // smudge, and a fork is worse. Filled, each is a silhouette, and a reader
 // glancing down a street of them can tell coffee from dinner without stopping.
 export const PIN_GLYPHS = {
+  // Smaller in its head than the two below are in theirs, which is the frame's
+  // own doing: it is the one glyph here that is a rectangle, and a rectangle
+  // fills a circle corner-first. Drawn to the same width as a cup it would have
+  // its corners in the pin's outline, and a frame that close to the ring around
+  // it stops reading as a picture and starts reading as a smaller ring.
   post: {
-    transform: inHead(0.44),
+    transform: inHead(0.36),
     parts: [
       { tag: "rect", ...POST_ICON.frame },
       { tag: "circle", solid: true, ...POST_ICON.sun },

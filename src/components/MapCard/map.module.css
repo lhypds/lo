@@ -110,7 +110,34 @@
    pin has to read against road fill and park green, and neither of those knows
    about dark mode. */
 .pin {
-  position: relative;
+  /* Mapbox's own, said again here rather than left to it. It marks every marker
+     up `position: absolute` in its stylesheet and then stands it on the spot
+     with a transform out of the container's top-left corner — but that rule is a
+     single class, exactly as strong as this one, and this one is written later
+     into the same bundle. So a `position` of ours does not sit beside it, it
+     replaces it: `relative` here puts every pin back in the flow, where each is
+     stacked under the one before it and then transformed from *there*. What that
+     looks like is pins a fixed number of pixels off the spot they report, which
+     is a different place on the ground at every zoom.
+
+     The pin still has to be a positioned box — the name under a mark is hung off
+     it — so the answer is to say the same thing Mapbox says rather than to say
+     nothing and hope this rule loses the tie. */
+  position: absolute;
+  top: 0;
+  left: 0;
+  /* One size for all of them, against the three they were drawn at first. The
+     head says which kind of thing is standing there, which is the whole of what
+     a reader has to tell apart; a difference in the size as well was saying it a
+     second time, and saying it in the one dimension that also decides whether a
+     pin can be pressed. What is left of that ordering is the stack at the bottom
+     of this file, where the ground still goes under everything.
+
+     28 is the size a target wants under a finger rather than the size the shape
+     wants on a 300px tile — everything the map has to say about one of these is
+     behind a press on it — and about as far as that can go before two pins in
+     the same street stand on each other. */
+  width: 28px;
   aspect-ratio: 24 / 21.6;
   cursor: pointer;
 }
@@ -121,6 +148,12 @@
   height: 100%;
   fill: #fff;
   stroke: #000;
+  /* A stroke on the 24-unit grid is scaled along with everything else on it, so
+     the 1.2 the button's copy of this pin is drawn with would come out at 1.4px
+     here — a fatter line than any other icon on the page, on the one drawing
+     meant to read as the same object as those. 24/28 of it renders as the 1px
+     hairline the 20px pin had. */
+  stroke-width: 0.857;
   /* Round, and not miter: a mitred join at the point would run it to a spike
      well past the box, and the crop above is measured off this one */
   stroke-linejoin: round;
@@ -137,8 +170,8 @@
    parts that are meant to be solid say so for themselves below.
 
    The stroke is the one thing not allowed to come down with the drawing. A glyph
-   sits under two scalings — the head's, and the pin's own 24 units into 22-28px
-   — and a hairline through both of those is a sixth of a pixel. Held out of them
+   sits under two scalings — the head's, and the pin's own 24 units into 28px —
+   and a hairline through both of those is a fifth of a pixel. Held out of them
    it is 1px wherever it is drawn, at any size of pin, which is what every other
    line in lo is and what the pin around it is carefully worked out to be. */
 .pinGlyph {
@@ -159,49 +192,10 @@
   fill: #fff;
 }
 
-/* 28 wide, against the 20 it was drawn at first. The old one was the size the
-   shape wants on a 300px tile and not the size a target wants under a finger,
-   and of the two a pin has to be the second: everything the map has to say about
-   a mark is behind a press on it. This is about as far as that can go before two
-   pins in the same street stand on each other. */
-.markPin {
-  width: 28px;
-}
-
-.markPin svg {
-  /* A stroke on the 24-unit grid is scaled along with everything else on it, so
-     the 1.2 the button's copy of this pin is drawn with would come out at 1.4px
-     here — a fatter line than any other icon on the page, on the one drawing
-     meant to read as the same object as those. 24/28 of it renders as the 1px
-     hairline the 20px pin had, and the two rules under this one are that same
-     sum at their own widths. */
-  stroke-width: 0.857;
-}
-
-/* A shade under a mark and for the same reason it always was: a mark is a spot
-   the reader chose, a post is one they are passing. Two pixels is as much
-   difference as that deserves — it was a square of another size once, and the
-   size was doing work the shape can now do on its own. */
-.postPin {
-  width: 26px;
-}
-
-.postPin svg {
-  stroke-width: 0.923;
-}
-
-/* The ground's own, and the small ones: two dozen at a time where everything
-   else arrives in ones and twos, so this is where a pin gives way. 22px is the
-   floor a cup and a fork survive — under it the head has no room to hold either
-   — and the rest of the sitting back is done by the stack below, which puts
-   these under everything. */
-.venuePin {
-  width: 22px;
-}
-
-.venuePin svg {
-  stroke-width: 1.09;
-}
+/* The three kinds carry nothing of their own beyond the stack at the bottom of
+   this file, which is the one thing still told apart by which of them a pin is.
+   They stay named all the same: a pin is handed one in MapCard.jsx, and a class
+   that says what a thing is reads better at both ends than a z-index would. */
 
 /* The name on a mark somebody renamed, drawn as the people's names are drawn —
    same mono, same hairline box, same fixed black and white, and fixed for the

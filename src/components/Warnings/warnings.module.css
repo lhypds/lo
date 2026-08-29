@@ -205,10 +205,9 @@
 /* Cut to a single square, the card keeps the whole claim — the mark, the kind of
    weather, what was issued and how far up the evacuation scale it is — and drops
    only the reading around it: the hours it runs for and how much of the
-   prefecture it covers, both of them still one press away in the bulletin. The
-   claim itself is not something a square gets an abridged version of. 大雨 注意報
-   レベル2 is three facts and none of them says another: the weather, the strength,
-   and the number the country's own advice is written against.
+   prefecture it covers, both of them still one press away in the bulletin. What
+   is left is the claim — 大雨 注意報 レベル2, the weather, the strength, and the
+   number the country's own advice is written against.
 
    What gives way instead is the line. A row here is allowed to wrap, so the three
    sit side by side while the tile has the width for them — which in Japanese and
@@ -218,6 +217,11 @@
    read, and 大雨 cut to 大 cannot. Either way they are hard right, which is where
    they are at every other size — see .said, which is what keeps them together and
    keeps them there.
+
+   Below phone width the wrap stops being the answer and the strength drops out of
+   the row instead, chip and colour carrying it — see the container query under
+   .square .kind. So the three facts are three down to 230px and two under it,
+   which is the width at which two of them stop fitting on one line.
 
    The kind takes what it needs at this size instead of all there is, which is
    what leaves the other two on its line at all — stretched to fill, it would push
@@ -263,6 +267,40 @@
 
 .square .kind {
   flex: 0 1 auto;
+}
+
+/* On a phone-sized tile the strength stops being written out. It is the longest
+   thing on the row by some way — "Emergency warning" is 17 characters of
+   monospace, and "Advisory" is still 8 against a two-character chip — so it is
+   what takes the row onto a second line, and a row of two lines is a row that no
+   longer lines up with the people square beside it. That alignment is what --row
+   is for, and it is worth more here than the word is.
+   Worth more because the word is the one thing on the row that is said twice
+   already. The band fixes the level one to one (see LEVELS in utils/warnings.js):
+   L2 *is* 注意報, L3 *is* 警報, and the chip is still there saying so in two
+   characters where the word wanted seventeen. The ground under the row says it a
+   third time, and the mark beside the weather — filled at warning strength,
+   hollow for an advisory — a fourth. Nothing goes with it that the row does not
+   still answer.
+   Hidden from the eye rather than from the page: a reader listening to the row
+   has no width to run out of, and the mark and the colour are not for them.
+   The threshold is the weather card's — 230px is this dashboard's word for a tile
+   at phone width. Measured rather than handed down as a class, and the comment
+   above is not being contradicted: what that one refuses to guess from width is
+   which of two sizes the reader chose, a question the card is told the answer to.
+   How much room the row has is not that question. It is width, and width is what
+   a container query is. */
+@container (max-width: 230px) {
+  .severity {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
 }
 
 @media (hover: hover) {

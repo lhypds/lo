@@ -75,15 +75,77 @@ function cached(key, ttl, load) {
   return pending;
 }
 
+// A request that never became an answer: the name would not resolve, the
+// handshake was refused or timed out, the connection dropped part-way. None of
+// these are a fault in this file — they are somebody else's server having a bad
+// minute — and they should read as one in the log and answer as one to the
+// browser, rather than arriving as a 500 with a stack trace under it.
+const UNREACHABLE_CODES = new Set([
+  "ECONNREFUSED", // nothing listening
+  "ECONNRESET", // hung up part-way through
+  "EHOSTUNREACH",
+  "ENETUNREACH",
+  "ENOTFOUND", // DNS has never heard of it
+  "EAI_AGAIN", // DNS could not say just now
+  "ETIMEDOUT", // handshake never landed
+  "UND_ERR_CONNECT_TIMEOUT",
+]);
+
+// fetch reports every transport failure as the same bare `TypeError: fetch
+// failed` and files the reason underneath in `cause` — and when a hostname has
+// several addresses, as an AggregateError holding one error per address. The
+// reason is worth having, so it is dug out here rather than at each of the
+// dozen call sites that would otherwise have to know the shape.
+function unreachableCodes(error) {
+  const cause = error?.cause;
+  if (!cause) return [];
+  const codes = [cause.code, ...(cause.errors ?? []).map((inner) => inner?.code)];
+  return [...new Set(codes.filter((code) => UNREACHABLE_CODES.has(code)))];
+}
+
+// Asked by the routes, which owe the reader a 504 and the log a single line for
+// these, and a 500 and the whole stack for anything they did not see coming.
+// Both the tidied error below and a raw one — articles.js does its own fetching
+// and its failures reach the same handler — answer to this.
+export function isUpstreamDown(error) {
+  if (error?.upstreamDown) return true;
+  // AbortSignal.timeout: the upstream had its seconds and did not use them.
+  if (error?.name === "TimeoutError") return true;
+  return unreachableCodes(error).length > 0;
+}
+
+function unreachable(host, reason, cause) {
+  const error = new Error(`${host} could not be reached (${reason})`);
+  error.upstreamDown = true;
+  error.cause = cause;
+  // One line, at the point where what went wrong is still known. The callers
+  // that degrade quietly — a card that would rather show nothing than an error
+  // — swallow the throw a moment from now, and without this the reason a
+  // dashboard came up half empty would be nowhere at all.
+  console.warn(`upstream: ${error.message}`);
+  return error;
+}
+
 // `agent` and `timeout` are here for the one upstream that will not take the
 // defaults: Overpass turns the User-Agent above away at the door and wants
 // longer to think than a feed does (see the venues section below). Everything
 // else calls this with two arguments and never learns they exist.
 async function getText(url, accept, { agent = USER_AGENT, timeout = UPSTREAM_TIMEOUT_MS } = {}) {
-  const response = await fetch(url, {
-    headers: { "User-Agent": agent, Accept: accept },
-    signal: AbortSignal.timeout(timeout),
-  });
+  const host = new URL(url).host;
+  let response;
+  try {
+    response = await fetch(url, {
+      headers: { "User-Agent": agent, Accept: accept },
+      signal: AbortSignal.timeout(timeout),
+    });
+  } catch (error) {
+    if (error.name === "TimeoutError") throw unreachable(host, `no answer in ${timeout} ms`, error);
+    const codes = unreachableCodes(error);
+    if (codes.length > 0) throw unreachable(host, codes.join(", "), error);
+    // Not the network, then — a malformed URL or a bug in the lines above. That
+    // is this file's fault and it should arrive looking like it.
+    throw error;
+  }
   if (!response.ok) {
     const error = new Error(`${new URL(url).host} returned HTTP ${response.status}`);
     // Carried rather than left in the sentence: one caller below tells "come

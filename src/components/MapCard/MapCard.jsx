@@ -121,9 +121,9 @@ function personElement(username) {
 // in utils/icons.js).
 //
 // One shape and not four, because they are all answering the same question and a
-// reader should not have to learn a second alphabet to read a map. What tells
-// them apart is the head and the size, which is as much difference as a thing
-// standing in the same street as three others should have.
+// reader should not have to learn a second alphabet to read a map. The head is
+// the whole of what tells them apart — they stand the same size, and what sits
+// over what is left to the stack in map.module.css.
 //
 // What the map adds is where the point goes. The grid runs to 24 and the point
 // is at 21, so a marker anchored by the bottom of its box would hang the pin
@@ -197,9 +197,10 @@ function markElement(label = "") {
 }
 
 // A post carries the picture in a frame the top bar wears, which is the drawing
-// lo already uses for "somebody left something here". A shade smaller than a
-// mark, on the same terms as ever: a mark is a spot the reader chose, a post is
-// one they are passing.
+// lo already uses for "somebody left something here". A mark is a spot the
+// reader chose and a post is one they are passing, and that difference is now
+// the head's to carry: it used to be said in the size as well, which put it in
+// the one dimension that also decides how easily either can be pressed.
 function postElement() {
   return pinElement(styles.postPin, glyphElement("post"));
 }
@@ -208,13 +209,12 @@ function postElement() {
 // pair on the map that says what it is rather than that it is there, because
 // these are the only two kinds standing in the same street as each other.
 //
-// The smallest of them, and for what they are. Everything else the map draws is
-// lo's — the reader, where they stood, what they wrote, what they kept — and
-// these are the ground itself, which nobody put here. They are also the only
-// pins that arrive two dozen at a time, so they are the ones that have to sit
-// back: at a mark's own 28px a city centre would be a wall of them with the
-// reader's own spots lost inside it. Small, and underneath (see the stack in
-// map.module.css), which is the same thought said the other way round.
+// The ones that sit back, though no longer by being smaller. Everything else the
+// map draws is lo's — the reader, where they stood, what they wrote, what they
+// kept — and these are the ground itself, which nobody put here. They are also
+// the only pins that arrive two dozen at a time, so where two of them want the
+// same few pixels as a mark, it is the mark that has to be on top: that is the
+// whole of what the stack in map.module.css is for.
 function venueElement(kind) {
   return pinElement(styles.venuePin, glyphElement(kind));
 }
@@ -394,11 +394,10 @@ const HOVERS = window.matchMedia("(hover: hover)").matches;
 // at least the truth about where the pin is.
 //
 // The offset is measured off the pins in map.module.css, which are all anchored
-// by their point and so stand that far up from the spot they report: 25.2px for
-// a mark — 28 wide by the cropped viewBox's ratio — down to 19.8 for a place.
-// One number covers all three. A bubble a few pixels clear of the smaller pins
-// is no worse off than one resting on them, and three offsets would be three
-// more numbers to keep in step with the stylesheet.
+// by their point and so stand that far up from the spot they report: 25.2px, 28
+// wide by the cropped viewBox's ratio. One number covers every kind, which is
+// what one size buys — a bubble a pixel clear of the pin is no worse off than
+// one resting on it, and the number no longer has to be the tallest of three.
 const POPUP_OFFSET = 26;
 
 // An opened bubble is left where it is put rather than being handed the focus.

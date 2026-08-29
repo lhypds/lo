@@ -48,6 +48,7 @@ import {
 } from "./db.js";
 import { COMPONENTS, componentsFor, countryList } from "./countries.js";
 import {
+  isUpstreamDown,
   lookupEvents,
   lookupNearby,
   lookupPlace,
@@ -674,7 +675,7 @@ app.get("/api/nearby", async (req, res, next) => {
   try {
     res.json(await lookupNearby(coords.latitude, coords.longitude, requestedLang(req)));
   } catch (error) {
-    if (error.name === "TimeoutError") return res.status(504).json({ error: "Timed out looking up what is nearby" });
+    if (isUpstreamDown(error)) return res.status(504).json({ error: "Timed out looking up what is nearby" });
     next(error);
   }
 });
@@ -685,7 +686,7 @@ app.get("/api/events", async (req, res, next) => {
   try {
     res.json(await lookupEvents(coords.latitude, coords.longitude, requestedLang(req)));
   } catch (error) {
-    if (error.name === "TimeoutError") return res.status(504).json({ error: "Timed out looking up events" });
+    if (isUpstreamDown(error)) return res.status(504).json({ error: "Timed out looking up events" });
     next(error);
   }
 });
@@ -701,7 +702,7 @@ function venuesRoute(kind) {
     try {
       res.json(await lookupVenues(kind, coords.latitude, coords.longitude, requestedLang(req)));
     } catch (error) {
-      if (error.name === "TimeoutError") {
+      if (isUpstreamDown(error)) {
         return res.status(504).json({ error: "Timed out looking up what is around here" });
       }
       next(error);
@@ -751,7 +752,7 @@ app.get("/api/trends", async (req, res, next) => {
   try {
     res.json(await lookupTrends(coords.latitude, coords.longitude, requestedLang(req)));
   } catch (error) {
-    if (error.name === "TimeoutError") return res.status(504).json({ error: "Timed out looking up trends" });
+    if (isUpstreamDown(error)) return res.status(504).json({ error: "Timed out looking up trends" });
     next(error);
   }
 });
@@ -764,7 +765,7 @@ app.get("/api/warnings", async (req, res, next) => {
   try {
     res.json(await lookupWarnings(coords.latitude, coords.longitude));
   } catch (error) {
-    if (error.name === "TimeoutError") return res.status(504).json({ error: "Timed out looking up warnings" });
+    if (isUpstreamDown(error)) return res.status(504).json({ error: "Timed out looking up warnings" });
     next(error);
   }
 });
@@ -1231,6 +1232,14 @@ app.use((error, req, res, _next) => {
   // way one gets here.
   if (error?.type === "entity.too.large") {
     return res.status(413).json({ error: "File too large" });
+  }
+  // Nor is an upstream that never answered. The routes that can say something
+  // specific about which card went without already have (see isUpstreamDown);
+  // this is for the rest of them, and for articles.js, which fetches for itself
+  // and so arrives here as the raw TypeError rather than as a tidied one.
+  if (isUpstreamDown(error)) {
+    console.warn(`upstream: ${error.message}`);
+    return res.status(504).json({ error: "An upstream service did not answer" });
   }
   console.error(error);
   res.status(500).json({ error: "Server error" });
