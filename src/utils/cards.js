@@ -50,8 +50,12 @@ const SIZES = [TINY, SMALL, LARGE, TALL];
 // squares unless a card says otherwise, because most of these panels are lists
 // that need the width of a line to read; the three that answer at a glance — a
 // count of people, a warning or none, a needle — say `min: TINY` and stand in a
-// single square. What the reader does from either default — a card added, a panel
-// given more room — is the only thing the layout below remembers.
+// single square. The posts panel says it too, and is the one list that does: a
+// row cut to a thumbnail, a line of what was written and how far off still
+// answers what is around here, which is the trade the people panel already makes
+// at that size (the trimming is in posts.module.css). What the reader does from
+// either default — a card added, a panel given more room — is the only thing the
+// layout below remembers.
 //
 // `max` is the other end of the same ladder, and it is six squares — a third tile
 // down, the tallest thing on the grid — unless a card says otherwise. Every panel
@@ -91,7 +95,7 @@ export const CARDS = [
   { id: "mark", label: "mark.button", own: true, fixed: true, min: TINY, max: TINY },
   { id: "people", label: "people.nearby", own: true, min: TINY, max: TINY },
   { id: "warnings", label: "warnings.title", min: TINY, max: TINY },
-  { id: "posts", label: "posts.nearby", own: true, off: true },
+  { id: "posts", label: "posts.nearby", own: true, off: true, min: TINY },
   { id: "nearby", label: "news.title", off: true },
   { id: "events", label: "events.title", off: true },
   { id: "trends", label: "trends.title", off: true },

@@ -1,7 +1,7 @@
 import { Suspense, lazy, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
-import { Card, Skeleton, TileId, showToast } from "../../ui/index.js";
+import { Card, Skeleton, TileId, showToast, useNavigate, useSearchParams } from "../../ui/index.js";
 import { arrangeCards, cardLabel, cardSpan, useCards } from "../../utils/cards.js";
 import { paginate } from "../../utils/pages.js";
 import { getLocationState, refreshLocation } from "../../utils/location.js";
@@ -49,6 +49,14 @@ const SLOP = 10;
 // crossing the edge on its way somewhere else.
 const EDGE = 24;
 const EDGE_MS = 600;
+
+// The route writes page numbers for people (starting at one), while the strip
+// counts them as an array (starting at zero). An absent or malformed number is
+// the opening page.
+function pageIn(searchParams) {
+  const number = Number(searchParams.get("page"));
+  return Number.isSafeInteger(number) && number > 0 ? number - 1 : 0;
+}
 
 // Which card a point is over, by name. The tiles say which card they are (see
 // TileId in ui/Card) rather than being counted off against the list they were
@@ -98,6 +106,8 @@ function moveTo(ids, id, to) {
 
 export default function HomePage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   // Posts come from the provider rather than from here: they are a reading of
   // the fix, like the place name is, and the refresh in the top bar has to be
   // able to reach them without knowing which page it is sitting on.
@@ -117,7 +127,8 @@ export default function HomePage() {
   // every card once, then move the ones that did not fit onto a second page and
   // mount them again, which for the cards that ask the server something is that
   // question asked twice.
-  const [page, setPage] = useState(0);
+  const requestedPage = pageIn(searchParams);
+  const [page, setPage] = useState(requestedPage);
   const [grid, setGrid] = useState(null);
   // The window the pages are seen through, the row of them behind it, the first
   // page — which is the one the module is measured off — and the gesture in
@@ -151,6 +162,11 @@ export default function HomePage() {
   // container-sized box, which would be the containing block of any fixed sheet
   // mounted inside it.
   const [commenting, setCommenting] = useState(null);
+
+  // A dashboard reached through browser history while it is already mounted
+  // follows the page written in that history entry as well. Usually the trip to
+  // another screen unmounts this page, but search-only history changes do not.
+  useEffect(() => setPage(requestedPage), [requestedPage]);
 
   // Marks are yours and are the same list wherever you are standing, so unlike
   // posts they are not asked for again on every move — only on the refresh in
@@ -386,7 +402,17 @@ export default function HomePage() {
   const current = Math.min(page, pages.length - 1);
 
   function turnTo(index) {
-    setPage(Math.max(0, Math.min(index, pages.length - 1)));
+    const next = Math.max(0, Math.min(index, pages.length - 1));
+    setPage(next);
+
+    // Replace rather than push: a run of swipes is still one place in browser
+    // history. The entry itself remembers the visible page, so browser Back
+    // after opening a post returns to the same part of the dashboard.
+    const params = new URLSearchParams(searchParams);
+    if (next === 0) params.delete("page");
+    else params.set("page", String(next + 1));
+    const search = params.toString();
+    navigate(`/${search ? `?${search}` : ""}`, { replace: true, scroll: false });
   }
 
   // The page follows the drag while it is under way and settles when it is let
@@ -463,7 +489,7 @@ export default function HomePage() {
     draggedRef.current = start.axis === "x" && Math.abs(deltaX) > AXIS;
     track.style.transition = "";
     track.style.transform = `translateX(${-next * 100}%)`;
-    if (next !== current) setPage(next);
+    if (next !== current) turnTo(next);
   }
 
   function cancelSwipe() {

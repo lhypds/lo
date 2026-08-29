@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
-import { AuthImage, Card, Link, Skeleton } from "../../ui/index.js";
-import { LARGE, SMALL, TALL, useCardSize } from "../../utils/cards.js";
+import { AuthImage, Card, Link, Skeleton, useSearchParams } from "../../ui/index.js";
+import { LARGE, SMALL, TALL, TINY, useCardSize } from "../../utils/cards.js";
 import { distanceMeters, formatCoords, formatDistance, formatUsername, relativeTime } from "../../utils/format.js";
 import CardSize from "../CardSize/index.js";
 import { useHere } from "../LocationProvider/index.js";
@@ -16,25 +16,39 @@ import styles from "./posts.module.css";
 //
 // A row leads to the posts page rather than opening anything here: that page is
 // this list with room to breathe and a map that pans to whichever post is asked
-// for, and the id goes with the link so it arrives on the one that was pressed.
+// for. The id goes with the link so it arrives on the one that was pressed, and
+// a later dashboard page goes too so the arrow there can return to it.
 // An anchor rather than a button, so the row can be opened in its own tab like
 // any other link on the dashboard.
 export default function PostsCard() {
   const { t, i18n } = useTranslation();
+  const [searchParams] = useSearchParams();
   const { coords, posts, loadingPosts } = useHere();
-  // How tall the reader has left it, anywhere from two squares to six. A list
-  // panel is the kind of tile that is worth another row on some days and not on
-  // others, which is what the pair of buttons in the heading is for: how many
-  // posts are around here is the street's answer and how much of the page they
-  // are worth is the reader's.
+  const page = Number(searchParams.get("page"));
+  const fromPage = Number.isSafeInteger(page) && page > 1 ? page : null;
+  // How tall the reader has left it, anywhere from a single square to six. A
+  // list panel is the kind of tile that is worth another row on some days and
+  // not on others, which is what the pair of buttons in the heading is for: how
+  // many posts are around here is the street's answer and how much of the page
+  // they are worth is the reader's.
   const size = useCardSize("posts");
+  // The bottom rung, where the panel stands among the opening squares rather
+  // than across the column: a cube of posts is three rows deep, and the rows are
+  // trimmed to it (see posts.module.css). Worth naming because it is three
+  // answers at once — the shape of the tile, its heading and its rows.
+  const cube = size === TINY;
 
   return (
     <Card
       // "nearby", not the page's bare "posts": the dashboard is a page of
       // answers about where you are standing, and this one is only the posts
       // within reach of it — the page it leads to is the whole list.
-      title={t("posts.nearby")}
+      //
+      // On a cube the "nearby" is dropped and not the noun, as on the people
+      // square beside it: a single square is a tile among tiles that are all
+      // about here, and the word is the first thing the heading can spare when
+      // it is sharing one column with a count and the pair of buttons.
+      title={cube ? t("posts.short") : t("posts.nearby")}
       // How many there are. The panel is a window onto a list that scrolls, so
       // the figure is the thing the rows on screen cannot say for themselves:
       // whether there are four posts around here or forty. The distance that
@@ -45,11 +59,15 @@ export default function PostsCard() {
       // heading is about to say there is nothing around here in words.
       meta={posts.length || null}
       action={<CardSize id="posts" />}
-      wide
+      // A cube is the one size that is not the width of the panel column: it is
+      // a square standing in a single column of the grid, which is what `square`
+      // without `wide` means (see ui/Card).
+      wide={!cube}
       half={size === SMALL}
-      square={size === LARGE}
+      square={size === LARGE || cube}
       tall={size === TALL}
       flush
+      className={cube ? styles.square : undefined}
     >
       <div className={styles.scroll}>
         {/* Waiting is not the same answer as none: the list belongs to the
@@ -66,7 +84,10 @@ export default function PostsCard() {
           <ul className={styles.list}>
             {posts.map((post) => (
               <li key={post.id}>
-                <Link to={`/posts?post=${post.id}`} className={styles.item}>
+                <Link
+                  to={`/posts?post=${post.id}${fromPage ? `&home=${fromPage}` : ""}`}
+                  className={styles.item}
+                >
                   {/* Square and cropped, as in the list on the posts page: a row
                       is the same height whichever way the photo was held. */}
                   {post.image && (

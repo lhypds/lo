@@ -258,6 +258,7 @@
   "posts": {
     "title": "posts",
     "nearby": "附近的 posts",
+    "short": "posts",
     "subtitle": "附近的 posts",
     "empty": "附近还没有 post"
   },

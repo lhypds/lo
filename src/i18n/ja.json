@@ -258,6 +258,7 @@
   "posts": {
     "title": "posts",
     "nearby": "近くの posts",
+    "short": "posts",
     "subtitle": "近くの posts",
     "empty": "近くにまだ post はありません"
   },

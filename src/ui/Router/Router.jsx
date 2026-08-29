@@ -24,7 +24,7 @@ export function RouterProvider({ children }) {
     const next = `${target.pathname}${target.search}${target.hash}`;
     window.history[options.replace ? "replaceState" : "pushState"]({}, "", next);
     setLocation(currentLocation());
-    window.scrollTo(0, 0);
+    if (options.scroll !== false) window.scrollTo(0, 0);
   }, []);
 
   const value = useMemo(() => ({ location, navigate }), [location, navigate]);

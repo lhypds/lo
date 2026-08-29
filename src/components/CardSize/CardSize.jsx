@@ -8,6 +8,8 @@ import styles from "./size.module.css";
 // panel's own ladder rather than a jump to either end (see cardSizes in
 // utils/cards.js) — every panel that holds a list has three rungs, two squares to
 // four to six, and a button that jumped would put the middle one out of reach. The
+// posts panel has a fourth rung under those and opens on it — a single square,
+// with three steps of growing above it rather than two. The
 // squares that never resize have one rung and spend both buttons on it, which is
 // the same rule read at the other end.
 //

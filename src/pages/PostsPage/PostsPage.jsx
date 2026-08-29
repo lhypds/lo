@@ -47,9 +47,19 @@ export default function PostsPage() {
   // person's page rather than the dashboard. It stays the way back even after
   // the field has been widened or cleared — the button is about the trip here,
   // not about what is on the map now. Without the name — the dashboard's posts
-  // panel presses through with ?post= alone — the page is the whole
-  // neighbourhood's and back is home, as before.
+  // panel presses through with ?post= and, when needed, ?home= — the page is the
+  // whole neighbourhood's and back is home, as before.
   const author = searchParams.get("author");
+  // A post opened from a later dashboard page carries that page with it. The
+  // explicit target matters for the in-app arrow; browser Back already has the
+  // dashboard's own history entry to return to.
+  const homeNumber = Number(searchParams.get("home"));
+  const homePage = Number.isSafeInteger(homeNumber) && homeNumber > 1 ? homeNumber : null;
+  const backTo = author
+    ? `/${encodeURIComponent(author)}`
+    : homePage
+      ? `/?page=${homePage}`
+      : "/";
   const [query, setQuery] = useState(() => (author ? formatUsername(author) : ""));
   const [focus, setFocus] = useState(null);
   // The post the pointer is resting on, from whichever half of the page it is
@@ -117,7 +127,7 @@ export default function PostsPage() {
 
   return (
     <div className="page-shell posts-page">
-      <Header back backTo={author ? `/${encodeURIComponent(author)}` : "/"} cards />
+      <Header back backTo={backTo} cards />
       <div className="posts-map">
         <Suspense fallback={<div className="posts-map-placeholder" />}>
           {/* Filtered with the list, for the reason the marks map is */}

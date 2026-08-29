@@ -36,6 +36,7 @@ export default function Header({ back = false, backTo = "/", cards = false }) {
   // itself rather than through a module anything could call.
   const [accountOpen, setAccountOpen] = useState(false);
   const [messagesOpen, setMessagesOpen] = useState(false);
+  const backHome = backTo === "/" || backTo.startsWith("/?");
 
   // There is no refresh button. The dashboard keeps itself current — the fix
   // every thirty seconds, the weather and the place name behind it, who else is
@@ -49,7 +50,7 @@ export default function Header({ back = false, backTo = "/", cards = false }) {
       <header className="topbar">
         <span className="topbar-brand">
           {back ? (
-            <ActionButton tooltip={t(backTo === "/" ? "header.backHome" : "header.back")} onClick={() => navigate(backTo)}>
+            <ActionButton tooltip={t(backHome ? "header.backHome" : "header.back")} onClick={() => navigate(backTo)}>
               <svg viewBox="0 0 24 24">
                 <path d="m15 18-6-6 6-6" />
               </svg>

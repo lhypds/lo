@@ -62,13 +62,18 @@
   overflow-wrap: anywhere;
 }
 
+/* One line, whatever the width: the name is the part that gives way — it has the
+   ellipsis — and a distance broken between its figure and its unit would read as
+   two readings rather than one. It matters most on the cube, where the row has a
+   single column to say who, and how far off, in. */
 .itemMeta {
   display: flex;
   align-items: baseline;
-  gap: 8px;
+  gap: 4px;
   color: var(--muted);
   font-family: var(--mono);
   font-size: 10px;
+  white-space: nowrap;
 }
 
 .who {
@@ -78,9 +83,33 @@
   white-space: nowrap;
 }
 
+/* The separator carries the same 4px on its right as the flex gap gives it on its
+   left, so the dot sits centred in a gap narrow enough to keep who, when and how
+   far reading as one line rather than three columns. */
 .itemMeta > * + *::before {
   content: "·";
-  margin-right: 8px;
+  margin-right: 4px;
+}
+
+/* On a single square the row is cut to what a cube can hold and still answer
+   with: the thumbnail stays, because it is the whole of what a post row has that
+   a headline has not, and beside it one line of what was written instead of two
+   — a row is a way in to the post either way, and two clamped lines in 116px is
+   a paragraph of ellipsis. Of the three readings under it the age goes and the
+   name and the distance stay: nearby posts is a question about here, and how far
+   off is the half of the line that answers it. The separator goes with the age,
+   since it is drawn by its own ::before and would otherwise hang between the two
+   that are left.
+
+   A class the card hands down rather than a container query, as on the people
+   square: a cube and a panel are within a few pixels of each other at the
+   extremes, and the card already knows which of the two it is. */
+.square .itemTitle {
+  -webkit-line-clamp: 1;
+}
+
+.square .itemMeta time {
+  display: none;
 }
 
 .empty {
