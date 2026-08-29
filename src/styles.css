@@ -12,7 +12,13 @@
      card the figure lands in — both tiles are the same width, so both figures
      come out the same. */
   --figure: clamp(24px, 20cqi, 44px);
-  --topbar: 48px;
+  /* Two heights, at the same threshold the grid changes at: a window that can
+     only hold two cubes across is a window with less of itself to give, and the
+     bar takes the same strip off the top of it either way. The buttons in there
+     are 22px, so 36px is still the bar's own height holding them off its edges
+     and not the other way round. The full 48px comes back below, where the
+     window is wide enough to hold four (see .card-grid). */
+  --topbar: 36px;
   /* One row of a list on the dashboard. The two squares at the foot of the
      opening page — who is around here and what is in force — stand side by side
      and are read across as much as down, so their rows have to be one height:
@@ -40,6 +46,15 @@
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Kept beside the token rather than in the grid's own breakpoint below: what the
+   bar is answering is how wide the window is, and the four-cube threshold is only
+   where the answer changes. */
+@media (min-width: 1200px) {
+  :root {
+    --topbar: 48px;
+  }
 }
 
 * {

@@ -3,8 +3,9 @@ import { useTranslation } from "react-i18next";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { ActionButton, Card, useNavigate } from "../../ui/index.js";
-import { formatCoords, formatDateTime, formatUsername } from "../../utils/format.js";
+import { formatCoords, formatDateTime, formatDistance, formatUsername } from "../../utils/format.js";
 import { MARK_PIN_EYE, MARK_PIN_PATH, MARK_PIN_TIP_Y } from "../../utils/icons.js";
+import { venueParts } from "../../utils/venues.js";
 import { useAuth } from "../AuthProvider/index.js";
 import { useHere } from "../LocationProvider/index.js";
 import styles from "./map.module.css";
@@ -170,6 +171,25 @@ function postElement() {
   return pin;
 }
 
+// Somewhere to eat or somewhere for coffee: the same square a post is, a size
+// down and wearing an initial instead of a letter of its own.
+//
+// A size down because of what these are. Everything else the map draws is lo's
+// — the reader, where they stood, what they wrote, what they kept — and these
+// are the ground itself, which nobody put here. They are also the only pins that
+// arrive two dozen at a time, so they are the ones that have to sit back: at the
+// post's own 20px a city centre would be a wall of squares with the reader's own
+// marks lost among them. Small, and underneath (see the stack in
+// map.module.css), which is the same thought said in the other direction.
+const VENUE_INITIAL = { food: "f", cafe: "c" };
+
+function venueElement(kind) {
+  const pin = document.createElement("div");
+  pin.className = styles.venueDot;
+  pin.textContent = VENUE_INITIAL[kind] ?? "";
+  return pin;
+}
+
 // Built out of nodes rather than a string of HTML: the name is whatever the
 // reader typed into the rename box, and setHTML would run it.
 function markPopupElement(name, coords, iso, when) {
@@ -185,6 +205,35 @@ function markPopupElement(name, coords, iso, when) {
   time.dateTime = iso;
   time.textContent = when;
   wrapper.append(label, position, time);
+  return wrapper;
+}
+
+// A place's bubble says what its row in the card says, in the same order: the
+// name, what it serves, and how far off it is. Wearing the mark bubble's own
+// classes, because it is the same shape of thing — a name with a line or two of
+// small print under it — and a second stylesheet for the same box would be two
+// boxes to keep looking alike.
+//
+// Nothing in it can be pressed, as in a mark's. The way to a place is the row in
+// the card, which is a directions link; a bubble on a map that quietly took over
+// as the way there would be a second answer to a question already answered, and
+// this one is deaf to the pointer besides (see .markPopup in map.module.css).
+function venuePopupElement(name, note, away) {
+  const wrapper = document.createElement("div");
+  wrapper.className = styles.markPopup;
+  const label = document.createElement("strong");
+  label.textContent = name;
+  wrapper.append(label);
+  if (note) {
+    const serves = document.createElement("span");
+    serves.className = styles.markPopupMeta;
+    serves.textContent = note;
+    wrapper.append(serves);
+  }
+  const distance = document.createElement("span");
+  distance.className = styles.markPopupMeta;
+  distance.textContent = away;
+  wrapper.append(distance);
   return wrapper;
 }
 
@@ -357,6 +406,13 @@ function showing(marker) {
 export default function MapCard({
   marks = [],
   posts = [],
+  // Somewhere to eat and somewhere for coffee, handed in like the other two
+  // lists rather than fetched here: which page this map is on decides whether
+  // there are any, and that is the page's answer. The dashboard passes whatever
+  // the food and café cards have found (see utils/venues.js); the marks page
+  // passes nothing, because a page about where the reader has been is not the
+  // place to be told where lunch is.
+  venues = [],
   focus = null,
   hovered = null,
   fitMarks = false,
@@ -385,6 +441,7 @@ export default function MapCard({
   const haloMarkerRef = useRef(null);
   const markMarkersRef = useRef([]);
   const postMarkersRef = useRef([]);
+  const venueMarkersRef = useRef([]);
   // Read by the marker handlers, which are attached to DOM nodes the map owns
   // and outlive the render that built them.
   const hoverPinRef = useRef(onHoverPin);
@@ -606,6 +663,7 @@ export default function MapCard({
       haloMarkerRef.current = null;
       markMarkersRef.current = [];
       postMarkersRef.current = [];
+      venueMarkersRef.current = [];
     };
     // Built from the first fix that exists; later ones move it instead.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -765,6 +823,39 @@ export default function MapCard({
     // tear every pin on the map down and build it again.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [posts, t, i18n.language, preview, navigate, Boolean(onOpenComments)]);
+
+  // Somewhere to eat and somewhere for coffee, drawn the same wholesale way and
+  // for the same reason — two dozen of each at most, and the whole list is
+  // replaced every time the reader walks far enough to re-sort it.
+  //
+  // No id given to `preview`, which the other two both pass. An id is how a pin
+  // says which row of a list beside the map it belongs to, and these have no such
+  // list: the rows are in a card of their own somewhere else on the grid, quite
+  // possibly on another page of the strip. So the pin opens its own bubble and
+  // tells the page nothing, which is all there is to tell.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    venueMarkersRef.current.forEach(({ marker }) => marker.remove());
+    venueMarkersRef.current = venues.map((venue) => {
+      const { category, cuisine } = venueParts(venue, t);
+      const marker = preview(
+        new mapboxgl.Marker({ element: venueElement(venue.kind) })
+          .setLngLat([venue.longitude, venue.latitude])
+          .setPopup(
+            previewPopup().setDOMContent(
+              venuePopupElement(
+                venue.name,
+                [category, cuisine].filter(Boolean).join(" · "),
+                formatDistance(venue.distance),
+              ),
+            ),
+          )
+          .addTo(map),
+      );
+      return { id: venue.id, marker };
+    });
+  }, [venues, t, preview]);
 
   // The pairing the other way round: a row under the pointer in the list opens
   // the bubble on its own pin, so whichever half the reader is looking at, the

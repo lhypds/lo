@@ -4,6 +4,7 @@ import * as api from "../../api.js";
 import { Card, Skeleton, TileId, showToast, useNavigate, useSearchParams } from "../../ui/index.js";
 import { arrangeCards, cardLabel, cardSpan, useCards } from "../../utils/cards.js";
 import { paginate } from "../../utils/pages.js";
+import { useVenues } from "../../utils/venues.js";
 import { getLocationState, refreshLocation } from "../../utils/location.js";
 import CafeCard from "../../components/CafeCard/index.js";
 import ClockCard from "../../components/ClockCard/index.js";
@@ -119,6 +120,12 @@ export default function HomePage() {
   // what the reader has kept — so the grid below asks once per card rather than
   // twice (see utils/cards.js). The plus in the top bar is the other end of it.
   const { shown, size, inAdditionOrder, arrange } = useCards(supports);
+  // Whatever the food and café cards have found, on its way to the map — the one
+  // list on this page that is not the page's own. It is read here rather than in
+  // the map because which lists a map is drawing is the page's answer to give
+  // (see the props on MapCard), and it is empty whenever neither card is on the
+  // dashboard, which is what makes the pins the reader's choice too.
+  const venues = useVenues();
   // Held here, not in the map: expanding it hides the rest of the dashboard.
   const [mapExpanded, setMapExpanded] = useState(false);
   const [marks, setMarks] = useState([]);
@@ -357,6 +364,7 @@ export default function HomePage() {
           <MapCard
             posts={posts}
             marks={marks}
+            venues={venues}
             expanded={expanded}
             onToggleExpanded={() => setMapExpanded((value) => !value)}
             onOpenComments={setCommenting}

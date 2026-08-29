@@ -56,12 +56,47 @@
   margin-right: 8px;
 }
 
+/* On a single square the row keeps the headline and drops the publisher. The
+   headline is the row — it is the whole of what a listing has to say before it
+   is opened — and the publisher is the longest thing on the line under it, so
+   on a column this narrow it is the part that would push the time off the end
+   while telling the reader least. What is left is short enough to sit on one
+   line: how long ago, which is the other half of whether a listing is worth
+   opening.
+
+   A class the card hands down rather than a container query, as on the posts
+   square: a cube and a panel are within a few pixels of each other at the
+   extremes, and the card already knows which of the two it is. */
+.square .item {
+  padding: 6px 8px;
+}
+
+.square .source {
+  display: none;
+}
+
+/* The separator goes with it. It is drawn by the ::before of whatever follows
+   the publisher rather than by the publisher itself, so hiding one without the
+   other leaves a dot hanging at the front of the line with nothing on its left.
+   Written as "whatever comes after the source" so that a row with a third
+   reading on it keeps the separator between the two that are still showing. */
+.square .source + *::before {
+  content: none;
+}
+
 .empty {
   margin: 0;
   padding: 34px 12px;
   color: var(--muted);
   text-align: center;
   font-size: 11px;
+}
+
+/* The sentence that stands in for the list is a sentence and not a word, so on
+   a cube it is given the room instead of the air around it — otherwise most of
+   it sits below the fold of a tile nobody scrolls. */
+.square .empty {
+  padding: 12px 8px;
 }
 
 @media (hover: hover) {

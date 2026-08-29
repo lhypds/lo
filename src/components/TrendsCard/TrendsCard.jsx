@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
 import { Card, Skeleton } from "../../ui/index.js";
-import { LARGE, SMALL, TALL, useCardSize } from "../../utils/cards.js";
+import { LARGE, SMALL, TALL, TINY, useCardSize } from "../../utils/cards.js";
 import CardSize from "../CardSize/index.js";
 import { useHere } from "../LocationProvider/index.js";
 import styles from "./trends.module.css";
@@ -17,10 +17,14 @@ function coordKey(coords) {
 export default function TrendsCard() {
   const { t, i18n } = useTranslation();
   const { coords, reloadToken } = useHere();
-  // Ten rows by definition, in a tile the reader sizes from two squares to six:
-  // at the smallest that is a window onto a third of the list and at the tallest
-  // it is very nearly all of it (see utils/cards.js).
+  // Ten rows by definition, in a tile the reader sizes from one square to six:
+  // at the smallest that is a window onto the top few and at the tallest it is
+  // very nearly all of it (see utils/cards.js).
   const size = useCardSize("trends");
+  // The bottom rung, where the panel stands among the opening squares rather
+  // than across the column — the shape of the tile, what its heading has room
+  // for, and how a row is cut, all in one word (see trends.module.css).
+  const cube = size === TINY;
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   // True from the first render rather than from the first effect — see the
@@ -99,13 +103,23 @@ export default function TrendsCard() {
   return (
     <Card
       title={t("trends.title")}
+      // Kept even on a cube, where every other panel drops its meta. This one is
+      // not a label but the scope of the claim — trending in Kyoto and trending
+      // in Japan are two different lists, and the card is not entitled to let a
+      // reader assume the narrower one just because the tile got small. It is one
+      // word, and the heading squeezes it before it squeezes the buttons (see
+      // .meta in ui/Card).
       meta={where}
       action={<CardSize id="trends" />}
-      wide
+      // A cube is the one size that is not the width of the panel column: a
+      // square standing in a single column of the grid, which is what `square`
+      // without `wide` means (see ui/Card).
+      wide={!cube}
       half={size === SMALL}
-      square={size === LARGE}
+      square={size === LARGE || cube}
       tall={size === TALL}
       flush
+      className={cube ? styles.square : undefined}
     >
       <div className={styles.scroll}>{body}</div>
     </Card>

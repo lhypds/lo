@@ -70,12 +70,54 @@
   font-size: 10px;
 }
 
+/* On a single square the row is the rank and the word, and nothing else. Of the
+   four things a trend row carries those are the two that make it one: the word
+   is what is being searched for and the rank is the only reason the list is in
+   this order rather than another. The story underneath is context — it says so
+   in its own comment above — and the volume beside it is an order of magnitude,
+   which is the finer of two readings of the same fact the rank already gives
+   coarsely. Both are a rung up the ladder away.
+
+   The word stops wrapping with them. Ten rows of one line each is the shape that
+   fits a cube; a row allowed two lines would put half the list below the fold to
+   save a name that is a search term and reads perfectly well cut short.
+
+   A class the card hands down rather than a container query, as on the posts
+   square: a cube and a panel are within a few pixels of each other at the
+   extremes, and the card already knows which of the two it is. */
+.square .item {
+  gap: 6px;
+  padding: 6px 8px;
+}
+
+.square .rank {
+  width: 12px;
+}
+
+.square .story,
+.square .count {
+  display: none;
+}
+
+.square .name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .empty {
   margin: 0;
   padding: 34px 12px;
   color: var(--muted);
   text-align: center;
   font-size: 11px;
+}
+
+/* The sentence that stands in for the list is a sentence and not a word, so on
+   a cube it is given the room instead of the air around it — otherwise most of
+   it sits below the fold of a tile nobody scrolls. */
+.square .empty {
+  padding: 12px 8px;
 }
 
 @media (hover: hover) {

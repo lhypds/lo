@@ -149,9 +149,24 @@ export default function Warnings() {
                     </span>
                     {/* 警戒レベル, the number the country's evacuation advice is
                         written against — the word beside it says what was issued,
-                        this says how far up the scale it is. */}
+                        this says how far up the scale it is.
+                        Written short, as L2 rather than Level 2, and the same two
+                        characters in all three languages. This tile is a single
+                        square and never anything else, and of the three things in
+                        the group this was the one that went over the end and took
+                        the line with it — the comment above says so. What it can
+                        give up is the word, because the chip is not prose: it is
+                        boxed, in the mono face, and standing beside a word that
+                        has already said 警報 or Advisory in full. What is left is
+                        a position on a five-step scale, which is all it ever was.
+                        The whole phrase is still said twice over — under the
+                        finger in the sheet, where there is room for it, and here
+                        to anyone listening rather than looking. */}
                     {level != null && (
-                      <span className={styles.level}>{t("warnings.level", { level })}</span>
+                      <span className={styles.level}>
+                        <span aria-hidden="true">{t("warnings.levelShort", { level })}</span>
+                        <span className="sr-only">{t("warnings.level", { level })}</span>
+                      </span>
                     )}
                   </span>
                 </span>

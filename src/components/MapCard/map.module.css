@@ -175,6 +175,36 @@
   color: #fff;
 }
 
+/* Somewhere to eat or somewhere for coffee: the post's square at three quarters
+   of its size, wearing the initial of the card it came off. Black and white and
+   fixed, like everything else the map draws its own marks with — these have to
+   read against road fill and park green, neither of which knows about dark mode.
+
+   Smaller than everything around it on purpose, and the only pin here that is.
+   Two dozen of each arrive at once where the other lists arrive in ones and
+   twos, so at the post's own 20px a city centre would be a wall of squares with
+   the reader's own marks lost somewhere inside it. Centred on the spot rather
+   than standing on it: a square is not a pin, it has no point to put anywhere. */
+.venueDot {
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #000;
+  background: #fff;
+  color: #000;
+  font-family: var(--mono);
+  font-size: 10px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.venueDot:hover {
+  background: #000;
+  color: #fff;
+}
+
 /* The name on a mark somebody renamed, drawn as the people's names are drawn —
    same mono, same hairline box, same fixed black and white, and fixed for the
    same reason: it has to read against road fill and park green, neither of which
@@ -238,9 +268,19 @@
    gives no z-index of its own, so without this they stack in the order they
    happened to be added — and the reader's own position, which is the one thing
    on the map that is about them, ends up under whichever pin was drawn last.
-   The order runs by how alive a thing is: ground that was left here, then the
-   doubt about where the reader is standing, then the reader. The popup clears
-   all of them, or opening one would put it behind the pin it belongs to. */
+   The order runs by how alive a thing is: the ground itself, then what was left
+   on it, then the doubt about where the reader is standing, then the reader. The
+   popup clears all of them, or opening one would put it behind the pin it
+   belongs to.
+
+   The ground is the bottom of that because it is the one layer nobody here put
+   there — a café is on the corner whether or not lo is running — and because it
+   is the crowded one: two dozen places will cover a mark or a post between them
+   long before the reverse is true. */
+.venueDot {
+  z-index: 0;
+}
+
 .postDot,
 .markPin {
   z-index: 1;

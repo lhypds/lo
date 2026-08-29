@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
 import { Card, PageModal, Skeleton, sheetLink } from "../../ui/index.js";
-import { LARGE, SMALL, TALL, useCardSize } from "../../utils/cards.js";
+import { LARGE, SMALL, TALL, TINY, useCardSize } from "../../utils/cards.js";
 import { formatDistance, relativeTime } from "../../utils/format.js";
 import CardSize from "../CardSize/index.js";
 import { useHere } from "../LocationProvider/index.js";
@@ -25,12 +25,14 @@ function coordKey(coords) {
 export default function NewsCard() {
   const { t, i18n } = useTranslation();
   const { coords, reloadToken } = useHere();
-  // Two squares like every other panel, until the reader gives it four or six.
-  // The wire comes back with more rows than even three tiles hold, so every rung
-  // of the ladder is a window onto the same scroll (see utils/cards.js) — and this
-  // is the only card whose place on a wide grid changes with its height, see the
-  // class below.
+  // One square like every other panel, until the reader gives it two, four or
+  // six. The wire comes back with more rows than even three tiles hold, so every
+  // rung of the ladder is a window onto the same scroll (see utils/cards.js).
   const size = useCardSize("nearby");
+  // The bottom rung, where the panel stands among the opening squares rather
+  // than across the column — the shape of the tile, what its heading has room
+  // for, and how a row is cut, all in one word (see news.module.css).
+  const cube = size === TINY;
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   // Waiting from the first render, not from the first effect: with a fix in
@@ -119,13 +121,23 @@ export default function NewsCard() {
   return (
     <Card
       title={t("news.title")}
-      meta={items.length > 0 ? t(`news.${kind}`) : result?.place?.name}
+      // The one heading on the dashboard that keeps its meta on a cube, because
+      // this one is a claim and not a label: "Local" and "Around you" are the
+      // difference between headlines from here and a list of what happens to be
+      // standing nearby, and the row that used to say which — the publisher — is
+      // the very thing a cube drops. The place name behind it is a label, so it
+      // goes the way the others do.
+      meta={items.length > 0 ? t(`news.${kind}`) : cube ? null : result?.place?.name}
       action={<CardSize id="nearby" />}
-      wide
+      // A cube is the one size that is not the width of the panel column: a
+      // square standing in a single column of the grid, which is what `square`
+      // without `wide` means (see ui/Card).
+      wide={!cube}
       half={size === SMALL}
-      square={size === LARGE}
+      square={size === LARGE || cube}
       tall={size === TALL}
       flush
+      className={cube ? styles.square : undefined}
     >
       <div className={styles.scroll}>{body}</div>
       <PageModal

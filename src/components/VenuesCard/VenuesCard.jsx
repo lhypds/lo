@@ -5,6 +5,7 @@ import { Card, Skeleton } from "../../ui/index.js";
 import { LARGE, SMALL, TALL, TINY, useCardSize } from "../../utils/cards.js";
 import { formatDistance } from "../../utils/format.js";
 import { directionsLink } from "../../utils/maps.js";
+import { publishVenues, venueParts } from "../../utils/venues.js";
 import CardSize from "../CardSize/index.js";
 import { useHere } from "../LocationProvider/index.js";
 import styles from "./venues.module.css";
@@ -15,13 +16,10 @@ import styles from "./venues.module.css";
 // — so there is nothing here to keep in step with anything else.
 const FETCH = { food: api.getFood, cafe: api.getCafes };
 
-// The amenities the server asks OpenStreetMap about, and nothing else: a tag lo
-// has a word for is a tag lo can put on a row in the reader's language, and one
-// it does not is left off rather than printed as the slug it arrived as.
-const CATEGORIES = new Set(["restaurant", "fast_food", "food_court", "cafe"]);
-
-// The two that say nothing when there is a cuisine to say instead — see below.
-const PLAIN = new Set(["restaurant", "cafe"]);
+// One array for every empty answer, so that the rows this card publishes to the
+// map keep the same identity while there is nothing to publish (see
+// utils/venues.js, where the same reasoning is spelled out).
+const NONE = [];
 
 // Unlike the news beside it, this list goes stale the moment the reader walks:
 // the rows are sorted by how far off they are and the distances are measured
@@ -32,26 +30,6 @@ const PLAIN = new Set(["restaurant", "cafe"]);
 function coordKey(coords) {
   if (!coords) return "";
   return `${coords.latitude.toFixed(3)},${coords.longitude.toFixed(3)}`;
-}
-
-// What a row says about itself under its name, which is at most two words wide.
-//
-// The cuisine leads, because it is the thing that tells one row from the next:
-// down a list where nearly every line is a restaurant, "Restaurant" is the part
-// carrying no information. The amenity is set beside it only where it carries
-// some of its own — a counter you eat at standing up is a different evening from
-// a table you sit down at — and otherwise stands in for a cuisine nobody has
-// filled in.
-//
-// The cuisine itself is left in the words the mappers wrote it in, less the
-// underscores, which are the file format showing through. There is no closed
-// list of them to translate against, and a guessed translation of somebody's
-// kitchen is worse than their own plain word for it.
-function rowParts(item, t) {
-  const cuisine = (item.cuisine || "").replace(/_/g, " ");
-  const named = CATEGORIES.has(item.category);
-  const shown = named && (!cuisine || !PLAIN.has(item.category));
-  return { category: shown ? t(`venues.category.${item.category}`) : "", cuisine };
 }
 
 // The one panel lo draws twice. Somewhere to eat and somewhere for a coffee are
@@ -65,10 +43,11 @@ export default function VenuesCard({ kind }) {
   const { t, i18n } = useTranslation();
   const { coords, reloadToken } = useHere();
   // A list as long as the street is, in a tile the reader sizes from a single
-  // square to six. It arrives at two — see `opens` in utils/cards.js — because
-  // that is where a row is read at the width of a line; the rung below is there
-  // because the nearest three or four is very often the whole of what "where is
-  // the closest coffee" was asking, and that fits in a cube.
+  // square to six — and it arrives as the single square, among the tiles the
+  // dashboard opens with rather than as a strip across the column. The nearest
+  // three or four is very often the whole of what "where is the closest coffee"
+  // was asking, and that is a glance rather than a column; a reader who wants
+  // the street rather than the corner has three rungs above it to say so.
   const size = useCardSize(kind);
   // The bottom rung, where the panel stands among the opening squares rather
   // than across the column. Worth naming because it is three answers at once:
@@ -100,7 +79,20 @@ export default function VenuesCard({ kind }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kind, key, language, reloadToken]);
 
-  const items = result?.items ?? [];
+  const items = result?.items ?? NONE;
+
+  // The same rows, on the ground. Published rather than handed up, because the
+  // map is not this card's parent and has no business being one — see
+  // utils/venues.js.
+  useEffect(() => {
+    publishVenues(kind, items);
+  }, [kind, items]);
+
+  // And cleared when the tile goes, so a card the reader has put away takes its
+  // pins with it. Its own effect and not the one above's cleanup: that one runs
+  // on every new list as well, which would take all the pins off the map and put
+  // them back for a redraw that only ever moved them.
+  useEffect(() => () => publishVenues(kind, null), [kind]);
 
   // No `loading` flag, unlike the panels beside this one, because there is
   // nothing here it would be needed to tell apart: an answer is a list or it is
@@ -129,7 +121,7 @@ export default function VenuesCard({ kind }) {
     body = (
       <ul className={styles.list}>
         {items.map((item) => {
-          const { category, cuisine } = rowParts(item, t);
+          const { category, cuisine } = venueParts(item, t);
           return (
             <li key={item.id}>
               {/* The row is the way there: the same anchor the marks list uses,

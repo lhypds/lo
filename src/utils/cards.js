@@ -46,36 +46,37 @@ const SIZES = [TINY, SMALL, LARGE, TALL];
 // asks rather than one that has to be cleared.
 //
 // `min` is the smallest a panel can be cut to, and also the size it arrives at: a
-// panel is offered at its smallest and grows if the reader wants it to. Two
-// squares unless a card says otherwise, because most of these panels are lists
-// that need the width of a line to read; the three that answer at a glance — a
-// count of people, a warning or none, a needle — say `min: TINY` and stand in a
-// single square.
+// panel is offered at its smallest and grows if the reader wants it to. Every
+// card says `min: TINY`, so the dashboard is a grid of squares and nothing else
+// until the reader asks for otherwise.
 //
-// Three lists say it too, and each of them can because its row survives being
-// cut to a cube. The posts panel: a thumbnail, a line of what was written and
-// how far off still answers what is around here, which is the trade the people
-// panel already makes at that size. Food and cafés: the name and the distance,
-// stacked rather than set side by side, which is the whole of what "where is the
-// nearest coffee" is asking. Each does its own trimming in its own stylesheet.
-// What the reader does from either default — a card added, a panel given more
-// room — is the only thing the layout below remembers.
+// That is the whole shape of the thing. lo opens as blocks — the time, the sky,
+// the ground, the button, who is around, what is in force — and a panel added
+// from the plus arrives as one more block beside them rather than as a strip
+// thrown across the column. Which of them is worth a second tile is a question
+// about that reader on that day, and the pair of buttons in every heading is
+// where they answer it; a page that arrives already answering it for them is a
+// page that has to be cleared before it can be read.
 //
-// `opens` parts the two questions where a card wants them parted: the size it
-// arrives at, when that is not the smallest it can be cut to.
+// What it costs is the second thing on each row, never the first, and each panel
+// gives up its own second thing in its own stylesheet. The posts panel keeps the
+// thumbnail and a line of what was written and drops the age. Food and cafés
+// stack the name over the distance rather than setting them side by side. The
+// newswire and what is on this week keep the headline and drop the publisher.
+// The trending list keeps the rank and the word and drops the story under it and
+// the volume beside it. In each case the row still answers the question the card
+// is for, which is the test a panel has to pass to be allowed down here at all —
+// and a panel that cannot pass it has no business being on a dashboard made of
+// squares.
 //
-// The newswire says it upwards. A headline is a sentence and a panel two squares
-// tall holds three of them, which is a card that has to be grown before it can be
-// read — so it arrives at four, a tile down the page rather than a strip across
-// it, and the two-square rung stays on the ladder underneath for a reader who
-// wants the dashboard back.
+// So the `?? SMALL` in cardSizes is a default that nothing now takes, and it
+// stays all the same: it is the answer for a card that has not said, and a card
+// that has not said is one whose rows nobody has yet cut to a cube. Better that
+// a new panel starts a rung up than that it inherits a size it was never drawn
+// for.
 //
-// Food and cafés say it downwards, and are the reason the two questions are worth
-// parting at all rather than a single rule with an exception. A cube of either is
-// a real answer and the reader is welcome to cut one to it, but it is not the
-// answer to open with: at two squares the same four rows are read at the width of
-// a line, names uncut, and a panel that arrives already trimmed is one whose full
-// row the reader has to discover the existence of.
+// What the reader does from here — a card added, a panel given more room — is the
+// only thing the layout below remembers.
 //
 // `max` is the other end of the same ladder, and it is six squares — a third tile
 // down, the tallest thing on the grid — unless a card says otherwise. Every panel
@@ -84,7 +85,7 @@ const SIZES = [TINY, SMALL, LARGE, TALL];
 // around here run to as many as the street has left, and the trending list is ten
 // by definition. Which of those readings is worth a third tile is the reader's
 // answer and not the feed's, so the rung is offered on all of them and none of
-// them opens at it.
+// them arrives at it — the ladder is climbed from the bottom or not at all.
 //
 // The panels that are not lists say `max: TINY` instead, which with the same
 // `min` is a card that cannot be resized at all: a count of people, a warning or
@@ -116,11 +117,11 @@ export const CARDS = [
   { id: "people", label: "people.nearby", own: true, min: TINY, max: TINY },
   { id: "warnings", label: "warnings.title", min: TINY, max: TINY },
   { id: "posts", label: "posts.nearby", own: true, off: true, min: TINY },
-  { id: "nearby", label: "news.title", off: true, opens: LARGE },
-  { id: "events", label: "events.title", off: true },
-  { id: "trends", label: "trends.title", off: true },
-  { id: "food", label: "food.title", off: true, min: TINY, opens: SMALL },
-  { id: "cafe", label: "cafe.title", off: true, min: TINY, opens: SMALL },
+  { id: "nearby", label: "news.title", off: true, min: TINY },
+  { id: "events", label: "events.title", off: true, min: TINY },
+  { id: "trends", label: "trends.title", off: true, min: TINY },
+  { id: "food", label: "food.title", off: true, min: TINY },
+  { id: "cafe", label: "cafe.title", off: true, min: TINY },
   { id: "direction", label: "direction.title", own: true, off: true, min: TINY, max: TINY },
 ];
 
@@ -213,10 +214,9 @@ function rankOf(choices, id) {
 
 // Every size a panel is offered at, smallest first — the ladder the pair of
 // buttons in its heading walks (see CardSize). Both ends are the card's own: the
-// bottom rung is `min` and the top is `max`, and most cards take the defaults for
-// both and get the same three rungs everything else has. Which rung it arrives
-// standing on is a separate question and `opens` is where it is answered — see
-// sizeOf below.
+// bottom rung is `min` and the top is `max`. Which rung it arrives standing on
+// is not a separate question any more — it is the bottom one, always, which is
+// the whole of what sizeOf below has to work out.
 export function cardSizes(id) {
   const card = BY_ID.get(id);
   const min = card?.min ?? SMALL;
@@ -231,9 +231,11 @@ export function cardSizes(id) {
 function sizeOf(choices, id) {
   const sizes = cardSizes(id);
   const chosen = choices[id]?.size;
-  if (sizes.includes(chosen)) return chosen;
-  const opens = BY_ID.get(id)?.opens;
-  return sizes.includes(opens) ? opens : sizes[0];
+  // The bottom rung otherwise, for every card there is. A remembered `opens`
+  // used to be able to put a panel further up the ladder than this; no card
+  // asks for that any more, and a dashboard whose every tile arrives as one
+  // square is what took the field away rather than what worked around it.
+  return sizes.includes(chosen) ? chosen : sizes[0];
 }
 
 // A new object when something changes and the same one in between, which is the

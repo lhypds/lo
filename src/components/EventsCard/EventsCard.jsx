@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
 import { Card, PageModal, Skeleton, sheetLink } from "../../ui/index.js";
-import { LARGE, SMALL, TALL, useCardSize } from "../../utils/cards.js";
+import { LARGE, SMALL, TALL, TINY, useCardSize } from "../../utils/cards.js";
 import { relativeTime } from "../../utils/format.js";
 import CardSize from "../CardSize/index.js";
 import { useHere } from "../LocationProvider/index.js";
@@ -25,10 +25,15 @@ function coordKey(coords) {
 export default function EventsCard() {
   const { t, i18n } = useTranslation();
   const { coords, reloadToken } = useHere();
-  // Up to six squares like the news, and for the same reason: a week's worth of
-  // what is on is a longer list than two tiles hold (see utils/cards.js). It stays
-  // in the right-hand column at every one of them — it is the news that moves.
+  // From one square up to six, like the news: a fortnight of what is on is a
+  // longer list than any of those rungs holds, so which of them it is worth is
+  // the reader's answer (see utils/cards.js). It arrives at the bottom one, as
+  // every tile on this dashboard does.
   const size = useCardSize("events");
+  // The bottom rung, where the panel stands among the opening squares rather
+  // than across the column — the shape of the tile, what its heading has room
+  // for, and how a row is cut, all in one word (see events.module.css).
+  const cube = size === TINY;
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   // Waiting from the first render, not from the first effect: with a fix in hand
@@ -96,13 +101,20 @@ export default function EventsCard() {
   return (
     <Card
       title={t("events.title")}
-      meta={result?.place?.name}
+      // The place name goes on a cube, where the heading is sharing one column
+      // with the pair of size buttons: it is a label rather than a claim, and
+      // every row under it is about here anyway.
+      meta={cube ? null : result?.place?.name}
       action={<CardSize id="events" />}
-      wide
+      // A cube is the one size that is not the width of the panel column: a
+      // square standing in a single column of the grid, which is what `square`
+      // without `wide` means (see ui/Card).
+      wide={!cube}
       half={size === SMALL}
-      square={size === LARGE}
+      square={size === LARGE || cube}
       tall={size === TALL}
       flush
+      className={cube ? styles.square : undefined}
     >
       <div className={styles.scroll}>{body}</div>
       <PageModal

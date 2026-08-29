@@ -123,6 +123,7 @@
     "loading": "Reading the warnings",
     "issued": "issued {{time}}",
     "level": "Level {{level}}",
+    "levelShort": "L{{level}}",
     "window": "Outlook {{from}} – {{to}}",
     "windowOpen": "Outlook from {{from}}",
     "sheet": {
