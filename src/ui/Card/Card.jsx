@@ -166,8 +166,7 @@ export default function Card({
     if (Date.now() - turnedAtRef.current <= TAP_GAP + TAP_GAP) return;
     const last = tapRef.current;
     const at = Date.now();
-    const near =
-      Math.abs(event.clientX - last.x) <= TAP_NEAR && Math.abs(event.clientY - last.y) <= TAP_NEAR;
+    const near = Math.abs(event.clientX - last.x) <= TAP_NEAR && Math.abs(event.clientY - last.y) <= TAP_NEAR;
     if (at - last.at <= TAP_GAP && near) {
       tapRef.current = { at: 0, x: 0, y: 0 };
       turnedAtRef.current = at;
