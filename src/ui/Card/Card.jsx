@@ -100,9 +100,6 @@ export default function Card({
   const downRef = useRef(null);
   const turnedAtRef = useRef(0);
   const cycleTimersRef = useRef([]);
-  // The pointer's own pair of presses, counted here the way the finger's are and
-  // for the same reason a host might not raise a dblclick at all (see pointerUp).
-  const clickRef = useRef({ at: 0, x: 0, y: 0 });
   const turnable = Boolean(back || onCycle);
 
   function clearCycleTimers() {
@@ -139,71 +136,45 @@ export default function Card({
     ];
   }
 
-  // Two presses on the heading, read from the finger itself rather than waited
-  // for as a dblclick. iOS raises that event only for gestures it has already
-  // decided are not zooming, panning or selecting, and on a heading that is also
-  // a handle — held it lifts the card, dragged it turns the page (see HomePage) —
-  // it does not raise it at all: the card stayed face up however many times it
-  // was tapped. The two taps are counted here instead, which is the same gesture
-  // said in the events a touch device is sure about.
-  //
-  // The touch family and not the pointer one, for the reason the dashboard gives
-  // where it reads the same gestures: a finger raises both, and the two families
-  // are split by which of them each device is answered in.
-  function touchDown(event) {
-    const touch = event.touches.length === 1 ? event.touches[0] : null;
-    downRef.current = touch ? { x: touch.clientX, y: touch.clientY } : null;
+  // Two presses on the heading, counted from the pointer itself rather than
+  // waited for as a dblclick. Every kind of press is read the one way here — a
+  // finger, a mouse, a pen, and whatever a host forwards into the frame — because
+  // the families they arrive in are not all delivered everywhere. iOS raises
+  // dblclick only for gestures it has decided are not a zoom, a pan or a
+  // selection, and on a heading that is also a handle — held it lifts the card,
+  // dragged it turns the page (see HomePage) — it does not raise it at all. lo
+  // also runs inside the Even Hub WebView as a frame (see utils/host.js), which
+  // forwards the reader's presses as pointer events with no dblclick, and often
+  // no touch events, behind them. Pointer events are the one family every one of
+  // these speaks, so the two taps are counted off pointerup and nothing else,
+  // which is the same gesture the dashboard reads to turn its pages.
+  function pressDown(event) {
+    if (!event.isPrimary) return;
+    downRef.current = { x: event.clientX, y: event.clientY };
   }
 
-  function touchUp(event) {
+  function pressUp(event) {
     const down = downRef.current;
-    const touch = event.changedTouches[0];
     downRef.current = null;
-    if (!down || !touch || event.target.closest("button")) return;
+    if (!down || !event.isPrimary || event.target.closest("button")) return;
     // A press that travelled is a drag: the page is being turned under it, or the
     // list behind it scrolled, and neither is half of a double press.
-    if (Math.abs(touch.clientX - down.x) > TAP_SLOP) return;
-    if (Math.abs(touch.clientY - down.y) > TAP_SLOP) return;
+    if (Math.abs(event.clientX - down.x) > TAP_SLOP) return;
+    if (Math.abs(event.clientY - down.y) > TAP_SLOP) return;
+    // Already answered — a device that also raises dblclick, or a family delivered
+    // alongside this one, turned the card a moment ago on this very gesture.
+    if (Date.now() - turnedAtRef.current <= TAP_GAP + TAP_GAP) return;
     const last = tapRef.current;
     const at = Date.now();
-    const near = Math.abs(touch.clientX - last.x) <= TAP_NEAR && Math.abs(touch.clientY - last.y) <= TAP_NEAR;
+    const near =
+      Math.abs(event.clientX - last.x) <= TAP_NEAR && Math.abs(event.clientY - last.y) <= TAP_NEAR;
     if (at - last.at <= TAP_GAP && near) {
       tapRef.current = { at: 0, x: 0, y: 0 };
       turnedAtRef.current = at;
       turn();
     } else {
-      // The first of a pair, or a single tap that will turn out to be nothing.
-      tapRef.current = { at, x: touch.clientX, y: touch.clientY };
-    }
-  }
-
-  // Two presses on the heading from a mouse, a pen, or whatever a host dispatches
-  // into the frame as a bare pointer — counted off pointerup for the same reason
-  // the finger's taps are counted off touchend: not every host raises the
-  // browser's own dblclick, and a click is only synthesized on top of real user
-  // input, not on the pointer events a WebView forwards. lo runs inside the Even
-  // Hub WebView as a frame (see utils/host.js), where a double press could arrive
-  // as two bare pointerups with no click or dblclick behind them — so the card
-  // never turned however many times its title was pressed. The pair is read here
-  // off the one event that always arrives, the way the dashboard reads the same
-  // gesture (see HomePage): the touch family answers the finger above, the pointer
-  // family answers everything else here, and the two are split so a finger — which
-  // raises both — is not counted twice.
-  function pointerUp(event) {
-    if (event.pointerType === "touch" || event.target.closest("button")) return;
-    // A host that also raises the native dblclick, or a finger whose taps already
-    // turned the card and are now delivering their pointer events, has been
-    // answered — this press is the same gesture arriving again under another name.
-    if (Date.now() - turnedAtRef.current <= TAP_GAP + TAP_GAP) return;
-    const last = clickRef.current;
-    const at = Date.now();
-    const near = Math.abs(event.clientX - last.x) <= TAP_NEAR && Math.abs(event.clientY - last.y) <= TAP_NEAR;
-    if (at - last.at <= TAP_GAP && near) {
-      clickRef.current = { at: 0, x: 0, y: 0 };
-      turnedAtRef.current = at;
-      turn();
-    } else {
-      clickRef.current = { at, x: event.clientX, y: event.clientY };
+      // The first of a pair, or a single press that will turn out to be nothing.
+      tapRef.current = { at, x: event.clientX, y: event.clientY };
     }
   }
 
@@ -231,26 +202,13 @@ export default function Card({
       // presses are neither — the second is well inside the half-second the hold
       // wants, and neither of them travels — so the one strip carries all three.
       // The buttons standing in it keep their own presses.
-      onDoubleClick={
-        turnable
-          ? (event) => {
-              if (event.target.closest("button")) return;
-              // A device that raises this after a double tap has already been
-              // answered — the two taps turned the card the moment the second
-              // finger left the glass, and this is the same gesture arriving a
-              // second time under another name.
-              if (Date.now() - turnedAtRef.current <= TAP_GAP + TAP_GAP) return;
-              turn();
-            }
-          : undefined
-      }
-      // The mouse, the pen, and whatever a host forwards into the frame as a bare
-      // pointer, counted off pointerup so a double press still turns the card
-      // where no click or dblclick is synthesized behind it.
-      onPointerUp={turnable ? pointerUp : undefined}
-      onTouchStart={turnable ? touchDown : undefined}
-      onTouchEnd={turnable ? touchUp : undefined}
-      onTouchCancel={
+      //
+      // Every press is read off the pointer family (see pressUp): a finger, a
+      // mouse, a pen, and whatever the Even Hub WebView forwards into the frame
+      // all raise these, where dblclick and the touch events do not always.
+      onPointerDown={turnable ? pressDown : undefined}
+      onPointerUp={turnable ? pressUp : undefined}
+      onPointerCancel={
         turnable
           ? () => {
               downRef.current = null;

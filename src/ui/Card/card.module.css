@@ -77,6 +77,14 @@
   flex: 0 0 auto;
   padding: 0 10px;
   border-bottom: 1px solid var(--ink);
+  /* The heading answers two quick presses by turning the card (see pressUp in
+     Card.jsx). `manipulation` takes the browser's double-tap-to-zoom off it, so
+     the second press is delivered at once rather than held back to see if a zoom
+     is coming — a wait that swallowed the gesture inside the Even Hub WebView —
+     and no-select stops the same two presses from picking out the title's words. */
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .title {
