@@ -166,10 +166,12 @@ function glyphElement(kind) {
   const group = document.createElementNS(SVG_NS, "g");
   group.setAttribute("class", styles.pinGlyph);
   group.setAttribute("transform", transform);
-  for (const { tag, solid, ...attributes } of parts) {
+  for (const { tag, fill, ...attributes } of parts) {
     const shape = document.createElementNS(SVG_NS, tag);
     for (const [name, value] of Object.entries(attributes)) shape.setAttribute(name, value);
-    if (solid) shape.setAttribute("class", styles.solid);
+    // One of the pin's own two colours where the part asked for one, and the
+    // line drawing it is by default where it did not.
+    if (fill) shape.setAttribute("class", fill === "ink" ? styles.ink : styles.paper);
     group.append(shape);
   }
   return group;

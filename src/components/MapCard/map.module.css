@@ -183,13 +183,29 @@
   vector-effect: non-scaling-stroke;
 }
 
-.pinGlyph .solid {
+/* The two shades a part can ask for instead (see PIN_GLYPHS in utils/icons.js).
+   Ink is the dark of the outline and paper the light of the head, which is to
+   say the pin's own two colours — so both turn over with it under the pointer,
+   the way the plain circle in a mark's head does.
+
+   Paper is not the same as leaving a shape unfilled, though on a white head the
+   two look alike: an unfilled shape shows what is under it, and the cup is drawn
+   over the ends of its own handle. */
+.pinGlyph .ink {
   fill: #000;
   stroke: none;
 }
 
-.pin:hover .pinGlyph .solid {
+.pinGlyph .paper {
   fill: #fff;
+}
+
+.pin:hover .pinGlyph .ink {
+  fill: #fff;
+}
+
+.pin:hover .pinGlyph .paper {
+  fill: #000;
 }
 
 /* The three kinds carry nothing of their own beyond the stack at the bottom of

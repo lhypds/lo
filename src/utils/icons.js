@@ -45,12 +45,17 @@ export const POST_ICON = {
 // fork 9 wide do not get there by the same number.
 const inHead = (scale) => `translate(${HEAD.x} ${HEAD.y}) scale(${scale}) translate(-12 -12)`;
 
-// The two the ground itself put there are filled, where lo's own two are drawn
-// in outline like every other icon in the app. Not a whim: two dozen of these
-// land at once, at the size of a head about fifteen pixels across. A cup in
-// outline at that size is four hairlines with a pixel between them, which is a
-// smudge, and a fork is worse. Filled, each is a silhouette, and a reader
-// glancing down a street of them can tell coffee from dinner without stopping.
+// A part can ask to be one of the pin's own two colours rather than left as the
+// line drawing it is by default: `fill: "ink"` for the dark of the outline,
+// `fill: "paper"` for the light of the head. Both turn over with the pin when
+// the pointer arrives, the way the plain circle in a mark's head does — see
+// .pinGlyph in map.module.css, which is where the two of them are set.
+//
+// The fork is the one drawn in ink, and only because of what it is: three tines
+// with two slots between them, in a head about fifteen pixels across. In outline
+// that is six hairlines inside nine pixels, which is a smudge. As a silhouette
+// it survives, and a reader glancing down a street of two dozen of these can
+// tell coffee from dinner without stopping.
 export const PIN_GLYPHS = {
   // Smaller in its head than the two below are in theirs, which is the frame's
   // own doing: it is the one glyph here that is a rectangle, and a rectangle
@@ -61,22 +66,27 @@ export const PIN_GLYPHS = {
     transform: inHead(0.36),
     parts: [
       { tag: "rect", ...POST_ICON.frame },
-      { tag: "circle", solid: true, ...POST_ICON.sun },
+      { tag: "circle", fill: "ink", ...POST_ICON.sun },
       { tag: "path", d: POST_ICON.ridge },
     ],
   },
   // A cup from the side with the handle on the right: a semicircle hung under
   // two straight walls, which is the shape a cup has where a mug has a flat
-  // bottom. The handle is a half circle of its own — stroked rather than filled,
-  // since a ring that size filled would close up into a blob, and fatter than
-  // the hairlines everywhere else so that it carries against the solid body.
-  // Both its ends stop inside that body, which is what makes it read as part of
-  // the cup rather than as a loop set down beside it.
+  // bottom. Drawn in the pin's own colours — white inside a hairline, like the
+  // circle in a plain pin's head — so that of the two the ground puts on the
+  // map, only the one that has to be a silhouette is one.
+  //
+  // The handle comes first so that the body can be laid over the ends of it.
+  // They stop inside the cup rather than at its wall, which is what makes the
+  // loop read as growing out of the side rather than as a ring set down beside
+  // it — and a white body drawn first would leave both stubs showing through.
+  // That is also what the fill is for: paper here is not the same as no fill at
+  // all, it is the thing doing the covering.
   cafe: {
     transform: inHead(0.58),
     parts: [
-      { tag: "path", solid: true, d: "M5.5 6h11v6a5.5 5.5 0 0 1-11 0z" },
-      { tag: "path", d: "M15.9 8.6a2.5 2.5 0 0 1 0 5", "stroke-width": 1.8 },
+      { tag: "path", d: "M15.9 8.6a2.5 2.5 0 0 1 0 5" },
+      { tag: "path", fill: "paper", d: "M5.5 6h11v6a5.5 5.5 0 0 1-11 0z" },
     ],
   },
   // Three tines, two slots and a handle, drawn as one outline so the whole fork
@@ -89,7 +99,7 @@ export const PIN_GLYPHS = {
     parts: [
       {
         tag: "path",
-        solid: true,
+        fill: "ink",
         d: "M7.25 3h1.9v5.4h1.9V3h1.9v5.4h1.9V3h1.9v6a3.3 3.3 0 0 1-3.3 2.6V20h-2.9v-8.4a3.3 3.3 0 0 1-3.3-2.6z",
       },
     ],
