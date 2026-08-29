@@ -4,6 +4,9 @@
   "version": "0.1.0",
   "type": "module",
   "packageManager": "pnpm@11.22.0",
+  "bin": {
+    "ol": "./ol.js"
+  },
   "scripts": {
     "dev": "node --watch-path=server --watch-path=src server/index.js",
     "server": "node server/index.js",

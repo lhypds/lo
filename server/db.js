@@ -386,6 +386,14 @@ const insertUser = db.prepare(`
   VALUES (?, ?)
 `);
 
+// Everything the account touched goes with it: marks, posts, comments, messages,
+// follows — every one of them references users(id) ON DELETE CASCADE, so this
+// one statement is the whole of leaving.
+const deleteUserByName = db.prepare(`
+  DELETE FROM users
+  WHERE username = ?
+`);
+
 // The one column no reader of a user ever gets handed. Everything else about an
 // account travels as a row — the profile columns above go out to whoever asks
 // for the page — so the password is read on its own, by the one statement that
@@ -973,6 +981,12 @@ export function updateProfile(userId, profile) {
 export function createUser(username, password) {
   insertUser.run(username, password);
   return getUser(username);
+}
+
+// True where there was an account to remove, so the caller can tell that apart
+// from a name that was never there.
+export function deleteUser(username) {
+  return deleteUserByName.run(username).changes > 0;
 }
 
 // Nothing back where there is no such account, and null where there is one with
