@@ -175,69 +175,128 @@
 }
 
 .compassDial {
-  display: block;
-  width: 100%;
-  height: calc(58cqi + 19px);
-  overflow: visible;
+  position: relative;
+  width: calc(58cqi + 19px);
+  max-width: 100%;
+  aspect-ratio: 1;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background: var(--paper);
+  box-shadow: 2px 2px 0 var(--ink);
   font-family: var(--display);
 }
 
-.compassRim {
-  fill: var(--paper);
-  stroke: var(--ink);
-  stroke-width: 2;
-  filter: drop-shadow(2px 2px 0 var(--ink));
+.compassMarks {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
 }
 
 .compassTick,
 .compassMajorTick {
-  stroke: var(--ink);
-  stroke-linecap: square;
+  position: absolute;
+  inset: 3px;
+  transform: rotate(var(--tick-angle));
 }
 
-.compassTick {
-  stroke-width: 1;
+.compassTick::before,
+.compassMajorTick::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 1px;
+  height: 4%;
+  background: var(--ink);
+  transform: translateX(-50%);
 }
 
-.compassMajorTick {
-  stroke-width: 2;
+.compassMajorTick::before {
+  width: 2px;
+  height: 8%;
 }
 
 .cardinal {
-  fill: var(--ink);
-  font-size: 12px;
+  position: absolute;
+  font-size: clamp(8px, 4.8cqi, 12px);
   font-weight: 600;
+  line-height: 1;
+  transform: translate(-50%, -50%);
   user-select: none;
+}
+
+.cardinalNorth {
+  top: 18%;
+  left: 50%;
+}
+
+.cardinalEast {
+  top: 50%;
+  left: 82%;
+}
+
+.cardinalSouth {
+  top: 82%;
+  left: 50%;
+}
+
+.cardinalWest {
+  top: 50%;
+  left: 18%;
 }
 
 /* North is the one point a magnetic instrument is built around. Its extra
    weight gives the rose an unmistakable top without introducing another color. */
 .north {
-  font-size: 15px;
+  font-size: clamp(9px, 6cqi, 15px);
   font-weight: 800;
 }
 
 .indexMark {
-  fill: var(--ink);
+  position: absolute;
+  z-index: 1;
+  top: 1px;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-right: clamp(3px, 2.4cqi, 6px) solid transparent;
+  border-left: clamp(3px, 2.4cqi, 6px) solid transparent;
+  border-top: clamp(6px, 4.8cqi, 12px) solid var(--ink);
+  transform: translateX(-50%);
 }
 
 .needle {
-  transform-origin: 100px 100px;
+  position: absolute;
+  inset: 27%;
+  transform-origin: center;
   transition: transform 140ms cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 
+.northNeedle,
+.southNeedle {
+  position: absolute;
+  left: 43%;
+  width: 14%;
+  height: 50%;
+  background: var(--ink);
+}
+
 .northNeedle {
-  fill: var(--ink);
-  stroke: var(--ink);
-  stroke-linejoin: miter;
-  stroke-width: 1.5;
+  top: 0;
+  clip-path: polygon(50% 0, 100% 100%, 50% 91%, 0 100%);
 }
 
 .southNeedle {
-  fill: var(--paper);
-  stroke: var(--ink);
-  stroke-linejoin: miter;
-  stroke-width: 1.5;
+  bottom: 0;
+  clip-path: polygon(50% 100%, 0 0, 50% 9%, 100% 0);
+}
+
+.southNeedle::after {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  background: var(--paper);
+  clip-path: inherit;
 }
 
 /* Keep the instrument recognizable before a sensor answers, but make it clear
@@ -247,9 +306,15 @@
 }
 
 .compassPin {
-  fill: var(--paper);
-  stroke: var(--ink);
-  stroke-width: 2;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: clamp(6px, 4cqi, 8px);
+  aspect-ratio: 1;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background: var(--paper);
+  transform: translate(-50%, -50%);
 }
 
 @media (prefers-reduced-motion: reduce) {
