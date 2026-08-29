@@ -307,6 +307,9 @@
     "photoAlbum": "Aus Album auswählen",
     "dropPhoto": "Foto hier ablegen",
     "removePhoto": "Entfernen",
+    "photoOpen": "Foto ansehen",
+    "photoTitle": "Foto",
+    "photoClose": "Foto schließen",
     "compressing": "Wird komprimiert",
     "uploading": "Wird hochgeladen",
     "notImage": "Diese Datei ist kein Bild",
@@ -348,6 +351,9 @@
     "linkAdd": "Link hinzufügen",
     "linkRemove": "Diesen Link entfernen",
     "bio": "Über dich",
+    "work": "Beruf",
+    "workNone": "Nicht ausgewählt",
+    "workOwnValue": "In eigenen Worten",
     "email": "E-Mail",
     "website": "Website",
     "line": "LINE",
@@ -355,6 +361,24 @@
     "wechat": "WeChat",
     "saving": "Wird gespeichert",
     "saved": "Gespeichert"
+  },
+  "work": {
+    "architect": "Architekt/in",
+    "photographer": "Fotograf/in",
+    "developer": "Entwickler/in",
+    "writer": "Autor/in",
+    "filmmaker": "Filmemacher/in",
+    "journalist": "Journalist/in",
+    "musician": "Musiker/in",
+    "student": "Student/in",
+    "designer": "Designer/in",
+    "artist": "Künstler/in",
+    "engineer": "Ingenieur/in",
+    "founder": "Gründer/in",
+    "researcher": "Forscher/in",
+    "teacher": "Lehrer/in",
+    "doctor": "Arzt/Ärztin",
+    "chef": "Koch/Köchin"
   },
   "user": {
     "follow": "Folgen",
@@ -391,9 +415,12 @@
   },
   "comments": {
     "title": "Kommentare",
+    "venueTitle": "Kommentare",
     "short": "Kommentare",
+    "venueShort": "Kommentare",
     "aboutPost": "Dieser Beitrag",
     "empty": "Noch keine Kommentare",
+    "venueEmpty": "Noch keine Kommentare",
     "placeholder": "Schreib etwas dazu",
     "submit": "Kommentieren",
     "sending": "Wird gesendet"
@@ -403,6 +430,12 @@
     "posts": "Diese Beiträge oder @jemanden durchsuchen",
     "clear": "Suche löschen",
     "empty": "Keine Treffer für „{{query}}“"
+  },
+  "sort": {
+    "label": "Sortieren nach",
+    "nearest": "Entfernung",
+    "latest": "Neueste",
+    "oldest": "Älteste"
   },
   "time": {
     "justNow": "gerade eben"

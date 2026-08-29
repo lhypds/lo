@@ -5,10 +5,12 @@ import { Modal } from "../../ui/index.js";
 import { formatCoords } from "../../utils/format.js";
 import { labelName, labelNames } from "../../utils/label.js";
 import { filterBy } from "../../utils/search.js";
+import { DEFAULT_SORT, sortRows } from "../../utils/sort.js";
 import Header from "../../components/Header/index.js";
 import MarkItem from "../../components/MarkItem/index.js";
 import MarkModal from "../../components/MarkModal/index.js";
 import SearchField from "../../components/SearchField/index.js";
+import SortField from "../../components/SortField/index.js";
 import { useHere } from "../../components/LocationProvider/index.js";
 
 // For the same reason the home page loads it lazily: mapbox-gl is by far the
@@ -24,6 +26,9 @@ export default function MarksPage() {
   const { coords, reloadToken } = useHere();
   const [marks, setMarks] = useState([]);
   const [query, setQuery] = useState("");
+  // Newest first, which is the order the list arrives in: a history is read from
+  // the end, and the spot kept an hour ago is the one being looked for.
+  const [sort, setSort] = useState(DEFAULT_SORT);
   const [focus, setFocus] = useState(null);
   // The spot the pointer is resting on, whichever half of the page it is resting
   // on it: the map reports the pin, a row reports itself, and both halves are
@@ -93,13 +98,22 @@ export default function MarksPage() {
   // Every name the spot has and not only the one on the row, which is the one
   // place the two part company: a spot is searched by what the reader might call
   // it, and that is not always the language they are reading in (see labelNames).
+  //
+  // Ordered after it is narrowed, which is the cheaper way round and the same
+  // answer either way: the sort is over the rows that are left rather than over
+  // all of them, and a search that has thrown most of the list away has thrown
+  // away most of the work.
   const shown = useMemo(
     () =>
-      filterBy(marks, query, (mark) => [
-        ...labelNames(mark),
-        formatCoords(mark.latitude, mark.longitude),
-      ]),
-    [marks, query],
+      sortRows(
+        filterBy(marks, query, (mark) => [
+          ...labelNames(mark),
+          formatCoords(mark.latitude, mark.longitude),
+        ]),
+        sort,
+        coords,
+      ),
+    [marks, query, sort, coords],
   );
 
   return (
@@ -140,8 +154,16 @@ export default function MarksPage() {
                 of how many there are to answer it. */}
             <span>{query.trim() ? `${shown.length}/${marks.length}` : marks.length}</span>
           </div>
-          {/* Nothing to search until there is something to search through */}
-          {marks.length > 0 && <SearchField value={query} onChange={setQuery} placeholder={t("search.marks")} />}
+          {/* Nothing to search or order until there is something to search
+              through: one row is already in whatever order it is in. */}
+          {marks.length > 0 && (
+            <div className="list-tools">
+              <SearchField value={query} onChange={setQuery} placeholder={t("search.marks")} />
+              {/* Nearest is nearest to where the reader is standing, so the menu
+                  only offers it once the browser has said where that is. */}
+              <SortField value={sort} onChange={setSort} near={Boolean(coords)} />
+            </div>
+          )}
         </div>
         <div className="list-scroll">
           {marks.length === 0 ? (

@@ -304,6 +304,9 @@
     "photoAlbum": "从相册选择",
     "dropPhoto": "把图片拖到这里",
     "removePhoto": "移除",
+    "photoOpen": "查看照片",
+    "photoTitle": "照片",
+    "photoClose": "关闭照片",
     "compressing": "压缩中",
     "uploading": "上传中",
     "notImage": "该文件不是图片",
@@ -345,6 +348,9 @@
     "linkAdd": "添加一个",
     "linkRemove": "移除这一行",
     "bio": "个人简介",
+    "work": "职业",
+    "workNone": "未选择",
+    "workOwnValue": "自己填写",
     "email": "邮箱",
     "website": "主页",
     "line": "LINE",
@@ -352,6 +358,24 @@
     "wechat": "微信",
     "saving": "保存中",
     "saved": "已保存"
+  },
+  "work": {
+    "architect": "建筑师",
+    "photographer": "摄影师",
+    "developer": "程序员",
+    "writer": "作家",
+    "filmmaker": "影像创作者",
+    "journalist": "记者",
+    "musician": "音乐人",
+    "student": "学生",
+    "designer": "设计师",
+    "artist": "艺术家",
+    "engineer": "工程师",
+    "founder": "创业者",
+    "researcher": "研究者",
+    "teacher": "教师",
+    "doctor": "医生",
+    "chef": "厨师"
   },
   "user": {
     "follow": "关注",
@@ -387,9 +411,12 @@
   },
   "comments": {
     "title": "留言",
+    "venueTitle": "评论",
     "short": "留言",
+    "venueShort": "评论",
     "aboutPost": "这条 post",
     "empty": "还没有人留言",
+    "venueEmpty": "还没有人评论",
     "placeholder": "说点什么",
     "submit": "提交",
     "sending": "提交中"
@@ -399,6 +426,12 @@
     "posts": "搜索这些 post 或 @用户名",
     "clear": "清除搜索",
     "empty": "没有匹配“{{query}}”的结果"
+  },
+  "sort": {
+    "label": "排序方式",
+    "nearest": "距离",
+    "latest": "最新",
+    "oldest": "最早"
   },
   "time": {
     "justNow": "刚刚"

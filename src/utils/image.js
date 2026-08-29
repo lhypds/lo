@@ -10,6 +10,31 @@ import { authHeaders } from "../api.js";
 
 const ENDPOINT = "/api/images";
 
+// A post's photo is kept twice, because the two ways it is looked at want
+// opposite things. Nearly every sighting of it is small — a 44px square in a
+// row, a 32px one on the dashboard tile, a 96px band across the top of a bubble
+// — and there are dozens of them on screen at once, all of them wanted at once.
+// The one sighting that is not small is a reader who has pressed the picture to
+// see it properly, and there is exactly one of those at a time.
+//
+// So: the picture, capped rather than left at whatever a phone shoots, and a
+// thumbnail beside it that every list draws instead. A neighbourhood of forty
+// posts costs forty thumbnails rather than forty photographs, and the photograph
+// is fetched when — and only when — somebody asks to look at one.
+//
+// The cap is on the longest edge, which is the honest way to bound a picture
+// whose shape is not known: a portrait and a landscape both fit in it.
+const PHOTO_MAX = 2048;
+const PHOTO_QUALITY = 0.82;
+
+// Small enough to be several times cheaper than the picture and still sharp in
+// the largest box that draws one — the band across a bubble, which is under
+// 200px wide and asks for twice that on a retina screen. Below the picture's
+// quality as well as its size: nothing is read at 320px, so the artefacts that
+// would show at 2048 have nowhere to show.
+const THUMB_MAX = 320;
+const THUMB_QUALITY = 0.62;
+
 // Safari only grew createImageBitmap for blobs in 15, so an <img> decode stands
 // behind it. `imageOrientation` is what keeps a phone photo upright: EXIF
 // rotation is dropped the moment the pixels reach a canvas, and the fallback
@@ -91,41 +116,100 @@ function middleSquare(image, size) {
   };
 }
 
-// The image as WebP: scaled whole so its longest edge is at most `maxSize`, or
-// — with `square` — cropped to its middle square at `maxSize` on a side.
+// One box drawn out of a picture that has already been decoded, and encoded.
 //
 // Where the browser cannot encode WebP, toBlob silently hands back a PNG, which
 // for a photo is several times the size of the thing it is standing in for; so
 // JPEG is asked for instead, which keeps the resize and loses only the
-// transparency. Nothing that can encode neither is a browser from this decade.
-// The original file is the last answer of all, and the only one that arrives
+// transparency. Nothing that can encode neither is a browser from this decade —
+// and one that cannot gets null here, leaving what to do about it to the caller,
+// which is not the same answer for a picture as for a thumbnail of one.
+async function render(image, box, quality) {
+  const { sx, sy, sw, sh, width, height } = box;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("could not draw that image");
+  // A phone photo arrives several times the size of anything drawn here, and
+  // the default resampling over a step that big is most of what makes a shrunk
+  // picture look shrunk.
+  context.imageSmoothingQuality = "high";
+  context.drawImage(image.source, sx, sy, sw, sh, 0, 0, width, height);
+
+  const webp = await toBlob(canvas, "image/webp", quality);
+  if (webp?.type === "image/webp") return { blob: webp, width, height };
+  const jpeg = await toBlob(canvas, "image/jpeg", quality);
+  if (jpeg?.type === "image/jpeg") return { blob: jpeg, width, height };
+  return null;
+}
+
+// The image as WebP: scaled whole so its longest edge is at most `maxSize`, or
+// — with `square` — cropped to its middle square at `maxSize` on a side. The
+// original file is the last answer of all, and the only one that arrives
 // unshrunk.
-export async function compressToWebp(file, { quality = 0.82, maxSize = 1600, square = false } = {}) {
+export async function compressToWebp(file, { quality = PHOTO_QUALITY, maxSize = PHOTO_MAX, square = false } = {}) {
   const image = await decode(file);
   try {
-    const { sx, sy, sw, sh, width, height } = square
-      ? middleSquare(image, maxSize)
-      : whole(image, maxSize);
-
-    const canvas = document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
-    const context = canvas.getContext("2d");
-    if (!context) throw new Error("could not draw that image");
-    // A phone photo arrives several times the size of anything drawn here, and
-    // the default resampling over a step that big is most of what makes a shrunk
-    // picture look shrunk.
-    context.imageSmoothingQuality = "high";
-    context.drawImage(image.source, sx, sy, sw, sh, 0, 0, width, height);
-
-    const webp = await toBlob(canvas, "image/webp", quality);
-    if (webp?.type === "image/webp") return { blob: webp, width, height };
-    const jpeg = await toBlob(canvas, "image/jpeg", quality);
-    if (jpeg?.type === "image/jpeg") return { blob: jpeg, width, height };
-    return { blob: file, width: image.width, height: image.height };
+    const box = square ? middleSquare(image, maxSize) : whole(image, maxSize);
+    return (await render(image, box, quality)) ?? { blob: file, width: image.width, height: image.height };
   } finally {
     image.close();
   }
+}
+
+// Both halves of a post's photo out of one decode: the picture, and the
+// thumbnail every list will draw in its place.
+//
+// One decode rather than two calls to the above, because decoding is the slow
+// half of this — a 12-megapixel JPEG off a phone takes longer to unpack than
+// either canvas takes to draw and encode — and the second draw is off the same
+// unpacked pixels.
+//
+// The thumbnail is the whole frame rather than a square cut out of the middle,
+// the way an avatar's is: the boxes that draw one are not all square (the band
+// across a bubble is a wide one) and each of them crops with object-fit anyway.
+// It comes back null where the browser could encode nothing, which is not worth
+// failing a post over — every reader falls back to the picture, which is what a
+// post written before there were two files does too.
+export async function compressPhoto(file) {
+  const image = await decode(file);
+  try {
+    const drawn = await render(image, whole(image, PHOTO_MAX), PHOTO_QUALITY);
+    const full = drawn ?? { blob: file, width: image.width, height: image.height };
+    const thumb = await render(image, whole(image, THUMB_MAX), THUMB_QUALITY);
+    return { full, thumb };
+  } finally {
+    image.close();
+  }
+}
+
+// Which of a post's two pictures a small box should draw, and the fallback that
+// makes every one of them safe to call: a post left before the thumbnail existed
+// has only the one file, and it is better drawn large than not at all.
+export function postThumb(post) {
+  return post?.imageThumb || post?.image || null;
+}
+
+// And the other way round, for the one place the photograph itself is looked at:
+// what the viewer is handed is the picture, the thumbnail to fill the box with
+// while it comes, and the shape to hold that box in (see ui/Lightbox). Null for
+// a post with no photo, which is what makes it the whole of a page's answer to
+// "is the viewer open".
+//
+// The thumbnail is the one field that is not filled in when it is missing. A
+// post with only the one file has nothing to show early, and saying otherwise —
+// naming the picture twice — would have the viewer wait the whole fetch for it
+// and then announce that it had sharpened.
+export function postPhoto(post) {
+  if (!post?.image) return null;
+  return {
+    src: post.image,
+    thumb: post.imageThumb || null,
+    width: post.imageWidth ?? null,
+    height: post.imageHeight ?? null,
+  };
 }
 
 // A stored picture is behind the session, and an <img> tag cannot be given the

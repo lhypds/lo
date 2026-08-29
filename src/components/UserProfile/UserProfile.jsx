@@ -5,7 +5,9 @@ import { AuthImage, Link, showToast } from "../../ui/index.js";
 import { copyText } from "../../utils/clipboard.js";
 import { CONTACTS } from "../../utils/contacts.js";
 import { formatCoords, formatUsername, relativeTime } from "../../utils/format.js";
+import { postThumb } from "../../utils/image.js";
 import { profileLinks } from "../../utils/links.js";
+import { workName } from "../../utils/work.js";
 import { useAuth } from "../AuthProvider/index.js";
 import AccountModal from "../AccountModal/index.js";
 import FollowsModal from "../FollowsModal/index.js";
@@ -251,8 +253,22 @@ export default function UserProfile({ username }) {
             at the other end of this line for a while and has gone: when somebody
             signed up is a fact about lo's records rather than about them, and
             the line under the name now carries the two figures that are worth
-            reading — how many people follow them, and how many they follow. */}
-        <h1 className={styles.name}>{name}</h1>
+            reading — how many people follow them, and how many they follow.
+
+            What they do goes directly under it, close enough to be read as part
+            of the same answer: a name and a trade is how a person is introduced
+            on paper, and it is the one thing on this page that says what somebody
+            would be about before a word of their own is read. Held in a box with
+            the name so the head of the page stays three things evenly spaced
+            rather than four — see .who. */}
+        <div className={styles.who}>
+          <h1 className={styles.name}>{name}</h1>
+          {/* Whichever way it was answered: a word off the menu comes back in
+              the language this page is being read in, and one written by hand
+              comes back as it was written — see utils/work.js. Left out
+              entirely where there is none, the same as the bio below. */}
+          {profile?.work && <p className={styles.work}>{workName(profile.work, t)}</p>}
+        </div>
 
         {/* The two things this page lets you do about a person, on the line
             directly under the name — the same pair, of equal width, so they read
@@ -361,7 +377,7 @@ export default function UserProfile({ username }) {
                     {post.image && (
                       <AuthImage
                         className={styles.thumb}
-                        src={post.image}
+                        src={postThumb(post)}
                         alt=""
                         width={THUMB_BOX}
                         height={THUMB_BOX}

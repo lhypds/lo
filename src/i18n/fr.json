@@ -307,6 +307,9 @@
     "photoAlbum": "Choisir dans l’album",
     "dropPhoto": "Déposez la photo ici",
     "removePhoto": "Supprimer",
+    "photoOpen": "Voir la photo",
+    "photoTitle": "Photo",
+    "photoClose": "Fermer la photo",
     "compressing": "Compression",
     "uploading": "Envoi",
     "notImage": "Ce fichier n’est pas une image",
@@ -348,6 +351,9 @@
     "linkAdd": "Ajouter un lien",
     "linkRemove": "Supprimer ce lien",
     "bio": "À propos de vous",
+    "work": "Métier",
+    "workNone": "Non sélectionné",
+    "workOwnValue": "Dans vos propres mots",
     "email": "E-mail",
     "website": "Site web",
     "line": "LINE",
@@ -355,6 +361,24 @@
     "wechat": "WeChat",
     "saving": "Enregistrement",
     "saved": "Enregistré"
+  },
+  "work": {
+    "architect": "Architecte",
+    "photographer": "Photographe",
+    "developer": "Développeur/se",
+    "writer": "Écrivain/e",
+    "filmmaker": "Cinéaste",
+    "journalist": "Journaliste",
+    "musician": "Musicien/ne",
+    "student": "Étudiant/e",
+    "designer": "Designer",
+    "artist": "Artiste",
+    "engineer": "Ingénieur/e",
+    "founder": "Fondateur/rice",
+    "researcher": "Chercheur/se",
+    "teacher": "Enseignant/e",
+    "doctor": "Médecin",
+    "chef": "Cuisinier/ère"
   },
   "user": {
     "follow": "Suivre",
@@ -391,9 +415,12 @@
   },
   "comments": {
     "title": "Commentaires",
+    "venueTitle": "Commentaires",
     "short": "commentaires",
+    "venueShort": "commentaires",
     "aboutPost": "Cette publication",
     "empty": "Aucun commentaire pour le moment",
+    "venueEmpty": "Aucun commentaire pour le moment",
     "placeholder": "Donnez votre avis",
     "submit": "Commenter",
     "sending": "Envoi"
@@ -403,6 +430,12 @@
     "posts": "Rechercher dans ces publications ou @quelqu’un",
     "clear": "Effacer la recherche",
     "empty": "Aucun résultat pour « {{query}} »"
+  },
+  "sort": {
+    "label": "Trier par",
+    "nearest": "Proximité",
+    "latest": "Récents",
+    "oldest": "Anciens"
   },
   "time": {
     "justNow": "à l’instant"

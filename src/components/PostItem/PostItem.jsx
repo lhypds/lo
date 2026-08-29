@@ -8,6 +8,7 @@ import {
   formatUsername,
 } from "../../utils/format.js";
 import { hoverProps, rowClass } from "../../utils/hover.js";
+import { postThumb } from "../../utils/image.js";
 import { directionsLink } from "../../utils/maps.js";
 
 // The marks row, carrying a post — and now the same row in full: pressing the
@@ -53,8 +54,10 @@ export default function PostItem({
           aria-label={`${t("marks.showOnMap")} ${headline}`}
           onClick={() => onShowOnMap(post)}
         >
+          {/* The small copy, which is the whole point of there being one: a list
+              of forty posts is forty of these, wanted at once. */}
           {post.image && (
-            <AuthImage className="post-thumb" src={post.image} alt="" width="44" height="44" />
+            <AuthImage className="post-thumb" src={postThumb(post)} alt="" width="44" height="44" />
           )}
           <span className="post-copy-lines">
             <strong>{headline}</strong>

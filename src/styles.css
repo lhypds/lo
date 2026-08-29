@@ -912,6 +912,18 @@ html:has(.home-main:not(.home-main-map) .card-pager) {
   background: var(--paper);
 }
 
+/* The two questions asked of a list, on one line: which rows, and which of them
+   first. Beside each other rather than stacked, because they are one decision
+   about one list and a second strip under the first would read as a second list.
+   The gap under the pair is here rather than on either box — whichever of them
+   turns out to be the taller is what the rows below are spaced from. */
+.list-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
 /* No rule of its own: the search field under it is a black box the full width of
    the list, and a line directly above that box was a second edge saying the same
    thing. The padding stays — it is the gap to whatever comes next. */
@@ -1495,26 +1507,42 @@ html:has(.home-main:not(.home-main-map) .card-pager) {
   margin-top: 2px;
 }
 
-/* Everywhere else somebody keeps an account: a column of rows, the label over
-   them, spaced the way a field is spaced from its own label. */
+/* The two fields that are a menu and a box rather than a box: what you do, and
+   everywhere else you keep an account. A column, the label over it, spaced the
+   way a field is spaced from its own label — neither of them can be a <label>
+   around its control the way the fields above are, since what they open with is
+   a button. */
+.profile-work,
 .profile-links {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-/* Which platform, the handle, and the way to take the row off. The menu is as
-   wide as the longest name it holds and no wider — the handle is what is read
-   along this row, so it takes what is left. */
+/* Which platform, the handle, and the way to take the row off — and, on the row
+   above them, the trade and the box that is only there when the menu has been
+   taken off its list. The menu is as wide as the longest name it holds and no
+   wider; what is read along either row is what was written into it, so the field
+   takes what is left. */
+.profile-work-row,
 .profile-link-row {
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
+.profile-work-row .profile-input,
 .profile-link-row .profile-input {
   min-width: 0;
   flex: 1;
+}
+
+/* The box while the menu beside it is holding the answer. Faded rather than
+   emptied or taken away: what was written in it is still there to come back to,
+   the row keeps its shape, and 0.4 is the one fade this app has for a control
+   that is not being asked for (see button:disabled). */
+.profile-work-row .profile-input:disabled {
+  opacity: 0.4;
 }
 
 /* How much of the row the menu takes, and nothing about how it looks: it is
@@ -1532,6 +1560,16 @@ html:has(.home-main:not(.home-main-map) .card-pager) {
 .profile-select {
   flex: none;
   max-width: 40%;
+}
+
+/* The same, with more of the row to itself: a trade is one or two words and the
+   box beside it is only there some of the time, where a platform is a short name
+   standing next to a handle that is always there. It is also the longer list of
+   the two — a menu cut to two-fifths of a narrow sheet would be reading half of
+   ジャーナリスト. */
+.profile-work-select {
+  flex: none;
+  max-width: 60%;
 }
 
 /* The way a row comes off, and the size of the buttons in a card's heading: the

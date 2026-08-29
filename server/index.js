@@ -576,8 +576,16 @@ app.put("/api/me/discoverable", requireSession, (req, res) => {
 // How much of each a profile will hold. The line about yourself is the only one
 // with room to be a sentence; a contact is a handle in somebody else's app, and
 // none of those are long. A website is a home page rather than a deep link into
-// one, so it needs about as much room as an address does.
-const PROFILE_LIMITS = { bio: 280, email: 160, website: 200, line: 64, whatsapp: 32, wechat: 64 };
+// one, so it needs about as much room as an address does. What somebody does is a
+// job title and not a description of one — most of them arrive as a slug off the
+// sheet's own menu and are a word long.
+//
+// That menu is checked no more than the list of platforms below it is, and for
+// the same reason: the trades and the words for them in each language live in the
+// browser (see src/utils/work.js), a second copy here would drift, and the field
+// is meant to hold what somebody typed as readily as what they picked. So all
+// this side of it asks is that it be short.
+const PROFILE_LIMITS = { bio: 280, work: 40, email: 160, website: 200, line: 64, whatsapp: 32, wechat: 64 };
 
 // And the list that has no column of its own: everywhere else somebody keeps an
 // account, each row a kind and a handle. Twelve is not a rule about people — it
@@ -1075,9 +1083,13 @@ function readPostContent(payload) {
   if (body.length > POST_BODY_MAX) return { error: `A post is at most ${POST_BODY_MAX} characters` };
 
   // The photo arrives as a name /api/images already wrote, never as bytes —
-  // anything else would let this endpoint name a file of its own choosing.
+  // anything else would let this endpoint name a file of its own choosing. Both
+  // names are read the same way: a thumbnail is an image stored the same way the
+  // picture is, and the only thing that makes it one is what it is written into.
   const image = payload?.image ? String(payload.image) : null;
   if (image && !isStoredName(image)) return { error: "Invalid image" };
+  const imageThumb = payload?.imageThumb ? String(payload.imageThumb) : null;
+  if (imageThumb && !isStoredName(imageThumb)) return { error: "Invalid image" };
   if (!body && !image) return { error: "Write something, or add a picture" };
 
   const dimension = (value) => {
@@ -1088,6 +1100,10 @@ function readPostContent(payload) {
     content: {
       body,
       image,
+      // A thumbnail is a thumbnail *of* something, so it goes only where there
+      // is a picture for it to stand in for — a post that has just had its photo
+      // taken off it must not keep the small copy of it.
+      imageThumb: image ? imageThumb : null,
       imageWidth: dimension(payload?.imageWidth),
       imageHeight: dimension(payload?.imageHeight),
     },

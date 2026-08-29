@@ -30,6 +30,7 @@ export { default as PostsCard } from "./PostsCard/index.js";
 export { default as PrivateRoute } from "./PrivateRoute/index.js";
 export { default as ProfileForm } from "./ProfileForm/index.js";
 export { default as SearchField } from "./SearchField/index.js";
+export { default as SortField } from "./SortField/index.js";
 export { default as TrendsCard } from "./TrendsCard/index.js";
 export { default as UserProfile } from "./UserProfile/index.js";
 export { default as VenuesCard } from "./VenuesCard/index.js";

@@ -3,11 +3,15 @@
    It is also the line under the heading now — the heading has none of its own,
    and two rules that close to each other were one too many. */
 .field {
+  /* Takes what the handle beside it does not, and gives way rather than pushing
+     it off the row: the gap under the pair is .list-tools' now, so the two boxes
+     sit on one line with one space beneath them. */
+  flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 8px;
   height: 32px;
-  margin: 0 0 8px;
   padding: 0 8px;
   border: 1px solid var(--ink);
   background: var(--paper);

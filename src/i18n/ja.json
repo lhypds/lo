@@ -304,6 +304,9 @@
     "photoAlbum": "アルバムから選ぶ",
     "dropPhoto": "ここに画像をドロップ",
     "removePhoto": "削除",
+    "photoOpen": "写真を見る",
+    "photoTitle": "写真",
+    "photoClose": "写真を閉じる",
     "compressing": "圧縮中",
     "uploading": "アップロード中",
     "notImage": "画像ファイルではありません",
@@ -345,6 +348,9 @@
     "linkAdd": "追加",
     "linkRemove": "この行を削除",
     "bio": "自己紹介",
+    "work": "職業",
+    "workNone": "未選択",
+    "workOwnValue": "自由に入力",
     "email": "メール",
     "website": "ウェブサイト",
     "line": "LINE",
@@ -352,6 +358,24 @@
     "wechat": "WeChat",
     "saving": "保存中",
     "saved": "保存しました"
+  },
+  "work": {
+    "architect": "建築家",
+    "photographer": "写真家",
+    "developer": "プログラマー",
+    "writer": "ライター",
+    "filmmaker": "映像作家",
+    "journalist": "記者",
+    "musician": "ミュージシャン",
+    "student": "学生",
+    "designer": "デザイナー",
+    "artist": "アーティスト",
+    "engineer": "エンジニア",
+    "founder": "起業家",
+    "researcher": "研究者",
+    "teacher": "教師",
+    "doctor": "医師",
+    "chef": "料理人"
   },
   "user": {
     "follow": "フォロー",
@@ -387,9 +411,12 @@
   },
   "comments": {
     "title": "コメント",
+    "venueTitle": "コメント",
     "short": "コメント",
+    "venueShort": "コメント",
     "aboutPost": "この post",
     "empty": "まだコメントはありません",
+    "venueEmpty": "まだコメントはありません",
     "placeholder": "コメントを書く",
     "submit": "送信",
     "sending": "送信中"
@@ -399,6 +426,12 @@
     "posts": "この post や @ユーザー名 を検索",
     "clear": "検索をクリア",
     "empty": "「{{query}}」に一致するものはありません"
+  },
+  "sort": {
+    "label": "並び替え",
+    "nearest": "距離順",
+    "latest": "新しい順",
+    "oldest": "古い順"
   },
   "time": {
     "justNow": "たった今"

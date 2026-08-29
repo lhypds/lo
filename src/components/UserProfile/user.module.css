@@ -63,6 +63,29 @@
   stroke-linejoin: round;
 }
 
+/* The name and what its owner does, as one thing: the head of the page keeps
+   14px between its parts, and a trade sitting that far under the name it belongs
+   to would read as a section of its own rather than as the line under a heading.
+   So the pair is one part, spaced inside at the 4px a caption stands off what it
+   captions, and the head still has three of them — picture, name, figures. */
+.who {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Which is a caption and set like one: the grey and the size the second lines of
+   this page are written in, under a name in the display face at 18. Wrapping
+   anywhere, because what is in it may be a word somebody wrote themselves and
+   nothing says it has a space in it. */
+.work {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
 /* The name is the heading of the page. text-decoration is still spelled out: it
    was an anchor when a sheet drew this same column, and it is the sort of thing a
    heading should say for itself rather than inherit an answer to. */

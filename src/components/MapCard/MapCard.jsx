@@ -5,6 +5,7 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import { ActionButton, Card, useNavigate } from "../../ui/index.js";
 import { formatCoords, formatDateTime, formatDistance, formatUsername } from "../../utils/format.js";
 import { MARK_PIN_EYE, MARK_PIN_PATH, MARK_PIN_TIP_Y, PIN_GLYPHS } from "../../utils/icons.js";
+import { authImageUrl, postThumb } from "../../utils/image.js";
 import { directionsLink, searchLink } from "../../utils/maps.js";
 import { pickedLang } from "../../utils/lang.js";
 import { cycleMapStyle, mapStyleId, mapStyleUrl, useMapStyle } from "../../utils/mapstyle.js";
@@ -402,12 +403,19 @@ function venuePopupElement(venue, note, away, comments, navLabel) {
 // are clamped and the picture is small — and the click that opens it properly
 // is still there underneath.
 //
-// Three things in a bubble can be pressed and the rest of it stays deaf to the
-// pointer — the author's name, the comments count and the navigation link.
+// Four things in a bubble can be pressed and the rest of it stays deaf to the
+// pointer — the picture, the author's name, the comments count and the
+// navigation link.
 //
-// The first is the name on the byline, and where it goes is the person: a post
+// The first is the photograph, and what it opens is the photograph: what is in
+// the bubble is a thumbnail cropped to a band 96px deep, which is enough to
+// recognise a picture by and not enough to look at one. Pressing it puts the
+// whole of it on the screen (see ui/Lightbox), and that press is the only thing
+// in lo that fetches a post's full-size photo at all.
+//
+// The second is the name on the byline, and where it goes is the person: a post
 // says somebody was standing here, and who that is, is a fair next question to
-// have an answer to. The second is the count on the bottom line, and what it
+// have an answer to. The third is the count on the bottom line, and what it
 // opens is what everyone who came past had to say back — the half of a post that
 // does not fit in a bubble 180px wide.
 //
@@ -419,25 +427,62 @@ function venuePopupElement(venue, note, away, comments, navLabel) {
 //
 // `comments` is a word and a way to open the sheet, or nothing where the page
 // has nowhere to open one — the marks page draws no posts at all, and a count
-// nothing answers would be a control that does nothing. `edit` and `remove` are
-// the same kind of thing and come with a second condition on them: they are the
-// author's, and a bubble on somebody else's post is handed neither.
+// nothing answers would be a control that does nothing. `photo` is the same kind
+// of thing for the picture, and where a page hands over none the band across the
+// top is a picture and not a control. `edit` and `remove` are the same again and
+// come with a second condition on them: they are the author's, and a bubble on
+// somebody else's post is handed neither.
 //
 // The line they all stand on is the mark bubble's, split the same way: what is
 // there to read and where the post is, out on the left; what the author can do
 // to their own, over on the right.
-function postPopupElement(post, headline, place, iso, when, navigate, comments, labels, edit, remove) {
+//
+// What comes back is the bubble and, where it has a picture in it, the way to
+// fetch that picture — which the caller hangs on the bubble being opened rather
+// than calling here. See the note at the call site.
+function postPopupElement(post, headline, place, iso, when, navigate, comments, photo, labels, edit, remove) {
   const wrapper = document.createElement("div");
   wrapper.className = styles.postPopup;
+  let showPicture = null;
   if (post.image) {
     const image = document.createElement("img");
     image.className = styles.postPopupImage;
-    image.src = post.image;
     // The picture is the post's own content, and the lines under it already say
     // everything about it there is to read out.
     image.alt = "";
-    image.loading = "lazy";
-    wrapper.append(image);
+    // The thumbnail, never the photograph: this box crops what it is given to a
+    // band 96px deep either way, and the photograph is what pressing it opens.
+    //
+    // Fetched rather than pointed at, because a stored picture is behind the
+    // session and a tag has nowhere to put the header — the same detour
+    // AuthImage makes in the React tree, made by hand here because this is DOM
+    // mapbox owns (see authImageUrl). A bubble whose picture will not come keeps
+    // the space and shows nothing in it, which is what a broken tag would have
+    // done anyway.
+    showPicture = () =>
+      authImageUrl(postThumb(post)).then(
+        (url) => {
+          image.src = url;
+        },
+        () => {},
+      );
+    // A button where the page has somewhere to open the photograph, and the bare
+    // picture where it has not.
+    const frame = document.createElement(photo ? "button" : "span");
+    frame.className = styles.postPopupPhoto;
+    if (photo) {
+      frame.type = "button";
+      frame.setAttribute("aria-label", labels.photo);
+      frame.addEventListener("click", (event) => {
+        // Short of the map, which reads a click as "put the chosen bubble away"
+        // — the reader is opening the picture, not dismissing the post. The same
+        // stop the byline and the count below both make.
+        event.stopPropagation();
+        photo(post);
+      });
+    }
+    frame.append(image);
+    wrapper.append(frame);
   }
   const label = document.createElement("strong");
   label.className = styles.postPopupText;
@@ -514,7 +559,7 @@ function postPopupElement(post, headline, place, iso, when, navigate, comments, 
     actions.append(writing);
   }
   wrapper.append(label, who, time, actions);
-  return wrapper;
+  return { element: wrapper, showPicture };
 }
 
 // A pointer that can rest on a thing, as against a finger that can only land on
@@ -621,6 +666,11 @@ export default function MapCard({
   onSelectPin,
   onOpenComments,
   onOpenVenueComments,
+  // The picture in a post's bubble, pressed. What is up there is the thumbnail;
+  // this is the page being asked to put the photograph itself on the screen, and
+  // it is the only thing anywhere in lo that fetches one. Nothing passed leaves
+  // the band across the top of a bubble a picture rather than a control.
+  onOpenPhoto,
   // The same pair a mark's bubble asks for, asked for from a post's — and only
   // ever on the reader's own posts, which is a question the map can answer for
   // itself: it knows who is signed in, and every post says whose it is. Nothing
@@ -651,6 +701,8 @@ export default function MapCard({
   commentsRef.current = onOpenComments;
   const venueCommentsRef = useRef(onOpenVenueComments);
   venueCommentsRef.current = onOpenVenueComments;
+  const photoRef = useRef(onOpenPhoto);
+  photoRef.current = onOpenPhoto;
   const editPostRef = useRef(onEditPost);
   editPostRef.current = onEditPost;
   const deletePostRef = useRef(onDeletePost);
@@ -1048,7 +1100,8 @@ export default function MapCard({
     const comments = onOpenComments
       ? { label: t("comments.short"), open: (post) => commentsRef.current?.(post) }
       : null;
-    const labels = { nav: t("map.nav"), edit: t("map.edit"), remove: t("map.delete") };
+    const labels = { nav: t("map.nav"), edit: t("map.edit"), remove: t("map.delete"), photo: t("post.photoOpen") };
+    const photo = onOpenPhoto ? (post) => photoRef.current?.(post) : null;
     const edit = onEditPost ? (post) => editPostRef.current?.(post) : null;
     const remove = onDeletePost ? (post) => deletePostRef.current?.(post) : null;
     postMarkersRef.current = posts.map((post) => {
@@ -1065,31 +1118,38 @@ export default function MapCard({
       // handed either — the same condition the row in the list is given as
       // `mine`, answered here from who is signed in.
       const mine = Boolean(user && post.username === user.username);
+      const bubble = postPopupElement(
+        post,
+        headline,
+        place,
+        post.time,
+        formatDateTime(post.time, i18n.language),
+        navigate,
+        comments,
+        photo,
+        labels,
+        mine ? edit : null,
+        mine ? remove : null,
+      );
+      const popup = previewPopup().setDOMContent(bubble.element);
+      // The picture in a bubble is fetched the first time that bubble is opened,
+      // not when its pin is drawn. Posts are drawn wholesale — every one within
+      // the radius gets a marker and a bubble built for it, up to a couple of
+      // hundred — and a reader opens one or two of them. Fetching on the way past
+      // would spend the neighbourhood's bytes on pictures nobody looked at, which
+      // is what `loading="lazy"` used to save us from before the picture had to
+      // be fetched by hand to carry the session header.
+      if (bubble.showPicture) popup.once("open", bubble.showPicture);
       const marker = preview(
         new mapboxgl.Marker({ element, anchor: "bottom" })
           .setLngLat([post.longitude, post.latitude])
-          .setPopup(
-            previewPopup().setDOMContent(
-              postPopupElement(
-                post,
-                headline,
-                place,
-                post.time,
-                formatDateTime(post.time, i18n.language),
-                navigate,
-                comments,
-                labels,
-                mine ? edit : null,
-                mine ? remove : null,
-              ),
-            ),
-          )
+          .setPopup(popup)
           .addTo(map),
         post.id,
       );
       return { id: post.id, marker };
     });
-    // The three handlers only for whether there is a control at all — which page
+    // The four handlers only for whether there is a control at all — which page
     // this is does not change while it is on screen — and they are themselves
     // read off their refs, so a new one on every render of the page above does
     // not tear every pin on the map down and build it again. `user` is in for
@@ -1104,6 +1164,7 @@ export default function MapCard({
     navigate,
     user?.username,
     Boolean(onOpenComments),
+    Boolean(onOpenPhoto),
     Boolean(onEditPost),
     Boolean(onDeletePost),
   ]);
@@ -1121,8 +1182,12 @@ export default function MapCard({
     const map = mapRef.current;
     if (!map) return;
     venueMarkersRef.current.forEach(({ marker }) => marker.remove());
+    // A place's own word for it, which in some languages is not a post's: what
+    // is written under a restaurant is a review of somewhere anybody can walk
+    // into, and what is written under a post is a word back to the person who
+    // left it. English calls both of them comments (see comments.venueShort).
     const comments = onOpenVenueComments
-      ? { label: t("comments.short"), open: (venue) => venueCommentsRef.current?.(venue) }
+      ? { label: t("comments.venueShort"), open: (venue) => venueCommentsRef.current?.(venue) }
       : null;
     venueMarkersRef.current = venues.map((venue) => {
       const { category, cuisine } = venueParts(venue, t);

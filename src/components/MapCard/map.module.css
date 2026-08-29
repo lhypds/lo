@@ -510,18 +510,36 @@
   gap: 2px;
 }
 
-/* Wide as the bubble and cropped rather than fitted: what it is here to answer
-   is "which post is this", and a picture letterboxed down to a strip answers it
-   worse than a crop of the middle of it does. Bled out past the bubble's own
-   padding on the top and both sides so the picture meets the frame rather than
-   floating in a paper border, with a rule under it dividing it from the words. */
-.postPopupImage {
+/* The band across the top of a bubble, bled out past the bubble's own padding on
+   the top and both sides so the picture meets the frame rather than floating in
+   a paper border, with a rule under it dividing it from the words.
+
+   A button on every page that can open the photograph, and a span on any that
+   cannot, so the geometry lives in one rule either way. Everything a button
+   brings with it is undone: this is a picture that can be pressed, not a slab
+   with a picture on it. The cursor is the exception and is the whole hint that
+   it can be — a bubble has no room for a caption saying so. */
+.postPopupPhoto {
   width: calc(100% + 20px);
-  height: 96px;
   margin: -6px -10px 6px;
   display: block;
+  padding: 0;
   border: 0;
   border-bottom: 1px solid var(--ink);
+  border-radius: 0;
+  background: none;
+  cursor: zoom-in;
+}
+
+/* Cropped rather than fitted, and to a fixed depth: a bubble is a fixed width
+   and the picture is a glimpse of the post, so every one of them is the same
+   band whichever way the photo was held. What is drawn in here is the thumbnail
+   — see postPopupElement, and utils/image for why there is one. */
+.postPopupImage {
+  width: 100%;
+  height: 96px;
+  display: block;
+  background: var(--soft);
   object-fit: cover;
 }
 

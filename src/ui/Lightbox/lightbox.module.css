@@ -1,0 +1,90 @@
+/* Above every sheet in lo rather than among them: this opens from a bubble on
+   the map, which is under all of them, and a picture being looked at is the
+   frontmost thing on the screen for as long as it is up.
+
+   Darker than a sheet's overlay, which greys the page so a form can be read over
+   it. Nothing is meant to be read through this one — the whole of it is the
+   ground a photograph is being looked at against, and 0.5 leaves the dashboard
+   showing through the corners of the picture. */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgb(0 0 0 / 0.86);
+  overscroll-behavior: none;
+  touch-action: none;
+}
+
+/* Off the picture, in the corner nothing else uses, and drawn in paper because
+   the ground behind it is black — the one place in lo where the app's two
+   colours are the other way round. A press on it lands on the overlay
+   underneath, which is what closes. */
+.close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgb(255 255 255 / 0.5);
+  border-radius: 0;
+  background: rgb(0 0 0 / 0.4);
+  color: var(--paper);
+  font-size: 14px;
+  line-height: 1;
+}
+
+/* Never the whole window: the margin is what says the picture is laid over the
+   page rather than being a page of its own, and it is where a press closes. */
+.image {
+  display: block;
+  max-width: 92vw;
+  max-height: 92vh;
+  /* Not var(--soft): while the photograph is still coming this box is empty, and
+     a sheet of near-white on a black ground is a flash rather than a placeholder */
+  background: rgb(255 255 255 / 0.06);
+  object-fit: contain;
+}
+
+/* The box the picture is held in, given the post's own proportions rather than
+   whichever of its two images has arrived. That is what makes the photograph
+   landing over the thumbnail a sharpening and not a jump: both are drawn into
+   the same rectangle, and only the resolution changes.
+
+   Three ceilings, and the smallest wins. The first two are the window either
+   way round; the third is the photo's own width, past which enlarging it buys
+   nothing but blur — on a wide screen a 2048px picture stops at 2048px and sits
+   centred rather than being stretched across the glass. */
+.sized {
+  width: min(92vw, calc(92vh * var(--ratio)), var(--natural));
+  height: auto;
+  aspect-ratio: var(--ratio);
+}
+
+/* Under the picture rather than over it: what is on screen by then is the
+   thumbnail — the right photograph at the wrong resolution — and a word laid
+   across it would be covering the thing the reader asked to see. */
+.loading {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 16px;
+  margin: 0;
+  color: rgb(255 255 255 / 0.7);
+  font-family: var(--mono);
+  font-size: 10px;
+  text-align: center;
+  pointer-events: none;
+}
+
+@media (hover: hover) {
+  .close:hover {
+    background: var(--paper);
+    color: var(--ink);
+  }
+}

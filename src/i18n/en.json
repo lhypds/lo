@@ -307,6 +307,9 @@
     "photoAlbum": "Choose from album",
     "dropPhoto": "Drop the photo here",
     "removePhoto": "Remove",
+    "photoOpen": "See the photo",
+    "photoTitle": "Photo",
+    "photoClose": "Close the photo",
     "compressing": "Compressing",
     "uploading": "Uploading",
     "notImage": "That file is not an image",
@@ -348,6 +351,9 @@
     "linkAdd": "Add a link",
     "linkRemove": "Remove this link",
     "bio": "About you",
+    "work": "Work",
+    "workNone": "Not selected",
+    "workOwnValue": "In your own words",
     "email": "Email",
     "website": "Website",
     "line": "LINE",
@@ -355,6 +361,24 @@
     "wechat": "WeChat",
     "saving": "Saving",
     "saved": "Saved"
+  },
+  "work": {
+    "architect": "Architect",
+    "photographer": "Photographer",
+    "developer": "Developer",
+    "writer": "Writer",
+    "filmmaker": "Filmmaker",
+    "journalist": "Journalist",
+    "musician": "Musician",
+    "student": "Student",
+    "designer": "Designer",
+    "artist": "Artist",
+    "engineer": "Engineer",
+    "founder": "Founder",
+    "researcher": "Researcher",
+    "teacher": "Teacher",
+    "doctor": "Doctor",
+    "chef": "Chef"
   },
   "user": {
     "follow": "Follow",
@@ -391,9 +415,12 @@
   },
   "comments": {
     "title": "Comments",
+    "venueTitle": "Comments",
     "short": "comments",
+    "venueShort": "comments",
     "aboutPost": "This post",
     "empty": "Nothing said about this yet",
+    "venueEmpty": "Nothing said about this yet",
     "placeholder": "Say something about this",
     "submit": "Comment",
     "sending": "Sending"
@@ -403,6 +430,12 @@
     "posts": "Search these posts or @someone",
     "clear": "Clear search",
     "empty": "Nothing matches “{{query}}”"
+  },
+  "sort": {
+    "label": "Sort by",
+    "nearest": "Nearest",
+    "latest": "Latest",
+    "oldest": "Oldest"
   },
   "time": {
     "justNow": "just now"

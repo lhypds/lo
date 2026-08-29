@@ -1,0 +1,6 @@
+/* Cut to the longest name it holds and no wider — the box measures itself (see
+   .sizer in ui/Select) — so the rest of the row is the search field's, and the
+   handle is the same width whichever of the three is showing. */
+.field {
+  flex: none;
+}

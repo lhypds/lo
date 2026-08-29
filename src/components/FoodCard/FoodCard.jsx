@@ -8,6 +8,6 @@ import VenuesCard from "../VenuesCard/index.js";
 // in the top bar, drags about the grid and gives a second tile to, and every one
 // of those is answered by an id (see utils/cards.js). The panel it draws is
 // shared with the café card next door, which is the half that is the same.
-export default function FoodCard() {
-  return <VenuesCard kind="food" />;
+export default function FoodCard({ onOpenComments }) {
+  return <VenuesCard kind="food" onOpenComments={onOpenComments} />;
 }

@@ -1,8 +1,9 @@
 import { Suspense, lazy, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
-import { Card, Skeleton, TileId, showToast, useNavigate, useSearchParams } from "../../ui/index.js";
+import { Card, Lightbox, Skeleton, TileId, showToast, useNavigate, useSearchParams } from "../../ui/index.js";
 import { arrangeCards, cardLabel, cardSpan, useCards } from "../../utils/cards.js";
+import { postPhoto } from "../../utils/image.js";
 import { paginate } from "../../utils/pages.js";
 import { updateVenueComments, useVenues } from "../../utils/venues.js";
 import { getLocationState, refreshLocation } from "../../utils/location.js";
@@ -198,6 +199,10 @@ export default function HomePage() {
   // hand because the two use different API identities: lo numbers a post, while
   // OpenStreetMap names a venue with a type/id pair.
   const [venueCommenting, setVenueCommenting] = useState(null);
+  // And the post whose photograph is being looked at, from the picture in the
+  // same bubble — held out here for the same reason, and doubly so while the map
+  // is expanded and is the whole of the page.
+  const [viewing, setViewing] = useState(null);
 
   // A dashboard reached through browser history while it is already mounted
   // follows the page written in that history entry as well. Usually the trip to
@@ -383,6 +388,7 @@ export default function HomePage() {
             onToggleExpanded={() => setMapExpanded((value) => !value)}
             onOpenComments={setCommenting}
             onOpenVenueComments={setVenueCommenting}
+            onOpenPhoto={setViewing}
           />
         </Suspense>,
       ),
@@ -420,8 +426,12 @@ export default function HomePage() {
       shown("nearby") && sized("nearby", <NewsCard />),
       shown("events") && sized("events", <EventsCard />),
       shown("trends") && sized("trends", <TrendsCard />),
-      shown("food") && sized("food", <FoodCard />),
-      shown("cafe") && sized("cafe", <CafeCard />),
+      // The same sheet the pins on the map open, because it is the same
+      // conversation about the same place: a card and a bubble are two views of
+      // one list, and what is added from either goes back into the venue store
+      // and is on both (see the second CommentsModal at the foot of the page).
+      shown("food") && sized("food", <FoodCard onOpenComments={setVenueCommenting} />),
+      shown("cafe") && sized("cafe", <CafeCard onOpenComments={setVenueCommenting} />),
       shown("direction") && sized("direction", <DirectionCard />),
     ].filter(Boolean),
   );
@@ -904,6 +914,12 @@ export default function HomePage() {
         onClose={() => setVenueCommenting(null)}
         onAdded={(venue, comments) => updateVenueComments(venue.kind, venue.id, comments)}
       />
+
+      {/* And the photograph over the lot of it, from the picture in a post's
+          bubble. Out here with the two sheets above for their reason and one of
+          its own: the map is the whole page while it is expanded, and this is
+          opened from the map. */}
+      <Lightbox photo={postPhoto(viewing)} onClose={() => setViewing(null)} />
     </div>
   );
 }

@@ -100,6 +100,13 @@ db.exec(`
     -- A file name from data/images, the same as a post's photo and never bytes
     avatar TEXT,
     bio TEXT,
+    -- What they do. One of the trades the sheet offers, kept as the slug the
+    -- browser's own table names it by so that every account that answered the
+    -- same way is one string — or, where nobody's list had the answer on it,
+    -- whatever its owner typed, kept exactly as typed. Nothing here can tell the
+    -- two apart and nothing here needs to: the list lives in the browser, with
+    -- the words for it in each language (see src/utils/work.js).
+    work TEXT,
     email TEXT,
     website TEXT,
     line_id TEXT,
@@ -169,6 +176,11 @@ db.exec(`
   -- something about the spot, so it carries words, maybe a photo, and the name
   -- of whoever left it. The photo is a file name from data/images, never bytes:
   -- the row stays small enough to hand out by the hundred.
+  --
+  -- Two file names, because a photo is stored twice (see compressPhoto): the
+  -- picture itself, and a thumbnail of it that every list, row and bubble draws
+  -- instead. image_width and image_height are the picture's; the thumbnail is
+  -- the same shape, and nothing that draws one needs its figures.
   CREATE TABLE IF NOT EXISTS posts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -178,6 +190,7 @@ db.exec(`
     accuracy REAL,
     body TEXT NOT NULL DEFAULT '',
     image TEXT,
+    image_thumb TEXT,
     image_width INTEGER,
     image_height INTEGER,
     place TEXT,
@@ -381,6 +394,9 @@ for (const column of [
   "whatsapp",
   "wechat",
   "links",
+  // The trade, which arrived after the contacts did. Empty on every account that
+  // predates it, which is the same thing as not having answered.
+  "work",
   // Arrived last of all, and the accounts that predate it have it empty rather
   // than filled in with anything: the first sign-in that reaches one is where
   // its password is chosen.
@@ -422,6 +438,13 @@ if (!userColumns.has("discoverable")) {
 const messageColumns = new Set(db.prepare(`PRAGMA table_info(messages)`).all().map((column) => column.name));
 if (!messageColumns.has("deleted_at")) db.exec(`ALTER TABLE messages ADD COLUMN deleted_at TEXT`);
 
+// And the thumbnail arrived after the first photos were posted. The posts that
+// predate it keep an empty column rather than being given anything made up:
+// there is no second file on disk to point at, and every reader falls back to
+// the picture itself, which is what they were all drawing before.
+const postColumns = new Set(db.prepare(`PRAGMA table_info(posts)`).all().map((column) => column.name));
+if (!postColumns.has("image_thumb")) db.exec(`ALTER TABLE posts ADD COLUMN image_thumb TEXT`);
+
 // What a person is, as far as anyone else is concerned: the name, when they
 // turned up, the line they wrote about themselves and the ways to reach them.
 // A contact is filled in to be read by whoever comes past a post, so it is part
@@ -435,6 +458,7 @@ const PROFILE_COLUMNS = `
   CASE WHEN u.avatar IS NULL THEN NULL ELSE '/api/images/' || u.avatar END AS avatar,
   u.links,
   u.bio,
+  u.work,
   u.email,
   u.website,
   u.line_id AS line,
@@ -462,7 +486,7 @@ const selectProfileByName = db.prepare(`
 // deleted rather than what they left alone.
 const updateProfileFields = db.prepare(`
   UPDATE users
-  SET avatar = ?, links = ?, bio = ?, email = ?, website = ?, line_id = ?, whatsapp = ?, wechat = ?
+  SET avatar = ?, links = ?, bio = ?, work = ?, email = ?, website = ?, line_id = ?, whatsapp = ?, wechat = ?
   WHERE id = ?
 `);
 
@@ -579,8 +603,9 @@ const updateDiscoverable = db.prepare(`
 /* --------------------------------------------------------------------- posts */
 
 const insertPost = db.prepare(`
-  INSERT INTO posts (user_id, time, latitude, longitude, accuracy, body, image, image_width, image_height, place)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  INSERT INTO posts
+    (user_id, time, latitude, longitude, accuracy, body, image, image_thumb, image_width, image_height, place)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `);
 
 // The stored image is a bare file name; every reader wants the URL, so the
@@ -593,6 +618,10 @@ const POST_COLUMNS = `
   p.accuracy,
   p.body,
   CASE WHEN p.image IS NULL THEN NULL ELSE '/api/images/' || p.image END AS image,
+  -- The small copy, which is what every list and bubble draws; the one above is
+  -- fetched only by a reader who has pressed the picture to look at it. Empty on
+  -- a post left before there were two files, and every reader falls back.
+  CASE WHEN p.image_thumb IS NULL THEN NULL ELSE '/api/images/' || p.image_thumb END AS imageThumb,
   p.image_width AS imageWidth,
   p.image_height AS imageHeight,
   p.place,
@@ -657,7 +686,7 @@ const selectPostsByUser = db.prepare(`
 // a pin on the map a claim about somewhere its author was never standing.
 const updatePostContent = db.prepare(`
   UPDATE posts
-  SET body = ?, image = ?, image_width = ?, image_height = ?
+  SET body = ?, image = ?, image_thumb = ?, image_width = ?, image_height = ?
   WHERE id = ? AND user_id = ?
 `);
 
@@ -863,7 +892,13 @@ const selectPostThreads = db.prepare(`
     p.id AS postId,
     p.body AS post,
     p.place,
-    CASE WHEN p.image IS NULL THEN NULL ELSE '/api/images/' || p.image END AS image,
+    -- The thumbnail wherever there is one: this picture is only ever drawn as a
+    -- small square beside a row in the inbox, and nothing on that screen offers
+    -- a way to look at the photograph itself.
+    CASE
+      WHEN p.image IS NULL THEN NULL
+      ELSE '/api/images/' || COALESCE(p.image_thumb, p.image)
+    END AS image,
     c.body,
     c.created_at AS time,
     c.user_id = ? AS mine,
@@ -1082,6 +1117,7 @@ export function updateProfile(userId, profile) {
     // empty field is: "[]" and NULL would be two ways of saying the same thing.
     profile.links?.length ? JSON.stringify(profile.links) : null,
     kept(profile.bio),
+    kept(profile.work),
     kept(profile.email),
     kept(profile.website),
     kept(profile.line),
@@ -1187,6 +1223,7 @@ export function createPost(userId, post) {
     post.accuracy ?? null,
     post.body ?? "",
     post.image ?? null,
+    post.imageThumb ?? null,
     post.imageWidth ?? null,
     post.imageHeight ?? null,
     post.place ?? null,
@@ -1243,6 +1280,7 @@ export function updatePost(userId, postId, post) {
   const changed = updatePostContent.run(
     post.body ?? "",
     post.image ?? null,
+    post.imageThumb ?? null,
     post.imageWidth ?? null,
     post.imageHeight ?? null,
     postId,

@@ -5,12 +5,15 @@ import { AuthImage, Select, TextArea, showToast } from "../../ui/index.js";
 import { contactsFor, profileFields } from "../../utils/contacts.js";
 import { compressToWebp, preload, uploadImage } from "../../utils/image.js";
 import { LINK_KINDS } from "../../utils/links.js";
+import { WORK_KINDS, isListedWork } from "../../utils/work.js";
 
 // The same ceilings the server keeps. The line about yourself is long enough for
 // a sentence and short enough that a profile stays a profile rather than becoming
-// a post; the list of other accounts is long enough that nobody sensible reaches
-// the end of it.
+// a post; a trade written by hand is a job title and not a description of one;
+// the list of other accounts is long enough that nobody sensible reaches the end
+// of it.
 const BIO_MAX = 280;
+const WORK_MAX = 40;
 const LINKS_MAX = 12;
 
 // A picture the size of the box it is shown in and no larger, and square,
@@ -97,6 +100,13 @@ export default function ProfileForm({ user, onSaved }) {
   // the address, and the two are the same file said two ways.
   const [avatarUrl, setAvatarUrl] = useState(user.avatar ?? "");
   const [uploading, setUploading] = useState(false);
+  // What the reader has written in the box for themselves, which is not always
+  // what the account holds: taking a trade off the menu answers the field with
+  // that trade and greys the box, and the words in it are kept here so that
+  // clearing the menu again hands them back rather than asking for them twice.
+  // Empty wherever the account's answer came off the list — that is the menu's
+  // word and not this box's, and it is one nobody typed.
+  const [ownWork, setOwnWork] = useState(() => (isListedWork(user.work) ? "" : user.work ?? ""));
   const fileRef = useRef(null);
   // Whether the reader has chosen or cleared a picture since the account last
   // arrived — see the effect below, which is what this is for.
@@ -107,6 +117,26 @@ export default function ProfileForm({ user, onSaved }) {
   // loaded and not off the fields being typed into: a messenger that vanished the
   // moment its box was emptied would leave nowhere to press Save from.
   const asked = useMemo(() => contactsFor(i18n.language, user), [i18n.language, user]);
+
+  // The menu of trades, with the way off the list at the top of it rather than
+  // the bottom: it is where the menu stands until somebody moves it, because the
+  // box beside it is the field's own answer and the list is the shortcut. Built
+  // here rather than beside the table it comes from because every row of it is a
+  // word in the reader's own language, and the table holds slugs — see
+  // utils/work.js.
+  const workOptions = useMemo(
+    () => [
+      { value: "", label: t("profile.workNone") },
+      ...WORK_KINDS.map((kind) => ({ value: kind, label: t(`work.${kind}`) })),
+    ],
+    [t],
+  );
+
+  // Which of the two is holding the answer. Read off the field rather than
+  // remembered beside it: a trade is on the list or it is not, and that is the
+  // whole of the difference between the menu having answered and the box having
+  // answered.
+  const listed = isListedWork(fields.work);
 
   // The account arrives from the session and again from /api/me a moment later,
   // so the fields are refilled when it does rather than only on first render.
@@ -120,12 +150,30 @@ export default function ProfileForm({ user, onSaved }) {
   useEffect(() => {
     const next = profileFields(user);
     setFields((current) => (touchedAvatar.current ? { ...next, avatar: current.avatar } : next));
+    // The box is refilled from the account too, and emptied where the account's
+    // answer is the menu's: what it holds is what somebody wrote, and a slug is
+    // not that.
+    setOwnWork(isListedWork(next.work) ? "" : next.work);
     if (!touchedAvatar.current) setAvatarUrl(user.avatar ?? "");
   }, [user]);
 
   function edit(field, value) {
     setFields((current) => ({ ...current, [field]: value }));
     setError("");
+  }
+
+  // A row off the menu is the answer itself. The row at the top of it is not an
+  // answer but a handing back: the field goes to whatever is in the box, which is
+  // whatever was last written there and is usually nothing.
+  function chooseWork(value) {
+    edit("work", value || ownWork);
+  }
+
+  // And the box, which answers the field directly whenever the menu is not: what
+  // is typed is what is saved, exactly as typed.
+  function writeWork(value) {
+    setOwnWork(value);
+    edit("work", value);
   }
 
   // The picture is compressed and uploaded the moment it is chosen rather than on
@@ -316,6 +364,57 @@ export default function ProfileForm({ user, onSaved }) {
             minHeight={BIO_MIN_HEIGHT}
           />
         </label>
+      </div>
+
+      {/* What you do, which sits with the picture and the line about yourself
+          because it is the same question they are: who is this. Above the
+          contacts rather than among them — everything under this is a way of
+          reaching somebody, and a trade is not one.
+
+          The box is the field and the menu is a shortcut into it. Most people
+          have a word for what they do already and writing it is the plain way to
+          answer, so the box is what the row opens on and nothing has to be
+          pressed to reach it; the list is there because a handful of answers come
+          up over and over, and a word picked off it is the same word on every
+          profile that picked it, in whatever language each of them is being read
+          in — where two people writing "photographer" by hand write it two ways.
+          No list of trades is complete, which is why the one here can be left
+          alone entirely.
+
+          One field either way, and never both at once: taking a trade off the
+          menu answers with that trade and greys the box out, and putting the menu
+          back to nothing selected hands the written words back. Two boxes that
+          could each hold a different answer would be a question about which of
+          them lo believed. */}
+      <div className="profile-work">
+        <span className="profile-label">{t("profile.work")}</span>
+        <div className="profile-work-row">
+          <Select
+            className="profile-work-select"
+            options={workOptions}
+            value={listed ? fields.work : ""}
+            onChange={chooseWork}
+            label={t("profile.work")}
+          />
+          <input
+            className="profile-input"
+            type="text"
+            value={ownWork}
+            placeholder={t("profile.workOwnValue")}
+            maxLength={WORK_MAX}
+            // Still there, still showing what was written in it, and plainly not
+            // the answer while the menu is holding one — the fade every disabled
+            // control in lo wears. Taken out of the tab order with it: a box that
+            // cannot be typed into is not a stop on the way down the form.
+            disabled={listed}
+            onChange={(event) => writeWork(event.target.value)}
+            autoComplete="off"
+            // Not the field's own name, which the menu beside it already
+            // carries: two controls on one row answering to one word is a row
+            // nobody reading by ear can tell apart.
+            aria-label={t("profile.workOwnValue")}
+          />
+        </div>
       </div>
 
       {/* An address, and the messenger the language this is being read in

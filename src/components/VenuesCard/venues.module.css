@@ -20,13 +20,106 @@
 /* Two columns rather than the events row's one, because this list has a sort
    key and that one does not: the name and what it serves on the left, and how
    far off it is pinned to the right, where twenty-four of them read down the
-   edge as the ladder they are. */
+   edge as the ladder they are.
+   A button now, and therefore a button undone: the width a button gives itself,
+   the type it swaps in and the box it draws round the whole thing are all the
+   browser's idea of a control, and none of them belong on a row of a list. */
 .item {
+  width: 100%;
   display: flex;
   align-items: baseline;
   gap: 10px;
   padding: 8px 10px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
   text-decoration: none;
+  cursor: pointer;
+}
+
+/* What the row opens, inside the sheet the whole window is dimmed behind: the
+   name, the two lines of small print under it and the line of words at the
+   foot. A column, because that is the order the bubble on the map says the same
+   things in. */
+.preview {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* The place itself, and the one line in here set as type rather than as small
+   print. Allowed to wrap, unlike the name on the row it was pressed on: the row
+   is one of two dozen and has to be the same height as the rest of them, and
+   this is the whole of what the sheet is about. Two lines is where it stops —
+   past that it is not a name, it is a name with an address in it, and the
+   ellipsis says as much.
+
+   `anywhere` because an OpenStreetMap name is whatever somebody typed into it,
+   and one long enough to have no space in it would otherwise push the sheet
+   wider than the window. */
+.previewName {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  margin: 0 0 4px;
+  font-size: 14px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+/* Both lines of it — what the place serves, and how far off it is — wearing one
+   class, as the map's bubble does: they are the same line said twice, and two
+   classes for it would be two to keep looking alike.
+
+   A size larger than the same words on the row and in the bubble, and it is the
+   surface that asks for it rather than the words: ten pixels is what small print
+   is on a tile among tiles and inside a box drawn over a map, and this is a
+   sheet in the middle of the window with the rest of lo dimmed behind it — the
+   size every other sheet sets its small print at (see CommentsModal). */
+.previewMeta {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+/* The line at the foot of the preview, and the two ends it is read as: what
+   leaves lo, and what stays in it. Held apart rather than spaced evenly, so the
+   remarks are never next to a link that opens a new tab.
+   Clear of the small print above it by more than the gap between those two,
+   because it is a different kind of line: they are about the place, this is
+   what can be done about it. */
+.actions {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.group {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+/* Set as the small print they stand among rather than as buttons, the way the
+   same three words are set on a mark's row and in a bubble on the map: a box
+   drawn round each is a row that reads as a toolbar. The underline says they
+   can be pressed; the padding is not seen and is there so a finger has more
+   than ten pixels of height to land on. */
+.action {
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 12px;
+  text-decoration: underline;
+  white-space: nowrap;
+  cursor: pointer;
 }
 
 .body {
@@ -70,6 +163,19 @@
   margin-right: 8px;
 }
 
+/* The right-hand column, which is one figure on most rows and two on the rows
+   somebody has said something about. Wrapping, so the second of them drops
+   under the first on a tile too narrow to hold both rather than squeezing the
+   name into four characters. */
+.figures {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 /* Never clipped and never wrapped — the figure is the one thing on the row that
    is the reason the row is where it is. Tabular so the column lines up. */
 .distance {
@@ -79,6 +185,19 @@
   font-family: var(--mono);
   font-size: 10px;
   font-variant-numeric: tabular-nums;
+}
+
+/* And how much has been said about the place, in the word and figure the bubble
+   on the map uses, so the count on the row and the count in the corner of the
+   pin read as the same thing said twice. Not tabular, unlike the distance
+   beside it: this one is not a column to be read down, it is a mark that a row
+   has a conversation under it. */
+.comments {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
 }
 
 /* On a single square the row is cut to what a cube can hold and still answer
@@ -108,8 +227,12 @@
   display: none;
 }
 
-.square .distance {
-  display: block;
+/* The figures stop being a column pinned to the right and become the line under
+   the name, starting at the left edge with everything else on the row. Still a
+   wrapping row of their own, so a place with a conversation under it puts the
+   count on a second line rather than off the side of the tile. */
+.square .figures {
+  justify-content: flex-start;
   margin-top: 4px;
 }
 
@@ -140,6 +263,10 @@
   padding: 8px;
 }
 
+/* The wash follows the press, and every row is one now, at every size. No mark
+   of its own for the row whose preview is up: the sheet is over the middle of
+   the window with the dashboard dimmed behind it, and a row washed dark under
+   all that would be a state nobody can see. */
 @media (hover: hover) {
   .item:hover {
     background: var(--ink);
@@ -147,7 +274,13 @@
   }
 
   .item:hover .meta,
-  .item:hover .distance {
+  .item:hover .distance,
+  .item:hover .comments {
     color: var(--paper);
+  }
+
+  .action:hover {
+    color: var(--ink);
+    text-decoration: none;
   }
 }

@@ -307,6 +307,9 @@
     "photoAlbum": "Elegir del álbum",
     "dropPhoto": "Suelta la foto aquí",
     "removePhoto": "Quitar",
+    "photoOpen": "Ver la foto",
+    "photoTitle": "Foto",
+    "photoClose": "Cerrar la foto",
     "compressing": "Comprimiendo",
     "uploading": "Subiendo",
     "notImage": "Ese archivo no es una imagen",
@@ -348,6 +351,9 @@
     "linkAdd": "Añadir un enlace",
     "linkRemove": "Quitar este enlace",
     "bio": "Sobre ti",
+    "work": "Ocupación",
+    "workNone": "Sin seleccionar",
+    "workOwnValue": "En tus palabras",
     "email": "Correo electrónico",
     "website": "Sitio web",
     "line": "LINE",
@@ -355,6 +361,24 @@
     "wechat": "WeChat",
     "saving": "Guardando",
     "saved": "Guardado"
+  },
+  "work": {
+    "architect": "Arquitecto/a",
+    "photographer": "Fotógrafo/a",
+    "developer": "Desarrollador/a",
+    "writer": "Escritor/a",
+    "filmmaker": "Cineasta",
+    "journalist": "Periodista",
+    "musician": "Músico/a",
+    "student": "Estudiante",
+    "designer": "Diseñador/a",
+    "artist": "Artista",
+    "engineer": "Ingeniero/a",
+    "founder": "Fundador/a",
+    "researcher": "Investigador/a",
+    "teacher": "Docente",
+    "doctor": "Médico/a",
+    "chef": "Chef"
   },
   "user": {
     "follow": "Seguir",
@@ -391,9 +415,12 @@
   },
   "comments": {
     "title": "Comentarios",
+    "venueTitle": "Comentarios",
     "short": "comentarios",
+    "venueShort": "comentarios",
     "aboutPost": "Esta publicación",
     "empty": "Aún no hay comentarios",
+    "venueEmpty": "Aún no hay comentarios",
     "placeholder": "Di algo sobre esto",
     "submit": "Comentar",
     "sending": "Enviando"
@@ -403,6 +430,12 @@
     "posts": "Buscar en estas publicaciones o @alguien",
     "clear": "Borrar búsqueda",
     "empty": "Nada coincide con «{{query}}»"
+  },
+  "sort": {
+    "label": "Ordenar por",
+    "nearest": "Cercanía",
+    "latest": "Recientes",
+    "oldest": "Antiguos"
   },
   "time": {
     "justNow": "ahora mismo"

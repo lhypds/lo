@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { AuthImage, Card, Link, Skeleton, useSearchParams } from "../../ui/index.js";
 import { LARGE, SMALL, TALL, TINY, useCardSize } from "../../utils/cards.js";
 import { distanceMeters, formatCoords, formatDistance, formatUsername, relativeTime } from "../../utils/format.js";
+import { postThumb } from "../../utils/image.js";
 import CardSize from "../CardSize/index.js";
 import { useNearbyPosts } from "../LocationProvider/index.js";
 import styles from "./posts.module.css";
@@ -98,7 +99,7 @@ export default function PostsCard() {
                   {/* Square and cropped, as in the list on the posts page: a row
                       is the same height whichever way the photo was held. */}
                   {post.image && (
-                    <AuthImage className={styles.thumb} src={post.image} alt="" width="32" height="32" />
+                    <AuthImage className={styles.thumb} src={postThumb(post)} alt="" width="32" height="32" />
                   )}
                   <span className={styles.lines}>
                     {/* A photo with no words is a whole post; where it was taken

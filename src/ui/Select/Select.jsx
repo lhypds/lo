@@ -109,14 +109,24 @@ export default function Select({ options, value, onChange, label, className }) {
     // A press anywhere else is the reader saying they are done with the list.
     // Down rather than up, so a press that lands on something behind the menu
     // closes it before that something is pressed.
+    //
+    // Caught on the way down, which is the whole of why this works at all: every
+    // menu in lo opens inside a sheet, and a sheet stops all four pointer events
+    // dead at its overlay so that a drag inside one is not read as a page turn by
+    // the strip underneath (see the gestures in ui/Modal). React's handlers run
+    // at the root, so that stop is a stop on the native event too — a listener
+    // bubbling up to the document never hears a press made anywhere inside a
+    // sheet, which is everywhere this control is used. On the way down it is
+    // heard before the overlay has the chance. The same reason ImportHelp and
+    // DeleteAllMarks take theirs in capture.
     function outside(event) {
       if (!wrapperRef.current?.contains(event.target)) setOpen(false);
     }
-    document.addEventListener("pointerdown", outside);
+    document.addEventListener("pointerdown", outside, true);
     return () => {
       window.removeEventListener("scroll", follow, true);
       window.removeEventListener("resize", follow);
-      document.removeEventListener("pointerdown", outside);
+      document.removeEventListener("pointerdown", outside, true);
     };
   }, [open]);
 

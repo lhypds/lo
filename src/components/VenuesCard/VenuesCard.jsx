@@ -1,11 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
-import { Card, Skeleton } from "../../ui/index.js";
+import { Card, Modal, Skeleton } from "../../ui/index.js";
 import { LARGE, SMALL, TALL, TINY, useCardSize } from "../../utils/cards.js";
 import { distanceMeters, formatDistance } from "../../utils/format.js";
-import { directionsLink } from "../../utils/maps.js";
-import { publishVenues, venueParts } from "../../utils/venues.js";
+import { directionsLink, placeSearchLink } from "../../utils/maps.js";
+import { publishVenues, useVenues, venueParts } from "../../utils/venues.js";
 import CardSize from "../CardSize/index.js";
 import { useHere } from "../LocationProvider/index.js";
 import styles from "./venues.module.css";
@@ -44,7 +45,14 @@ const MOVED_M = 150;
 // once here and named twice (see FoodCard and CafeCard), which is what stops a
 // change to the shape of a row from having to be made in two places and getting
 // made in one.
-export default function VenuesCard({ kind }) {
+//
+// `onOpenComments` is the page's venue sheet, handed down the way the map is
+// handed the same one: there is a single conversation about a place, and it is
+// opened from whichever of the two surfaces the reader happens to be looking at.
+// Without it the preview keeps its two hand-offs to Google Maps and drops the
+// third word, which is what a card rendered somewhere with no sheet to open
+// should do.
+export default function VenuesCard({ kind, onOpenComments = null }) {
   const { t, i18n } = useTranslation();
   const { coords, reloadToken } = useHere();
   // A list as long as the street is, in a tile the reader sizes from a single
@@ -62,6 +70,11 @@ export default function VenuesCard({ kind }) {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const requestRef = useRef(0);
+  // Which place the reader has asked about, by id, and nothing when they have
+  // asked about none. The sheet it opens is over the whole window rather than
+  // hanging off the row, so one at a time is not a rule this has to keep — it is
+  // the only shape the answer has.
+  const [open, setOpen] = useState(null);
   // The fix this card is standing on: the one the list below was asked from,
   // which is not the one the sensor last read. Seeded from the fix that is
   // already in hand, so a card mounting with a position asks its question on the
@@ -88,6 +101,11 @@ export default function VenuesCard({ kind }) {
         if (ticket !== requestRef.current) return;
         setResult(data);
         setError(null);
+        // And the preview down with the list it was opened from. A new answer
+        // here is the reader having walked a hundred and fifty metres or having
+        // asked again, and the place the sheet is about need not be in the list
+        // that just landed at all.
+        setOpen(null);
       })
       .catch((requestError) => {
         if (ticket !== requestRef.current) return;
@@ -110,6 +128,24 @@ export default function VenuesCard({ kind }) {
   useEffect(() => {
     publishVenues(kind, items);
   }, [kind, items]);
+
+  // And read back, for one field only: the number of remarks under a place. A
+  // comment written from a bubble on the map is put straight into that store so
+  // the pin is redrawn with the new figure (see updateVenueComments), and the
+  // row down here is the same place — two counts that disagree would be lo
+  // arguing with itself until this list is next asked for, which is not until
+  // the reader has walked a hundred and fifty metres.
+  //
+  // An overlay rather than rendering the published rows outright: those are
+  // written by an effect, so for one paint after an answer lands they are still
+  // the previous list — and on the first answer of all, they are none, which
+  // would flash the empty sentence over a list that had just arrived. The rows
+  // stay this card's own and only the figure comes from the shelf.
+  const published = useVenues();
+  const counts = useMemo(
+    () => new Map(published.map((row) => [row.id, row.comments])),
+    [published],
+  );
 
   // And cleared when the tile goes, so a card the reader has put away takes its
   // pins with it. Its own effect and not the one above's cleanup: that one runs
@@ -145,12 +181,23 @@ export default function VenuesCard({ kind }) {
       <ul className={styles.list}>
         {items.map((item) => {
           const { category, cuisine } = venueParts(item, t);
+          const comments = counts.get(item.id) ?? item.comments ?? 0;
+          const away = formatDistance(item.distance);
           return (
             <li key={item.id}>
-              {/* The row is the way there: the same anchor the marks list uses,
-                  which hands a handheld to its maps app and a desktop to the
-                  directions page rather than drawing a line lo cannot follow. */}
-              <a {...directionsLink(item, coords)} className={styles.item}>
+              {/* The row is a press rather than a way anywhere, and what it
+                  opens is the preview at the foot of this file — the same one
+                  the pin for this place opens on the map, because it is the same
+                  place and there is no sense in two answers to one press. What
+                  it costs is the row's old job of being the directions link;
+                  what it buys is everything that could not be fitted onto a row,
+                  which on a tile ninety pixels across was all three of them. */}
+              <button
+                type="button"
+                className={styles.item}
+                aria-haspopup="dialog"
+                onClick={() => setOpen(item.id)}
+              >
                 <span className={styles.body}>
                   <span className={styles.name}>{item.name}</span>
                   {/* Left off rather than left empty on the rows that have
@@ -163,16 +210,41 @@ export default function VenuesCard({ kind }) {
                     </span>
                   )}
                 </span>
-                {/* The sort key, out in a column of its own on the right: a
-                    list ordered by distance should read as one down its edge. */}
-                <span className={styles.distance}>{formatDistance(item.distance)}</span>
-              </a>
+                {/* The two figures about a place that are not the place, out on
+                    the right: how far off it is, which is the sort key and reads
+                    down the edge as the ladder it is, and how much has been said
+                    about it, which is the one thing on the row that says the
+                    preview has something in it worth opening.
+                    A nought is left off, as it is on a post's row and unlike in
+                    the preview: there the figure is a control and the nought is
+                    an invitation to be the first to say something, here it would
+                    be "comments 0" written down every row of a quiet street. */}
+                <span className={styles.figures}>
+                  <span className={styles.distance}>{away}</span>
+                  {comments > 0 && (
+                    <span className={styles.comments}>
+                      {t("comments.venueShort")} {comments}
+                    </span>
+                  )}
+                </span>
+              </button>
             </li>
           );
         })}
       </ul>
     );
   }
+
+  // The place the preview is about, looked up rather than held: what the reader
+  // pressed is a row of the list on screen, and the list on screen is the one
+  // thing here that is allowed to be replaced under them. Holding the row itself
+  // would be holding a copy of it, which is how a sheet comes to be showing a
+  // distance measured from a street the reader left.
+  const chosen = open ? (items.find((item) => item.id === open) ?? null) : null;
+  const chosenParts = chosen ? venueParts(chosen, t) : null;
+  const serves = chosenParts
+    ? [chosenParts.category, chosenParts.cuisine].filter(Boolean).join(" · ")
+    : "";
 
   return (
     <Card
@@ -194,6 +266,103 @@ export default function VenuesCard({ kind }) {
       className={cube ? styles.square : undefined}
     >
       <div className={styles.scroll}>{body}</div>
+      {/* Out to the body, for the reason the mark button gives where it does the
+          same (see MarkButton): the tile is a query container, and containment
+          makes it the containing block for anything fixed inside it — a sheet
+          left in here would be laid out across this one square and greyed out
+          the card rather than the window.
+
+          The preview a pin opens on the map, said as a sheet: in the middle of
+          the screen with the dashboard dimmed behind it, because a card is a
+          tile among tiles and a bubble hanging off a row of one is a box the
+          reader has to find. What it says is what the bubble says, in the same
+          order — the name at the head, what it serves, how far off it is, and
+          then everything there is to do about it on a line at the foot. */}
+      {createPortal(
+        <Modal
+          isOpen={Boolean(chosen)}
+          // Which list this place came out of, rather than the place itself. The
+          // sheet's own title is one line that never wraps and is cut with an
+          // ellipsis where it runs out (see ui/Modal), which is the right
+          // treatment for a label and the wrong one for the single thing this
+          // sheet is about: a place with a long name would be a preview of
+          // "Trattoria del…". So the name goes at the head of the content, where
+          // it can wrap, and the head of the sheet says the same word the tile
+          // it was opened from says — the arrangement the remarks sheet already
+          // uses for the same reason (see CommentsModal).
+          title={t(`${kind}.title`)}
+          onClose={() => setOpen(null)}
+          closeOnOverlay
+        >
+          {chosen && (
+            <div className={styles.preview}>
+              <p className={styles.previewName}>{chosen.name}</p>
+              {serves && <span className={styles.previewMeta}>{serves}</span>}
+              <span className={styles.previewMeta}>{formatDistance(chosen.distance)}</span>
+              {/* Held apart rather than spaced evenly, as on a mark's row and in
+                  a bubble on the map: what leaves lo for Google Maps on the
+                  left, what stays here out on the right, so a press meant for
+                  the remarks is not a press made by accident on a tab that goes
+                  somewhere else.
+                  Words rather than icons, at the small print's own size, for the
+                  reason spelled out in MarkItem: a glyph for "what is standing
+                  there" is a guess, and the tooltip that settles it is not
+                  something a phone has. */}
+              <div className={styles.actions}>
+                <span className={styles.group}>
+                  {/* What is actually there, which a name and a cuisine do not
+                      answer: the hours, the photographs, whether it is open now.
+                      Google's place search, on the name — a mark is searched on
+                      its coordinates instead, and the difference is where the
+                      name came from (see placeSearchUrl in utils/maps.js). */}
+                  <a
+                    className={styles.action}
+                    aria-label={`${t("map.search")} ${chosen.name}`}
+                    {...placeSearchLink(chosen)}
+                  >
+                    {t("map.search")}
+                  </a>
+                  {/* The row's old job, now a word: turn-by-turn belongs to the
+                      maps app on a handheld and the directions page on a
+                      desktop, not to a tile on a dashboard. */}
+                  <a
+                    className={styles.action}
+                    aria-label={`${t("map.nav")} ${chosen.name}`}
+                    {...directionsLink(chosen, coords)}
+                  >
+                    {t("map.nav")}
+                  </a>
+                </span>
+                {/* The word and the figure together, as in the bubble on the map:
+                    the count is what says there is anything to open, and a nought
+                    is worth printing here because it is the invitation to be the
+                    first to say something. The kind goes with the place because
+                    the sheet hands it back on the way out, and that is what says
+                    which of the two lists to put the new figure in.
+                    The preview goes as the remarks come up. Two sheets over one
+                    another is a shape lo has (see ui/Modal), but not for these
+                    two: this one is a preview of the thing now filling the
+                    screen, and the pair of them would grey the dashboard twice
+                    over for a box the reader would then have to put away twice. */}
+                {onOpenComments && (
+                  <button
+                    type="button"
+                    className={styles.action}
+                    aria-label={`${t("comments.venueShort")} ${chosen.name}`}
+                    onClick={() => {
+                      setOpen(null);
+                      onOpenComments({ ...chosen, kind });
+                    }}
+                  >
+                    {t("comments.venueShort")} {counts.get(chosen.id) ?? chosen.comments ?? 0}
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+        </Modal>,
+        document.body,
+      )}
     </Card>
   );
 }

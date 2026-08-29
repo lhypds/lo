@@ -111,7 +111,13 @@ export default function CommentsModal({ post = null, venue = null, onClose, onAd
   return (
     <Modal
       isOpen={Boolean(subject)}
-      title={t("comments.title")}
+      // Which of the two conversations this is. They are the same column of
+      // remarks read the same way, and in some languages they are not the same
+      // word: what is written under a public place is a review of somewhere
+      // anybody can walk into, and what is written under a post is a word back
+      // to the person who left it. English calls both of them comments, so the
+      // pair of keys carries one string there and two in Chinese.
+      title={t(venueThread ? "comments.venueTitle" : "comments.title")}
       onClose={onClose}
       closeOnOverlay
       // The composer's own width, and for the composer's own reason: this is a
@@ -138,7 +144,11 @@ export default function CommentsModal({ post = null, venue = null, onClose, onAd
             loading ? (
               <Skeleton rows={3} lines={2} label={t("common.loading")} />
             ) : (
-              !error && <p className={styles.empty}>{t("comments.empty")}</p>
+              !error && (
+                <p className={styles.empty}>
+                  {t(venueThread ? "comments.venueEmpty" : "comments.empty")}
+                </p>
+              )
             )
           ) : (
             <ul className={styles.items}>

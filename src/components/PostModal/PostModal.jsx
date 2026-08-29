@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
 import { AuthImage, Modal, TextArea } from "../../ui/index.js";
 import { formatCoords } from "../../utils/format.js";
-import { compressToWebp, preload, storedName, uploadImage } from "../../utils/image.js";
+import { compressPhoto, preload, storedName, uploadImage } from "../../utils/image.js";
 import styles from "./post.module.css";
 
 const BODY_MAX = 500;
@@ -71,6 +71,10 @@ export default function PostModal({ isOpen, coords, place, post = null, onClose,
         ? {
             name: storedName(post.image),
             url: post.image,
+            // Undone alongside it, so an edit that leaves the photo alone writes
+            // the same pair of names back rather than dropping the small one and
+            // leaving every list to fetch the picture again.
+            thumbName: storedName(post.imageThumb),
             width: post.imageWidth ?? null,
             height: post.imageHeight ?? null,
           }
@@ -115,15 +119,33 @@ export default function PostModal({ isOpen, coords, place, post = null, onClose,
     setError("");
     setStage("compressing");
     try {
-      const { blob, width, height } = await compressToWebp(file);
+      // Two files out of the one photo — the picture and the thumbnail every
+      // list will draw in its place — and one decode between them.
+      const { full, thumb } = await compressPhoto(file);
       setStage("uploading");
-      const uploaded = await uploadImage(blob);
+      // Side by side rather than one after the other: they are two unrelated
+      // writes to a folder that names files after their own bytes, and the
+      // thumbnail is small enough that the pair costs what the picture did.
+      const [uploaded, uploadedThumb] = await Promise.all([
+        uploadImage(full.blob),
+        thumb ? uploadImage(thumb.blob) : null,
+      ]);
       // The button goes on saying Uploading until the picture can be painted,
       // not merely until the bytes have landed. Swapping it for the frame the
       // moment the server answers puts an empty bordered line on the sheet for
       // however long the fetch back takes, and the sheet jumps when it fills.
+      //
+      // The picture and not the thumbnail, because the picture is what the frame
+      // below shows: this is the one screen in lo that draws the photo full size
+      // without being asked, since it is the photo about to be posted.
       await preload(uploaded.url);
-      setImage({ name: uploaded.name, url: uploaded.url, width, height });
+      setImage({
+        name: uploaded.name,
+        url: uploaded.url,
+        thumbName: uploadedThumb?.name ?? null,
+        width: full.width,
+        height: full.height,
+      });
     } catch (uploadError) {
       setError(uploadError.message || t("post.uploadFailed"));
     } finally {
@@ -284,6 +306,7 @@ export default function PostModal({ isOpen, coords, place, post = null, onClose,
     const content = {
       body: text,
       image: image?.name ?? null,
+      imageThumb: image?.thumbName ?? null,
       imageWidth: image?.width ?? null,
       imageHeight: image?.height ?? null,
     };
