@@ -251,8 +251,8 @@ function popupNavElement(to, label, name) {
 // beginning of that answer rather than the whole of it. Left of the directions
 // link because it is the question that comes first: what is this, then take me
 // back to it.
-function popupSearchElement(to, label, name) {
-  return popupLinkElement(searchLink(to), label, name);
+function popupSearchElement(to, label, name, searchName) {
+  return popupLinkElement(searchLink(to, searchName), label, name);
 }
 
 // The two words in a bubble that are pressed rather than followed. Both of them
@@ -314,15 +314,16 @@ function popupDeleteElement(subject, label, name, remove) {
 // where it has no answer to give — a control that did nothing would be worse
 // than no control.
 //
-// `coords` arrives empty on a spot nobody named: the coordinates are then the
-// title itself, and a line of them underneath would be the bubble saying the
-// same thing twice. The title wears the numbers' own type in that case, which is
-// the type they were wearing on the line they came up from.
-function markPopupElement(mark, name, coords, iso, when, labels, edit, remove) {
+// `named` arrives empty on a spot nobody named: the coordinates are then the
+// title itself, and a second line of them would be the bubble saying the same
+// thing twice. The title wears the numbers' own type in that case, which is the
+// type they were wearing on the line they came up from.
+function markPopupElement(mark, named, coords, iso, when, labels, edit, remove) {
   const wrapper = document.createElement("div");
   wrapper.className = styles.markPopup;
+  const name = named || coords;
   const label = document.createElement("strong");
-  if (!coords) label.className = styles.markPopupNumbers;
+  if (!named) label.className = styles.markPopupNumbers;
   label.textContent = name;
   const time = document.createElement("time");
   time.className = styles.markPopupMeta;
@@ -333,7 +334,7 @@ function markPopupElement(mark, name, coords, iso, when, labels, edit, remove) {
   const going = document.createElement("span");
   going.className = styles.popupGroup;
   going.append(
-    popupSearchElement(mark, labels.search, name),
+    popupSearchElement(mark, labels.search, name, named),
     popupNavElement(mark, labels.nav, name),
   );
   actions.append(going);
@@ -345,7 +346,7 @@ function markPopupElement(mark, name, coords, iso, when, labels, edit, remove) {
     actions.append(keeping);
   }
   wrapper.append(label);
-  if (coords) {
+  if (named) {
     const position = document.createElement("span");
     position.className = styles.markPopupMeta;
     position.textContent = coords;
@@ -1057,8 +1058,8 @@ export default function MapCard({
             previewPopup().setDOMContent(
               markPopupElement(
                 mark,
-                named || coords,
-                named ? coords : "",
+                named,
+                coords,
                 mark.time,
                 formatDateTime(mark.time, i18n.language),
                 labels,

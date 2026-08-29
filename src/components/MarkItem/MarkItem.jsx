@@ -81,12 +81,12 @@ export default function MarkItem({
       <div className="mark-actions">
         <span className="mark-action-group">
           {/* What is standing there, which is a question a spot kept before
-              anyone knew the answer often still has. Google Maps' search page,
-              opened on the coordinates. */}
+              anyone knew the answer often still has. A name searches for that
+              name on this ground; an unnamed spot falls back to its coordinates. */}
           <a
             className="mark-action"
             aria-label={`${t("map.search")} ${name}`}
-            {...searchLink(mark)}
+            {...searchLink(mark, named)}
           >
             {t("map.search")}
           </a>

@@ -36,11 +36,10 @@ export function directionsUrl(to, from = null) {
   return `https://www.google.com/maps/dir/?${query}`;
 }
 
-// The other question to ask about a spot: not "take me there" but "what is
-// here". Google's place-search URL, and given the coordinates rather than the
-// name — the name on a mark is whatever the reader typed on it, "home" or "the
-// good bakery", and searched as words that lands anywhere in the world except
-// the spot it was written about. A pair of coordinates can only mean one place.
+// The coordinate-only version of the other question to ask about a spot: not
+// "take me there" but "what is here". This is the fallback for a mark nobody
+// named; a named mark goes through placeSearchUrl below so its label is the
+// search and these coordinates only keep that search on the right ground.
 export function searchUrl(to) {
   const query = new URLSearchParams({ api: "1", query: `${to.latitude},${to.longitude}` });
   return `https://www.google.com/maps/search/?${query}`;
@@ -87,8 +86,9 @@ export function directionsLink(to, from = null) {
   return mapsLink(directionsUrl(to, from));
 }
 
-export function searchLink(to) {
-  return mapsLink(searchUrl(to));
+export function searchLink(to, label = "") {
+  const name = String(label).trim();
+  return mapsLink(name ? placeSearchUrl({ ...to, name }) : searchUrl(to));
 }
 
 export function placeSearchLink(to) {
