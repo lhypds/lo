@@ -80,6 +80,8 @@
   "clock": {
     "title": "Time",
     "turn": "Double-click to turn the card over",
+    "to12": "Click for a 12-hour clock",
+    "to24": "Click for a 24-hour clock",
     "timezone": "Time zone",
     "rise": "Rise",
     "set": "Set",
@@ -91,6 +93,8 @@
   },
   "weather": {
     "title": "Weather",
+    "toFahrenheit": "Click for Fahrenheit",
+    "toCelsius": "Click for Celsius",
     "feelsLike": "Feels like",
     "humidity": "Humidity",
     "wind": "Wind",
@@ -182,6 +186,9 @@
   },
   "direction": {
     "title": "Direction",
+    "turn": "Double-click to turn the card over",
+    "compass": "Compass, {{degrees}}° {{point}}",
+    "compassUnavailable": "Compass, heading unavailable",
     "enable": "Turn on sensors",
     "asking": "Asking",
     "denied": "Motion access is blocked",

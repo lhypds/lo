@@ -57,6 +57,14 @@ const SIZES = [TINY, SMALL, LARGE, TALL];
 // either default — a card added, a panel given more room — is the only thing the
 // layout below remembers.
 //
+// `opens` parts the two questions where a card wants them parted: the size it
+// arrives at, when that is not the smallest it can be cut to. Only the newswire
+// says it. A headline is a sentence and a panel two squares tall holds three of
+// them, which is a card that has to be grown before it can be read — so it
+// arrives at four, a tile down the page rather than a strip across it, and the
+// two-square rung stays on the ladder underneath for a reader who wants the
+// dashboard back.
+//
 // `max` is the other end of the same ladder, and it is six squares — a third tile
 // down, the tallest thing on the grid — unless a card says otherwise. Every panel
 // that holds a list ends up there, because every one of them is a window onto more
@@ -96,7 +104,7 @@ export const CARDS = [
   { id: "people", label: "people.nearby", own: true, min: TINY, max: TINY },
   { id: "warnings", label: "warnings.title", min: TINY, max: TINY },
   { id: "posts", label: "posts.nearby", own: true, off: true, min: TINY },
-  { id: "nearby", label: "news.title", off: true },
+  { id: "nearby", label: "news.title", off: true, opens: LARGE },
   { id: "events", label: "events.title", off: true },
   { id: "trends", label: "trends.title", off: true },
   { id: "direction", label: "direction.title", own: true, off: true, min: TINY, max: TINY },
@@ -190,9 +198,11 @@ function rankOf(choices, id) {
 }
 
 // Every size a panel is offered at, smallest first — the ladder the pair of
-// buttons in its heading walks (see CardSize). Both ends are the card's own: where
-// it starts is `min` and where it stops is `max`, and most cards take the defaults
-// for both and get the same two rungs everything else has.
+// buttons in its heading walks (see CardSize). Both ends are the card's own: the
+// bottom rung is `min` and the top is `max`, and most cards take the defaults for
+// both and get the same three rungs everything else has. Which rung it arrives
+// standing on is a separate question and `opens` is where it is answered — see
+// sizeOf below.
 export function cardSizes(id) {
   const card = BY_ID.get(id);
   const min = card?.min ?? SMALL;
@@ -200,14 +210,16 @@ export function cardSizes(id) {
   return SIZES.filter((size) => size >= min && size <= max);
 }
 
-// The reader's answer where there is one and the card's smallest where there is
-// not — and the card's smallest, too, where the remembered size is one this panel
-// does not offer: a size stored before the card's own ladder changed is answering
-// a question that is no longer being asked.
+// The reader's answer where there is one and the card's own where there is not —
+// and the card's own, too, where the remembered size is one this panel does not
+// offer: a size stored before the card's own ladder changed is answering a
+// question that is no longer being asked.
 function sizeOf(choices, id) {
   const sizes = cardSizes(id);
   const chosen = choices[id]?.size;
-  return sizes.includes(chosen) ? chosen : sizes[0];
+  if (sizes.includes(chosen)) return chosen;
+  const opens = BY_ID.get(id)?.opens;
+  return sizes.includes(opens) ? opens : sizes[0];
 }
 
 // A new object when something changes and the same one in between, which is the

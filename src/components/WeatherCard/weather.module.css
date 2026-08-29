@@ -38,7 +38,17 @@
   stroke-linejoin: round;
 }
 
+/* The figure is also the one thing on this tile that can be pressed, so it is a
+   button undone back to the number it was: no box, no padding, none of the
+   button font it would otherwise inherit. Undone the same way the clock's face
+   is, for the same reason — see clock.module.css. */
 .temp {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: left;
   font-family: var(--display);
   font-size: var(--figure);
   font-weight: 400;
@@ -51,6 +61,22 @@
   margin-left: 1px;
   font-size: 0.34em;
   font-weight: 400;
+}
+
+/* The degree mark is what says the figure can be pressed, and what changes when
+   it is: underlined while the pointer is on the reading or the keyboard has
+   stopped there, with the figure itself left alone — a rule under type that size
+   would be a line across the tile. */
+@media (hover: hover) {
+  .temp:hover .unit {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+}
+
+.temp:focus-visible .unit {
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .condition {

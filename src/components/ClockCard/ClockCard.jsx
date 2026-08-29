@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Card } from "../../ui/index.js";
 import { cardTurned, turnCard } from "../../utils/cards.js";
+import { toggleHour12, useHour12 } from "../../utils/units.js";
 import { useHere } from "../LocationProvider/index.js";
 import ClockDial from "./ClockDial.jsx";
 import styles from "./clock.module.css";
@@ -21,6 +22,25 @@ function localMinutes(value) {
   const hours = Number(clock.slice(0, 2));
   const minutes = Number(clock.slice(3, 5));
   return Number.isFinite(hours) && Number.isFinite(minutes) ? hours * 60 + minutes : null;
+}
+
+// Sunrise and sunset said the way the hour above them is said: a tile reading
+// 3:07 PM at the top and 18:40 along the bottom would be speaking two dialects
+// of the same thing. The twenty-four hour reading is the slice as it stands; the
+// twelve-hour one has to go through Intl for the word and for where the language
+// puts it, and nothing here may hand it a real instant to do that with — so the
+// minutes are dressed as a date in UTC and read back in UTC. The numbers go in
+// and come out in the reader's own convention, having never been in a timezone.
+function formatClockTime(value, locale, hour12) {
+  if (!hour12) return localClockTime(value);
+  const minutes = localMinutes(value);
+  if (minutes === null) return "";
+  return new Intl.DateTimeFormat(locale, {
+    timeZone: "UTC",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }).format(Date.UTC(2000, 0, 1, Math.floor(minutes / 60), minutes % 60));
 }
 
 // The wall clock at the coordinates, not in the browser — h23 rather than
@@ -46,6 +66,38 @@ function zonedParts(date, zone) {
     : null;
 }
 
+// The face, in the two or three pieces it is set in. A 24-hour clock is a
+// single figure; a 12-hour one is a figure and the half of the day it belongs
+// to, and the half of the day is not part of the figure — it is a word, it does
+// not change every minute, and set at the size of the hour it would be the
+// loudest thing on the tile. So the two are taken apart here and put back
+// together in the markup, with the seconds between them.
+//
+// Which side the word goes is the language's answer and not this card's: English
+// puts it after the hour, Japanese and Chinese before it. formatToParts is asked
+// rather than guessed at — the same call, read as pieces instead of as a line.
+function readClock(date, zone, locale, hour12) {
+  const parts = new Intl.DateTimeFormat(locale, {
+    timeZone: zone,
+    // Padded on the twenty-four hour reading and not on the twelve: 09:07 is how
+    // a 24-hour clock is written and 9:07 is how a 12-hour one is, and the zero
+    // that steadies the figure on the one is a thing nobody writes on the other.
+    hour: hour12 ? "numeric" : "2-digit",
+    minute: "2-digit",
+    hour12,
+  }).formatToParts(date);
+  const period = parts.find((part) => part.type === "dayPeriod")?.value ?? "";
+  // Everything that is not the word, which leaves the hour, the separator, the
+  // minute and whatever space the locale set between them and the word — the
+  // space being the one piece that is not wanted once the two are set apart.
+  const digits = parts
+    .filter((part) => part.type !== "dayPeriod")
+    .map((part) => part.value)
+    .join("")
+    .trim();
+  return { digits, period, leading: parts[0]?.type === "dayPeriod" };
+}
+
 function formatDuration(minutes, t) {
   if (!Number.isFinite(minutes) || minutes < 0) return "";
   const hours = Math.floor(minutes / 60);
@@ -65,6 +117,7 @@ function formatOffset(seconds) {
 export default function ClockCard() {
   const { t, i18n } = useTranslation();
   const { weather } = useHere();
+  const hour12 = useHour12();
   const [now, setNow] = useState(() => new Date());
 
   // Aligned to the wall clock rather than to mount: a card that appears at
@@ -85,13 +138,13 @@ export default function ClockCard() {
   const locale = i18n.language;
 
   const wall = zonedParts(now, zone);
-  const time = new Intl.DateTimeFormat(locale, {
-    timeZone: zone,
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(now);
+  const { digits, period, leading } = readClock(now, zone, locale, hour12);
   const seconds = wall ? String(wall.second).padStart(2, "0") : "";
+  // The face said as one line rather than as the pieces it is set in — for the
+  // dial on the other side, which is a picture and has to be answered for in
+  // words to anyone who cannot see it.
+  const spoken = [leading ? period : "", digits, leading ? "" : period].filter(Boolean).join(" ");
+  const turnScale = t(hour12 ? "clock.to24" : "clock.to12");
   const date = new Intl.DateTimeFormat(locale, {
     timeZone: zone,
     year: "numeric",
@@ -135,14 +188,22 @@ export default function ClockCard() {
       flipHint={t("clock.turn")}
       defaultFlipped={cardTurned("clock")}
       onFlip={(turned) => turnCard("clock", turned)}
-      back={wall && <ClockDial {...wall} label={time} />}
+      back={wall && <ClockDial {...wall} label={spoken} />}
     >
       <div className={styles.inner}>
         <div className={styles.top}>
-          <div className={styles.face}>
-            <span className={styles.time}>{time}</span>
+          {/* One press on the hour and it is read the other way round — see
+              utils/units.js for why that answer is the reader's and why it is
+              taken here rather than in a settings panel. A button and not a
+              handler on a span, so it can be reached from the keyboard and is
+              announced as something to press; the hint rides as a title, which
+              leaves the time itself as the button's name. */}
+          <button type="button" className={styles.face} onClick={toggleHour12} title={turnScale}>
+            {leading && period && <span className={styles.period}>{period}</span>}
+            <span className={styles.time}>{digits}</span>
             <span className={styles.seconds}>{seconds}</span>
-          </div>
+            {!leading && period && <span className={styles.period}>{period}</span>}
+          </button>
           <p className={styles.date}>{date}</p>
         </div>
         <dl className={styles.rows}>
@@ -153,7 +214,9 @@ export default function ClockCard() {
           {hasSun && (
             <div>
               <dt>{`${t("clock.rise")} - ${t("clock.set")}`}</dt>
-              <dd>{`${localClockTime(today.sunrise)} - ${localClockTime(today.sunset)}`}</dd>
+              <dd>
+                {`${formatClockTime(today.sunrise, locale, hour12)} - ${formatClockTime(today.sunset, locale, hour12)}`}
+              </dd>
             </div>
           )}
           {hasSun && (

@@ -80,6 +80,8 @@
   "clock": {
     "title": "时间",
     "turn": "双击可翻转卡片",
+    "to12": "点击切换为 12 小时制",
+    "to24": "点击切换为 24 小时制",
     "timezone": "时区",
     "rise": "日出",
     "set": "日落",
@@ -91,6 +93,8 @@
   },
   "weather": {
     "title": "天气",
+    "toFahrenheit": "点击切换为华氏度",
+    "toCelsius": "点击切换为摄氏度",
     "feelsLike": "体感",
     "humidity": "湿度",
     "wind": "风速",
@@ -182,6 +186,9 @@
   },
   "direction": {
     "title": "方位",
+    "turn": "双击可翻转卡片",
+    "compass": "指南针，{{degrees}}度 {{point}}",
+    "compassUnavailable": "指南针，无法获取方位",
     "enable": "打开传感器",
     "asking": "请求中",
     "denied": "运动传感器已被阻止",

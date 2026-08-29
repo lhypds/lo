@@ -54,11 +54,13 @@ export default function ClockDial({ hour, minute, second, label }) {
   const minuteAngle = minute * 6 + second * 0.1;
   const secondAngle = second * 6;
   return (
-    // Four fifths of the box it is given rather than all of it: filling the body
-    // put a dial on the tile the size of the whole card, and what the back of
-    // this card wants is a clock on a wall with wall around it. The shadow needs
-    // the room as well — it falls outside the 200-unit square, which is why the
-    // drawing does not clip its own overflow.
+    // Not the whole of the box it is given: what the back of this card wants is
+    // a clock on a wall with wall around it. How much wall is in clock.module.css
+    // and is the one number here that is not liveboard's — a share of the tile
+    // reads well on a desktop square and leaves a phone with a dial too small to
+    // read, so the air gives way as the tile narrows. The shadow needs room of its
+    // own as well: it falls outside the 200-unit square, which is why the drawing
+    // does not clip its own overflow.
     <div className={styles.back}>
       <svg className={styles.dial} viewBox="0 0 200 200" role="img" aria-label={label}>
         <circle className={styles.rim} cx="100" cy="100" r="96" />

@@ -80,6 +80,8 @@
   "clock": {
     "title": "時刻",
     "turn": "ダブルクリックでカードを裏返す",
+    "to12": "クリックで12時間表示に切り替え",
+    "to24": "クリックで24時間表示に切り替え",
     "timezone": "タイムゾーン",
     "rise": "日の出",
     "set": "日の入り",
@@ -91,6 +93,8 @@
   },
   "weather": {
     "title": "天気",
+    "toFahrenheit": "クリックで華氏に切り替え",
+    "toCelsius": "クリックで摂氏に切り替え",
     "feelsLike": "体感",
     "humidity": "湿度",
     "wind": "風速",
@@ -182,6 +186,9 @@
   },
   "direction": {
     "title": "方位",
+    "turn": "ダブルクリックでカードを裏返す",
+    "compass": "コンパス、{{degrees}}度 {{point}}",
+    "compassUnavailable": "コンパス、方位を取得できません",
     "enable": "センサーをオンにする",
     "asking": "確認中",
     "denied": "モーションセンサーがブロックされています",

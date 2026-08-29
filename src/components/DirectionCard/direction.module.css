@@ -162,3 +162,98 @@
     color: var(--paper);
   }
 }
+
+/* ------------------------------------------------------- analog compass -- */
+
+/* The clock and compass are a pair of instruments, so their backs are drawn to
+   the same box: the same scale, white face, black rim and two-pixel hard shadow. */
+.compassBack {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.compassDial {
+  display: block;
+  width: 100%;
+  height: calc(58cqi + 19px);
+  overflow: visible;
+  font-family: var(--display);
+}
+
+.compassRim {
+  fill: var(--paper);
+  stroke: var(--ink);
+  stroke-width: 2;
+  filter: drop-shadow(2px 2px 0 var(--ink));
+}
+
+.compassTick,
+.compassMajorTick {
+  stroke: var(--ink);
+  stroke-linecap: square;
+}
+
+.compassTick {
+  stroke-width: 1;
+}
+
+.compassMajorTick {
+  stroke-width: 2;
+}
+
+.cardinal {
+  fill: var(--ink);
+  font-size: 12px;
+  font-weight: 600;
+  user-select: none;
+}
+
+/* North is the one point a magnetic instrument is built around. Its extra
+   weight gives the rose an unmistakable top without introducing another color. */
+.north {
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.indexMark {
+  fill: var(--ink);
+}
+
+.needle {
+  transform-origin: 100px 100px;
+  transition: transform 140ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.northNeedle {
+  fill: var(--ink);
+  stroke: var(--ink);
+  stroke-linejoin: miter;
+  stroke-width: 1.5;
+}
+
+.southNeedle {
+  fill: var(--paper);
+  stroke: var(--ink);
+  stroke-linejoin: miter;
+  stroke-width: 1.5;
+}
+
+/* Keep the instrument recognizable before a sensor answers, but make it clear
+   the resting northward needle is a placeholder rather than a reading. */
+.needleUnavailable {
+  opacity: 0.2;
+}
+
+.compassPin {
+  fill: var(--paper);
+  stroke: var(--ink);
+  stroke-width: 2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .needle {
+    transition-duration: 0.01ms;
+  }
+}

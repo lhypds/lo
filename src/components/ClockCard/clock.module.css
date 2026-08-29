@@ -16,7 +16,20 @@
   flex-direction: column;
 }
 
+/* The face is also the one thing on this side of the card that can be pressed,
+   so it is a button undone back to the line of type it was: no box, no padding,
+   no inherited button font. Only as wide as the reading rather than the width of
+   the tile — a button stretched across the row would take presses from the air
+   to the right of the seconds, which is not where the time is. */
 .face {
+  align-self: flex-start;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
   display: flex;
   align-items: baseline;
   gap: 5px;
@@ -36,6 +49,35 @@
   font-family: var(--mono);
   font-size: clamp(9px, 6cqi, 15px);
   font-variant-numeric: tabular-nums;
+}
+
+/* Which half of the day, on the twelve-hour reading and nowhere else. Set as the
+   seconds are set, so the small type beside the figure is one run and not two
+   sizes of afterthought — in ink rather than grey because this one is not an
+   aside: without it the reading is half a reading. */
+.period {
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: clamp(9px, 6cqi, 15px);
+  text-transform: uppercase;
+}
+
+/* What says the figure can be pressed: the small type beside it, underlined
+   while the pointer is on the reading or the keyboard has stopped there. The
+   figure itself is left alone — a rule under type that size is a line across the
+   tile, and the affordance would be louder than the hour. */
+@media (hover: hover) {
+  .face:hover .seconds,
+  .face:hover .period {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+}
+
+.face:focus-visible .seconds,
+.face:focus-visible .period {
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .date {
@@ -104,16 +146,28 @@
   justify-content: center;
 }
 
-/* Four fifths of the face, not the whole of it: at full size the dial ran from
-   edge to edge of the body and read as a clock jammed into a box. The svg keeps
-   its own square inside whatever that leaves, so the round drawing centres
-   itself and the slack falls evenly around it.
-   overflow is visible because the rim's shadow lands outside the 200-unit
-   square — the 10% of the body left over on the short side is what catches it. */
+/* How big the dial is drawn, which is not a share of the tile.
+   A share was the first answer and it is the wrong one: a phone tile is half the
+   screen, so the body under the heading is a hundred-odd pixels tall, and four
+   fifths of that is a clock too small to read the hands off. The same fraction
+   that leaves a desktop square comfortable leaves a 320px phone with a 71px dial.
+   So the dial grows with the tile but does not shrink with it at the same rate —
+   the air around it is what gives way. Read off the card's own width (cqi; the
+   card is the container, as the seconds on the front are sized), the line runs
+   through a 143px tile — the narrowest the grid ever deals, at a 320px viewport —
+   coming out at 102px, and a 286px desktop tile at 185px, which is the size that
+   was already right. In between, a 393px iPhone goes from 101px to 123px.
+   The small end is against the stop: 102px of a 111px opening is as much as the
+   card can give once the shadow has its 2px. To take it the dial spills over the
+   body's own padding, which is what the overflow below is for as well as the
+   shadow — that padding is there to hold lines of type off the card's edge, and
+   there is no type on this face. The height is the whole of it, the body being
+   wider than it is tall and the drawing round: the svg centres its own square in
+   whatever it is given. */
 .dial {
   display: block;
-  width: 80%;
-  height: 80%;
+  width: 100%;
+  height: calc(58cqi + 19px);
   overflow: visible;
   font-family: var(--display);
 }

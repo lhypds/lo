@@ -1,7 +1,9 @@
 import { useTranslation } from "react-i18next";
 import { Card } from "../../ui/index.js";
+import { cardTurned, turnCard } from "../../utils/cards.js";
 import { startSensors, useSensors } from "../../utils/sensors.js";
 import { useHere } from "../LocationProvider/index.js";
+import DirectionDial from "./DirectionDial.jsx";
 import styles from "./direction.module.css";
 
 // What stands where an instrument has not answered: a dash, rather than a zero
@@ -116,8 +118,23 @@ export default function DirectionCard() {
       ? t("direction.accuracy", { degrees: Math.round(headingAccuracy) })
       : null;
 
+  const compassLabel = Number.isFinite(heading)
+    ? t("direction.compass", {
+        degrees: Math.round(heading),
+        point: t(`direction.point.${pointKey(heading)}`),
+      })
+    : t("direction.compassUnavailable");
+
   return (
-    <Card title={t("direction.title")} meta={meta} square>
+    <Card
+      title={t("direction.title")}
+      meta={meta}
+      square
+      flipHint={t("direction.turn")}
+      defaultFlipped={cardTurned("direction")}
+      onFlip={(turned) => turnCard("direction", turned)}
+      back={<DirectionDial heading={heading} label={compassLabel} />}
+    >
       <div className={styles.inner}>
         <div className={styles.handset}>{handset}</div>
         <dl className={styles.rows}>
