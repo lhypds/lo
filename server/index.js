@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import net from "node:net";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -68,6 +69,17 @@ try {
 } catch {
   // no .env file — use the ambient environment as-is
 }
+
+// Node races the addresses a hostname resolves to and gives each one 250 ms to
+// finish its handshake before moving on to the next — a sensible way to get off
+// a broken IPv6 route quickly, and far too little time for a server that is a
+// continent away. Overpass answers from Germany at a ~270 ms round trip, so the
+// handshake it needs one of to complete was being abandoned a hair before it
+// landed, on every address, every time: `fetch failed`, ETIMEDOUT, in under
+// three seconds, long before any of the timeouts this app sets for itself.
+// Two seconds is still short enough to walk away from an address that is
+// genuinely dead.
+net.setDefaultAutoSelectFamilyAttemptTimeout(2000);
 
 const port = Number(process.env.PORT) || 3014;
 const isProduction = process.env.NODE_ENV === "production";

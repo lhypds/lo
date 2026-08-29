@@ -27,7 +27,7 @@ function coordKey(coords) {
 // what the colour is about — the two are the same fact either way (see LEVELS in
 // utils/warnings.js), and saying it in the terms the colour is chosen in is what
 // keeps this function honest. The two top bands share the one colour, and which
-// of them a row is, is the word at the end of it.
+// of them a row is, is the number at the end of it.
 function levelClass(level) {
   if (level >= 4) return styles.grave;
   if (level === 3) return styles.warned;
@@ -149,20 +149,27 @@ export default function Warnings() {
                     <span className={styles.severity}>
                       {t(`warnings.severity.${item.severity}`)}
                     </span>
-                    {/* 警戒レベル used to be spelled out here, at the end of the
-                        row, and it is not any more — it was the third thing in
-                        this group and the one that took the line over the end of
-                        a square tile.
-                        Nothing is lost with it, because on this card the number
-                        was never independent of the word in front of it: the band
-                        fixes the level exactly, one to one, and always has (see
-                        LEVELS in utils/warnings.js). 警報 *is* level 3. So the row
-                        was saying the same thing twice and paying for the second
-                        one in a wrapped line. How far up the scale a row is, is
-                        still answered twice over besides — by the colour it is
-                        standing on, which says it from across the room and before
-                        any of these words are read, and by the sheet a press
-                        opens, which has the room to write it out in full. */}
+                    {/* 警戒レベル, the number the country's evacuation advice is
+                        written against — the word beside it says what was issued,
+                        this says how far up the scale it is.
+                        Written short, as L2 rather than Level 2, and the same two
+                        characters in all three languages. This tile is a single
+                        square and never anything else, and of the three things in
+                        the group this is the one that goes over the end and takes
+                        the line with it. What it can give up is the word, because
+                        the chip is not prose: it is boxed, in the mono face, and
+                        standing beside a word that has already said 警報 or
+                        Advisory in full. What is left is a position on a five-step
+                        scale, which is all it ever was.
+                        The whole phrase is still said twice over — under the
+                        finger in the sheet, where there is room for it, and here
+                        to anyone listening rather than looking. */}
+                    {level != null && (
+                      <span className={styles.level}>
+                        <span aria-hidden="true">{t("warnings.levelShort", { level })}</span>
+                        <span className="sr-only">{t("warnings.level", { level })}</span>
+                      </span>
+                    )}
                   </span>
                 </span>
                 <span className={styles.detail}>

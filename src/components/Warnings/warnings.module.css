@@ -75,11 +75,8 @@
    the room, before any of the words on the row are anywhere near read. Pale
    enough that it does: the ink and the grey on top of it are the card's own, and
    a ground that changed them would be a second thing to keep legible for no more
-   said.
-
-   It is now the only place the level is said on the tile — the number that used
-   to sit at the end of the row has gone, since the band already spells it (see
-   Warnings.jsx). Which is what the colour was for in the first place. */
+   said. The number at the end of the row says the same thing exactly, and says it
+   to a reader who is already looking — this is for the one who is not. */
 .warned {
   background: rgb(255 255 173);
 }
@@ -116,17 +113,14 @@
 }
 
 /* What the bulletin says about the weather named to its left — how much of the
-   prefecture, and at what strength — held together at the right end of the row.
-   Hard right by its own margin rather than by the kind stretching into the space,
-   which is the same thing at the panel column's width and not at a square: there
-   the row can wrap, and the group has to stay a group and stay right on whichever
-   line it lands on.
-   Two things now rather than three. The level used to be the last of them and was
-   the one that went over the end on a square; it is gone from the row entirely,
-   because the strength beside it already fixes it (see Warnings.jsx). The wrap
-   below stays all the same — it is the last resort for a heading no line can hold
-   whole, and "Emergency warning" is 17 characters of monospace where a square is
-   not much more. */
+   prefecture, at what strength, how far up the scale — held together at the right
+   end of the row. Hard right by its own margin rather than by the kind stretching
+   into the space, which is the same thing at the panel column's width and not at
+   a square: there the row can wrap, and the group has to stay a group and stay
+   right on whichever line it lands on.
+   Able to wrap inside itself as the last resort, right-aligned when it does, for
+   a heading no line can hold whole — "Emergency warning" is 17 characters of
+   monospace and a square is not much more. */
 .said {
   display: flex;
   flex-wrap: wrap;
@@ -154,6 +148,19 @@
   color: var(--muted);
   font-family: var(--mono);
   font-size: 10px;
+}
+
+/* 警戒レベル, boxed: it is a position on a five-step scale, and a number loose in
+   a row of words reads as neither */
+.level {
+  flex: none;
+  padding: 0 4px;
+  border: 1px solid currentColor;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.4;
 }
 
 /* Under the row and indented past the mark: when it runs from and until, then
@@ -246,8 +253,8 @@
      tiles, and rows that are a pixel or two apart read as two lists that failed
      to line up rather than as two answers about here. A minimum rather than a
      height, because this row is the one that can still go over — a heading no
-     line can hold puts the strength under it, and a row of two lines is taller
-     than a row than can be read is worth. Centred in the box
+     line can hold puts the strength and the level under it, and a row of two
+     lines is taller than a row than can be read is worth. Centred in the box
      while it is one line, which is what it is in Japanese and in Chinese. */
   min-height: var(--row);
   align-content: center;
@@ -272,6 +279,7 @@
 
   .item:hover .areas,
   .item:hover .severity,
+  .item:hover .level,
   .item:hover .detail {
     color: var(--paper);
   }

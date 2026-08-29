@@ -123,6 +123,7 @@
     "loading": "警報を確認中",
     "issued": "{{time}}発表",
     "level": "レベル{{level}}",
+    "levelShort": "L{{level}}",
     "window": "推移 {{from}}〜{{to}}",
     "windowOpen": "推移 {{from}}〜",
     "sheet": {
