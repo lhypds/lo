@@ -110,19 +110,31 @@ const SIZES = [TINY, SMALL, LARGE, TALL];
 // the one thing on the grid that could not be moved with the rest. Being fixed is
 // what keeps it out of the menu: a row that cannot be turned off is a row with
 // nothing to press.
+//
+// The order here is the plus menu's order — the grid's own is the page's, written
+// out tile by tile in HomePage — so the list stands by what each card is a
+// reading of rather than by when it happens to arrive on the grid. The four
+// squares of here come first: the time, the sky, the ground and the button on it.
+// Then the four about what is around you — who is near, what has been posted
+// near, where to eat and where the coffee is — which is why what is in force
+// changes places with who is around inside the opening block: that puts the
+// people card at the block's edge, where the other three can stand beside it
+// rather than across a gap from it. Then the readings of the wider place, and the
+// handset's own needle last. Somebody who has just put the food card on the page
+// finds the café card on the next row down.
 export const CARDS = [
   { id: "clock", label: "clock.title", min: TINY, max: TINY },
   { id: "weather", label: "weather.title", min: TINY, max: TINY },
   { id: "map", label: "map.title", min: TINY, max: TINY },
   { id: "mark", label: "mark.button", own: true, fixed: true, min: TINY, max: TINY },
-  { id: "people", label: "people.nearby", own: true, min: TINY, max: TINY },
   { id: "warnings", label: "warnings.title", min: TINY, max: TINY },
+  { id: "people", label: "people.nearby", own: true, min: TINY, max: TINY },
   { id: "posts", label: "posts.nearby", own: true, off: true, min: TINY },
+  { id: "food", label: "food.title", off: true, min: TINY },
+  { id: "cafe", label: "cafe.title", off: true, min: TINY },
   { id: "nearby", label: "news.title", off: true, min: TINY },
   { id: "events", label: "events.title", off: true, min: TINY },
   { id: "trends", label: "trends.title", off: true, min: TINY },
-  { id: "food", label: "food.title", off: true, min: TINY },
-  { id: "cafe", label: "cafe.title", off: true, min: TINY },
   { id: "direction", label: "direction.title", own: true, off: true, min: TINY, max: TINY },
 ];
 

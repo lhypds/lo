@@ -295,10 +295,9 @@
     "saved": "已保存"
   },
   "posts": {
-    "title": "posts",
+    "title": "附近的 posts",
     "nearby": "附近的 posts",
-    "short": "posts",
-    "subtitle": "附近的 posts",
+    "subtitle": "看看你周围有什么",
     "empty": "附近还没有 post"
   },
   "people": {

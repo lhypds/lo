@@ -295,10 +295,9 @@
     "saved": "保存しました"
   },
   "posts": {
-    "title": "posts",
+    "title": "近くの posts",
     "nearby": "近くの posts",
-    "short": "posts",
-    "subtitle": "近くの posts",
+    "subtitle": "まわりのできごと",
     "empty": "近くにまだ post はありません"
   },
   "people": {

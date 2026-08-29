@@ -40,15 +40,17 @@ export default function PostsCard() {
 
   return (
     <Card
-      // "nearby", not the page's bare "posts": the dashboard is a page of
-      // answers about where you are standing, and this one is only the posts
-      // within reach of it — the page it leads to is the whole list.
+      // "nearby", not a bare "posts": the dashboard is a page of answers about
+      // where you are standing, and this one is only the posts within reach of
+      // it — the page it leads to is the whole list, and it is headed the same
+      // way (see PostsPage).
       //
-      // On a cube the "nearby" is dropped and not the noun, as on the people
-      // square beside it: a single square is a tile among tiles that are all
-      // about here, and the word is the first thing the heading can spare when
-      // it is sharing one column with a count and the pair of buttons.
-      title={cube ? t("posts.short") : t("posts.nearby")}
+      // The same name at every size, the short form the cube used to carry
+      // dropped: which tile the reader is looking at should not change what the
+      // thing on it is called. A single square has less room than the name needs
+      // — the heading gives way to the count and the pair of buttons beside it
+      // (see .title in ui/Card) — so at that size it is read cut short.
+      title={t("posts.nearby")}
       // How many there are. The panel is a window onto a list that scrolls, so
       // the figure is the thing the rows on screen cannot say for themselves:
       // whether there are four posts around here or forty. The distance that

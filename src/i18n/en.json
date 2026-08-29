@@ -295,9 +295,8 @@
     "saved": "Saved"
   },
   "posts": {
-    "title": "posts",
+    "title": "Nearby posts",
     "nearby": "Nearby posts",
-    "short": "Posts",
     "subtitle": "what is around you",
     "empty": "No posts around here yet"
   },
