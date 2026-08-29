@@ -91,10 +91,12 @@ export default function DirectionCard() {
     handset = <p className={styles.noticeText}>{t("common.loading")}</p>;
   } else {
     // Half a square has room for the sentence or for the button, not both, and a
-    // button that says what it does is the sentence. Where there is nothing to
-    // press — refused, or nothing there to turn on — the words stand alone.
+    // button that says what it does is the sentence. A refusal leaves the same
+    // button in place: permission can be changed outside the page, and the page
+    // must leave a way to ask the device again. Only a device with no sensor at
+    // all has nothing useful to press.
     handset =
-      status === "idle" || status === "asking" ? (
+      status === "idle" || status === "asking" || status === "denied" ? (
         <button
           type="button"
           className={styles.enable}

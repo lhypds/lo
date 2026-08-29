@@ -178,6 +178,12 @@
   },
   "map": {
     "title": "地图",
+    "canvas": "{{current}}地图。双击或按 Enter 键切换为{{next}}。",
+    "style": {
+      "simple": "简洁",
+      "detailed": "详细",
+      "satellite": "卫星"
+    },
     "noToken": "请在 .env 中设置 VITE_MAPBOX_TOKEN 以显示地图。",
     "recenter": "回到我的位置",
     "expand": "全屏地图",

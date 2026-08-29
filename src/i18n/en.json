@@ -178,6 +178,12 @@
   },
   "map": {
     "title": "Map",
+    "canvas": "{{current}} map. Double-click or press Enter for {{next}}.",
+    "style": {
+      "simple": "Simple",
+      "detailed": "Detailed",
+      "satellite": "Satellite"
+    },
     "noToken": "Add VITE_MAPBOX_TOKEN to .env to display the map.",
     "recenter": "Back to my position",
     "expand": "Full map",

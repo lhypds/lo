@@ -178,6 +178,12 @@
   },
   "map": {
     "title": "地図",
+    "canvas": "{{current}}地図。ダブルクリックまたは Enter キーで{{next}}に切り替えます。",
+    "style": {
+      "simple": "シンプル",
+      "detailed": "詳細",
+      "satellite": "衛星"
+    },
     "noToken": "地図を表示するには .env に VITE_MAPBOX_TOKEN を設定してください。",
     "recenter": "現在地に戻る",
     "expand": "全画面地図",

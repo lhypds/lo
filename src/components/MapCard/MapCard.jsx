@@ -10,15 +10,35 @@ import { useHere } from "../LocationProvider/index.js";
 import styles from "./map.module.css";
 
 const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
-// Light rather than Standard on every map lo draws. Standard spends its ink on
-// things none of these are big enough to say: extruded buildings, terrain
-// shading, a lit 3D scene. Light is the flat grey-and-white basemap underneath
-// all that — roads and names, nothing else — which is both what a 300px tile
-// has room for and what the rest of the app looks like. The pins are the only
-// thing on any of these maps worth looking at twice, and a quiet ground is what
-// leaves them somewhere to stand.
-const STYLE_URL = "mapbox://styles/mapbox/light-v11";
+// Three readings of the same ground. The light map is the quiet face the tile
+// opens on; streets spends more ink on buildings and road classes; satellite
+// keeps labels over the photograph so a place remains navigable. A double-click
+// walks this line and the next visit starts where the reader left it.
+const MAP_STYLE_KEY = "lo:map-style";
+const MAP_STYLES = [
+  { id: "simple", url: "mapbox://styles/mapbox/light-v11" },
+  { id: "detailed", url: "mapbox://styles/mapbox/streets-v12" },
+  { id: "satellite", url: "mapbox://styles/mapbox/satellite-streets-v12" },
+];
 const DEFAULT_ZOOM = 15;
+
+function storedMapStyle() {
+  try {
+    const stored = localStorage.getItem(MAP_STYLE_KEY);
+    return MAP_STYLES.some((style) => style.id === stored) ? stored : MAP_STYLES[0].id;
+  } catch {
+    return MAP_STYLES[0].id;
+  }
+}
+
+function mapStyle(id) {
+  return MAP_STYLES.find((style) => style.id === id) ?? MAP_STYLES[0];
+}
+
+function nextMapStyle(id) {
+  const current = MAP_STYLES.findIndex((style) => style.id === id);
+  return MAP_STYLES[(current + 1) % MAP_STYLES.length];
+}
 
 const LANG_MAP = { en: "en", ja: "ja", zh: "zh-Hans" };
 
@@ -376,6 +396,23 @@ export default function MapCard({
   const followRef = useRef(true);
   const fittedRef = useRef(false);
   const [broken, setBroken] = useState(false);
+  const [styleId, setStyleId] = useState(storedMapStyle);
+  const styleRef = useRef(styleId);
+  styleRef.current = styleId;
+
+  const cycleMapStyle = useCallback(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const next = nextMapStyle(styleRef.current);
+    styleRef.current = next.id;
+    map.setStyle(next.url);
+    setStyleId(next.id);
+    try {
+      localStorage.setItem(MAP_STYLE_KEY, next.id);
+    } catch {
+      // The choice still holds for this visit when storage is unavailable.
+    }
+  }, []);
 
   // Told to the page as an id, which is all it needs to find the row: the pin
   // and the row are the same mark or the same post, and the pin is the half that
@@ -513,7 +550,7 @@ export default function MapCard({
     try {
       map = new mapboxgl.Map({
         container: containerRef.current,
-        style: STYLE_URL,
+        style: mapStyle(styleRef.current).url,
         center: [start.longitude, start.latitude],
         zoom: coords ? DEFAULT_ZOOM : 9,
         // Set here as well as on style.load, so the first tiles already come
@@ -530,6 +567,20 @@ export default function MapCard({
       return undefined;
     }
     map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), "top-right");
+    // The map's native answer to a double-click is one step of zoom. Here it is
+    // a change of cartography instead, with the camera left exactly where it is.
+    map.doubleClickZoom.disable();
+    const changeStyle = (event) => {
+      event.preventDefault();
+      cycleMapStyle();
+    };
+    const changeStyleFromKeyboard = (event) => {
+      if (event.key !== "Enter") return;
+      event.preventDefault();
+      cycleMapStyle();
+    };
+    map.on("dblclick", changeStyle);
+    map.getCanvas().addEventListener("keydown", changeStyleFromKeyboard);
     // The credit, in the corner opposite the zoom: where the ground came from,
     // which is Mapbox's and OpenStreetMap's to be told. Compact, because on a
     // square tile the full line is a sentence across the bottom of the map.
@@ -562,6 +613,7 @@ export default function MapCard({
     map.on("click", drop);
 
     return () => {
+      map.getCanvas().removeEventListener("keydown", changeStyleFromKeyboard);
       map.remove();
       mapRef.current = null;
       hereMarkerRef.current = null;
@@ -571,12 +623,26 @@ export default function MapCard({
     };
     // Built from the first fix that exists; later ones move it instead.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [cycleMapStyle]);
 
   useEffect(() => {
     const map = mapRef.current;
     if (map) map.setLanguage(mapLanguage(i18n.language));
   }, [i18n.language]);
+
+  // The canvas is already Mapbox's keyboard surface. Name both where it is and
+  // what Enter will do there, so the style switch is not pointer-only.
+  useEffect(() => {
+    const canvas = mapRef.current?.getCanvas();
+    if (!canvas) return;
+    canvas.setAttribute(
+      "aria-label",
+      t("map.canvas", {
+        current: t(`map.style.${styleId}`),
+        next: t(`map.style.${nextMapStyle(styleId).id}`),
+      }),
+    );
+  }, [styleId, t]);
 
   // The blue-dot equivalent, and now the only person on the map: one marker that
   // follows the fix, plus the halo of however sure the device is about it. It
@@ -905,6 +971,7 @@ export default function MapCard({
   return (
     <Card
       title={t("map.title")}
+      meta={live ? t(`map.style.${styleId}`) : null}
       action={actions}
       square={!expanded}
       wide={expanded}
