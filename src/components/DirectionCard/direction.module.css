@@ -178,14 +178,20 @@
 }
 
 .compassDial {
+  /* ClockDial is a 200-unit drawing: its two-unit rim and shadow become one
+     hundredth of the rendered dial. Keep that same proportion here instead of
+     holding both at two CSS pixels, which made the compass heavy on phone-size
+     tiles. */
+  --compass-rule: clamp(1px, calc(0.58cqi + 0.19px), 1.9px);
+  --compass-hairline: clamp(0.5px, calc(0.29cqi + 0.095px), 0.95px);
   position: relative;
   width: calc(58cqi + 19px);
   max-width: 100%;
   aspect-ratio: 1;
-  border: 2px solid var(--ink);
+  border: var(--compass-rule) solid var(--ink);
   border-radius: 50%;
   background: var(--paper);
-  box-shadow: 2px 2px 0 var(--ink);
+  box-shadow: var(--compass-rule) var(--compass-rule) 0 var(--ink);
   font-family: var(--display);
 }
 
@@ -208,14 +214,14 @@
   position: absolute;
   top: 0;
   left: 50%;
-  width: 1px;
+  width: var(--compass-hairline);
   height: 4%;
   background: var(--ink);
   transform: translateX(-50%);
 }
 
 .compassMajorTick::before {
-  width: 2px;
+  width: var(--compass-rule);
   height: 8%;
 }
 
@@ -314,7 +320,7 @@
   left: 50%;
   width: clamp(6px, 4cqi, 8px);
   aspect-ratio: 1;
-  border: 2px solid var(--ink);
+  border: var(--compass-rule) solid var(--ink);
   border-radius: 50%;
   background: var(--paper);
   transform: translate(-50%, -50%);

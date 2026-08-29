@@ -9,6 +9,7 @@
 // - Google News    — local news (RSS)        https://news.google.com/rss
 // - Google Trends  — trending searches (RSS) https://trends.google.com/trending
 // - Wikipedia      — nearby places           https://www.mediawiki.org/wiki/API
+// - Overpass       — food and cafés (OSM)    https://overpass-api.de
 // - Yahoo! 天気・災害 — Japanese weather warnings https://typhoon.yahoo.co.jp
 //
 // Requests are coarse-keyed and cached: a phone reporting a position every few
@@ -18,6 +19,7 @@
 // is written down — so a feed this file would only be told "no" about is never
 // asked for at all.
 
+import { setTimeout as sleep } from "node:timers/promises";
 import { newsEdition, supports } from "./countries.js";
 
 const USER_AGENT = "Mozilla/5.0 (compatible; lo/0.1; location dashboard)";
@@ -42,6 +44,15 @@ function gridKey(latitude, longitude, digits) {
   return `${latitude.toFixed(digits)},${longitude.toFixed(digits)}`;
 }
 
+// The middle of the square a fix falls in — the same rounding as the key above,
+// as a pair of numbers rather than as a string. Wanted by the one upstream that
+// is asked about a circle of ground rather than about a named place: everyone
+// sharing a cache entry has to be sharing a circle, or the first reader through
+// decides where the next one's neighbourhood is centred.
+function gridCentre(latitude, longitude, digits) {
+  return { latitude: Number(latitude.toFixed(digits)), longitude: Number(longitude.toFixed(digits)) };
+}
+
 // One flight per key: ten cards asking at once produce a single upstream call,
 // and a failure is never cached, so the next attempt tries again for real.
 // ttl may be a function of the value, for answers whose worth varies.
@@ -64,20 +75,31 @@ function cached(key, ttl, load) {
   return pending;
 }
 
-async function getText(url, accept) {
+// `agent` and `timeout` are here for the one upstream that will not take the
+// defaults: Overpass turns the User-Agent above away at the door and wants
+// longer to think than a feed does (see the venues section below). Everything
+// else calls this with two arguments and never learns they exist.
+async function getText(url, accept, { agent = USER_AGENT, timeout = UPSTREAM_TIMEOUT_MS } = {}) {
   const response = await fetch(url, {
-    headers: { "User-Agent": USER_AGENT, Accept: accept },
-    signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
+    headers: { "User-Agent": agent, Accept: accept },
+    signal: AbortSignal.timeout(timeout),
   });
-  if (!response.ok) throw new Error(`${new URL(url).host} returned HTTP ${response.status}`);
+  if (!response.ok) {
+    const error = new Error(`${new URL(url).host} returned HTTP ${response.status}`);
+    // Carried rather than left in the sentence: one caller below tells "come
+    // back in a moment" apart from "no", and reading that out of a message is
+    // not something a caller should be doing.
+    error.status = response.status;
+    throw error;
+  }
   return response.text();
 }
 
-async function getJson(url) {
+async function getJson(url, options) {
   // Some of these services answer a request they dislike with a plain-text
   // apology under a 200, so the body is parsed by hand rather than by
   // response.json() — which would report a syntax error and hide the reason.
-  const text = await getText(url, "application/json");
+  const text = await getText(url, "application/json", options);
   try {
     return JSON.parse(text);
   } catch {
@@ -399,6 +421,215 @@ export function lookupEvents(latitude, longitude, lang = "en") {
     const items = await fetchEventNews(place, readerLocale(language, place?.countryCode));
     return { place, items: dedupe(items).slice(0, MAX_EVENT_ITEMS) };
   });
+}
+
+/* ----------------------------------------------------------------- venues -- */
+
+// Somewhere to eat, and somewhere for a coffee — off OpenStreetMap by way of
+// Overpass. The only upstream in this file that is asked a question rather than
+// handed an address, and the question is worth reading:
+//
+//   [out:json][timeout:20];
+//   nwr[amenity=cafe][name](around:1500,35.01,135.77);
+//   out tags center;
+//
+// `nwr` is node, way and relation at once, because the same café is a dropped
+// pin in one town and a traced building outline in the next — a list that held
+// only the pins would be a different list per town, for reasons that are about
+// who mapped the street rather than about what is on it. `out center` makes
+// those two answer alike: an outline comes back with a computed middle instead
+// of a position of its own. `tags` is what keeps the outline itself out of the
+// answer, which is a few hundred node ids lo has no use for.
+//
+// `[name]` is the one editorial line in it. An amenity nobody has named is a row
+// reading "Restaurant · 240 m", which is a pin on somebody's map rather than a
+// place to go and eat.
+//
+// These are also the only two cards answered the same way everywhere: OSM stops
+// at no border, so unlike the three Google feeds there is nothing to write down
+// in countries.js about where they work.
+const OVERPASS_URL = "https://overpass-api.de/api/interpreter";
+
+// Overpass will not talk to the User-Agent the rest of this file uses: anything
+// opening `Mozilla/5.0 (compatible;` is turned away with a 406 before the query
+// is read at all. It is a public instance on donated hardware and it asks
+// callers to say plainly who they are, which is fair — so here lo does.
+const OVERPASS_AGENT = "lo/0.1 (location dashboard)";
+// Longer than the eight seconds a feed gets: a city centre is a few hundred rows
+// and several seconds of somebody else's CPU, and a busy instance queues the
+// query before it starts on it. The first figure is the budget Overpass is asked
+// to hold itself to, and the second is set above it so that work lo has already
+// asked for is never abandoned a moment before it lands.
+const OVERPASS_QUERY_TIMEOUT_S = 20;
+const OVERPASS_TIMEOUT_MS = 22000;
+
+// Overpass hands each caller two query slots and answers a request that arrives
+// without one with a 429. Two cards on the dashboard asking at once is that
+// whole allowance, the widening below can spend it twice in a row, and a slot
+// stays warm for a moment after the query that held it has answered — so lo
+// queues its own queries rather than finding the ceiling by hitting it. One at a
+// time, a breath between them, and a single retry for the 429 that a slot still
+// busy with somebody else's minute would produce anyway.
+const OVERPASS_GAP_MS = 1000;
+const OVERPASS_RETRY_MS = 3000;
+
+let overpassTurn = Promise.resolve();
+let overpassLastAt = 0;
+
+function askOverpass(query) {
+  const url = `${OVERPASS_URL}?data=${encodeURIComponent(query)}`;
+  const options = { agent: OVERPASS_AGENT, timeout: OVERPASS_TIMEOUT_MS };
+
+  const turn = overpassTurn.then(async () => {
+    const wait = overpassLastAt + OVERPASS_GAP_MS - Date.now();
+    if (wait > 0) await sleep(wait);
+    try {
+      return await getJson(url, options);
+    } catch (error) {
+      if (error.status !== 429) throw error;
+      await sleep(OVERPASS_RETRY_MS);
+      return getJson(url, options);
+    } finally {
+      overpassLastAt = Date.now();
+    }
+  });
+
+  // The queue is a line of turns and not a chain of results: whatever this one
+  // did, the next has to be let through, so what the line waits on is a promise
+  // that cannot reject.
+  overpassTurn = turn.then(
+    () => {},
+    () => {},
+  );
+  return turn;
+}
+
+// The two cards, as the tags OSM files each of them under. Two questions rather
+// than one list with a filter over it: "where can I eat" and "where can I sit
+// down with a coffee" are asked at different hours and answered by different
+// streets, and a reader who wants one of them on the dashboard need not carry
+// the other (see utils/cards.js).
+const VENUE_TAGS = {
+  food: 'amenity~"^(restaurant|fast_food|food_court)$"',
+  cafe: "amenity=cafe",
+};
+
+// A walk first, and the surrounding country only if the walk turned up nothing.
+// The second ring is never paid for in a town; it is there for the places where
+// the nearest café is the next village along, and where an empty card would be
+// the wrong answer to a question that has one.
+const VENUE_RADII_M = [1500, 6000];
+const MAX_VENUES = 24;
+
+// A restaurant is not news: tomorrow's list is today's list, and the only thing
+// that makes it worth asking again is the reader having walked somewhere. So an
+// answer keeps for an hour, filed under a ~1 km square of ground.
+//
+// That square is also why the near ring is 1500 m rather than the 800 m a walk
+// would suggest. Rounding onto it leaves the reader as much as ~800 m from the
+// point the circle was drawn around, and the radius has to cover that slack
+// before it covers any walking — otherwise the nearest place, if it happens to
+// lie behind them, is missing from a list whose whole claim is that it is
+// sorted by how near things are.
+const VENUE_TTL_MS = 60 * 60 * 1000;
+const VENUE_EMPTY_TTL_MS = 10 * 60 * 1000;
+const VENUE_GRID = 2;
+
+const EARTH_RADIUS_M = 6_371_008.8;
+
+// How far apart two fixes are, in metres. The browser works this out too (see
+// utils/format.js); the two are separate copies because there is no module both
+// sides import, and they are the same formula over the same radius on purpose —
+// "how far is that" must not have two answers in one app.
+function metresBetween(from, to) {
+  const rad = (deg) => (deg * Math.PI) / 180;
+  const lat1 = rad(from.latitude);
+  const lat2 = rad(to.latitude);
+  const dLat = lat2 - lat1;
+  const dLon = rad(to.longitude - from.longitude);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+  return 2 * EARTH_RADIUS_M * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
+// OSM keeps the reader's language beside the local one — name:en, name:ja,
+// cuisine:ja — and the reader's is preferred here, with the name on the sign
+// outside as the fallback. That is the right way round even for somewhere you
+// are being sent to walk to: a name you cannot read is not a name, and the
+// mappers who filled in name:en did it for exactly this.
+function localizedTag(tags, key, language) {
+  return firstString(tags[`${key}:${language}`], tags[key]);
+}
+
+// Cuisine is written as a semicolon list of slugs — `chinese;gyoza`, `beef_bowl`
+// — and one word is all a row has room for. The vocabulary is open, so there is
+// nothing to translate it against: it is handed on as it arrived, and the card
+// tidies the underscores.
+function firstCuisine(tags, language) {
+  return firstString(localizedTag(tags, "cuisine", language).split(";")[0]);
+}
+
+async function fetchVenues(kind, latitude, longitude, radius, language) {
+  const query =
+    `[out:json][timeout:${OVERPASS_QUERY_TIMEOUT_S}];` +
+    `nwr[${VENUE_TAGS[kind]}][name](around:${radius},${latitude},${longitude});` +
+    `out tags center;`;
+  const data = await askOverpass(query);
+
+  return (data.elements ?? [])
+    .map((element) => {
+      const tags = element.tags ?? {};
+      // A node stands where it stands; a way or a relation carries the middle of
+      // whatever was traced, which `out center` worked out for it.
+      const at = element.type === "node" ? element : element.center;
+      const name = localizedTag(tags, "name", language);
+      if (!at || !name) return null;
+      return {
+        // Kind and number together: OSM numbers nodes, ways and relations from
+        // one apiece, so node 1 and way 1 are two different things.
+        id: `${element.type}/${element.id}`,
+        name,
+        // The amenity itself, which the card has its own word for — a fast food
+        // counter and a restaurant are a different evening.
+        category: firstString(tags.amenity),
+        cuisine: firstCuisine(tags, language),
+        latitude: at.lat,
+        longitude: at.lon,
+      };
+    })
+    .filter(Boolean);
+}
+
+// Both cards, told apart by which amenities they ask about.
+//
+// What is cached is the list around the middle of the square; how far each row
+// is from the reader is worked out afterwards, per request, from the fix they
+// actually sent. Distance is the one thing on these rows the rounding would
+// visibly get wrong — a café forty metres away shown as six hundred is not a
+// rounding error to somebody standing outside it — and being right about it
+// costs no upstream call.
+export function lookupVenues(kind, latitude, longitude, lang = "en") {
+  const language = PLACE_LANGUAGE[lang] ?? "en";
+  const key = `venues:${kind}:${language}:${gridKey(latitude, longitude, VENUE_GRID)}`;
+  const ttl = (value) => (value.items.length === 0 ? VENUE_EMPTY_TTL_MS : VENUE_TTL_MS);
+
+  return cached(key, ttl, async () => {
+    const centre = gridCentre(latitude, longitude, VENUE_GRID);
+    const place = await lookupPlace(latitude, longitude, language).catch(() => null);
+    for (const radius of VENUE_RADII_M) {
+      const items = await fetchVenues(kind, centre.latitude, centre.longitude, radius, language);
+      if (items.length > 0) return { place, radius, items };
+    }
+    // Nothing in either ring, and the card should say so about the wider one:
+    // "nothing within six kilometres" is the claim that was actually checked.
+    return { place, radius: VENUE_RADII_M.at(-1), items: [] };
+  }).then(({ place, radius, items }) => ({
+    place,
+    radius,
+    items: items
+      .map((item) => ({ ...item, distance: Math.round(metresBetween({ latitude, longitude }, item)) }))
+      .sort((a, b) => a.distance - b.distance)
+      .slice(0, MAX_VENUES),
+  }));
 }
 
 /* ----------------------------------------------------------------- trends -- */

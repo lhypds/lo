@@ -16,6 +16,11 @@
 //   and for nowhere else. Not a coverage gap so much as a national institution:
 //   there is no equivalent to point the same card at in the next country.
 //
+// OpenStreetMap, behind the food and café cards, is the counter-example worth
+// naming: it stops at no border, so those two are in the list below without ever
+// appearing in COVERAGE. Where it is thin — and it is thin in places — the card
+// answers honestly with a short list rather than with somebody else's town.
+//
 // The two Google tables were read from the upstreams on 2026-08-26 and are the
 // sort of thing that changes a country or two a year, not a week.
 //
@@ -33,7 +38,17 @@
 // Every location-fed part of the dashboard, in the order the page lays them out
 // — which is the order componentsFor returns them in, so the caller can render
 // straight down the list.
-export const COMPONENTS = ["clock", "weather", "warnings", "map", "nearby", "events", "trends"];
+export const COMPONENTS = [
+  "clock",
+  "weather",
+  "warnings",
+  "map",
+  "nearby",
+  "events",
+  "trends",
+  "food",
+  "cafe",
+];
 
 /* --------------------------------------------------------------- countries */
 
