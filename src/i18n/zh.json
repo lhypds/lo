@@ -10,7 +10,7 @@
     "backHome": "返回首页",
     "back": "返回",
     "posts": "posts",
-    "marks": "记录",
+    "marks": "marks",
     "account": "账号",
     "cards": "卡片"
   },
@@ -21,7 +21,7 @@
   "export": {
     "title": "导出",
     "zip": "ZIP",
-    "confirm": "将你的记录和设置下载为 ZIP 文件？",
+    "confirm": "将你的 marks 和设置下载为 ZIP 文件？",
     "download": "下载",
     "working": "打包中",
     "failed": "无法生成导出文件"
@@ -54,11 +54,11 @@
     "title": "账号",
     "username": "用户名",
     "joined": "注册于",
-    "marks": "记录数",
+    "marks": "marks 数",
     "import": "导入",
     "importing": "读取中",
-    "imported": "已添加 {{count}} 条记录",
-    "importedNone": "该文件里没有你还没保存过的记录",
+    "imported": "已添加 {{count}} 条 mark",
+    "importedNone": "该文件里没有你还没保存过的 mark",
     "importFailed": "无法读取该文件",
     "export": "导出",
     "exporting": "导出中",
@@ -71,14 +71,14 @@
     "importHelpNote": "提示词是英文的。你用什么语言跟 AI 说都可以，写出来的文件都一样。",
     "importHelpDownload": "下载提示词",
     "deleteAll": "全部删除",
-    "deleteAllIntro": "这会放开你保存的全部 {{count}} 条记录。",
-    "deleteAllNone": "现在还没有可删除的记录。",
+    "deleteAllIntro": "这会放开你保存的全部 {{count}} 条 mark。",
+    "deleteAllNone": "现在还没有可删除的 mark。",
     "deleteAllNote": "删掉就找不回来了。想留个副本，先用旁边的导出。",
     "deleteAllAsk": "输入 {{word}} 确认",
     "deleteAllDo": "删除",
     "deletingAll": "删除中",
-    "deletedAll": "已删除 {{count}} 条记录",
-    "deleteAllFailed": "无法清空记录",
+    "deletedAll": "已删除 {{count}} 条 mark",
+    "deleteAllFailed": "无法清空 marks",
     "posts": "动态数",
     "discoverable": "可被发现",
     "discoverableOn": "已开启",
@@ -277,9 +277,9 @@
     }
   },
   "mark": {
-    "button": "记录当前位置",
+    "button": "mark 当前位置",
     "saving": "保存中",
-    "saved": "已记录",
+    "saved": "已 mark",
     "undo": "撤销",
     "edit": "编辑",
     "or": "或",
@@ -287,18 +287,18 @@
     "nameTitle": "为这个位置命名",
     "removed": "已删除",
     "needsLocation": "请先开启定位",
-    "title": "记录当前位置",
-    "submit": "记录"
+    "title": "mark 当前位置",
+    "submit": "mark"
   },
   "marks": {
-    "title": "记录",
+    "title": "marks",
     "subtitle": "你留下的位置",
-    "empty": "还没有记录",
+    "empty": "还没有 mark",
     "delete": "删除",
     "deleting": "删除中",
-    "deleteTitle": "删除记录",
+    "deleteTitle": "删除 mark",
     "deleteConfirm": "删除“{{name}}”？此操作无法撤销。",
-    "renameTitle": "重命名记录",
+    "renameTitle": "重命名 mark",
     "distance": "距离 {{distance}}",
     "showOnMap": "在地图上显示",
     "navigate": "导航"
@@ -430,7 +430,7 @@
     "sending": "提交中"
   },
   "search": {
-    "marks": "搜索你的记录",
+    "marks": "搜索你的 marks",
     "posts": "搜索这些 post 或 @用户名",
     "clear": "清除搜索",
     "empty": "没有匹配“{{query}}”的结果"

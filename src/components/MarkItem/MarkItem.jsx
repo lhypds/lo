@@ -5,11 +5,11 @@ import { hoverProps, rowClass } from "../../utils/hover.js";
 import { directionsLink, searchLink } from "../../utils/maps.js";
 import { labelName } from "../../utils/label.js";
 
-// The four things that can be done with a spot, grouped at the right of its row
-// — the same four actions that the spot's own bubble
-// carries up on the map (see markPopupElement in MapCard). The row and the pin
-// are one mark, and a reader who has learned the bubble should not have to learn
-// a second set of controls to work the list underneath it.
+// The things that can be done with a spot, grouped at the right of its row —
+// the same actions that the spot's own bubble carries up on the map (see
+// markPopupElement in MapCard), and dropped from both in the same case. The row
+// and the pin are one mark, and a reader who has learned the bubble should not
+// have to learn a second set of controls to work the list underneath it.
 //
 // Icons in the shared action boxes, matching the post rows beside them. Their
 // accessible names say the action and the mark, while pointer users get the
@@ -59,17 +59,23 @@ export default function MarkItem({ mark, from, hovered = false, chosen = false, 
         <div className="mark-side">
           {away && <span className="mark-distance">{t("marks.distance", { distance: away })}</span>}
           <span className="mark-actions">
-            <ActionButton
-              tooltip={t("map.search")}
-              tooltipRight
-              aria-label={`${t("map.search")} ${name}`}
-              {...searchLink(mark, named)}
-            >
-              <svg viewBox="0 0 24 24">
-                <circle cx="11" cy="11" r="7" />
-                <path d="m20 20-4-4" />
-              </svg>
-            </ActionButton>
+            {/* Only where somebody wrote something on the spot. A search is a
+                question asked in words, and a mark with no name has none to ask
+                it in — what went out then was its own coordinates, which come
+                back as the pin the reader is already looking at. */}
+            {named && (
+              <ActionButton
+                tooltip={t("map.search")}
+                tooltipRight
+                aria-label={`${t("map.search")} ${name}`}
+                {...searchLink(mark, named)}
+              >
+                <svg viewBox="0 0 24 24">
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="m20 20-4-4" />
+                </svg>
+              </ActionButton>
+            )}
             <ActionButton
               tooltip={t("map.nav")}
               tooltipRight

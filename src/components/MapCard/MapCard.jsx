@@ -397,7 +397,8 @@ function popupDeleteElement(subject, label, name, remove) {
 // `named` arrives empty on a spot nobody named: the coordinates are then the
 // title itself, and a second line of them would be the bubble saying the same
 // thing twice. The title wears the numbers' own type in that case, which is the
-// type they were wearing on the line they came up from.
+// type they were wearing on the line they came up from — and the search goes
+// with the name, for the reason given where the line is built.
 function markPopupElement(mark, named, coords, iso, when, labels, edit, remove) {
   const wrapper = document.createElement("div");
   wrapper.className = styles.markPopup;
@@ -413,7 +414,12 @@ function markPopupElement(mark, named, coords, iso, when, labels, edit, remove) 
   actions.className = styles.markPopupActions;
   const going = document.createElement("span");
   going.className = styles.popupGroup;
-  going.append(popupSearchElement(mark, labels.search, name, named), popupNavElement(mark, labels.nav, name));
+  // The search only where there is a name to search on. On a spot nobody named
+  // the word went out carrying its coordinates, and Google answered with the
+  // very pin this bubble is hanging off — a question whose answer was already
+  // on screen. The way there is still worth offering, and stays.
+  if (named) going.append(popupSearchElement(mark, labels.search, name, named));
+  going.append(popupNavElement(mark, labels.nav, name));
   actions.append(going);
   if (edit || remove) {
     const keeping = document.createElement("span");
