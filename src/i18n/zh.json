@@ -79,7 +79,7 @@
     "deletingAll": "删除中",
     "deletedAll": "已删除 {{count}} 条 mark",
     "deleteAllFailed": "无法清空 marks",
-    "posts": "post 数",
+    "posts": "posts 数",
     "discoverable": "可被发现",
     "discoverableOn": "已开启",
     "discoverableOff": "已关闭",
