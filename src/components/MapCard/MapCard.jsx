@@ -379,21 +379,38 @@ function markPopupElement(mark, named, coords, iso, when, labels, edit, remove) 
 // `comments` is the same object venuePopupElement is handed: a landmark is
 // somewhere lo's readers can leave a word about exactly as a café is (see
 // VENUE_COMMENT_TYPES in server/index.js), so the corner of this bubble opens
-// the same sheet theirs does rather than a reading of the article — which is
-// what the card's own row opens instead (see WikipediaCard).
-function wikiPopupElement(place, description, away, comments, labels) {
+// the same sheet theirs does. `photo` is postPopupElement's own again: pressed,
+// it puts the picture up large in the one Lightbox the page already has for a
+// post's (see HomePage).
+function wikiPopupElement(place, description, away, comments, photo, labels) {
   const wrapper = document.createElement("div");
   wrapper.className = styles.markPopup;
   // The frame a post's picture bleeds to the edges of, borrowed for the same
   // reason: the article is what the tile promised, so its picture leads the
   // bubble the way a post's does rather than sitting inset among the words.
+  // Unlike a post's, this one is never fetched behind a session — Wikimedia
+  // serves it plainly, so the tag is pointed straight at it (see
+  // postPopupElement, which detours through authImageUrl for the reason a
+  // stored picture needs one and this does not).
   if (place.thumbnail) {
-    const frame = document.createElement("span");
-    frame.className = styles.postPopupPhoto;
     const image = document.createElement("img");
     image.className = styles.postPopupImage;
     image.src = place.thumbnail;
     image.alt = "";
+    // A button where the page has somewhere to open the picture large, and the
+    // bare picture where it has not — the same choice postPopupElement makes.
+    const frame = document.createElement(photo ? "button" : "span");
+    frame.className = styles.postPopupPhoto;
+    if (photo) {
+      frame.type = "button";
+      frame.setAttribute("aria-label", labels.photo);
+      frame.addEventListener("click", (event) => {
+        // Short of the map, which reads a click as "put the chosen bubble
+        // away" — the reader is opening the picture, not dismissing the pin.
+        event.stopPropagation();
+        photo(place);
+      });
+    }
     frame.append(image);
     wrapper.append(frame);
   }
@@ -753,10 +770,11 @@ export default function MapCard({
   // Nothing passed leaves the bubble with its lead paragraph and no control
   // in the corner at all.
   onOpenWikiComments,
-  // The picture in a post's bubble, pressed. What is up there is the thumbnail;
-  // this is the page being asked to put the photograph itself on the screen, and
-  // it is the only thing anywhere in lo that fetches one. Nothing passed leaves
-  // the band across the top of a bubble a picture rather than a control.
+  // The picture in a post's bubble, pressed — and, now, the same press in a
+  // Wikipedia pin's. What is up there is the thumbnail; this is the page being
+  // asked to put the picture itself on the screen, which for a post is the
+  // only thing anywhere in lo that fetches one. Nothing passed leaves the band
+  // across the top of either bubble a picture rather than a control.
   onOpenPhoto,
   // The same pair a mark's bubble asks for, asked for from a post's — and only
   // ever on the reader's own posts, which is a question the map can answer for
@@ -1295,23 +1313,25 @@ export default function MapCard({
     const comments = onOpenWikiComments
       ? { label: t("comments.venueShort"), open: (place) => wikiCommentsRef.current?.(place) }
       : null;
+    // The same picture viewer a post's own bubble opens (see photoRef above):
+    // a landmark's picture is looked at the same way a photograph left on the
+    // ground is, and there is one Lightbox on the page for either.
+    const photo = onOpenPhoto ? (place) => photoRef.current?.(place) : null;
+    const labels = { search: t("map.search"), nav: t("map.nav"), photo: t("post.photoOpen") };
     wikiMarkersRef.current = wikiPlaces.map((place) => {
       const marker = preview(
         new mapboxgl.Marker({ element: venueElement("wikipedia"), anchor: "bottom" })
           .setLngLat([place.longitude, place.latitude])
           .setPopup(
             previewPopup().setDOMContent(
-              wikiPopupElement(place, place.description, formatDistance(place.distance), comments, {
-                search: t("map.search"),
-                nav: t("map.nav"),
-              }),
+              wikiPopupElement(place, place.description, formatDistance(place.distance), comments, photo, labels),
             ),
           )
           .addTo(map),
       );
       return { id: place.id, marker };
     });
-  }, [wikiPlaces, t, preview, Boolean(onOpenWikiComments)]);
+  }, [wikiPlaces, t, preview, Boolean(onOpenWikiComments), Boolean(onOpenPhoto)]);
 
   // The pairing the other way round: a row under the pointer in the list opens
   // the bubble on its own pin, so whichever half the reader is looking at, the

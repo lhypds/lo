@@ -25,8 +25,10 @@ const MOVED_M = 150;
 // and the same two hand-offs to Google Maps — plus the remarks, because a
 // landmark is somewhere lo's readers can leave a word about exactly as a café
 // is (see `onOpenComments`, handed down the way the venue cards are handed the
-// page's own remarks sheet).
-export default function WikipediaCard({ onOpenComments = null }) {
+// page's own remarks sheet). `onOpenPhoto` is a post's own hand-off, reused
+// rather than duplicated: pressing the picture puts it up large in the one
+// Lightbox the page already keeps for a post's (see HomePage).
+export default function WikipediaCard({ onOpenComments = null, onOpenPhoto = null }) {
   const { t, i18n } = useTranslation();
   const { coords, reloadToken } = useHere();
   const size = useCardSize("wikipedia");
@@ -137,9 +139,23 @@ export default function WikipediaCard({ onOpenComments = null }) {
         <Modal isOpen={Boolean(chosen)} title={t("wikipedia.title")} onClose={() => setOpen(null)} closeOnOverlay>
           {chosen && (
             <div className={styles.preview}>
-              {chosen.thumbnail && (
-                <img className={styles.previewImage} src={chosen.thumbnail} alt="" loading="lazy" />
-              )}
+              {/* Pressed, the picture Wikipedia keeps for the page — not a
+                  control where the page has nowhere to put one, the same
+                  choice a post's own bubble makes (see wikiPopupElement in
+                  MapCard.jsx). */}
+              {chosen.thumbnail &&
+                (onOpenPhoto ? (
+                  <button
+                    type="button"
+                    className={styles.previewPhoto}
+                    aria-label={t("post.photoOpen")}
+                    onClick={() => onOpenPhoto(chosen)}
+                  >
+                    <img className={styles.previewImage} src={chosen.thumbnail} alt="" loading="lazy" />
+                  </button>
+                ) : (
+                  <img className={styles.previewImage} src={chosen.thumbnail} alt="" loading="lazy" />
+                ))}
               <p className={styles.previewName}>{chosen.title}</p>
               {chosen.description && <p className={styles.previewSummary}>{chosen.description}</p>}
               <span className={styles.previewMeta}>{formatDistance(chosen.distance)}</span>

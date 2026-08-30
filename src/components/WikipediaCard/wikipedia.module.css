@@ -129,6 +129,19 @@
   background: var(--soft);
 }
 
+/* The button undone around the picture, where pressing it opens the full
+   photograph — the browser's own button chrome is taken off entirely, the way
+   a post's photo frame is (see .postPopupPhoto in map.module.css), and the
+   cursor is the one hint the box is worth pressing. */
+.previewPhoto {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: zoom-in;
+}
+
 .previewName {
   display: -webkit-box;
   -webkit-box-orient: vertical;

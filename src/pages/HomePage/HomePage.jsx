@@ -8,7 +8,7 @@ import { postPhoto } from "../../utils/image.js";
 import { labelName } from "../../utils/label.js";
 import { keepPage, openPage, paginate } from "../../utils/pages.js";
 import { updateVenueComments, useVenues } from "../../utils/venues.js";
-import { updateWikiComments, useWikiPlaces } from "../../utils/wikiPlaces.js";
+import { updateWikiComments, useWikiPlaces, wikiPhoto } from "../../utils/wikiPlaces.js";
 import { getLocationState, refreshLocation } from "../../utils/location.js";
 import CafeCard from "../../components/CafeCard/index.js";
 import ClockCard from "../../components/ClockCard/index.js";
@@ -479,7 +479,11 @@ export default function HomePage() {
       // The same remarks sheet the pins on the map open, because it is the
       // same landmark either way (see the third CommentsModal at the foot of
       // the page).
-      shown("wikipedia") && sized("wikipedia", <WikipediaCard onOpenComments={setWikiCommenting} />),
+      shown("wikipedia") &&
+        sized(
+          "wikipedia",
+          <WikipediaCard onOpenComments={setWikiCommenting} onOpenPhoto={setViewing} />,
+        ),
       shown("direction") && sized("direction", <DirectionCard />),
     ].filter(Boolean),
   );
@@ -992,11 +996,14 @@ export default function HomePage() {
         onAdded={(place, comments) => updateWikiComments(place.id, comments)}
       />
 
-      {/* And the photograph over the lot of it, from the picture in a post's
-          bubble. Out here with the sheets above for their reason and one of
-          its own: the map is the whole page while it is expanded, and this is
-          opened from the map. */}
-      <Lightbox photo={postPhoto(viewing)} onClose={() => setViewing(null)} />
+      {/* And the photograph over the lot of it — from the picture in a post's
+          bubble, a Wikipedia pin's, or the Wikipedia card's own preview. Out
+          here with the sheets above for their reason: both the map and the
+          card are container-sized tiles, and the map besides is the whole
+          page while it is expanded. `viewing` holds whichever picture was
+          pressed; only one of the pair below ever recognises its shape (see
+          postPhoto in utils/image.js and wikiPhoto in utils/wikiPlaces.js). */}
+      <Lightbox photo={postPhoto(viewing) ?? wikiPhoto(viewing)} onClose={() => setViewing(null)} />
     </div>
   );
 }
