@@ -875,13 +875,19 @@ app.get("/api/food", venuesRoute("food"));
 app.get("/api/cafe", venuesRoute("cafe"));
 
 // Nearby articles, with their lead paragraph and a picture where Wikipedia has
-// one — no comment counts to add on the way out, unlike the two routes above:
-// an article is not a place lo's readers are talking to each other about.
+// one. A landmark's comment thread is filed the same way an OSM venue's is —
+// see VENUE_COMMENT_TYPES below — so the figure is added on the way out here
+// exactly as it is for food and cafés.
 app.get("/api/wikipedia", async (req, res, next) => {
   const coords = parseCoords(req.query);
   if (!coords) return res.status(400).json({ error: "Invalid coordinates" });
   try {
-    res.json(await lookupWikipedia(coords.latitude, coords.longitude, requestedLang(req)));
+    const result = await lookupWikipedia(coords.latitude, coords.longitude, requestedLang(req));
+    const counts = getVenueCommentCounts(result.items.map((item) => item.id));
+    res.json({
+      ...result,
+      items: result.items.map((item) => ({ ...item, comments: counts[item.id] ?? 0 })),
+    });
   } catch (error) {
     if (isUpstreamDown(error)) {
       return res.status(504).json({ error: "Timed out looking up nearby Wikipedia articles" });
@@ -1251,11 +1257,16 @@ app.post("/api/posts/:postId/comments", requireSession, (req, res) => {
   res.status(201).json({ comment, comments: count });
 });
 
-// OSM numbers nodes, ways and relations in separate spaces. The pair is the
-// stable identity the venue cards already carry (`node/123`, for example), and
-// spelling it as two path segments avoids relying on an encoded slash surviving
-// every proxy between the app and Express.
-const VENUE_COMMENT_TYPES = new Set(["node", "way", "relation"]);
+// OSM numbers nodes, ways and relations in separate spaces, and Wikipedia
+// numbers its pages in a fourth of its own — `wikipedia` joins the three here
+// for the same reason lookupWikipedia namespaces its ids that way (see
+// geo.js): a landmark is a place to leave a word about exactly as a café is,
+// and there is no third comment table to keep in step with a second kind of
+// place. The pair is the stable identity the venue and Wikipedia cards already
+// carry (`node/123`, `wikipedia/456`), and spelling it as two path segments
+// avoids relying on an encoded slash surviving every proxy between the app and
+// Express.
+const VENUE_COMMENT_TYPES = new Set(["node", "way", "relation", "wikipedia"]);
 
 function venueCommentTarget(req, res) {
   const type = String(req.params.type ?? "");

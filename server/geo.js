@@ -798,7 +798,12 @@ async function fetchWikipediaPlaces(latitude, longitude, radius, lang) {
   url.searchParams.set("explaintext", "1");
   url.searchParams.set("exchars", String(WIKI_EXTRACT_CHARS));
   url.searchParams.set("piprop", "thumbnail");
-  url.searchParams.set("pithumbsize", "400");
+  // Big enough to be the picture a reader presses to see properly (see
+  // ui/Lightbox), not just the crop a preview card shows — one size asked for
+  // rather than lo's own two, because this is Wikimedia's own CDN and not a
+  // file lo pays to store: there is no upload cost here to shrink a second
+  // copy against, and the preview downscales the same file with object-fit.
+  url.searchParams.set("pithumbsize", "1200");
   url.searchParams.set("format", "json");
   const data = await getJson(url.href);
   // Answered as an object keyed by page id rather than as a list — geosearch's
@@ -809,6 +814,7 @@ async function fetchWikipediaPlaces(latitude, longitude, radius, lang) {
     .map((page) => {
       const at = page.coordinates?.[0];
       if (!at) return null;
+      const thumbnail = page.thumbnail ?? null;
       return {
         // Namespaced the way an OSM venue's id is, so a card publishing this
         // list to the map's shared store cannot collide with one keyed by a
@@ -816,7 +822,12 @@ async function fetchWikipediaPlaces(latitude, longitude, radius, lang) {
         id: `wikipedia/${page.pageid}`,
         title: String(page.title),
         description: firstString(page.extract),
-        thumbnail: page.thumbnail?.source ?? null,
+        thumbnail: thumbnail?.source ?? null,
+        // The shape Wikimedia rendered it at, which lo has no business
+        // guessing at: the Lightbox this feeds sizes its box from these two
+        // numbers exactly as it does for a post's own photo.
+        thumbnailWidth: thumbnail?.width ?? null,
+        thumbnailHeight: thumbnail?.height ?? null,
         latitude: at.lat,
         longitude: at.lon,
         url: `${host}/wiki/${encodeURIComponent(String(page.title).replace(/ /g, "_"))}`,
