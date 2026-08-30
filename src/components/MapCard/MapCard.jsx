@@ -359,10 +359,17 @@ function markPopupElement(mark, named, coords, iso, when, labels, edit, remove) 
 // small print under it — and a second stylesheet for the same box would be two
 // boxes to keep looking alike.
 //
-// The final line carries the same two actions a post does: the public comments
-// about the place and the directions hand-off. They remain reachable when the
+// The final line carries the same three actions the card's preview sheet does,
+// in the same order and with the same split: what is standing there and how to
+// get to it out on the left, both of them hand-offs to Google Maps, and the
+// remarks over on the right, which stay in lo. They remain reachable when the
 // venue card itself is on another dashboard page.
-function venuePopupElement(venue, note, away, comments, navLabel) {
+//
+// The search is the question a bubble raises before the other two and the one a
+// name and a cuisine cannot answer — the hours, the photographs, whether it is
+// open now. Searched on the name, with the viewport set where the place actually
+// stands, which is what tells two shops of one name apart (see placeSearchUrl).
+function venuePopupElement(venue, note, away, comments, labels) {
   const wrapper = document.createElement("div");
   wrapper.className = styles.markPopup;
   const label = document.createElement("strong");
@@ -379,6 +386,16 @@ function venuePopupElement(venue, note, away, comments, navLabel) {
   distance.textContent = away;
   const actions = document.createElement("span");
   actions.className = styles.postPopupActions;
+  // The pair that leave, kept together at one end the way a mark's bubble keeps
+  // its own two: apart from the word that opens a sheet, so a press meant for the
+  // remarks is not a press made by accident on a tab that goes somewhere else.
+  const going = document.createElement("span");
+  going.className = styles.popupGroup;
+  going.append(
+    popupSearchElement(venue, labels.search, venue.name, venue.name),
+    popupNavElement(venue, labels.nav, venue.name),
+  );
+  actions.append(going);
   if (comments) {
     const open = document.createElement("button");
     open.type = "button";
@@ -390,7 +407,6 @@ function venuePopupElement(venue, note, away, comments, navLabel) {
     });
     actions.append(open);
   }
-  actions.append(popupNavElement(venue, navLabel, venue.name));
   wrapper.append(distance, actions);
   return wrapper;
 }
@@ -1182,7 +1198,7 @@ export default function MapCard({
                 [category, cuisine].filter(Boolean).join(" · "),
                 formatDistance(venue.distance),
                 comments,
-                t("map.nav"),
+                { search: t("map.search"), nav: t("map.nav") },
               ),
             ),
           )
