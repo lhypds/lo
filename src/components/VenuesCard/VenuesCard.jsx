@@ -25,8 +25,8 @@ const NONE = [];
 // How far the reader has to have actually gone before this list is worth asking
 // for again. Unlike the news beside it, this one does go stale by walking: the
 // rows are sorted by how far off they are and the distances are measured from
-// the fix. But it goes stale by walking and by nothing else — a hundred and
-// fifty metres is about where the order of the nearest few starts to change,
+// the fix. But it goes stale by walking and by nothing else — a hundred metres
+// is about where the order of the nearest few starts to change,
 // and under that the answer is the same names in the same order, off the same
 // hour-old square on the server (see lookupVenues in server/geo.js).
 //
@@ -36,7 +36,7 @@ const NONE = [];
 // table reads a slightly different pair of numbers every thirty seconds, and a
 // table that happens to be a few metres from a boundary would have every one of
 // those twitches count as having moved.
-const MOVED_M = 150;
+const MOVED_M = 100;
 
 // The one panel lo draws twice. Somewhere to eat and somewhere for a coffee are
 // the same question asked about two sets of amenities — the same rows, the same
@@ -90,7 +90,7 @@ export default function VenuesCard({ kind, onOpenComments = null }) {
   // returning the same object, which React reads as nothing having happened.
   useEffect(() => {
     if (!coords) return;
-    setAnchor((from) => (from && distanceMeters(from, coords) < MOVED_M ? from : coords));
+    setAnchor((from) => (from && distanceMeters(from, coords) <= MOVED_M ? from : coords));
   }, [coords]);
 
   useEffect(() => {
@@ -102,7 +102,7 @@ export default function VenuesCard({ kind, onOpenComments = null }) {
         setResult(data);
         setError(null);
         // And the preview down with the list it was opened from. A new answer
-        // here is the reader having walked a hundred and fifty metres or having
+        // here is the reader having walked more than a hundred metres or having
         // asked again, and the place the sheet is about need not be in the list
         // that just landed at all.
         setOpen(null);
@@ -134,7 +134,7 @@ export default function VenuesCard({ kind, onOpenComments = null }) {
   // the pin is redrawn with the new figure (see updateVenueComments), and the
   // row down here is the same place — two counts that disagree would be lo
   // arguing with itself until this list is next asked for, which is not until
-  // the reader has walked a hundred and fifty metres.
+  // the reader has walked a hundred metres.
   //
   // An overlay rather than rendering the published rows outright: those are
   // written by an effect, so for one paint after an answer lands they are still

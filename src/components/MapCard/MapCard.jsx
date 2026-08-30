@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { ActionButton, Card, useNavigate } from "../../ui/index.js";
-import { formatCoords, formatDateTime, formatDistance, formatUsername } from "../../utils/format.js";
+import { distanceMeters, formatCoords, formatDateTime, formatDistance, formatUsername } from "../../utils/format.js";
 import { MARK_PIN_EYE, MARK_PIN_PATH, MARK_PIN_TIP_Y, PIN_GLYPHS } from "../../utils/icons.js";
 import { authImageUrl, postThumb } from "../../utils/image.js";
 import { directionsLink, searchLink } from "../../utils/maps.js";
@@ -17,6 +17,10 @@ import styles from "./map.module.css";
 
 const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 const DEFAULT_ZOOM = 15;
+// A fresh GPS fix jitters even on a phone lying still. The marker may report
+// every reading, but moving the WebGL camera for a change smaller than this buys
+// no visible correction and keeps an embedded WebView animating needlessly.
+const FOLLOW_MOVED_M = 10;
 
 // How near an edge a pin may sit and still count as being on screen, for a map
 // asked to hold still (see the focus effect). The same 48 the scatter is fitted
@@ -1163,6 +1167,29 @@ export default function MapCard({
     map.addControl(new mapboxgl.AttributionControl({ compact: true }), "bottom-right");
     mapRef.current = map;
 
+    // A WebView may keep its iframe alive while suspending or hiding the page.
+    // Stop any camera animation immediately, then resize/repaint once when the
+    // frame becomes visible again.  This keeps Mapbox from carrying a stale
+    // WebGL render loop through a host-app transition.
+    let visibilityFrame = 0;
+    const syncVisibility = () => {
+      if (document.hidden) {
+        window.cancelAnimationFrame(visibilityFrame);
+        visibilityFrame = 0;
+        map.stop();
+        return;
+      }
+      if (visibilityFrame) return;
+      visibilityFrame = window.requestAnimationFrame(() => {
+        visibilityFrame = 0;
+        if (mapRef.current !== map) return;
+        map.resize();
+        map.triggerRepaint();
+      });
+    };
+    document.addEventListener("visibilitychange", syncVisibility);
+    syncVisibility();
+
     // Any deliberate pan means the reader is looking somewhere else on purpose;
     // recentring is theirs to ask for again from then on.
     const releaseFollow = () => {
@@ -1182,6 +1209,8 @@ export default function MapCard({
     map.on("click", drop);
 
     return () => {
+      document.removeEventListener("visibilitychange", syncVisibility);
+      window.cancelAnimationFrame(visibilityFrame);
       map.remove();
       mapRef.current = null;
       hereMarkerRef.current = null;
@@ -1241,7 +1270,12 @@ export default function MapCard({
     if (spread) size();
     map.on("zoom", size);
 
-    if (followRef.current) {
+    const centre = map.getCenter();
+    const cameraMoved = distanceMeters(
+      { latitude: centre.lat, longitude: centre.lng },
+      coords,
+    );
+    if (followRef.current && cameraMoved >= FOLLOW_MOVED_M) {
       map.easeTo({ center: position, zoom: Math.max(map.getZoom(), DEFAULT_ZOOM), duration: 600 });
     }
 
@@ -1635,9 +1669,20 @@ export default function MapCard({
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return undefined;
-    const observer = new ResizeObserver(() => mapRef.current?.resize());
+    let frame = 0;
+    const resize = () => {
+      if (frame) return;
+      frame = window.requestAnimationFrame(() => {
+        frame = 0;
+        mapRef.current?.resize();
+      });
+    };
+    const observer = new ResizeObserver(resize);
     observer.observe(container);
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      window.cancelAnimationFrame(frame);
+    };
   }, [broken]);
 
   const live = TOKEN && !broken;

@@ -23,6 +23,7 @@
     <script>
       (function () {
         var lastHeight = window.innerHeight;
+        var viewportFrame = 0;
 
         function setVh() {
           document.documentElement.style.setProperty("--vh", window.innerHeight * 0.01 + "px");
@@ -60,8 +61,16 @@
         }
 
         function onViewport() {
-          setVh();
-          keepFocusVisible();
+          // An embedded WebView can report the same keyboard/viewport step via
+          // both window.resize and visualViewport.resize.  Writing --vh in each
+          // callback forces layout twice, which in turn resizes the Mapbox
+          // canvas.  Fold every burst into one layout update per paint.
+          if (viewportFrame) return;
+          viewportFrame = requestAnimationFrame(function () {
+            viewportFrame = 0;
+            setVh();
+            keepFocusVisible();
+          });
         }
 
         setVh();

@@ -14,10 +14,10 @@ import styles from "./wikipedia.module.css";
 const NONE = [];
 
 // The same standing-still test the food and café cards use, and the same
-// figure: a hundred and fifty metres is about where the nearest few articles
+// figure: a hundred metres is about where the nearest few articles
 // start to change places, and under that the answer is the same list off the
 // same hour-old square on the server (see lookupWikipedia in server/geo.js).
-const MOVED_M = 150;
+const MOVED_M = 100;
 
 // What is worth reading within a walk of here — off Wikipedia, nearest article
 // first. The preview at the foot of this file is the venue cards' own: a name,
@@ -46,7 +46,7 @@ export default function WikipediaCard({ onOpenComments = null, onOpenPhoto = nul
 
   useEffect(() => {
     if (!coords) return;
-    setAnchor((from) => (from && distanceMeters(from, coords) < MOVED_M ? from : coords));
+    setAnchor((from) => (from && distanceMeters(from, coords) <= MOVED_M ? from : coords));
   }, [coords]);
 
   useEffect(() => {

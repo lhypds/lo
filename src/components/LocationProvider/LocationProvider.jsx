@@ -124,6 +124,10 @@ export function LocationProvider({ children }) {
   const [reloadToken, setReloadToken] = useState(0);
   const requestRef = useRef(0);
   const postsRequestRef = useRef(0);
+  // Presence can be asked for by the minute beat, a moved fix, the visibility
+  // catch-up and the refresh button. They are all the same reading while one is
+  // in flight, so every caller shares it instead of opening another connection.
+  const peopleRequestRef = useRef(null);
 
   // A grant the browser already remembers means no gate screen at all: the app
   // opens straight onto the dashboard with a fix on its way.
@@ -187,28 +191,82 @@ export function LocationProvider({ children }) {
   }, [hasFix]);
 
   // Weather goes stale where a place name does not, so the same call is made
-  // again on a timer while the tab stays open.
+  // again on a timer while the tab stays open. The next turn is scheduled only
+  // after the current one settles: a WebView that has lost its connection must
+  // never accumulate one more request every ten minutes. Hidden time costs no
+  // request, and returning catches up only when the reading actually came due.
   useEffect(() => {
     if (!hasFix) return undefined;
-    const timer = window.setInterval(() => load(getLocationState().coords), WEATHER_REFRESH_MS);
-    return () => window.clearInterval(timer);
+    let timer = null;
+    let stopped = false;
+    let running = false;
+    let nextAt = Date.now() + WEATHER_REFRESH_MS;
+
+    function stop() {
+      window.clearTimeout(timer);
+      timer = null;
+    }
+
+    function schedule() {
+      stop();
+      if (stopped || document.hidden) return;
+      timer = window.setTimeout(run, Math.max(0, nextAt - Date.now()));
+    }
+
+    async function run() {
+      timer = null;
+      if (stopped || document.hidden || running) return;
+      running = true;
+      try {
+        await load(getLocationState().coords);
+      } finally {
+        running = false;
+        nextAt = Date.now() + WEATHER_REFRESH_MS;
+        schedule();
+      }
+    }
+
+    function watch() {
+      stop();
+      if (document.hidden) return;
+      if (Date.now() >= nextAt) void run();
+      else schedule();
+    }
+
+    schedule();
+    document.addEventListener("visibilitychange", watch);
+    return () => {
+      stopped = true;
+      stop();
+      document.removeEventListener("visibilitychange", watch);
+    };
   }, [hasFix, load]);
 
   // Hand the current fix to the server and take back everyone else's. With no
   // fix of our own there is nothing to trade, but the others are still worth
   // drawing — so that case asks rather than publishes.
   const syncPeople = useCallback(async (coords) => {
+    if (peopleRequestRef.current) return peopleRequestRef.current;
+
+    const pending = (async () => {
+      try {
+        const data = coords ? await api.publishPosition(coords) : await api.getPeople();
+        setPeople(data.people ?? []);
+        setUnread(data.unread ?? 0);
+      } catch {
+        // Losing sight of the others is no reason to lose your own position
+      } finally {
+        // Answered or not, the panel has waited as long as it usefully can: a
+        // trade that failed leaves the list as it is, and an empty one then
+        // means what it says.
+        setLoadingPeople(false);
+      }
+    })();
+    peopleRequestRef.current = pending;
     try {
-      const data = coords ? await api.publishPosition(coords) : await api.getPeople();
-      setPeople(data.people ?? []);
-      setUnread(data.unread ?? 0);
-    } catch {
-      // Losing sight of the others is no reason to lose your own position
+      await pending;
     } finally {
-      // Answered or not, the panel has waited as long as it usefully can: a
-      // trade that failed leaves the list as it is, and an empty one then
-      // means what it says.
-      setLoadingPeople(false);
+      if (peopleRequestRef.current === pending) peopleRequestRef.current = null;
     }
   }, []);
 
@@ -304,13 +362,40 @@ export function LocationProvider({ children }) {
 
   useEffect(() => {
     if (!hasFix || !username) return undefined;
-    const timer = window.setInterval(syncPresence, PRESENCE_REFRESH_MS);
+    let timer = null;
+    let stopped = false;
+
+    function stop() {
+      window.clearTimeout(timer);
+      timer = null;
+    }
+
+    function schedule() {
+      stop();
+      if (stopped || document.hidden) return;
+      timer = window.setTimeout(run, PRESENCE_REFRESH_MS);
+    }
+
+    async function run() {
+      timer = null;
+      if (stopped || document.hidden) return;
+      await syncPresence();
+      schedule();
+    }
+
     // Coming back to a backgrounded tab, the dots on screen are as old as the
     // time away — catching up is the first thing that should happen.
-    document.addEventListener("visibilitychange", syncPresence);
+    function watch() {
+      stop();
+      if (!document.hidden) void run();
+    }
+
+    schedule();
+    document.addEventListener("visibilitychange", watch);
     return () => {
-      window.clearInterval(timer);
-      document.removeEventListener("visibilitychange", syncPresence);
+      stopped = true;
+      stop();
+      document.removeEventListener("visibilitychange", watch);
     };
   }, [hasFix, username, syncPresence]);
 

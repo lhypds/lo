@@ -283,12 +283,21 @@ export async function startSensors() {
 // away is battery spent on a number nobody is reading.
 function hold() {
   holds += 1;
+  const watch = () => {
+    if (document.hidden) {
+      detach();
+      return;
+    }
+    if (holds > 0 && state.status !== "denied" && (!needsPermission() || remembered())) startSensors();
+  };
   // Everywhere but iOS these need no permission, so a card that is on the page
   // simply listens. On iOS the same holds once the reader has said yes before —
   // and if Safari will not take that ask without a press, startSensors puts the
   // button back. A refusal is not asked about again until the reader presses it.
-  if (state.status !== "denied" && (!needsPermission() || remembered())) startSensors();
+  if (!document.hidden) watch();
+  document.addEventListener("visibilitychange", watch);
   return () => {
+    document.removeEventListener("visibilitychange", watch);
     holds -= 1;
     if (holds <= 0) detach();
   };

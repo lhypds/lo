@@ -61,6 +61,10 @@ export default function MessageModal({ username, onClose }) {
   // top of a newer one — the loop below asks again every few seconds, and the
   // sheet can be closed and reopened on somebody else in between.
   const askedRef = useRef(0);
+  // One conversation read at a time. The ticket above decides which answer may
+  // land; this decides how many connections may be waiting for one. Without it,
+  // a WebView on a broken network opened another fetch every five seconds.
+  const inFlightRef = useRef(null);
   // Whether the reader is at the end of the exchange, which is what says a line
   // arriving should carry them with it.
   const atEndRef = useRef(true);
@@ -71,11 +75,16 @@ export default function MessageModal({ username, onClose }) {
   // news to anybody.
   const load = useCallback(
     (quiet) => {
-      if (!username) return;
+      if (!username) return Promise.resolve();
+      const standing = inFlightRef.current;
+      if (standing?.username === username) return standing.promise;
+      standing?.controller.abort();
+
       const ticket = (askedRef.current += 1);
+      const controller = new AbortController();
       if (!quiet) setLoading(true);
-      api
-        .getConversation(username)
+      const pending = api
+        .getConversation(username, { signal: controller.signal })
         .then((data) => {
           if (ticket !== askedRef.current) return;
           const lines = data.messages ?? [];
@@ -86,8 +95,11 @@ export default function MessageModal({ username, onClose }) {
           if (ticket === askedRef.current && !quiet) setError(requestError.message);
         })
         .finally(() => {
+          if (inFlightRef.current?.promise === pending) inFlightRef.current = null;
           if (ticket === askedRef.current && !quiet) setLoading(false);
         });
+      inFlightRef.current = { username, controller, promise: pending };
+      return pending;
     },
     [username, noteUnread],
   );
@@ -109,6 +121,12 @@ export default function MessageModal({ username, onClose }) {
     load();
     return () => {
       askedRef.current += 1;
+      // Do not leave a read for a sheet that no longer exists on the wire, or
+      // let a reopened sheet adopt an answer this cleanup made ineligible.
+      if (inFlightRef.current?.username === username) {
+        inFlightRef.current.controller.abort();
+        inFlightRef.current = null;
+      }
     };
   }, [username, load]);
 
@@ -126,26 +144,40 @@ export default function MessageModal({ username, onClose }) {
   useEffect(() => {
     if (!username) return undefined;
     let timer = null;
+    let stopped = false;
+
     function stop() {
-      window.clearInterval(timer);
+      window.clearTimeout(timer);
       timer = null;
     }
-    function start() {
-      if (!timer) timer = window.setInterval(() => load(true), THREAD_REFRESH_MS);
+
+    function schedule() {
+      stop();
+      if (stopped || document.hidden) return;
+      timer = window.setTimeout(run, THREAD_REFRESH_MS);
     }
+
+    async function run() {
+      timer = null;
+      if (stopped || document.hidden) return;
+      await load(true);
+      schedule();
+    }
+
     function watch() {
+      stop();
       if (document.hidden) {
-        stop();
         return;
       }
       // Coming back to it is a reading in itself, and the one moment the thread on
       // screen is most likely to be out of date.
-      load(true);
-      start();
+      void run();
     }
-    if (!document.hidden) start();
+
+    schedule();
     document.addEventListener("visibilitychange", watch);
     return () => {
+      stopped = true;
       stop();
       document.removeEventListener("visibilitychange", watch);
     };

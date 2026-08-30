@@ -57,27 +57,73 @@ export function authHeaders() {
   return sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {};
 }
 
+// A request that has lost its connection must eventually make room for the next
+// turn of a poller. Browsers put no useful upper bound on fetch by themselves,
+// which is especially visible in an embedded WebView moving between networks:
+// the promise can remain pending long after the screen that asked for it has
+// gone. Thirty seconds is above every ordinary lo read while still bounding the
+// number of dead requests a recurring read can leave behind.
+const REQUEST_TIMEOUT_MS = 30 * 1000;
+
 async function request(path, options = {}) {
+  // `timeoutMs` is an option for lo rather than for fetch. The venue endpoints
+  // may legitimately wait behind Overpass's public queue, so those two give
+  // themselves a larger budget below; everything else takes the common one.
+  const { timeoutMs = REQUEST_TIMEOUT_MS, signal: sourceSignal, ...fetchOptions } = options;
   const headers = {
-    ...(options.body ? { "Content-Type": "application/json" } : null),
-    ...options.headers,
+    ...(fetchOptions.body ? { "Content-Type": "application/json" } : null),
+    ...fetchOptions.headers,
     ...authHeaders(),
   };
-  const response = await fetch(path, { credentials: "omit", ...options, headers });
+  const controller = new AbortController();
+  let timedOut = false;
+  const abort = () => controller.abort(sourceSignal?.reason);
+  if (sourceSignal?.aborted) abort();
+  else sourceSignal?.addEventListener("abort", abort, { once: true });
+  const timer = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, timeoutMs);
 
-  if (response.status === 204) return null;
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    // A token the server no longer knows because it aged out or was revoked.
-    // Thrown away here rather than presented on every request from now on, so
-    // that what follows is a login screen rather than a loop.
-    if (response.status === 401 && data.code === "LOGIN_REQUIRED") dropSession();
-    const error = new Error(data.error || "Request failed");
-    error.status = response.status;
-    error.code = data.code;
-    throw error;
+  try {
+    const response = await fetch(path, {
+      credentials: "omit",
+      ...fetchOptions,
+      headers,
+      signal: controller.signal,
+    });
+
+    if (response.status === 204) return null;
+    let data;
+    try {
+      data = await response.json();
+    } catch (error) {
+      // A response without JSON has always been read as an empty answer. An
+      // aborted body is different: swallowing it here would turn a timeout into
+      // a successful `{}` just because the headers arrived first.
+      if (controller.signal.aborted) throw error;
+      data = {};
+    }
+    if (!response.ok) {
+      // A token the server no longer knows because it aged out or was revoked.
+      // Thrown away here rather than presented on every request from now on, so
+      // that what follows is a login screen rather than a loop.
+      if (response.status === 401 && data.code === "LOGIN_REQUIRED") dropSession();
+      const error = new Error(data.error || "Request failed");
+      error.status = response.status;
+      error.code = data.code;
+      throw error;
+    }
+    return data;
+  } catch (error) {
+    if (!timedOut) throw error;
+    const timeout = new Error("Request timed out");
+    timeout.code = "REQUEST_TIMEOUT";
+    throw timeout;
+  } finally {
+    clearTimeout(timer);
+    sourceSignal?.removeEventListener("abort", abort);
   }
-  return data;
 }
 
 // Every location endpoint answers in the language the interface is showing, so
@@ -193,8 +239,13 @@ export const getTrends = (coords) => request(`/api/trends?${geoQuery(coords)}`);
 // Somewhere to eat and somewhere for a coffee, nearest first. Two addresses
 // rather than one with a kind hung off it, because they are two cards and a
 // reader may well carry one of them without the other.
-export const getFood = (coords) => request(`/api/food?${geoQuery(coords)}`);
-export const getCafes = (coords) => request(`/api/cafe?${geoQuery(coords)}`);
+// Overpass serialises public queries and may use two 22-second attempts after a
+// 429. Give these reads room to finish while still bounding a dead connection.
+const VENUE_REQUEST_TIMEOUT_MS = 90 * 1000;
+export const getFood = (coords) =>
+  request(`/api/food?${geoQuery(coords)}`, { timeoutMs: VENUE_REQUEST_TIMEOUT_MS });
+export const getCafes = (coords) =>
+  request(`/api/cafe?${geoQuery(coords)}`, { timeoutMs: VENUE_REQUEST_TIMEOUT_MS });
 // Wikipedia articles carrying a coordinate nearby, lead paragraph and picture
 // included — nearest first, the same shape the two calls above answer in.
 export const getWikipedia = (coords) => request(`/api/wikipedia?${geoQuery(coords)}`);
@@ -265,8 +316,8 @@ export const addVenueComment = (venueId, body) =>
 export const getMessages = () => request("/api/messages");
 // One exchange, both directions. Asking for it is what marks it read, so the
 // unread figure comes back already counted down by this reading.
-export const getConversation = (username) =>
-  request(`/api/messages/${encodeURIComponent(username)}`);
+export const getConversation = (username, options = {}) =>
+  request(`/api/messages/${encodeURIComponent(username)}`, options);
 export const sendMessage = (username, body) =>
   request(`/api/messages/${encodeURIComponent(username)}`, {
     method: "POST",
