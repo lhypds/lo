@@ -149,7 +149,9 @@ export default function Card({
   // these speaks, so the two taps are counted off pointerup and nothing else,
   // which is the same gesture the dashboard reads to turn its pages.
   function pressDown(event) {
-    tapLog(`down ${event.pointerType || "?"} prim=${event.isPrimary} b=${event.button} x=${Math.round(event.clientX)} y=${Math.round(event.clientY)}`);
+    tapLog(
+      `down ${event.pointerType || "?"} prim=${event.isPrimary} b=${event.button} x=${Math.round(event.clientX)} y=${Math.round(event.clientY)}`,
+    );
     if (!event.isPrimary) return;
     downRef.current = { x: event.clientX, y: event.clientY };
   }
@@ -157,7 +159,9 @@ export default function Card({
   function pressUp(event) {
     const down = downRef.current;
     downRef.current = null;
-    tapLog(`up   ${event.pointerType || "?"} prim=${event.isPrimary} down=${down ? "y" : "n"} x=${Math.round(event.clientX)} y=${Math.round(event.clientY)}`);
+    tapLog(
+      `up   ${event.pointerType || "?"} prim=${event.isPrimary} down=${down ? "y" : "n"} x=${Math.round(event.clientX)} y=${Math.round(event.clientY)}`,
+    );
     if (!event.isPrimary || event.target.closest("button")) return;
     // A press that travelled is a drag: the page is being turned under it, or the
     // list behind it scrolled, and neither is half of a double press. Judged only
