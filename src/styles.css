@@ -285,25 +285,19 @@ a {
   font-weight: 700;
 }
 
-/* Naming a spot is not signing in. The rule above is sized for the login
-   screen, where the field is the only thing on the page and is meant to be;
-   here it is one row inside a sheet over the map, and at that size it shouts.
-   The post sheet already settled what a sheet's scale is — a 30px slab with
-   its type at 12px, on both the thing pressed and the thing typed in — and two
-   sheets asking for a line of text should not do it in two different voices.
+/* Naming a spot is not signing in. The rule above is sized for the login screen,
+   where the field is the only thing on the page and is meant to be; here it is
+   one box inside a sheet over the map, and at that size it shouts. The post
+   sheet already settled what a sheet's scale is — its type at 12px, on both the
+   thing pressed and the thing typed in — and two sheets asking for a line of
+   text should not do it in two different voices.
 
-   On its own rather than joined to its button, which is why it carries the
-   whole of a field's look instead of a size: the sheet's answers stand together
-   at its foot (see .modal-actions), and that leaves the box nothing on its right
-   to share an edge with. */
+   The house textarea sets no size of its own, so all that is said here is the
+   size: the border, the ground and the ruled corner that opens the box out come
+   with it (see ui/TextArea). Sized like the comment box and the post composer,
+   which are the other two places in lo something is typed into a sheet. */
 .mark-field {
-  width: 100%;
-  height: 30px;
-  padding: 0 12px;
-  border: 1px solid var(--ink);
-  border-radius: 0;
-  outline: 0;
-  background: var(--paper);
+  padding: 8px 10px;
   font-size: 12px;
 }
 
@@ -312,11 +306,9 @@ a {
    whole page into it on focus — which throws the layout about, carries the
    field up the screen, and leaves the page zoomed after the keyboard has gone.
    16px is the line it stops at, and it is a better size to type at with a thumb
-   anyway; the row grows to keep the type off its own edges. The one field this
-   reaches is the one a sheet asks for a line of text in: naming a spot. */
+   anyway. The one field this reaches is the one a sheet asks for a name in. */
 @media (pointer: coarse) {
   .mark-field {
-    height: 36px;
     font-size: 16px;
   }
 }
