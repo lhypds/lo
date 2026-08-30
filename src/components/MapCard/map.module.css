@@ -397,8 +397,19 @@
   mask-image: var(--zoom-out-glyph);
 }
 
+/* mapbox-gl hands this button the map's own cursor — grab, then grabbing on the
+   press — because the control can also be dragged round to rotate. Here it is
+   read as the button it looks like: one press to put north back at the top. So
+   it takes the pointing hand every other button on the page takes, and keeps it
+   through the press rather than closing into a fist halfway. The :active rule is
+   its own because Mapbox's is one too, and matches this one for weight. */
 .wrapper :global(.mapboxgl-ctrl button.mapboxgl-ctrl-compass) {
   background-color: #fff;
+  cursor: pointer;
+}
+
+.wrapper :global(.mapboxgl-ctrl button.mapboxgl-ctrl-compass:active) {
+  cursor: pointer;
 }
 
 .wrapper :global(.mapboxgl-ctrl button.mapboxgl-ctrl-compass .mapboxgl-ctrl-icon) {
