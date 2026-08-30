@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
 import { AuthImage, Link, Modal, Skeleton, TextArea } from "../../ui/index.js";
 import { formatUsername, relativeTime } from "../../utils/format.js";
+import { postThumb } from "../../utils/image.js";
 import { useHere } from "../LocationProvider/index.js";
 import styles from "./comments.module.css";
 
@@ -42,6 +43,13 @@ export default function CommentsModal({ post = null, venue = null, onClose, onAd
   const subject = venue ?? post;
   const subjectId = subject?.id ?? null;
   const venueThread = Boolean(venue);
+  // The picture the subject is known by, where there is one: a post's own
+  // thumbnail, or the small copy of a landmark's Wikimedia picture — the same
+  // two files the row and the pin draw, so this box is very often already
+  // fetched by the time the sheet opens. Null for a post left with words alone
+  // and for an OSM venue, which never carries a picture at all; the head of the
+  // column is then the caption by itself, as before.
+  const thumb = venue ? venue.thumbnailSmall || venue.thumbnail || null : postThumb(post);
 
   // Asked for when the sheet opens rather than with the map list: pins are drawn
   // many at a time, and the words under one are wanted only by the reader who
@@ -131,12 +139,30 @@ export default function CommentsModal({ post = null, venue = null, onClose, onAd
             the sheet is behind it now, and a page of remarks with nothing saying
             what they are remarks on is a conversation walked in on. */}
         {subject && (
-          <p className={styles.about}>
+          <div className={styles.about}>
+            {/* The picture beside the words rather than above them: this line is
+                the label on the column, and a photograph across the head of the
+                sheet would be the post being shown again rather than named.
+                AuthImage for both kinds — a stored picture needs the session on
+                its request and a Wikimedia one does not, which is the one thing
+                that function already sorts out by itself (see authImageUrl). */}
+            {thumb && (
+              <AuthImage
+                className={styles.thumb}
+                src={thumb}
+                alt=""
+                loading="lazy"
+                width="40"
+                height="40"
+              />
+            )}
             {/* A landmark's own name is Wikipedia's `title` rather than the
                 `name` an OSM venue answers with — the one field the two kinds
                 of place under this same sheet disagree about the word for. */}
-            {venue ? venue.name ?? venue.title : post.body || post.place || t("comments.aboutPost")}
-          </p>
+            <p className={styles.subject}>
+              {venue ? venue.name ?? venue.title : post.body || post.place || t("comments.aboutPost")}
+            </p>
+          </div>
         )}
 
         {/* A definite height, so the box stands on the floor of the sheet and the
@@ -206,6 +232,16 @@ export default function CommentsModal({ post = null, venue = null, onClose, onAd
             onChange={(event) => {
               setDraft(event.target.value);
               setError("");
+            }}
+            // Cmd/Ctrl+Enter sends it, the same key the post composer takes: a
+            // remark is written in the same kind of box and is finished the same
+            // way. A plain Enter stays a newline — a comment can be a paragraph,
+            // and the composing check keeps the Enter that closes a Japanese or
+            // Chinese candidate list from being read as the one that submits.
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && (event.metaKey || event.ctrlKey) && !event.nativeEvent.isComposing) {
+                submit(event);
+              }
             }}
             placeholder={t("comments.placeholder")}
             maxLength={BODY_MAX}

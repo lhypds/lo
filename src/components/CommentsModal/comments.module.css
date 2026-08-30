@@ -6,17 +6,39 @@
   gap: 12px;
 }
 
-/* Which post this is about, set as the caption it is: two lines of it and then
-   the rest is on the map behind the sheet. The rule under it is what separates
-   the thing being talked about from the talking. */
+/* Which post this is about: the picture it was left with, where there is one,
+   and the caption beside it. The rule under the pair is what separates the
+   thing being talked about from the talking. */
 .about {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--ink);
+}
+
+/* Square and ruled at the size every list in lo draws a post's thumbnail —
+   enough to know which post this is, and no more. It is not a way through to
+   the photograph: what opens that is the picture on the pin, which is behind
+   this sheet and is where the reader pressed to get here. */
+.thumb {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--ink);
+  background: var(--soft);
+  object-fit: cover;
+}
+
+/* Set as the caption it is: two lines of it and then the rest is on the map
+   behind the sheet. */
+.subject {
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   overflow: hidden;
+  min-width: 0;
   margin: 0;
-  padding-bottom: 10px;
-  border-bottom: 1px solid var(--ink);
   color: var(--muted);
   font-size: 12px;
   line-height: 1.5;
