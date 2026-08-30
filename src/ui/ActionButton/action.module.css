@@ -29,9 +29,20 @@
   cursor: pointer;
 }
 
+/* The one fade this app has for a control that is not being asked for, but not
+   made with opacity the way the rest of them are (see button:disabled in
+   styles.css). The tooltip is drawn as this button's own ::after, and opacity
+   makes a group nothing inside can climb back out of: a faded button faded the
+   caption hung under it, so the box telling the reader what the button would do
+   was the one thing on the tile they could not read — and a button they cannot
+   press is exactly when they want to be told what it is. So the fade is mixed
+   into the ink instead, at the same 0.4 over the paper, and the button comes out
+   looking as it always did with the box below it at full strength. */
 .actionButton:disabled {
   cursor: default;
-  opacity: 0.4;
+  opacity: 1;
+  border-color: color-mix(in srgb, var(--ink) 40%, var(--paper));
+  color: color-mix(in srgb, var(--ink) 40%, var(--paper));
 }
 
 .icon {
