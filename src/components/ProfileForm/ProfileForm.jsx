@@ -120,17 +120,28 @@ export default function ProfileForm({ user, onSaved }) {
 
   // The menu of trades, with the way off the list at the top of it rather than
   // the bottom: it is where the menu stands until somebody moves it, because the
-  // box beside it is the field's own answer and the list is the shortcut. Built
-  // here rather than beside the table it comes from because every row of it is a
-  // word in the reader's own language, and the table holds slugs — see
-  // utils/work.js.
-  const workOptions = useMemo(
-    () => [
-      { value: "", label: t("profile.workNone") },
-      ...WORK_KINDS.map((kind) => ({ value: kind, label: t(`work.${kind}`) })),
-    ],
-    [t],
-  );
+  // box beside it is the field's own answer and the list is the shortcut. That
+  // row is not a trade and is not sorted with them — it is the menu's own escape
+  // hatch, and it stays where the reader left it.
+  //
+  // The trades under it in alphabetical order, which is a different order in every
+  // language this is read in — so it is done here, where the words are, and not
+  // beside the table they come from, which holds slugs (see utils/work.js, and
+  // the note there on why the order is nobody's opinion). Intl's collator is what
+  // knows what alphabetical means in each: first letter in the languages written
+  // in letters, accents filed under the plain letter rather than after Z, and in
+  // the two that are not written in letters the orders they actually alphabetise
+  // in — 摄影师 under S for shè in Chinese, 写真家 under し for shashin in
+  // Japanese. Nothing here has to know any of that, which is the point of asking.
+  //
+  // Redone whenever the language changes rather than once, because the answer is
+  // a fact about the language and not about the list.
+  const workOptions = useMemo(() => {
+    const collator = new Intl.Collator(i18n.language);
+    const kinds = WORK_KINDS.map((kind) => ({ value: kind, label: t(`work.${kind}`) }));
+    kinds.sort((one, other) => collator.compare(one.label, other.label));
+    return [{ value: "", label: t("profile.workNone") }, ...kinds];
+  }, [t, i18n.language]);
 
   // Which of the two is holding the answer. Read off the field rather than
   // remembered beside it: a trade is on the list or it is not, and that is the
