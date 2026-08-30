@@ -79,7 +79,7 @@
     "deletingAll": "删除中",
     "deletedAll": "已删除 {{count}} 条 mark",
     "deleteAllFailed": "无法清空 marks",
-    "posts": "动态数",
+    "posts": "post 数",
     "discoverable": "可被发现",
     "discoverableOn": "已开启",
     "discoverableOff": "已关闭",
@@ -328,7 +328,7 @@
     "deleteTitle": "删除 post",
     "deleteConfirm": "删除这条 post？此操作无法撤销。",
     "edit": "编辑",
-    "editTitle": "编辑帖子",
+    "editTitle": "编辑 post",
     "saving": "保存中",
     "saved": "已保存"
   },
