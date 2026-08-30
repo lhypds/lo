@@ -1,9 +1,11 @@
 import { Suspense, lazy, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
-import { Card, Lightbox, Skeleton, TileId, showToast, useNavigate, useSearchParams } from "../../ui/index.js";
+import { Card, Lightbox, Modal, Skeleton, TileId, showToast, useNavigate, useSearchParams } from "../../ui/index.js";
 import { arrangeCards, cardLabel, cardSpan, useCards } from "../../utils/cards.js";
+import { formatCoords } from "../../utils/format.js";
 import { postPhoto } from "../../utils/image.js";
+import { labelName } from "../../utils/label.js";
 import { paginate } from "../../utils/pages.js";
 import { updateVenueComments, useVenues } from "../../utils/venues.js";
 import { getLocationState, refreshLocation } from "../../utils/location.js";
@@ -17,6 +19,7 @@ import Header from "../../components/Header/index.js";
 import HereStrip from "../../components/HereStrip/index.js";
 import LocationGate from "../../components/LocationGate/index.js";
 import MarkButton from "../../components/MarkButton/index.js";
+import MarkModal from "../../components/MarkModal/index.js";
 import NewsCard from "../../components/NewsCard/index.js";
 import PeopleCard from "../../components/PeopleCard/index.js";
 import PostModal from "../../components/PostModal/index.js";
@@ -109,7 +112,7 @@ function moveTo(ids, id, to) {
 }
 
 export default function HomePage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   // Posts come from the provider rather than from here: they are a reading of
@@ -137,6 +140,13 @@ export default function HomePage() {
   // Held here, not in the map: expanding it hides the rest of the dashboard.
   const [mapExpanded, setMapExpanded] = useState(false);
   const [marks, setMarks] = useState([]);
+  // The two sheets a saved mark's map preview can ask for. They live at page
+  // level because the map is a container-sized tile, while either sheet belongs
+  // to the window; the same arrangement is used on the marks page.
+  const [renamingMark, setRenamingMark] = useState(null);
+  const [deletingMark, setDeletingMark] = useState(null);
+  const [deletingMarkBusy, setDeletingMarkBusy] = useState(false);
+  const [deletingMarkError, setDeletingMarkError] = useState("");
   // Which page of the dashboard is under the reader's thumb, and the shape of
   // the module the pages are cut on — how many columns the grid has and how many
   // rows of it the window holds. Null until it has been measured, and the page
@@ -337,6 +347,44 @@ export default function HomePage() {
     showToast(t("post.posted"), 1800);
   }
 
+  async function renameSavedMark(label) {
+    const { mark } = await api.renameMark(renamingMark.id, label);
+    setMarks((current) => current.map((item) => (item.id === mark.id ? mark : item)));
+    setRenamingMark(null);
+  }
+
+  function askToDeleteMark(mark) {
+    setDeletingMarkError("");
+    setDeletingMark(mark);
+  }
+
+  function closeDeleteMark() {
+    if (deletingMarkBusy) return;
+    setDeletingMark(null);
+    setDeletingMarkError("");
+  }
+
+  async function confirmDeleteMark() {
+    if (!deletingMark || deletingMarkBusy) return;
+    setDeletingMarkBusy(true);
+    setDeletingMarkError("");
+    try {
+      await api.deleteMark(deletingMark.id);
+      setMarks((current) => current.filter((item) => item.id !== deletingMark.id));
+      setDeletingMark(null);
+    } catch (error) {
+      setDeletingMarkError(error.message);
+    } finally {
+      setDeletingMarkBusy(false);
+    }
+  }
+
+  const deletingMarkName = deletingMark
+    ? labelName(deletingMark, i18n.language) ||
+      formatCoords(deletingMark.latitude, deletingMark.longitude)
+    : "";
+  const renamingMarkName = renamingMark?.label?.[i18n.language] ?? "";
+
   // Nothing below answers a question without a position, so the gate stands in
   // for the whole dashboard rather than appearing inside it.
   if (!coords) return <LocationGate />;
@@ -389,6 +437,8 @@ export default function HomePage() {
             onOpenComments={setCommenting}
             onOpenVenueComments={setVenueCommenting}
             onOpenPhoto={setViewing}
+            onRenameMark={setRenamingMark}
+            onDeleteMark={askToDeleteMark}
           />
         </Suspense>,
       ),
@@ -895,6 +945,36 @@ export default function HomePage() {
         onClose={() => setComposing(null)}
         onCreated={created}
       />
+
+      {/* The map preview asks for these, but the page owns them: fixed sheets
+          mounted inside the map tile would be sized against that tile instead
+          of the window. Both mutations update the same list the pins use. */}
+      <MarkModal
+        isOpen={Boolean(renamingMark)}
+        title={t("marks.renameTitle")}
+        submitLabel={t("common.save")}
+        initialValue={renamingMarkName}
+        onClose={() => setRenamingMark(null)}
+        onSubmit={renameSavedMark}
+      />
+
+      <Modal
+        isOpen={Boolean(deletingMark)}
+        title={t("marks.deleteTitle")}
+        onClose={deletingMarkBusy ? undefined : closeDeleteMark}
+        closeOnOverlay
+      >
+        <p className="modal-text">{t("marks.deleteConfirm", { name: deletingMarkName })}</p>
+        {deletingMarkError && <p className="form-message error">{deletingMarkError}</p>}
+        <div className="modal-actions">
+          <button type="button" className="outline-button" onClick={closeDeleteMark} disabled={deletingMarkBusy}>
+            {t("common.cancel")}
+          </button>
+          <button type="button" className="primary-button" onClick={confirmDeleteMark} disabled={deletingMarkBusy}>
+            {deletingMarkBusy ? t("marks.deleting") : t("marks.delete")}
+          </button>
+        </div>
+      </Modal>
 
       {/* Out here for the same reason the composer is: the count that opens this
           is in a bubble on the map, and the map is the whole of the page while it

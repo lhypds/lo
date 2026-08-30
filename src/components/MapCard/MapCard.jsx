@@ -639,10 +639,9 @@ function wearChosen(marker, chosen) {
 // `expanded` is owned by the page rather than by the map: expanding hides the
 // rest of the dashboard, which is not the map's call to make.
 //
-// The same square tile on every page that draws one: the dashboard passes no
-// marks at all and gets the here and now, the marks page passes every saved spot
-// and gets that same here with the history standing on it, and the posts page
-// asks for `fitMarks` besides, which opens the view over the whole scatter.
+// The same square tile on every page that draws one: the dashboard and marks
+// page pass the saved spots they want drawn, while the posts page asks for
+// `fitMarks`, which opens the view over the whole scatter.
 export default function MapCard({
   marks = [],
   posts = [],
@@ -682,8 +681,7 @@ export default function MapCard({
   // Both asked for from a mark's bubble and both answered by the page: the map
   // says which spot, and the page is where the name sheet and the confirmation
   // stand, and where the list they change lives. Nothing passed is no such
-  // control at all, which is the dashboard — where the map draws no marks in the
-  // first place.
+  // control at all, which leaves marks readable but not mutable.
   onRenameMark,
   onDeleteMark,
 }) {
