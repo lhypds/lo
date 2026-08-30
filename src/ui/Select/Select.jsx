@@ -238,24 +238,17 @@ export default function Select({ options, value, onChange, label, className }) {
               id={`${listId}-${index}`}
               role="option"
               aria-selected={option.value === value}
-              className={[
-                styles.option,
-                index === active ? styles.active : "",
-                option.value === value ? styles.chosen : "",
-              ]
+              className={[styles.option, index === active ? styles.active : "", option.value === value ? styles.chosen : ""]
                 .filter(Boolean)
                 .join(" ")}
               // The pointer moves the highlight rather than drawing a second one
               // of its own, so there is one row marked at a time however the
               // reader is working — see .active in the stylesheet.
               onPointerEnter={() => setActive(index)}
-              // Down rather than click: the outside-press listener above is on
-              // pointerdown too, and a menu that closed on the way down and
-              // chose on the way up would be answering twice.
-              onPointerDown={(event) => {
-                event.preventDefault();
-                take(index);
-              }}
+              // A completed click rather than pointerdown: on touch, the first
+              // contact may become a drag through this scrollable list. Taking
+              // the row before that gesture is known would prevent the scroll.
+              onClick={() => take(index)}
             >
               {option.label}
             </li>
