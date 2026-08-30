@@ -238,12 +238,14 @@
     "title": "Wikipédia",
     "empty": "Rien sur Wikipédia à moins de {{distance}} d’ici",
     "unavailable": "Impossible de joindre Wikipédia",
-    "loading": "Recherche d’articles à proximité"
+    "loading": "Recherche d’articles à proximité",
+    "open": "Ouvrir sur Wikipédia"
   },
   "map": {
     "title": "Carte",
     "nav": "itinéraire",
     "search": "rechercher",
+    "read": "lire",
     "edit": "modifier",
     "delete": "supprimer",
     "turn": "Double-cliquez pour changer de carte",

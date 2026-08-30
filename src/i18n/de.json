@@ -238,12 +238,14 @@
     "title": "Wikipedia",
     "empty": "Im Umkreis von {{distance}} gibt es nichts auf Wikipedia",
     "unavailable": "Wikipedia ist nicht erreichbar",
-    "loading": "Artikel in der Nähe werden gesucht"
+    "loading": "Artikel in der Nähe werden gesucht",
+    "open": "Auf Wikipedia öffnen"
   },
   "map": {
     "title": "Karte",
     "nav": "Route",
     "search": "suchen",
+    "read": "lesen",
     "edit": "bearbeiten",
     "delete": "löschen",
     "turn": "Doppelklicken, um die Karte zu wechseln",

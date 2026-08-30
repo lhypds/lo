@@ -134,6 +134,20 @@ export function newsEdition(countryCode) {
   return NEWS_EDITIONS.get(normalize(countryCode)) ?? null;
 }
 
+// Which Wikipedia the ground itself is written in — the edition that carries the
+// shrine on the hill, which the English one has never heard of.
+//
+// Read off the news table rather than kept in a second one: the reading language
+// of a country's news edition is the reading language of that country, and a
+// Wikipedia subdomain is that language with the region dropped — zh-CN and zh-TW
+// are both zh.wikipedia.org, en-GB is en, pt-BR is pt. Null for the 179
+// countries with no edition named above, where there is no local answer to be
+// had and English is the whole of it.
+export function wikiEdition(countryCode) {
+  const edition = newsEdition(countryCode);
+  return edition ? edition.hl.split("-")[0] : null;
+}
+
 /* -------------------------------------------------------------- the answer */
 
 // The whole of what makes one country's dashboard differ from another's: a

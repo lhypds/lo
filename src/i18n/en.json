@@ -238,12 +238,14 @@
     "title": "Wikipedia",
     "empty": "Nothing on Wikipedia within {{distance}} of here",
     "unavailable": "Could not reach Wikipedia",
-    "loading": "Looking for nearby articles"
+    "loading": "Looking for nearby articles",
+    "open": "Open on Wikipedia"
   },
   "map": {
     "title": "Map",
     "nav": "nav",
     "search": "search",
+    "read": "read",
     "edit": "edit",
     "delete": "delete",
     "turn": "Double-click to change the map",

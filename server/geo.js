@@ -9,6 +9,7 @@
 // - Google News    — local news (RSS)        https://news.google.com/rss
 // - Google Trends  — trending searches (RSS) https://trends.google.com/trending
 // - Wikipedia      — nearby places, articles https://www.mediawiki.org/wiki/API
+// - Wikidata       — the same article's other languages https://www.wikidata.org
 // - Overpass       — food and cafés (OSM)    https://overpass-api.de
 // - Yahoo! 天気・災害 — Japanese weather warnings https://typhoon.yahoo.co.jp
 //
@@ -20,7 +21,7 @@
 // asked for at all.
 
 import { setTimeout as sleep } from "node:timers/promises";
-import { newsEdition, supports } from "./countries.js";
+import { newsEdition, supports, wikiEdition } from "./countries.js";
 
 const USER_AGENT = "Mozilla/5.0 (compatible; lo/0.1; location dashboard)";
 const UPSTREAM_TIMEOUT_MS = 8000;
@@ -768,6 +769,10 @@ export function lookupVenues(kind, latitude, longitude, lang = "en") {
 // A wider net than the walk food and cafés get: an article about the shrine on
 // the hill is still worth surfacing a couple of kilometres off in a way a
 // coffee is not, so the near ring here is wider and the far one wider still.
+//
+// Wider in the other direction as well — several editions of the encyclopaedia
+// rather than the reader's own, merged back into one list by subject. See
+// wikiLanguages below for why.
 const WIKI_RADII_M = [2000, 10000];
 const MAX_WIKI_PLACES = 24;
 // As much of the lead as the card and the map's own popup have room for — long
@@ -780,10 +785,292 @@ const WIKI_EXTRACT_CHARS = 280;
 const WIKI_TTL_MS = 60 * 60 * 1000;
 const WIKI_EMPTY_TTL_MS = 10 * 60 * 1000;
 const WIKI_GRID = 2;
+// Wikimedia renders a thumbnail at a fixed list of widths and turns away a
+// request for any other with a 400 — 20, 40, 60, 120, 250, 330, 500, 960, 1280
+// and up. Both of the numbers below are off that list, and neither is a size
+// somebody liked the look of.
+//
+// The big one is what a reader presses the picture to see (see ui/Lightbox);
+// the small one is for the boxes that show a picture at a glance rather than to
+// be looked at — the stamp under a pin on the map and the 32px square on a row
+// in the card. 120 rather than 60 because both of those are drawn on screens
+// that put two or three pixels in every one of theirs, and it costs about 6 kB.
+const WIKI_THUMB = 1280;
+const WIKI_THUMB_SMALL = 120;
 
-async function fetchWikipediaPlaces(latitude, longitude, radius, lang) {
-  const host = `https://${lang}.wikipedia.org`;
-  const url = new URL(`${host}/w/api.php`);
+// Wikimedia writes the width it rendered a thumbnail at into the file name and
+// serves the other listed widths off the same path, so the small copy is a
+// string edit rather than a second question. The path only — the answer now
+// arrives with a query string on it, and the width is not in that.
+//
+// Two shapes to edit, because pageimages answers in two. Most pictures come back
+// as a rendering — .../thumb/c/ca/Name.jpg/1280px-Name.jpg — where the width is
+// in the name and the small copy is that number changed. A picture whose
+// original was already narrower than the size asked for comes back as the
+// original itself — .../commons/c/ca/Name.jpg, no thumb and no width — and the
+// original of "narrower than 1280" is still a hundred and thirty kilobytes of
+// map. That one is turned into a rendering, which is the path above built by
+// hand: the same two hash segments, under /thumb/, with the size on the end.
+//
+// Only for the picture formats that are stored as pictures. An SVG's rendering
+// is a PNG and its name gains an extension along the way, which is a rule this
+// has no business knowing — and it never has to, since a drawing is always
+// answered as a rendering and never as itself.
+const RASTER = /\.(jpe?g|png|gif|webp)$/i;
+
+function smallThumbnail(url) {
+  if (!url) return null;
+  try {
+    const small = new URL(url);
+    const segments = small.pathname.split("/");
+    if (segments.includes("thumb")) {
+      small.pathname = small.pathname.replace(/\/(\d+)px-([^/]*)$/, `/${WIKI_THUMB_SMALL}px-$2`);
+    } else if (segments.length === 6 && RASTER.test(segments[5])) {
+      const [, wiki, project, hash, pair, file] = segments;
+      small.pathname = `/${wiki}/${project}/thumb/${hash}/${pair}/${file}/${WIKI_THUMB_SMALL}px-${file}`;
+    }
+    return small.href;
+  } catch {
+    return url;
+  }
+}
+
+// Which editions to search, in the order a reader would rather read them. All of
+// them, and not the one the interface happens to be in: an article about the
+// shrine at the end of the street is worth having in a language you do not read
+// — you are standing in front of the thing it is about — and refusing it because
+// nobody has written the Chinese version is how a card in Kyoto comes back
+// empty.
+//
+// The interface language first all the same. Where its edition both has the
+// article and knows where the place is, that is the row, and inReadersLanguage
+// below has nothing left to do for it. Then English, the widest net there is,
+// and then the ground's own, which is the one that actually carries the small
+// local places (see wikiEdition in countries.js) — those two decide the language
+// only of the rows that are in neither of the first two, and their real work is
+// finding the landmark at all.
+function wikiLanguages(lang, countryCode) {
+  const wanted = [lang, "en", wikiEdition(countryCode)];
+  return wanted.filter((value, index) => value && wanted.indexOf(value) === index);
+}
+
+// The same question put to several editions at once, answered as one list — and
+// then that list put back into the reader's language wherever it can be (see
+// inReadersLanguage below). As many landmarks as there are, each in as near the
+// reader's own words as exists: the two halves of that are asked separately
+// because they are separate questions.
+//
+// An edition that is down or slow to answer is skipped rather than allowed to
+// take the others with it: two encyclopaedias' worth of a neighbourhood is a
+// better answer than none, and which edition a row came out of is a thing the
+// card says on the way in to the article rather than a condition of showing it.
+//
+// Skipped, though — not counted as an edition that looked and found nothing.
+// Those two are the same empty list and they mean opposite things, and the
+// caller does something irreversible with the difference: an empty answer is
+// cached, so a minute of Wikimedia refusing everyone would otherwise be written
+// down as "there is nothing around here" and served for the next ten (see
+// WIKI_EMPTY_TTL_MS). So all of them failing is a failure, and it is thrown.
+async function fetchWikipediaPlaces(latitude, longitude, radius, languages) {
+  const answers = await Promise.allSettled(
+    languages.map((lang) => fetchWikipediaEdition(latitude, longitude, radius, lang)),
+  );
+  for (const answer of answers) {
+    // A refusal from one edition is worth a line even though the request
+    // survives it: without one, a card that came back short has no explanation
+    // anywhere. `unreachable` writes the same line for the failures that are the
+    // network's rather than the API's.
+    if (answer.status === "rejected") console.warn(`upstream: ${answer.reason?.message ?? answer.reason}`);
+  }
+  const editions = answers.filter((answer) => answer.status === "fulfilled").map((answer) => answer.value);
+  if (editions.length === 0) throw answers[0].reason;
+  // One landmark, however many editions have written about it. Wikidata is what
+  // says so: every edition's article about the same subject carries the same Q
+  // number, which is the only honest way to tell "Kinkaku-ji" and "金閣寺" are
+  // one place. The first edition to answer for a subject keeps it, and the order
+  // they were asked in above is the order of preference.
+  const found = new Map();
+  for (const items of editions) {
+    for (const item of items) {
+      if (!found.has(item.subject)) found.set(item.subject, item);
+    }
+  }
+  return inReadersLanguage([...found.values()], languages[0]);
+}
+
+// The two limits are the same number and it is the API's: fifty subjects to a
+// question of Wikidata, fifty titles to a question of Wikipedia.
+const WIKI_BATCH = 50;
+
+function batches(values, size) {
+  const groups = [];
+  for (let at = 0; at < values.length; at += size) groups.push(values.slice(at, at + size));
+  return groups;
+}
+
+// Which article the reader's own edition has for each of these subjects, where
+// it has one at all. Asked of Wikidata rather than of the editions the rows came
+// out of: a Q number's sitelinks are the whole list of encyclopaedias that have
+// written about that subject, so one question covers rows from any number of
+// them, and `sitefilter` cuts the answer down to the single edition being asked
+// about instead of the three hundred that exist.
+async function wikiTitlesIn(lang, subjects) {
+  const titles = new Map();
+  for (const group of batches(subjects, WIKI_BATCH)) {
+    const url = new URL("https://www.wikidata.org/w/api.php");
+    url.searchParams.set("action", "wbgetentities");
+    url.searchParams.set("ids", group.join("|"));
+    url.searchParams.set("props", "sitelinks");
+    url.searchParams.set("sitefilter", `${lang}wiki`);
+    url.searchParams.set("format", "json");
+    const data = await getJson(url.href);
+    for (const [subject, entity] of Object.entries(data.entities ?? {})) {
+      const title = firstString(entity.sitelinks?.[`${lang}wiki`]?.title);
+      if (title) titles.set(subject, title);
+    }
+  }
+  return titles;
+}
+
+// And those articles themselves, read out of the reader's edition. Keyed by
+// subject on the way back rather than by the title they were asked for, which
+// saves following the API's own trail of normalisations and redirects from what
+// was asked to what answered: every page carries its own Q number, and that is
+// the thing being matched anyway.
+async function wikiArticlesIn(lang, titles) {
+  const articles = new Map();
+  for (const group of batches(titles, WIKI_BATCH)) {
+    const url = new URL(`https://${lang}.wikipedia.org/w/api.php`);
+    url.searchParams.set("action", "query");
+    url.searchParams.set("titles", group.join("|"));
+    url.searchParams.set("redirects", "1");
+    wikiContentParams(url.searchParams);
+    const data = await getJson(url.href);
+    for (const page of Object.values(data.query?.pages ?? {})) {
+      if (page.missing !== undefined || !page.pageid) continue;
+      const subject = firstString(page.pageprops?.wikibase_item);
+      if (subject) articles.set(subject, writtenBy(page, lang));
+    }
+  }
+  return articles;
+}
+
+// The other half of asking three encyclopaedias at once. The merge above is
+// about how *many* landmarks come back; this is about which language each one
+// comes back in, and the two are separate questions with separate answers.
+//
+// The reason they have to be is that a coordinate is a fact about an article and
+// not about a place: zh.wikipedia has a page on the shrine at the end of the
+// street and no {{coord}} template on it, so a search of that edition by
+// position walks straight past it, and the row is found by ja or en instead. The
+// reader is then handed Japanese for a landmark that has been written up in
+// their own language all along — which is the first thing they will notice and
+// the last thing lo should be defending.
+//
+// So: the ground is searched in every edition, and then every row that came back
+// in a foreign one is asked for again by name in the reader's. Two more round
+// trips behind an hour's cache, and only where there is something to fix — a
+// reader whose language is the only edition asked never gets here at all.
+//
+// Whole rows, not just their titles. A native title over a foreign lead
+// paragraph would be worse than either done properly, and the page in the
+// reader's edition has its own picture, its own id and its own address. What
+// survives from the row it replaces is what the reader's edition was never asked
+// for and does not know: which subject this is, and where on the ground it
+// stands.
+//
+// Failure at either step leaves the list exactly as the merge made it, and is
+// swallowed rather than thrown for exactly the reason the merge's own failures
+// are not: a card in three languages is a smaller wrong than no card, where an
+// empty one would have been a claim about the neighbourhood.
+async function inReadersLanguage(items, lang) {
+  const foreign = items.filter((item) => item.lang !== lang && /^Q\d+$/.test(item.subject));
+  if (foreign.length === 0) return items;
+
+  const shrug = (error) => {
+    console.warn(`upstream: ${error.message}`);
+    return new Map();
+  };
+  const titles = await wikiTitlesIn(
+    lang,
+    foreign.map((item) => item.subject),
+  ).catch(shrug);
+  if (titles.size === 0) return items;
+
+  const articles = await wikiArticlesIn(lang, [...titles.values()]).catch(shrug);
+  return items.map((item) => {
+    const article = articles.get(item.subject);
+    if (!article) return item;
+    // The reader's article laid over the row that found the place — except for
+    // the picture, where their edition has none and the row does. A photograph
+    // of a shrine is not written in any language, and the editions differ about
+    // which articles carry one as much as they differ about anything: the
+    // Japanese page on a Kyoto temple has the infobox photograph and the Chinese
+    // page on the same temple often does not. Taking the blank would be losing a
+    // picture lo already had in hand to gain a title.
+    const picture = article.thumbnail ? article : item;
+    return {
+      ...item,
+      ...article,
+      thumbnail: picture.thumbnail,
+      thumbnailSmall: picture.thumbnailSmall,
+      thumbnailWidth: picture.thumbnailWidth,
+      thumbnailHeight: picture.thumbnailHeight,
+    };
+  });
+}
+
+// Where an article is read, from the two things that say which one it is.
+function articleUrl(lang, title) {
+  return `https://${lang}.wikipedia.org/wiki/${encodeURIComponent(String(title).replace(/ /g, "_"))}`;
+}
+
+// The four fields a picture arrives as, out of the one MediaWiki answers with.
+// Both queries below want them and neither wants to write them out again.
+function pictureFields(thumbnail) {
+  return {
+    thumbnail: thumbnail?.source ?? null,
+    // The same picture at a size the small boxes actually draw: a stamp under a
+    // pin and a 32px square on a row would otherwise both be downscaling the
+    // 1280px copy asked for below, which is half a megabyte of map nobody looks
+    // at.
+    thumbnailSmall: smallThumbnail(thumbnail?.source ?? null),
+    // The shape Wikimedia rendered it at, which lo has no business guessing at:
+    // the Lightbox this feeds sizes its box from these two numbers exactly as
+    // it does for a post's own photo.
+    thumbnailWidth: thumbnail?.width ?? null,
+    thumbnailHeight: thumbnail?.height ?? null,
+  };
+}
+
+// What lo wants to know about an article once it has decided it wants it: the
+// lead, the picture, where it stands, and the Wikidata number that says which
+// subject it is about. Written once because it is asked twice — of the articles
+// geosearch finds, and of the same articles again in the reader's own edition
+// below, which is asked for the coordinate too though it is rarely the reason
+// the second question is being put (see inReadersLanguage).
+//
+// pageprops is here for that one field. Asked for by name rather than
+// wholesale: a page's properties are a long list and this wants one of them.
+function wikiContentParams(params) {
+  params.set("prop", "extracts|pageimages|coordinates|pageprops");
+  params.set("ppprop", "wikibase_item");
+  params.set("exintro", "1");
+  params.set("explaintext", "1");
+  params.set("exchars", String(WIKI_EXTRACT_CHARS));
+  params.set("piprop", "thumbnail");
+  // Big enough to be the picture a reader presses to see properly (see
+  // ui/Lightbox), not just the crop a preview card shows. One size *asked* for,
+  // where lo's own pictures are stored as two: this is Wikimedia's CDN and not a
+  // file lo pays to keep, and it serves every width off the same path — so the
+  // small copy the map and the rows draw is a string edit on the answer rather
+  // than a second question (see smallThumbnail above).
+  params.set("pithumbsize", String(WIKI_THUMB));
+  params.set("format", "json");
+}
+
+async function fetchWikipediaEdition(latitude, longitude, radius, lang) {
+  const url = new URL(`https://${lang}.wikipedia.org/w/api.php`);
   url.searchParams.set("action", "query");
   // Geosearch as a generator rather than a list (contrast fetchWikipediaNearby
   // above): a generator hands its results on to `prop` to be filled in, which
@@ -793,18 +1080,7 @@ async function fetchWikipediaPlaces(latitude, longitude, radius, lang) {
   url.searchParams.set("ggscoord", `${latitude}|${longitude}`);
   url.searchParams.set("ggsradius", String(radius));
   url.searchParams.set("ggslimit", "20");
-  url.searchParams.set("prop", "extracts|pageimages|coordinates");
-  url.searchParams.set("exintro", "1");
-  url.searchParams.set("explaintext", "1");
-  url.searchParams.set("exchars", String(WIKI_EXTRACT_CHARS));
-  url.searchParams.set("piprop", "thumbnail");
-  // Big enough to be the picture a reader presses to see properly (see
-  // ui/Lightbox), not just the crop a preview card shows — one size asked for
-  // rather than lo's own two, because this is Wikimedia's own CDN and not a
-  // file lo pays to store: there is no upload cost here to shrink a second
-  // copy against, and the preview downscales the same file with object-fit.
-  url.searchParams.set("pithumbsize", "1200");
-  url.searchParams.set("format", "json");
+  wikiContentParams(url.searchParams);
   const data = await getJson(url.href);
   // Answered as an object keyed by page id rather than as a list — geosearch's
   // own ordering is not carried over, which is why the caller sorts by the
@@ -814,26 +1090,43 @@ async function fetchWikipediaPlaces(latitude, longitude, radius, lang) {
     .map((page) => {
       const at = page.coordinates?.[0];
       if (!at) return null;
-      const thumbnail = page.thumbnail ?? null;
       return {
-        // Namespaced the way an OSM venue's id is, so a card publishing this
-        // list to the map's shared store cannot collide with one keyed by a
-        // plain page id that happens to match a node's.
-        id: `wikipedia/${page.pageid}`,
-        title: String(page.title),
-        description: firstString(page.extract),
-        thumbnail: thumbnail?.source ?? null,
-        // The shape Wikimedia rendered it at, which lo has no business
-        // guessing at: the Lightbox this feeds sizes its box from these two
-        // numbers exactly as it does for a post's own photo.
-        thumbnailWidth: thumbnail?.width ?? null,
-        thumbnailHeight: thumbnail?.height ?? null,
+        // What the article is *about*, which is not the same as which article
+        // it is: the merge above is by subject, and two editions writing about
+        // one place agree on this and on nothing else. Falls back to the page's
+        // own identity where Wikidata has no item for it, which merges nothing
+        // — the safe direction, since showing a place twice is a smaller wrong
+        // than folding two places into one.
+        subject: firstString(page.pageprops?.wikibase_item) || `${lang}/${page.pageid}`,
         latitude: at.lat,
         longitude: at.lon,
-        url: `${host}/wiki/${encodeURIComponent(String(page.title).replace(/ /g, "_"))}`,
+        ...writtenBy(page, lang),
       };
     })
     .filter(Boolean);
+}
+
+// Everything about a row that belongs to the edition it was read out of, kept
+// together because it is replaced together: a row rewritten in the reader's own
+// language below changes all of this at once, and its subject and its place on
+// the ground not at all.
+function writtenBy(page, lang) {
+  return {
+    // Namespaced the way an OSM venue's id is, so a card publishing this list to
+    // the map's shared store cannot collide with one keyed by a plain page id
+    // that happens to match a node's.
+    id: `wikipedia/${page.pageid}`,
+    title: String(page.title),
+    description: firstString(page.extract),
+    // Which encyclopaedia this row came out of. Worth carrying now that a list
+    // can hold three of them: it is what the way through to the article is
+    // labelled with, and the one honest warning that a row is about to be read
+    // in a language the reader did not ask for.
+    lang,
+    source: `${lang}.wikipedia.org`,
+    url: articleUrl(lang, page.title),
+    ...pictureFields(page.thumbnail ?? null),
+  };
 }
 
 // A walk first, and the wider ring only where nothing carries a coordinate
@@ -848,8 +1141,13 @@ export function lookupWikipedia(latitude, longitude, lang = "en") {
   return cached(key, ttl, async () => {
     const centre = gridCentre(latitude, longitude, WIKI_GRID);
     const place = await lookupPlace(latitude, longitude, language).catch(() => null);
+    // Which editions get asked depends on the country, which is only known once
+    // the place above has landed — and the key does not have to say so: a grid
+    // square is in one country, so the reader's language settles the whole list
+    // for it. The same key, the same three editions, the same answer.
+    const languages = wikiLanguages(language, place?.countryCode);
     for (const radius of WIKI_RADII_M) {
-      const items = await fetchWikipediaPlaces(centre.latitude, centre.longitude, radius, language);
+      const items = await fetchWikipediaPlaces(centre.latitude, centre.longitude, radius, languages);
       if (items.length > 0) return { place, radius, items };
     }
     return { place, radius: WIKI_RADII_M.at(-1), items: [] };

@@ -18,11 +18,15 @@
 /* One line, name and distance at either end — there is no middle line to a
    row here, unlike a venue's: an article has no cuisine to name, only a title
    and how far off it is. A button undone the way a venue's row is, for the
-   same reason: what is pressed is the row, not a control the browser drew. */
+   same reason: what is pressed is the row, not a control the browser drew.
+
+   Centred rather than sat on a baseline, which a row of words alone could be:
+   there is a picture on the left of some of these now, and a 32px square has
+   no baseline to share with the title beside it. */
 .item {
   width: 100%;
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 10px;
   padding: 8px 10px;
   border: 0;
@@ -31,6 +35,18 @@
   font: inherit;
   text-align: left;
   cursor: pointer;
+}
+
+/* The picture the article has, at the size and with the border a post's row
+   draws its photograph at (see posts.module.css): at 32px a white-cornered
+   picture bleeds into the row without one. */
+.thumb {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--ink);
+  background: var(--soft);
+  object-fit: cover;
 }
 
 .name {
@@ -105,6 +121,29 @@
   .item:hover .comments {
     color: var(--paper);
   }
+}
+
+/* The way out to the article, on the sheet's own top bar between the title and
+   the close (see the header the card hands Modal). Drawn as the reader's own
+   way out to a publisher is (see .away in PageModal): small, grey until it is
+   wanted, and allowed to give up its width to the ellipsis rather than push the
+   close button off the end of the bar. */
+.away {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 40%;
+  padding: 2px 4px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 12px;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.away:hover {
+  color: var(--ink);
 }
 
 /* --------------------------------------------------------------- preview -- */

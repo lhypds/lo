@@ -254,6 +254,43 @@
   pointer-events: none;
 }
 
+/* The picture the thing under a pin has, as a stamp (see pinPhotoElement in
+   MapCard.jsx). Out of the pin's flow so nothing about it can drag the pin off
+   the spot it is reporting, and in the fixed black and white a mark's name is
+   drawn in, which has to read against road fill and park green whatever the
+   page's theme is doing.
+
+   Above the head rather than under the point, which is where a name hangs. The
+   point is the one part of a pin that means something — it is standing on the
+   coordinate — and a picture hung off it covers the very ground the pin was
+   put there to indicate. Above, it sits in the empty air over the head, where
+   the only thing it can cover is another pin.
+
+   32px, which at arm's length is a stamp and not a photograph: a dozen of them
+   say where the pictures on this street are, and the picture itself is a press
+   away in the bubble. The paper under it is what shows while it comes, and what
+   is left where it never does. */
+.pinPhoto {
+  position: absolute;
+  bottom: calc(100% + 2px);
+  left: 50%;
+  width: 32px;
+  height: 32px;
+  transform: translateX(-50%);
+  border: 1px solid #000;
+  background: #fff;
+  /* Wider than the pin under it, and a press near a pin belongs to the pin —
+     the same bargain the name under a mark makes. */
+  pointer-events: none;
+}
+
+.pinPhoto img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 /* However sure the device is about the fix: a wash and a hairline, sized in
    pixels by the map (see MapCard.jsx) and centred on the coordinate by the
    marker itself. It draws over the pins rather than under them — where a fill
@@ -611,12 +648,21 @@
 
 /* Comments and navigation get a line of their own beneath the popup metadata —
    a post's timestamp or a venue's distance. They stay together wherever either
-   kind of pin is drawn. */
+   kind of pin is drawn.
+
+   One line where the words fit on one, and the two ends stacked where they do
+   not. A bubble is as wide as the longest line above it and no wider, and the
+   words on this one are four short ones in English and four long ones in French
+   — "recherche itinéraire" and "lire commentaires" will not share 200px in any
+   arrangement. Wrapping puts the second group on its own line, still at the left
+   margin and still in its own order; without it the line simply ran out past the
+   frame. The row gap is what keeps the two lines from touching when it does. */
 .postPopupActions {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
-  gap: 8px;
+  gap: 4px 8px;
 }
 
 /* The comments control makes the same small pointer-events exception as the

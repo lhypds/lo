@@ -100,6 +100,17 @@ export default function WikipediaCard({ onOpenComments = null, onOpenPhoto = nul
           return (
             <li key={item.id}>
               <button type="button" className={styles.item} onClick={() => setOpen(item.id)}>
+                {/* Square and cropped, on the left, exactly as a post's row
+                    carries its photograph (see PostsCard) — and drawn from the
+                    small copy Wikimedia serves off the same path rather than
+                    from the one the sheet opens, which is a hundred times the
+                    file for the same 32px (see thumbnailSmall in
+                    server/geo.js). Nothing where the article has no picture,
+                    the way a post with no photograph shows nothing: a column of
+                    empty boxes is a worse row than a ragged left edge. */}
+                {item.thumbnail && (
+                  <img className={styles.thumb} src={item.thumbnailSmall || item.thumbnail} alt="" loading="lazy" />
+                )}
                 <span className={styles.name}>{item.title}</span>
                 <span className={styles.figures}>
                   <span className={styles.distance}>{formatDistance(item.distance)}</span>
@@ -136,7 +147,37 @@ export default function WikipediaCard({ onOpenComments = null, onOpenPhoto = nul
           which this copies pixel for pixel bar the picture: a landmark comes
           with one where Wikipedia has one, and an OSM venue never does. */}
       {createPortal(
-        <Modal isOpen={Boolean(chosen)} title={t("wikipedia.title")} onClose={() => setOpen(null)} closeOnOverlay>
+        <Modal
+          isOpen={Boolean(chosen)}
+          title={t("wikipedia.title")}
+          onClose={() => setOpen(null)}
+          closeOnOverlay
+          // The way through to the article itself, in the corner the reader
+          // looks for it in — the same place and the same words the news
+          // reader puts its own hand-off to the publisher (see PageModal).
+          // What is in this sheet is a lead paragraph and a picture, which is
+          // enough to decide by and never enough to read; the rest is on
+          // Wikipedia, and until now there was nothing here that said so.
+          //
+          // Labelled with the edition rather than with "Wikipedia": now that
+          // the list is drawn from several at once, the article behind a row
+          // may well be in a language the reader did not ask for, and the
+          // honest place to say so is on the way in to it.
+          header={
+            chosen && (
+              <a
+                className={styles.away}
+                href={chosen.url}
+                target="_blank"
+                rel="noreferrer noopener"
+                aria-label={`${t("wikipedia.open")} ${chosen.title}`}
+              >
+                {chosen.source || t("wikipedia.open")}
+                <span aria-hidden="true"> ↗</span>
+              </a>
+            )
+          }
+        >
           {chosen && (
             <div className={styles.preview}>
               {/* Pressed, the picture Wikipedia keeps for the page — not a

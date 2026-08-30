@@ -235,12 +235,14 @@
     "title": "维基百科",
     "empty": "此处{{distance}}以内没有维基百科条目",
     "unavailable": "无法连接维基百科",
-    "loading": "正在查找附近的条目"
+    "loading": "正在查找附近的条目",
+    "open": "在维基百科打开"
   },
   "map": {
     "title": "地图",
     "nav": "导航",
     "search": "搜索",
+    "read": "阅读",
     "edit": "编辑",
     "delete": "删除",
     "turn": "双击切换地图",

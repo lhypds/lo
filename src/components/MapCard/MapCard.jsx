@@ -209,6 +209,74 @@ function postElement() {
   return pinElement(styles.postPin, glyphElement("post"));
 }
 
+// The picture the thing under a pin has, hung off the pin as a stamp about the
+// size of a fingernail. Two kinds carry one: a post, whose picture is most of
+// what it is, and a Wikipedia article, where the encyclopaedia has one.
+//
+// Deliberately far too small to look at. What it is for is the glance across the
+// whole tile rather than the reading of any one of them: a street of identical
+// pins says only that things are there, and twenty of these say what — a shrine,
+// a river, somebody's lunch — before a single bubble has been opened. Looking at
+// one properly is still a press away, which is what the pin was always for.
+//
+// Hung under the point in the mark name's place and drawn the same way — a
+// hairline box, fixed black and white against road fill and park green, and out
+// of the flow so nothing about it can drag the pin off the spot it is reporting.
+// Deaf to the pointer for the name's reason as well: it is wider than the pin's
+// own tip, and a press meant for the pin must not land on the sticker under it.
+//
+// What comes back is the empty <img>, for the caller to point at a picture
+// whenever it has one to point at.
+function pinPhotoElement(pin) {
+  const frame = document.createElement("span");
+  frame.className = styles.pinPhoto;
+  const image = document.createElement("img");
+  image.alt = "";
+  frame.append(image);
+  pin.append(frame);
+  return image;
+}
+
+// And when to go and get the picture that goes in one. A post's is behind the
+// session, so it is fetched by hand rather than pointed at (see authImageUrl) —
+// which means the browser's own `loading="lazy"`, which is the whole answer for
+// a Wikipedia picture, is no answer here at all.
+//
+// So this stands in for it: a neighbourhood can be two hundred posts deep while
+// the tile shows a dozen of them, and the fetch waits until the stamp is
+// actually on screen. Panning brings them in a handful at a time and the pins
+// that stay off the tile cost nothing — the same bargain the bubbles make by
+// fetching their picture the first time they are opened, made against the
+// viewport instead of against a press.
+//
+// An observer with no root of its own: the browser stops at the map's own
+// overflow on the way up, so "on screen" already means on the tile rather than
+// merely somewhere in the document.
+function pinPhotoWatcher() {
+  const pending = new Map();
+  const observer = new IntersectionObserver((entries) => {
+    for (const entry of entries) {
+      if (!entry.isIntersecting) continue;
+      const fetchPicture = pending.get(entry.target);
+      // Once each: the picture does not change, and a stamp that has been
+      // filled in has no reason to be watched across every later pan.
+      pending.delete(entry.target);
+      observer.unobserve(entry.target);
+      fetchPicture?.();
+    }
+  });
+  return {
+    watch(element, fetchPicture) {
+      pending.set(element, fetchPicture);
+      observer.observe(element);
+    },
+    stop() {
+      observer.disconnect();
+      pending.clear();
+    },
+  };
+}
+
 // Somewhere to eat or somewhere for coffee, wearing a fork and a cup — the one
 // pair on the map that says what it is rather than that it is there, because
 // these are the only two kinds standing in the same street as each other.
@@ -253,6 +321,18 @@ function popupNavElement(to, label, name) {
 // back to it.
 function popupSearchElement(to, label, name, searchName) {
   return popupLinkElement(searchLink(to, searchName), label, name);
+}
+
+// And the one a Wikipedia pin carries that no other kind can: the article
+// itself. A bubble holds a lead paragraph clamped to three lines, which is
+// enough to decide by and never enough to read — and until this there was
+// nothing on the map that said where the rest of it was.
+//
+// A new tab in every case, where the two above hand a handheld its Maps app
+// instead (see mapsLink in utils/maps.js). There is no Wikipedia app in that
+// bargain, only a web page, and lo is worth leaving open behind it.
+function popupReadElement(url, label, name) {
+  return popupLinkElement({ href: url, target: "_blank", rel: "noreferrer noopener" }, label, name);
 }
 
 // The two words in a bubble that are pressed rather than followed. Both of them
@@ -372,9 +452,11 @@ function markPopupElement(mark, named, coords, iso, when, labels, edit, remove) 
 // A Wikipedia pin's bubble: the lead, not the whole street. Wearing the same
 // classes a venue's bubble does, because it is the same shape of box — a name
 // with small print under it and the same pair of hand-offs to Google Maps on
-// the same line — with two things added: its own picture, above the name for
-// the reason a post's does (see postPopupElement), and the lead paragraph
-// where Wikipedia has one, which an OSM venue never carries.
+// the same line — with three things added: its own picture, above the name for
+// the reason a post's does (see postPopupElement); the lead paragraph where
+// Wikipedia has one, which an OSM venue never carries; and the way through to
+// the article those first lines are the beginning of, which is the one thing a
+// bubble on a landmark can offer that no bubble on a café can.
 //
 // `comments` is the same object venuePopupElement is handed: a landmark is
 // somewhere lo's readers can leave a word about exactly as a café is (see
@@ -382,21 +464,34 @@ function markPopupElement(mark, named, coords, iso, when, labels, edit, remove) 
 // the same sheet theirs does. `photo` is postPopupElement's own again: pressed,
 // it puts the picture up large in the one Lightbox the page already has for a
 // post's (see HomePage).
+//
+// And, like postPopupElement, what comes back is the bubble and the way to fill
+// its picture in — which the caller hangs on the bubble being opened.
 function wikiPopupElement(place, description, away, comments, photo, labels) {
   const wrapper = document.createElement("div");
   wrapper.className = styles.markPopup;
+  let showPicture = null;
   // The frame a post's picture bleeds to the edges of, borrowed for the same
   // reason: the article is what the tile promised, so its picture leads the
   // bubble the way a post's does rather than sitting inset among the words.
   // Unlike a post's, this one is never fetched behind a session — Wikimedia
-  // serves it plainly, so the tag is pointed straight at it (see
+  // serves it plainly, so the tag can be pointed straight at it (see
   // postPopupElement, which detours through authImageUrl for the reason a
   // stored picture needs one and this does not).
+  //
+  // Pointed at it on opening all the same, for the other half of that function's
+  // reason. Wikipedia's picture is the full-width one this card asks for so a
+  // reader can press it and see it properly — the better part of a megabyte —
+  // and setting the src here would fetch two dozen of those the moment the pins
+  // are drawn, whether or not a single bubble is ever opened. A detached <img>
+  // loads exactly like one on the page.
   if (place.thumbnail) {
     const image = document.createElement("img");
     image.className = styles.postPopupImage;
-    image.src = place.thumbnail;
     image.alt = "";
+    showPicture = () => {
+      image.src = place.thumbnail;
+    };
     // A button where the page has somewhere to open the picture large, and the
     // bare picture where it has not — the same choice postPopupElement makes.
     const frame = document.createElement(photo ? "button" : "span");
@@ -426,6 +521,16 @@ function wikiPopupElement(place, description, away, comments, photo, labels) {
   const distance = document.createElement("span");
   distance.className = styles.markPopupMeta;
   distance.textContent = away;
+  // Split at the same two ends every bubble here is split at, but along a line
+  // of its own. On a mark's the division is leaving against keeping; on this one
+  // it is the place against the article — out on the left, what is standing
+  // there and how to walk to it, both of them hand-offs to Google Maps; over on
+  // the right, the words about it, which is the article itself and then what
+  // lo's own readers have said underneath it.
+  //
+  // Which is also where the reading goes: first of the pair on the right, so it
+  // is the word nearest the middle of the line rather than the one out on the
+  // edge, and so a press meant for it cannot land on the remarks beyond it.
   const actions = document.createElement("span");
   actions.className = styles.postPopupActions;
   const going = document.createElement("span");
@@ -434,7 +539,9 @@ function wikiPopupElement(place, description, away, comments, photo, labels) {
     popupSearchElement(place, labels.search, place.title, place.title),
     popupNavElement(place, labels.nav, place.title),
   );
-  actions.append(going);
+  const reading = document.createElement("span");
+  reading.className = styles.popupGroup;
+  reading.append(popupReadElement(place.url, labels.read, place.title));
   if (comments) {
     const open = document.createElement("button");
     open.type = "button";
@@ -444,10 +551,11 @@ function wikiPopupElement(place, description, away, comments, photo, labels) {
       event.stopPropagation();
       comments.open(place);
     });
-    actions.append(open);
+    reading.append(open);
   }
+  actions.append(going, reading);
   wrapper.append(distance, actions);
-  return wrapper;
+  return { element: wrapper, showPicture };
 }
 
 function venuePopupElement(venue, note, away, comments, labels) {
@@ -1199,8 +1307,26 @@ export default function MapCard({
     const photo = onOpenPhoto ? (post) => photoRef.current?.(post) : null;
     const edit = onEditPost ? (post) => editPostRef.current?.(post) : null;
     const remove = onDeletePost ? (post) => deletePostRef.current?.(post) : null;
+    // One watcher for the whole redraw, and it goes when the pins it was
+    // watching do (see the cleanup at the foot of this effect).
+    const photos = pinPhotoWatcher();
     postMarkersRef.current = posts.map((post) => {
       const element = postElement();
+      // The picture the post is standing on, under the pin. The same thumbnail
+      // the bubble's own band draws and the same memoised fetch, so a reader who
+      // opens the bubble of a pin they can already see the picture of is opening
+      // one that has nothing left to wait for.
+      if (post.image) {
+        const stamp = pinPhotoElement(element);
+        photos.watch(stamp, () =>
+          authImageUrl(postThumb(post)).then(
+            (url) => {
+              stamp.src = url;
+            },
+            () => {},
+          ),
+        );
+      }
       // The same three things the row in the list carries, chosen the same way:
       // a photo with no words is a whole post, and the line that would have held
       // the words holds where it was taken instead.
@@ -1241,6 +1367,10 @@ export default function MapCard({
       );
       return { id: post.id, marker };
     });
+    // The pins above are torn down at the top of the next run rather than here,
+    // which is how this effect has always worked; the watcher cannot be, since
+    // by then there is a new one to hand it over to.
+    return () => photos.stop();
     // The four handlers only for whether there is a control at all — which page
     // this is does not change while it is on screen — and they are themselves
     // read off their refs, so a new one on every render of the page above does
@@ -1317,17 +1447,32 @@ export default function MapCard({
     // a landmark's picture is looked at the same way a photograph left on the
     // ground is, and there is one Lightbox on the page for either.
     const photo = onOpenPhoto ? (place) => photoRef.current?.(place) : null;
-    const labels = { search: t("map.search"), nav: t("map.nav"), photo: t("post.photoOpen") };
+    const labels = { search: t("map.search"), nav: t("map.nav"), read: t("map.read"), photo: t("post.photoOpen") };
     wikiMarkersRef.current = wikiPlaces.map((place) => {
+      const element = venueElement("wikipedia");
+      // The picture the article has, under the pin — the same stamp a post
+      // carries, and the reason a landmark is worth one is the same: a street of
+      // W's says an encyclopaedia has been here, and the pictures say what about.
+      //
+      // Pointed straight at rather than fetched, and left to the browser to put
+      // off until the stamp is on the tile: Wikimedia serves these plainly, and
+      // the small copy is a few kilobytes (see thumbnailSmall in server/geo.js).
+      // Which is the whole of why a post's needs a watcher of its own and this
+      // does not.
+      if (place.thumbnailSmall || place.thumbnail) {
+        const stamp = pinPhotoElement(element);
+        stamp.loading = "lazy";
+        stamp.src = place.thumbnailSmall || place.thumbnail;
+      }
+      const bubble = wikiPopupElement(place, place.description, formatDistance(place.distance), comments, photo, labels);
+      const popup = previewPopup().setDOMContent(bubble.element);
+      // The big picture on the first opening, exactly as a post's bubble does
+      // it and for the reason written out in wikiPopupElement: what is standing
+      // on the map is the stamp above, which is a few kilobytes, and what is in
+      // the bubble is the whole photograph.
+      if (bubble.showPicture) popup.once("open", bubble.showPicture);
       const marker = preview(
-        new mapboxgl.Marker({ element: venueElement("wikipedia"), anchor: "bottom" })
-          .setLngLat([place.longitude, place.latitude])
-          .setPopup(
-            previewPopup().setDOMContent(
-              wikiPopupElement(place, place.description, formatDistance(place.distance), comments, photo, labels),
-            ),
-          )
-          .addTo(map),
+        new mapboxgl.Marker({ element, anchor: "bottom" }).setLngLat([place.longitude, place.latitude]).setPopup(popup).addTo(map),
       );
       return { id: place.id, marker };
     });

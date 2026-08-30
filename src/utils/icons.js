@@ -104,20 +104,38 @@ export const PIN_GLYPHS = {
       },
     ],
   },
-  // An open book, for the one pin that says "read about this" rather than
-  // "eat here" or "sit down here". Two covers meeting at a spine, the covers
-  // filled paper-white the way the cup's body is and the spine left as a bare
-  // stroke down the middle — a fold rather than a gap, which is what tells an
-  // open book from two separate leaves at a size this small.
+  // A W, for the one pin that says "read about this" rather than "eat here" or
+  // "sit down here". The open book that stood here first was the honest drawing
+  // of what the pin means and the wrong one for what the pin has to do: at nine
+  // pixels across, a book, a wallet and a laptop are the same small hinged
+  // rectangle, and a reader glancing over a street of two dozen pins was being
+  // asked to identify a genre of object. A letter is not identified, it is read
+  // — and this is the letter the encyclopaedia itself is known by, which turns
+  // "some kind of book?" into "Wikipedia" without a stop.
+  //
+  // A silhouette for the fork's reason (see above): four hairline strokes inside
+  // nine pixels is a smudge, and this is the one glyph here whose whole job is
+  // to survive the glance. Two V's overlapping at a shared middle apex that
+  // reaches the full height, which is the shape that reads as a W rather than as
+  // a zigzag — sans-serif, because the serifs on Wikipedia's own mark close up
+  // long before this size. Shrunk by the fork's number as well, though it is the
+  // widest thing anyone has asked to put in this head: what decides how big it
+  // can be is not that width but its two top corners, which are the far ends of
+  // the diagonal, and it is the diagonal that has to fit the circle.
+  //
+  // 18 wide and 11 tall with strokes 2.1 across, which comes out at about 1.3px
+  // on the pin — a shade heavier than the hairline everything else here is drawn
+  // with, and no more. A silhouette does not have to be a heavy one: the letter
+  // was drawn a third fatter at first and read as a blot on white and a hole on
+  // black, where the counters between the strokes are the shape doing the work.
   wikipedia: {
-    transform: inHead(0.6),
+    transform: inHead(0.55),
     parts: [
       {
         tag: "path",
-        fill: "paper",
-        d: "M12 6.7c-1.6-1.1-3.5-1.7-5.4-1.7-.4 0-.6.3-.6.6v9.8c0 .3.2.6.6.6 1.9 0 3.8.6 5.4 1.7 1.6-1.1 3.5-1.7 5.4-1.7.4 0 .6-.3.6-.6V5.6c0-.3-.2-.6-.6-.6-1.9 0-3.8.6-5.4 1.7z",
+        fill: "ink",
+        d: "M3 6.5h2.1l3.45 6.84 3.45-6.84 3.45 6.84 3.45-6.84h2.1l-5.55 11-3.45-6.84-3.45 6.84z",
       },
-      { tag: "path", d: "M12 6.7v10.9" },
     ],
   },
 };

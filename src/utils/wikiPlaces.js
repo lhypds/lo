@@ -54,16 +54,18 @@ export function updateWikiComments(id, comments) {
 
 // The other half of a landmark's picture, for the one place it is looked at
 // properly — postPhoto's own trick (see utils/image.js), handed to the same
-// Lightbox. There is no second file to choose between: Wikimedia serves one
-// rendition of a picture rather than lo's own thumbnail-and-photograph pair,
-// so it stands in for both fields Lightbox asks for, and the box it opens in
-// is sized from the two numbers MediaWiki answered the thumbnail with (see
-// fetchWikipediaPlaces in server/geo.js).
+// Lightbox. A pair here as well, though lo stores neither of them: Wikimedia
+// renders a picture at any of its listed widths off the same path, so the small
+// one is the same picture asked for at 120px (see smallThumbnail in
+// server/geo.js) and it does exactly what a post's thumbnail does — fills the
+// box while the big one comes, having very often already been fetched for the
+// row or the pin that was pressed to get here. The box it opens in is sized
+// from the two numbers MediaWiki answered the big one with.
 export function wikiPhoto(place) {
   if (!place?.thumbnail) return null;
   return {
     src: place.thumbnail,
-    thumb: place.thumbnail,
+    thumb: place.thumbnailSmall || null,
     width: place.thumbnailWidth ?? null,
     height: place.thumbnailHeight ?? null,
   };

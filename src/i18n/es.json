@@ -238,12 +238,14 @@
     "title": "Wikipedia",
     "empty": "No hay nada en Wikipedia a menos de {{distance}} de aquí",
     "unavailable": "No se pudo acceder a Wikipedia",
-    "loading": "Buscando artículos cercanos"
+    "loading": "Buscando artículos cercanos",
+    "open": "Abrir en Wikipedia"
   },
   "map": {
     "title": "Mapa",
     "nav": "ruta",
     "search": "buscar",
+    "read": "leer",
     "edit": "editar",
     "delete": "eliminar",
     "turn": "Haz doble clic para cambiar el mapa",
