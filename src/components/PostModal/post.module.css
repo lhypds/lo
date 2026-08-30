@@ -183,6 +183,18 @@
   font-size: 12px;
 }
 
+/* A finger held on the shutter blacks it out until it comes off again — on a
+   phone the thumb is over the drawing, and the square going dark around it is
+   the only word the button gives that the press has landed. Touch alone, as on
+   the mark tile: where there is a pointer to hover with, the rule below is
+   already holding the square black by the time it can be pressed. */
+@media (hover: none) {
+  .photo:not(:disabled):active {
+    background: var(--ink);
+    color: var(--paper);
+  }
+}
+
 @media (hover: hover) {
   .photo:not(:disabled):hover,
   .remove:not(:disabled):hover {
