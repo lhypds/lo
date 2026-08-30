@@ -333,10 +333,7 @@ function markPopupElement(mark, named, coords, iso, when, labels, edit, remove) 
   actions.className = styles.markPopupActions;
   const going = document.createElement("span");
   going.className = styles.popupGroup;
-  going.append(
-    popupSearchElement(mark, labels.search, name, named),
-    popupNavElement(mark, labels.nav, name),
-  );
+  going.append(popupSearchElement(mark, labels.search, name, named), popupNavElement(mark, labels.nav, name));
   actions.append(going);
   if (edit || remove) {
     const keeping = document.createElement("span");
@@ -769,10 +766,7 @@ export default function MapCard({
     hoverPinRef.current?.(null);
   }, []);
 
-  const hoverPin = useCallback(
-    (id) => (hovering) => (hovering ? enterPin(id) : leavePin(id)),
-    [enterPin, leavePin],
-  );
+  const hoverPin = useCallback((id) => (hovering) => (hovering ? enterPin(id) : leavePin(id)), [enterPin, leavePin]);
 
   // The one the reader has chosen, by clicking its pin or pressing its row.
   //
@@ -978,9 +972,7 @@ export default function MapCard({
     const name = user?.username ?? "";
     const position = [coords.longitude, coords.latitude];
     if (!hereMarkerRef.current) {
-      hereMarkerRef.current = new mapboxgl.Marker({ element: personElement(name) })
-        .setLngLat(position)
-        .addTo(map);
+      hereMarkerRef.current = new mapboxgl.Marker({ element: personElement(name) }).setLngLat(position).addTo(map);
     } else {
       hereMarkerRef.current.setLngLat(position);
       hereMarkerRef.current.getElement().lastElementChild.textContent = formatUsername(name);
@@ -993,9 +985,7 @@ export default function MapCard({
       haloMarkerRef.current?.remove();
       haloMarkerRef.current = null;
     } else if (!haloMarkerRef.current) {
-      haloMarkerRef.current = new mapboxgl.Marker({ element: haloElement() })
-        .setLngLat(position)
-        .addTo(map);
+      haloMarkerRef.current = new mapboxgl.Marker({ element: haloElement() }).setLngLat(position).addTo(map);
     } else {
       haloMarkerRef.current.setLngLat(position);
     }
@@ -1059,16 +1049,7 @@ export default function MapCard({
           .setLngLat([mark.longitude, mark.latitude])
           .setPopup(
             previewPopup().setDOMContent(
-              markPopupElement(
-                mark,
-                named,
-                coords,
-                mark.time,
-                formatDateTime(mark.time, i18n.language),
-                labels,
-                edit,
-                remove,
-              ),
+              markPopupElement(mark, named, coords, mark.time, formatDateTime(mark.time, i18n.language), labels, edit, remove),
             ),
           )
           .addTo(map),
@@ -1101,9 +1082,7 @@ export default function MapCard({
     // The word on the count and the way to open the sheet behind it, and the
     // words on the rest of the line, built once for the whole redraw rather than
     // per pin. Nothing at all where the page has nowhere to open one.
-    const comments = onOpenComments
-      ? { label: t("comments.short"), open: (post) => commentsRef.current?.(post) }
-      : null;
+    const comments = onOpenComments ? { label: t("comments.short"), open: (post) => commentsRef.current?.(post) } : null;
     const labels = { nav: t("map.nav"), edit: t("map.edit"), remove: t("map.delete"), photo: t("post.photoOpen") };
     const photo = onOpenPhoto ? (post) => photoRef.current?.(post) : null;
     const edit = onEditPost ? (post) => editPostRef.current?.(post) : null;
@@ -1145,10 +1124,7 @@ export default function MapCard({
       // be fetched by hand to carry the session header.
       if (bubble.showPicture) popup.once("open", bubble.showPicture);
       const marker = preview(
-        new mapboxgl.Marker({ element, anchor: "bottom" })
-          .setLngLat([post.longitude, post.latitude])
-          .setPopup(popup)
-          .addTo(map),
+        new mapboxgl.Marker({ element, anchor: "bottom" }).setLngLat([post.longitude, post.latitude]).setPopup(popup).addTo(map),
         post.id,
       );
       return { id: post.id, marker };
@@ -1298,9 +1274,7 @@ export default function MapCard({
     if (!map || !focus) return;
     followRef.current = false;
 
-    const marker = [...markMarkersRef.current, ...postMarkersRef.current].find(
-      (pin) => pin.id === focus.id,
-    )?.marker;
+    const marker = [...markMarkersRef.current, ...postMarkersRef.current].find((pin) => pin.id === focus.id)?.marker;
     if (marker) {
       if (keptRef.current === marker) {
         const held = hoveredPropRef.current === focus.id;
