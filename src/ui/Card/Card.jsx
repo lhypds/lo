@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import styles from "./card.module.css";
+import { tapLog } from "../../utils/tapdebug.js";
 
 // What counts as two presses rather than one. The gap is the browser's own
 // double-click interval as near as anyone states it; the slop is how far a single
@@ -148,6 +149,7 @@ export default function Card({
   // these speaks, so the two taps are counted off pointerup and nothing else,
   // which is the same gesture the dashboard reads to turn its pages.
   function pressDown(event) {
+    tapLog(`down ${event.pointerType || "?"} prim=${event.isPrimary} b=${event.button} x=${Math.round(event.clientX)} y=${Math.round(event.clientY)}`);
     if (!event.isPrimary) return;
     downRef.current = { x: event.clientX, y: event.clientY };
   }
@@ -155,6 +157,7 @@ export default function Card({
   function pressUp(event) {
     const down = downRef.current;
     downRef.current = null;
+    tapLog(`up   ${event.pointerType || "?"} prim=${event.isPrimary} down=${down ? "y" : "n"} x=${Math.round(event.clientX)} y=${Math.round(event.clientY)}`);
     if (!event.isPrimary || event.target.closest("button")) return;
     // A press that travelled is a drag: the page is being turned under it, or the
     // list behind it scrolled, and neither is half of a double press. Judged only
@@ -164,7 +167,10 @@ export default function Card({
     if (down && Math.abs(event.clientY - down.y) > TAP_SLOP) return;
     // Already answered — a device that also raises dblclick, or a family delivered
     // alongside this one, turned the card a moment ago on this very gesture.
-    if (Date.now() - turnedAtRef.current <= TAP_GAP + TAP_GAP) return;
+    if (Date.now() - turnedAtRef.current <= TAP_GAP + TAP_GAP) {
+      tapLog("  guarded");
+      return;
+    }
     // Paired on time alone. Where the two presses landed is not asked: the heading
     // is a 30px strip, so two presses on it inside the interval are the gesture
     // whatever the pixels say — and the pixels lie in the Even Hub WebView, whose
@@ -173,10 +179,12 @@ export default function Card({
     // only once every few presses rather than every second one.
     const at = Date.now();
     if (at - tapRef.current.at <= TAP_GAP) {
+      tapLog(`  TURN (gap=${at - tapRef.current.at})`);
       tapRef.current = { at: 0, x: 0, y: 0 };
       turnedAtRef.current = at;
       turn();
     } else {
+      tapLog(`  first (gap=${at - tapRef.current.at})`);
       // The first of a pair, or a single press that will turn out to be nothing.
       tapRef.current = { at, x: event.clientX, y: event.clientY };
     }
