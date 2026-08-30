@@ -134,8 +134,17 @@ select:focus-visible {
   outline: none;
 }
 
+/* A button's label is the name of what pressing it does, not a passage of text.
+   Two quick clicks on one mean press it again, and a hold on a phone means the
+   press is still being aimed — either of them picking out the word underneath is
+   the control answering with something nobody asked for. The dashboard says this
+   already for everything standing on it under a fine pointer (see .home-page);
+   said here it covers the buttons on every other page as well, and the finger as
+   much as the mouse. */
 button {
   cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 button:disabled {

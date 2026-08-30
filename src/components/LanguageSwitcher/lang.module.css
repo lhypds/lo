@@ -20,7 +20,6 @@
   cursor: pointer;
   line-height: 1;
   white-space: nowrap;
-  user-select: none;
 }
 
 .dropdown {
