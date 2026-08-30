@@ -1132,6 +1132,18 @@ export default function MapCard({
     }
     map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), "top-right");
     map.addControl(new mapboxgl.NavigationControl({ showZoom: false, showCompass: true }), "top-right");
+    // Mapbox writes a native title on each of those three — "Zoom in", "Zoom
+    // out", "Reset bearing to north" — and the browser draws it in its own box,
+    // in English whatever the page is set to, on its own second-long delay. A
+    // plus and a minus and a compass needle need no caption, and lo's own
+    // tooltips are none of those things. The title sits on the icon inside the
+    // button; the label the button carries for a screen reader is on the button
+    // itself and is left standing. Written once when the control is added and
+    // never again — NavigationControl only titles its buttons in onAdd, which
+    // addControl has just run — so taking them off here is the end of it.
+    containerRef.current
+      .querySelectorAll(".mapboxgl-ctrl-group button [title]")
+      .forEach((icon) => icon.removeAttribute("title"));
     // The credit, in the corner opposite the zoom: where the ground came from,
     // which is Mapbox's and OpenStreetMap's to be told. Compact, because on a
     // square tile the full line is a sentence across the bottom of the map.
