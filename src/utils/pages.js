@@ -44,7 +44,7 @@ function occupy(filled, row, col, w, h, cols) {
 // finds one: the grid has no bottom, so the search runs into empty rows.
 function firstFit(filled, cursor, w, h, cols) {
   let { row, col } = cursor;
-  for (;;) {
+  for (; ;) {
     if (col + w > cols) {
       row += 1;
       col = 0;
@@ -63,8 +63,8 @@ function firstFit(filled, cursor, w, h, cols) {
 // A card too tall for the page it is on is kept anyway rather than sent to a
 // page of its own that would not hold it either: the window is shorter than the
 // card's own minimum module in that case, and repeatedly moving the same card
-// cannot make it fit. Under normal dashboard heights `rows` is capped at three,
-// which is also the tallest card the layout offers.
+// cannot make it fit. The row count follows however many complete modules fit
+// in the dashboard window, while three is the tallest card the layout offers.
 export function paginate(cards, cols, rows) {
   const pages = [];
   let page = [];

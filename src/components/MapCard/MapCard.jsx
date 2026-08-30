@@ -912,6 +912,7 @@ export default function MapCard({
       return undefined;
     }
     map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), "top-right");
+    map.addControl(new mapboxgl.NavigationControl({ showZoom: false, showCompass: true }), "top-right");
     // The credit, in the corner opposite the zoom: where the ground came from,
     // which is Mapbox's and OpenStreetMap's to be told. Compact, because on a
     // square tile the full line is a sentence across the bottom of the map.

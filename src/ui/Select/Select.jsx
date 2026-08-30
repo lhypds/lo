@@ -65,8 +65,8 @@ export default function Select({ options, value, onChange, label, className }) {
       // for it: the closed box is cut to the row it stands in, and the menu is
       // not standing in that row.
       minWidth: rect.width,
-      top: up ? undefined : rect.bottom,
-      bottom: up ? window.innerHeight - rect.top : undefined,
+      top: up ? undefined : rect.bottom - 1,
+      bottom: up ? window.innerHeight - rect.top - 1 : undefined,
       maxHeight: Math.min(MENU_MAX_H, up ? above : below),
     });
   }

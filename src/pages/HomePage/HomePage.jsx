@@ -264,18 +264,14 @@ export default function HomePage() {
       const style = getComputedStyle(first);
       const cols = Math.max(1, parseInt(style.getPropertyValue("--cols"), 10) || 2);
       const gap = parseFloat(style.rowGap) || 0;
-      const width =
-        first.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+      const width = first.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
       const height = view.clientHeight;
       if (width <= 0 || height <= 0) return;
       const tile = (width - (cols - 1) * gap) / cols;
-      // A dashboard page never grows past three rows, even when a tall desktop
-      // window could hold more. Extra cards belong on the next page rather than
-      // below the fold; on shorter windows we still use only the rows that fit.
-      const rows = Math.max(1, Math.min(3, Math.floor((height + gap) / (tile + gap))));
-      setGrid((current) =>
-        current && current.cols === cols && current.rows === rows ? current : { cols, rows },
-      );
+      // Use every complete row the window can show. A short window still keeps
+      // one row so an unusually tall card has a page to stand on.
+      const rows = Math.max(1, Math.floor((height + gap) / (tile + gap)));
+      setGrid((current) => (current && current.cols === cols && current.rows === rows ? current : { cols, rows }));
     }
 
     measure();
@@ -380,8 +376,7 @@ export default function HomePage() {
   }
 
   const deletingMarkName = deletingMark
-    ? labelName(deletingMark, i18n.language) ||
-      formatCoords(deletingMark.latitude, deletingMark.longitude)
+    ? labelName(deletingMark, i18n.language) || formatCoords(deletingMark.latitude, deletingMark.longitude)
     : "";
   const renamingMarkName = renamingMark?.label?.[i18n.language] ?? "";
 
@@ -454,9 +449,7 @@ export default function HomePage() {
         onLongPress={compose}
         onMarked={(mark) => setMarks((current) => [mark, ...current])}
         onUnmarked={(mark) => setMarks((current) => current.filter((item) => item.id !== mark.id))}
-        onRenamed={(mark) =>
-          setMarks((current) => current.map((item) => (item.id === mark.id ? mark : item)))
-        }
+        onRenamed={(mark) => setMarks((current) => current.map((item) => (item.id === mark.id ? mark : item)))}
       />,
     ),
     // The last two defaults complete the six-square opening page on mobile:
@@ -492,9 +485,7 @@ export default function HomePage() {
   // While a card is up the dashboard stands in the order the drag has reached so
   // far, which is a preview and not a decision — the grid rearranges itself under
   // the finger and nothing is written until the card is set down.
-  const laid = carry
-    ? [...tiles].sort((a, b) => placeIn(carry.ids, a.id) - placeIn(carry.ids, b.id))
-    : tiles;
+  const laid = carry ? [...tiles].sort((a, b) => placeIn(carry.ids, a.id) - placeIn(carry.ids, b.id)) : tiles;
 
   // One page until the window has been measured, carrying nothing — that empty
   // grid is what it is measured against.
@@ -706,9 +697,7 @@ export default function HomePage() {
         // carried across either way. Named by the card already standing there,
         // whose place it takes.
         const arrival = dir > 0 ? pages[next][0] : pages[next][pages[next].length - 1];
-        setCarry((held) =>
-          held ? { ...held, ids: moveTo(held.ids, held.id, held.ids.indexOf(arrival?.id)) } : held,
-        );
+        setCarry((held) => (held ? { ...held, ids: moveTo(held.ids, held.id, held.ids.indexOf(arrival?.id)) } : held));
       }, EDGE_MS),
     };
   }
@@ -755,10 +744,7 @@ export default function HomePage() {
       {/* Everything but the map is hidden rather than unmounted while it is
           expanded, so collapsing back does not refetch the news or reset what
           the mark button knows about this spot. */}
-      <main
-        className={expanded ? "home-main home-main-map" : "home-main"}
-        aria-label={t("location.title")}
-      >
+      <main className={expanded ? "home-main home-main-map" : "home-main"} aria-label={t("location.title")}>
         <HereStrip />
         {/* The dashboard is dealt out over as many pages as it takes rather than
             scrolled: a page of it is a window's worth of tiles, turned with a

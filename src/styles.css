@@ -980,18 +980,20 @@ html:has(.home-main:not(.home-main-map) .card-pager) {
   list-style: none;
 }
 
+.mark-item:first-child {
+  border-top: 1px solid var(--line);
+}
+
 /* A row is a control rather than a passage of text: pressing it sends the map,
    so a press-and-drag on it is a mis-hit to swallow rather than a selection to
    start.
 
-   Two lines rather than one: what the spot is, and what can be done with it. The
-   padding is the row's own now instead of the top line's, so the two stand
-   inside one block of it. */
+  The copy and controls share one row, matching the posts list beside it. */
 .mark-item {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 14px 0;
+  gap: 0;
+  padding: 10px 0;
   border-bottom: 1px solid var(--line);
   user-select: none;
   -webkit-user-select: none;
@@ -1044,6 +1046,11 @@ html:has(.home-main:not(.home-main-map) .card-pager) {
   font-size: 14px;
 }
 
+.mark-copy strong + *,
+.post-copy-lines strong + * {
+  margin-top: 2px;
+}
+
 /* A spot nobody named wears its coordinates where a name would be, and then
    there is no line of them underneath. The numbers' own type, because that is
    what they were wearing on the line they came up from — and a size down, since
@@ -1072,48 +1079,6 @@ html:has(.home-main:not(.home-main-map) .card-pager) {
   white-space: nowrap;
 }
 
-/* The four words under the row, pushed to its two ends: leaving lo for
-   somewhere else on the left, what the mark itself is called and whether it is
-   kept at all on the right. The line the bubble on the pin carries, laid out the
-   way the bubble lays it out — one arrangement to learn for the two halves of
-   this page (see markPopupActions in MapCard). */
-.mark-actions {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-/* Each end of that line: two words, together, in a fixed order. */
-.mark-action-group {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-}
-
-/* Set as the small print they stand among rather than as buttons, because a
-   box drawn round each of four words is a row that reads as a toolbar. The
-   underline is what says they can be pressed; the padding is not seen at all
-   and is there so a finger has more than ten pixels of height to land on. */
-.mark-action {
-  padding: 4px 0;
-  border: 0;
-  background: none;
-  color: var(--muted);
-  font-family: var(--mono);
-  font-size: 10px;
-  text-decoration: underline;
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-@media (hover: hover) {
-  .mark-action:hover {
-    color: var(--ink);
-    text-decoration: none;
-  }
-}
-
 /* --------------------------------------------------------------- posts -- */
 
 /* The marks row, with a post in it. The chrome is deliberately the same — the
@@ -1123,6 +1088,10 @@ html:has(.home-main:not(.home-main-map) .card-pager) {
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+.post-item:first-child {
+  border-top: 1px solid var(--line);
 }
 
 .post-item {
@@ -1137,7 +1106,7 @@ html:has(.home-main:not(.home-main-map) .card-pager) {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 14px 0;
+  padding: 10px 0;
 }
 
 /* The whole block is the button that opens the post, thumbnail included: on a
@@ -1176,8 +1145,8 @@ html:has(.home-main:not(.home-main-map) .card-pager) {
    the page the way the framed ones elsewhere do not. */
 .post-thumb {
   flex: 0 0 auto;
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   border: 1px solid var(--ink);
   background: var(--soft);
   object-fit: cover;
@@ -1204,6 +1173,7 @@ html:has(.home-main:not(.home-main-map) .card-pager) {
   font-size: 10px;
 }
 
+.mark-side,
 .post-side {
   flex: 0 0 auto;
   display: flex;
@@ -1224,6 +1194,7 @@ html:has(.home-main:not(.home-main-map) .card-pager) {
 
 /* Above the stretched hit area of .post-copy, so the navigate/edit/delete
    controls stay pressable while the empty stretch around them opens the post. */
+.mark-actions,
 .post-actions {
   position: relative;
   z-index: 1;

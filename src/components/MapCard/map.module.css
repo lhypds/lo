@@ -330,6 +330,10 @@
   box-shadow: none;
 }
 
+.wrapper :global(.mapboxgl-ctrl-top-right .mapboxgl-ctrl + .mapboxgl-ctrl) {
+  margin-top: 4px;
+}
+
 /* The Mapbox wordmark, off. It is drawn over the bottom-left corner of the
    ground at every size the map is offered at, which on the square tile is a
    corner of a card 178px across — and lo's own name is the two letters in the
@@ -391,6 +395,14 @@
   background-image: none;
   -webkit-mask-image: var(--zoom-out-glyph);
   mask-image: var(--zoom-out-glyph);
+}
+
+.wrapper :global(.mapboxgl-ctrl button.mapboxgl-ctrl-compass) {
+  background-color: #fff;
+}
+
+.wrapper :global(.mapboxgl-ctrl button.mapboxgl-ctrl-compass .mapboxgl-ctrl-icon) {
+  background-color: transparent;
 }
 
 .wrapper :global(.mapboxgl-popup-content) {

@@ -18,6 +18,8 @@
   max-width: 400px;
   width: 90%;
   max-height: 90vh;
+  max-height: 90dvh;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   position: relative;

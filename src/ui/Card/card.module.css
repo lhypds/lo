@@ -75,7 +75,7 @@
   gap: 10px;
   height: 30px;
   flex: 0 0 auto;
-  padding: 0 10px;
+  padding: 0 6px;
   border-bottom: 1px solid var(--ink);
   /* The heading answers two quick presses by turning the card (see pressUp in
      Card.jsx). `manipulation` takes the browser's double-tap-to-zoom off it, so
