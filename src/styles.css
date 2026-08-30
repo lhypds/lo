@@ -1300,6 +1300,42 @@ html:has(.home-main:not(.home-main-map) .card-pager) {
   text-decoration: none;
 }
 
+/* The way through to the original, in the top bar of the sheet an article
+   opens into — the same place and the same wording ui/PageModal's own uses
+   for a story it has taken the words out of, said here because this sheet is
+   drawn straight into HomePage rather than into a component of its own (see
+   the Wikipedia Modal at the foot of that file). */
+.modal-away {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 40%;
+  padding: 2px 4px;
+  font-size: 12px;
+  color: var(--muted);
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.modal-away:hover {
+  color: var(--ink);
+}
+
+/* The article itself, framed rather than fetched: unlike a newspaper (see
+   ui/PageModal, where the words are taken out of the page instead), Wikipedia
+   sends no X-Frame-Options and no frame-ancestors, so the page can be shown
+   here exactly as it stands. Borderless and the width of the sheet around it,
+   with enough height that the sheet reads as somewhere to read rather than a
+   window onto one; the sheet's own scrollbar is unused; the page's is. */
+.wikipedia-frame {
+  display: block;
+  width: 100%;
+  height: 75vh;
+  height: 75dvh;
+  border: 0;
+}
+
 /* --------------------------------------------------------------- profile -- */
 
 /* The half of the account sheet its owner writes — the heading over it, and the

@@ -8,7 +8,7 @@
 // - Open-Meteo     — weather and timezone    https://open-meteo.com
 // - Google News    — local news (RSS)        https://news.google.com/rss
 // - Google Trends  — trending searches (RSS) https://trends.google.com/trending
-// - Wikipedia      — nearby places           https://www.mediawiki.org/wiki/API
+// - Wikipedia      — nearby places, articles https://www.mediawiki.org/wiki/API
 // - Overpass       — food and cafés (OSM)    https://overpass-api.de
 // - Yahoo! 天気・災害 — Japanese weather warnings https://typhoon.yahoo.co.jp
 //
@@ -752,6 +752,103 @@ export function lookupVenues(kind, latitude, longitude, lang = "en") {
       .map((item) => ({ ...item, distance: Math.round(metresBetween({ latitude, longitude }, item)) }))
       .sort((a, b) => a.distance - b.distance)
       .slice(0, MAX_VENUES),
+  }));
+}
+
+/* --------------------------------------------------------------- wikipedia -- */
+
+// Every Wikipedia article that carries a coordinate near here, with its lead
+// paragraph and a picture where it has one — the nearby-articles card and its
+// own pins on the map, as distinct a question from `fetchWikipediaNearby`
+// above as the same encyclopaedia can be asked twice: that one wants a bare
+// list of titles for the news card to link away to when the newswire has
+// nothing, and this wants enough to read without leaving lo at all. Two
+// different shapes of the same upstream, not one forced to answer both.
+//
+// A wider net than the walk food and cafés get: an article about the shrine on
+// the hill is still worth surfacing a couple of kilometres off in a way a
+// coffee is not, so the near ring here is wider and the far one wider still.
+const WIKI_RADII_M = [2000, 10000];
+const MAX_WIKI_PLACES = 24;
+// As much of the lead as the card and the map's own popup have room for — long
+// enough to say what the place is, short enough that a popup on a map does not
+// turn into a reading surface.
+const WIKI_EXTRACT_CHARS = 280;
+// An article does not move and its lead paragraph does not change by the hour,
+// so this keeps the same shape the venue answers do: a square of ground, kept
+// for as long as a walk across it stays the same list.
+const WIKI_TTL_MS = 60 * 60 * 1000;
+const WIKI_EMPTY_TTL_MS = 10 * 60 * 1000;
+const WIKI_GRID = 2;
+
+async function fetchWikipediaPlaces(latitude, longitude, radius, lang) {
+  const host = `https://${lang}.wikipedia.org`;
+  const url = new URL(`${host}/w/api.php`);
+  url.searchParams.set("action", "query");
+  // Geosearch as a generator rather than a list (contrast fetchWikipediaNearby
+  // above): a generator hands its results on to `prop` to be filled in, which
+  // is what gets the extract and the thumbnail in the same round trip instead
+  // of one lookup per place.
+  url.searchParams.set("generator", "geosearch");
+  url.searchParams.set("ggscoord", `${latitude}|${longitude}`);
+  url.searchParams.set("ggsradius", String(radius));
+  url.searchParams.set("ggslimit", "20");
+  url.searchParams.set("prop", "extracts|pageimages|coordinates");
+  url.searchParams.set("exintro", "1");
+  url.searchParams.set("explaintext", "1");
+  url.searchParams.set("exchars", String(WIKI_EXTRACT_CHARS));
+  url.searchParams.set("piprop", "thumbnail");
+  url.searchParams.set("pithumbsize", "400");
+  url.searchParams.set("format", "json");
+  const data = await getJson(url.href);
+  // Answered as an object keyed by page id rather than as a list — geosearch's
+  // own ordering is not carried over, which is why the caller sorts by the
+  // real distance from the reader rather than trusting the order here.
+  const pages = Object.values(data.query?.pages ?? {});
+  return pages
+    .map((page) => {
+      const at = page.coordinates?.[0];
+      if (!at) return null;
+      return {
+        // Namespaced the way an OSM venue's id is, so a card publishing this
+        // list to the map's shared store cannot collide with one keyed by a
+        // plain page id that happens to match a node's.
+        id: `wikipedia/${page.pageid}`,
+        title: String(page.title),
+        description: firstString(page.extract),
+        thumbnail: page.thumbnail?.source ?? null,
+        latitude: at.lat,
+        longitude: at.lon,
+        url: `${host}/wiki/${encodeURIComponent(String(page.title).replace(/ /g, "_"))}`,
+      };
+    })
+    .filter(Boolean);
+}
+
+// A walk first, and the wider ring only where nothing carries a coordinate
+// within it — the same two-ring shape lookupVenues uses, for the same reason:
+// paying for the wider search on every request would be answering a question
+// nobody asked most of the time.
+export function lookupWikipedia(latitude, longitude, lang = "en") {
+  const language = PLACE_LANGUAGE[lang] ?? "en";
+  const key = `wikipedia:${language}:${gridKey(latitude, longitude, WIKI_GRID)}`;
+  const ttl = (value) => (value.items.length === 0 ? WIKI_EMPTY_TTL_MS : WIKI_TTL_MS);
+
+  return cached(key, ttl, async () => {
+    const centre = gridCentre(latitude, longitude, WIKI_GRID);
+    const place = await lookupPlace(latitude, longitude, language).catch(() => null);
+    for (const radius of WIKI_RADII_M) {
+      const items = await fetchWikipediaPlaces(centre.latitude, centre.longitude, radius, language);
+      if (items.length > 0) return { place, radius, items };
+    }
+    return { place, radius: WIKI_RADII_M.at(-1), items: [] };
+  }).then(({ place, radius, items }) => ({
+    place,
+    radius,
+    items: items
+      .map((item) => ({ ...item, distance: Math.round(metresBetween({ latitude, longitude }, item)) }))
+      .sort((a, b) => a.distance - b.distance)
+      .slice(0, MAX_WIKI_PLACES),
   }));
 }
 

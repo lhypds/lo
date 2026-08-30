@@ -1,0 +1,87 @@
+/* Same shape as the venues panel beside it: a list that scrolls inside the
+   tile it was given rather than setting a height of its own. */
+.scroll {
+  height: 100%;
+  overflow-y: auto;
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.list li + li {
+  border-top: 1px solid var(--line);
+}
+
+/* One line, name and distance at either end — there is no second line to a
+   row here, unlike a venue's: an article has no cuisine to name, only a title
+   and how far off it is. A button undone the way a venue's row is, for the
+   same reason: what is pressed is the row, not a control the browser drew. */
+.item {
+  width: 100%;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.distance {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* On a single square the row keeps its shape — a title still fits a line, and
+   there is no middle line here to drop the way a venue's cube drops its
+   amenity and cuisine. */
+.square .item {
+  padding: 6px 8px;
+}
+
+.empty {
+  margin: 0;
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  color: var(--muted);
+  text-align: center;
+  font-size: 11px;
+}
+
+.square .empty {
+  padding: 8px;
+}
+
+@media (hover: hover) {
+  .item:hover {
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  .item:hover .distance {
+    color: var(--paper);
+  }
+}

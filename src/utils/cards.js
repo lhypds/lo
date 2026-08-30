@@ -132,6 +132,7 @@ export const CARDS = [
   { id: "posts", label: "posts.nearby", own: true, off: true, min: TINY },
   { id: "food", label: "food.title", off: true, min: TINY },
   { id: "cafe", label: "cafe.title", off: true, min: TINY },
+  { id: "wikipedia", label: "wikipedia.title", off: true, min: TINY },
   { id: "nearby", label: "news.title", off: true, min: TINY },
   { id: "events", label: "events.title", off: true, min: TINY },
   { id: "trends", label: "trends.title", off: true, min: TINY },
