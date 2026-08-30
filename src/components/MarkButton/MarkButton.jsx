@@ -17,8 +17,9 @@ const LONG_PRESS_MS = 500;
 // A press that wanders this far was the start of a scroll, not a hold.
 const LONG_PRESS_SLOP = 10;
 
-// One tap, no dialog: the spot is saved with whatever fix is in hand and named
-// afterwards, from the marks list, if it turns out to be worth a name.
+// One tap: the spot is saved with whatever fix is in hand, and the name sheet
+// opens on it — the name is asked for at the one moment the writer still knows
+// which spot it was, and closing the sheet unasked costs nothing.
 //
 // Holding the same button is the other thing that can be said about a spot —
 // a post, with words and a photo, left on the map for everyone. Both start from
@@ -35,9 +36,8 @@ export default function MarkButton({ onMarked, onUnmarked, onRenamed, onLongPres
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(null);
   const [message, setMessage] = useState("");
-  // The name sheet, open on the mark that was just made. A spot is marked in one
-  // tap and named afterwards if it turns out to be worth a name — this is the
-  // door to that, at the one moment the writer still knows which spot it was.
+  // The name sheet, open on the mark that was just made. It is raised by the
+  // save itself, not by anything the writer has to find afterwards.
   const [editing, setEditing] = useState(false);
   const timerRef = useRef(null);
   const holdRef = useRef(null);
@@ -155,7 +155,11 @@ export default function MarkButton({ onMarked, onUnmarked, onRenamed, onLongPres
       setSaved(created);
       setMessage(t("mark.saved"));
       onMarked?.(created);
-      scheduleClear();
+      // The row under the button clears itself after a few seconds, and undo
+      // lives in it — so the clock stops while the sheet is over it and starts
+      // again when it closes, rather than expiring behind a name being typed.
+      window.clearTimeout(timerRef.current);
+      setEditing(true);
     } catch (error) {
       if (runRef.current !== run) return;
       setMessage(error.message);
@@ -182,16 +186,6 @@ export default function MarkButton({ onMarked, onUnmarked, onRenamed, onLongPres
     }
   }
 
-  // The row under the button clears itself after a few seconds, and it is the
-  // only way back to the sheet — so the clock stops while the sheet is open and
-  // starts again when it closes, rather than pulling the row out from under a
-  // name still being typed.
-  function openEdit() {
-    if (!saved) return;
-    window.clearTimeout(timerRef.current);
-    setEditing(true);
-  }
-
   function closeEdit() {
     setEditing(false);
     if (saved) scheduleClear();
@@ -205,8 +199,8 @@ export default function MarkButton({ onMarked, onUnmarked, onRenamed, onLongPres
     scheduleClear();
   }
 
-  // The message is a sibling of the button rather than a child: edit and undo
-  // are themselves buttons, and one cannot sit inside another.
+  // The message is a sibling of the button rather than a child: undo is itself
+  // a button, and one cannot sit inside another.
   return (
     <div className={styles.tile} data-card={tile ?? undefined}>
       <button
@@ -247,10 +241,6 @@ export default function MarkButton({ onMarked, onUnmarked, onRenamed, onLongPres
         {saved ? (
           <>
             {message} (
-            <button type="button" className={styles.action} onClick={openEdit}>
-              {t("mark.edit")}
-            </button>{" "}
-            {t("mark.or")}{" "}
             <button type="button" className={styles.action} onClick={undo}>
               {t("mark.undo")}
             </button>
