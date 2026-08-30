@@ -1635,10 +1635,14 @@ export default function MapCard({
     <p className={styles.noToken}>{TOKEN ? t("map.unavailable") : t("map.noToken")}</p>
   );
 
+  // Both tooltips are anchored right rather than centred under their button.
+  // These two stand at the far right of the heading of a tile that is itself at
+  // the right of the grid, and the boxes under them are wider than the buttons
+  // are: centred, they hang off the side of the card and out over the page.
   const actions = (
     <span className={styles.actions}>
       {live && coords && (
-        <ActionButton tooltip={t("map.recenter")} onClick={recenter}>
+        <ActionButton tooltip={t("map.recenter")} tooltipRight onClick={recenter}>
           <svg viewBox="0 0 24 24">
             <circle cx="12" cy="12" r="3.5" />
             <circle cx="12" cy="12" r="8" />
@@ -1650,7 +1654,11 @@ export default function MapCard({
         </ActionButton>
       )}
       {live && onToggleExpanded && (
-        <ActionButton tooltip={expanded ? t("map.collapse") : t("map.expand")} onClick={onToggleExpanded}>
+        <ActionButton
+          tooltip={expanded ? t("map.collapse") : t("map.expand")}
+          tooltipRight
+          onClick={onToggleExpanded}
+        >
           {expanded ? (
             <svg viewBox="0 0 24 24">
               <path d="M9 3v6H3" />

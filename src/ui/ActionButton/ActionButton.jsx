@@ -3,9 +3,9 @@ import styles from "./action.module.css";
 
 export default function ActionButton({
   tooltip,
-  // For the buttons that sit against the right edge of something that clips:
-  // the tooltip hangs off its own button by default, which is fine in the top
-  // bar and is cut off in a list.
+  // For the buttons that sit against the right edge of something: the tooltip
+  // hangs off its own button by default, which is fine in the top bar, is cut
+  // off in a list, and runs off the side of a card in a tile's heading.
   tooltipRight = false,
   children,
   href,
