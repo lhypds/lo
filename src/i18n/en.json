@@ -248,7 +248,6 @@
     "read": "read",
     "edit": "edit",
     "delete": "delete",
-    "turn": "Double-click to change the map",
     "noToken": "Add VITE_MAPBOX_TOKEN to .env to display the map.",
     "recenter": "Back to my position",
     "expand": "Full map",

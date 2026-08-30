@@ -245,7 +245,6 @@
     "read": "阅读",
     "edit": "编辑",
     "delete": "删除",
-    "turn": "双击切换地图",
     "noToken": "请在 .env 中设置 VITE_MAPBOX_TOKEN 以显示地图。",
     "recenter": "回到我的位置",
     "expand": "全屏地图",

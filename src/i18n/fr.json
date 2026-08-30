@@ -248,7 +248,6 @@
     "read": "lire",
     "edit": "modifier",
     "delete": "supprimer",
-    "turn": "Double-cliquez pour changer de carte",
     "noToken": "Ajoutez VITE_MAPBOX_TOKEN au fichier .env pour afficher la carte.",
     "recenter": "Revenir à ma position",
     "expand": "Plein écran",

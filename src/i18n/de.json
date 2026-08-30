@@ -248,7 +248,6 @@
     "read": "lesen",
     "edit": "bearbeiten",
     "delete": "löschen",
-    "turn": "Doppelklicken, um die Karte zu wechseln",
     "noToken": "Füge VITE_MAPBOX_TOKEN zur .env-Datei hinzu, um die Karte anzuzeigen.",
     "recenter": "Zurück zu meinem Standort",
     "expand": "Große Karte",

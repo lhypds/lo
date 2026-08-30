@@ -1676,7 +1676,6 @@ export default function MapCard({
     <Card
       title={t("map.title")}
       action={actions}
-      cycleHint={t("map.turn")}
       onCycle={cycleMapStyle}
       square={!expanded}
       wide={expanded}

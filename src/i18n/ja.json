@@ -245,7 +245,6 @@
     "read": "記事",
     "edit": "編集",
     "delete": "削除",
-    "turn": "ダブルクリックで地図を切り替える",
     "noToken": "地図を表示するには .env に VITE_MAPBOX_TOKEN を設定してください。",
     "recenter": "現在地に戻る",
     "expand": "全画面地図",

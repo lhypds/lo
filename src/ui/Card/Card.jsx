@@ -56,7 +56,6 @@ export default function Card({
   action,
   back,
   flipHint,
-  cycleHint,
   defaultFlipped = false,
   onFlip,
   onCycle,
@@ -199,7 +198,7 @@ export default function Card({
   const head = (
     <header
       className={styles.head}
-      title={turnable ? (back ? flipHint : cycleHint) : undefined}
+      title={back && turnable ? flipHint : undefined}
       // The heading is already the card's handle: held for half a second it picks
       // the card up, and dragged it turns the page (see HomePage). Two quick
       // presses are neither — the second is well inside the half-second the hold
