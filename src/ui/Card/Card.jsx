@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import styles from "./card.module.css";
-import { tapLog } from "../../utils/tapdebug.js";
+import { framed } from "../../utils/host.js";
 
 // What counts as two presses rather than one. The gap is the browser's own
 // double-click interval as near as anyone states it; the slop is how far a single
@@ -94,11 +94,8 @@ export default function Card({
   const flipped = (turns + (dealt ? 1 : 0)) % 2 === 1;
   // The first of a pair of taps, where it landed and when — and the place the
   // finger in hand went down, which is what tells a tap from the start of a drag.
-  // The last turn a finger made is remembered for as long as it takes a browser
-  // to decide the same two taps were a double-click and say so a second time.
   const tapRef = useRef({ at: 0, x: 0, y: 0 });
   const downRef = useRef(null);
-  const turnedAtRef = useRef(0);
   const cycleTimersRef = useRef([]);
   const turnable = Boolean(back || onCycle);
 
@@ -149,9 +146,6 @@ export default function Card({
   // these speaks, so the two taps are counted off pointerup and nothing else,
   // which is the same gesture the dashboard reads to turn its pages.
   function pressDown(event) {
-    tapLog(
-      `down ${event.pointerType || "?"} prim=${event.isPrimary} b=${event.button} x=${Math.round(event.clientX)} y=${Math.round(event.clientY)}`,
-    );
     if (!event.isPrimary) return;
     downRef.current = { x: event.clientX, y: event.clientY };
   }
@@ -159,9 +153,6 @@ export default function Card({
   function pressUp(event) {
     const down = downRef.current;
     downRef.current = null;
-    tapLog(
-      `up   ${event.pointerType || "?"} prim=${event.isPrimary} down=${down ? "y" : "n"} x=${Math.round(event.clientX)} y=${Math.round(event.clientY)}`,
-    );
     if (!event.isPrimary || event.target.closest("button")) return;
     // A press that travelled is a drag: the page is being turned under it, or the
     // list behind it scrolled, and neither is half of a double press. Judged only
@@ -169,10 +160,9 @@ export default function Card({
     // down, is still counted rather than thrown away.
     if (down && Math.abs(event.clientX - down.x) > TAP_SLOP) return;
     if (down && Math.abs(event.clientY - down.y) > TAP_SLOP) return;
-    // Already answered — a device that also raises dblclick, or a family delivered
-    // alongside this one, turned the card a moment ago on this very gesture.
-    if (Date.now() - turnedAtRef.current <= TAP_GAP + TAP_GAP) {
-      tapLog("  guarded");
+    // Even G2 turns its physical double-click into one activation in the iframe.
+    if (framed()) {
+      turn();
       return;
     }
     // Paired on time alone. Where the two presses landed is not asked: the heading
@@ -183,12 +173,9 @@ export default function Card({
     // only once every few presses rather than every second one.
     const at = Date.now();
     if (at - tapRef.current.at <= TAP_GAP) {
-      tapLog(`  TURN (gap=${at - tapRef.current.at})`);
       tapRef.current = { at: 0, x: 0, y: 0 };
-      turnedAtRef.current = at;
       turn();
     } else {
-      tapLog(`  first (gap=${at - tapRef.current.at})`);
       // The first of a pair, or a single press that will turn out to be nothing.
       tapRef.current = { at, x: event.clientX, y: event.clientY };
     }
