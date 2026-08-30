@@ -15,7 +15,7 @@
   border-top: 1px solid var(--line);
 }
 
-/* One line, name and distance at either end — there is no second line to a
+/* One line, name and distance at either end — there is no middle line to a
    row here, unlike a venue's: an article has no cuisine to name, only a title
    and how far off it is. A button undone the way a venue's row is, for the
    same reason: what is pressed is the row, not a control the browser drew. */
@@ -23,7 +23,6 @@
   width: 100%;
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
   gap: 10px;
   padding: 8px 10px;
   border: 0;
@@ -35,12 +34,25 @@
 }
 
 .name {
+  flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 12px;
   line-height: 1.45;
+}
+
+/* The two figures about the article that are not the article, out on the
+   right — how far off it is, and how much has been said about it — the same
+   pair a venue's row carries (see venues.module.css). */
+.figures {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .distance {
@@ -50,6 +62,14 @@
   font-family: var(--mono);
   font-size: 10px;
   font-variant-numeric: tabular-nums;
+}
+
+.comments {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
 }
 
 /* On a single square the row keeps its shape — a title still fits a line, and
@@ -81,7 +101,93 @@
     color: var(--paper);
   }
 
-  .item:hover .distance {
+  .item:hover .distance,
+  .item:hover .comments {
     color: var(--paper);
+  }
+}
+
+/* --------------------------------------------------------------- preview -- */
+/* What a row opens, inside the sheet the whole window is dimmed behind — the
+   venue cards' own preview (see venues.module.css), with one line added: the
+   picture Wikipedia keeps for the page, where it has one. An OSM venue never
+   carries one, which is the whole of what tells the two previews apart. */
+.preview {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Full width and cropped to a band, the way a post's picture in its own bubble
+   on the map is (see map.module.css): this is a preview of the article and
+   not a place to look at the photograph itself. */
+.previewImage {
+  width: 100%;
+  height: 160px;
+  margin-bottom: 8px;
+  object-fit: cover;
+  background: var(--soft);
+}
+
+.previewName {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  margin: 0 0 4px;
+  font-size: 14px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+/* The lead paragraph, clamped the way the map's own popup clamps it (see
+   .wikiPopupLead in map.module.css) — long enough to say what the place is,
+   short of turning a preview sheet into the reading it is a preview of. */
+.previewSummary {
+  margin: 0 0 4px;
+  font-size: 13px;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
+  overflow: hidden;
+}
+
+.previewMeta {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.actions {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.group {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.action {
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 12px;
+  text-decoration: underline;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .action:hover {
+    color: var(--ink);
+    text-decoration: none;
   }
 }

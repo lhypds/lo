@@ -371,16 +371,17 @@ function markPopupElement(mark, named, coords, iso, when, labels, edit, remove) 
 // stands, which is what tells two shops of one name apart (see placeSearchUrl).
 // A Wikipedia pin's bubble: the lead, not the whole street. Wearing the same
 // classes a venue's bubble does, because it is the same shape of box — a name
-// with small print under it — and its own picture goes above the name for the
-// reason a post's does (see postPopupElement): the article is what the tile
-// promised, and it should be the first thing a reader sees.
+// with small print under it and the same pair of hand-offs to Google Maps on
+// the same line — with two things added: its own picture, above the name for
+// the reason a post's does (see postPopupElement), and the lead paragraph
+// where Wikipedia has one, which an OSM venue never carries.
 //
-// One action rather than the pair a venue's bubble carries: there is no
-// walking here to hand off to Google Maps, only the reading itself, which
-// opens the same iframe sheet the card's own row does (see HomePage) —
-// `read` is that hand-off, kept apart from `comments` above it because an
-// article carries no conversation of lo's to open instead.
-function wikiPopupElement(place, description, away, labels, read) {
+// `comments` is the same object venuePopupElement is handed: a landmark is
+// somewhere lo's readers can leave a word about exactly as a café is (see
+// VENUE_COMMENT_TYPES in server/index.js), so the corner of this bubble opens
+// the same sheet theirs does rather than a reading of the article — which is
+// what the card's own row opens instead (see WikipediaCard).
+function wikiPopupElement(place, description, away, comments, labels) {
   const wrapper = document.createElement("div");
   wrapper.className = styles.markPopup;
   // The frame a post's picture bleeds to the edges of, borrowed for the same
@@ -408,17 +409,27 @@ function wikiPopupElement(place, description, away, labels, read) {
   const distance = document.createElement("span");
   distance.className = styles.markPopupMeta;
   distance.textContent = away;
-  wrapper.append(distance);
-  const open = document.createElement("button");
-  open.type = "button";
-  open.className = styles.postPopupComments;
-  open.textContent = labels.read;
-  open.setAttribute("aria-label", `${labels.read} ${place.title}`);
-  open.addEventListener("click", (event) => {
-    event.stopPropagation();
-    read(place);
-  });
-  wrapper.append(open);
+  const actions = document.createElement("span");
+  actions.className = styles.postPopupActions;
+  const going = document.createElement("span");
+  going.className = styles.popupGroup;
+  going.append(
+    popupSearchElement(place, labels.search, place.title, place.title),
+    popupNavElement(place, labels.nav, place.title),
+  );
+  actions.append(going);
+  if (comments) {
+    const open = document.createElement("button");
+    open.type = "button";
+    open.className = styles.postPopupComments;
+    open.textContent = `${comments.label} ${place.comments ?? 0}`;
+    open.addEventListener("click", (event) => {
+      event.stopPropagation();
+      comments.open(place);
+    });
+    actions.append(open);
+  }
+  wrapper.append(distance, actions);
   return wrapper;
 }
 
@@ -737,10 +748,11 @@ export default function MapCard({
   onSelectPin,
   onOpenComments,
   onOpenVenueComments,
-  // The article a Wikipedia pin's bubble asks to have opened, answered the
-  // same iframe sheet the card's own row opens (see HomePage). Nothing passed
-  // leaves the bubble with its lead paragraph and no way to read the rest.
-  onOpenWikipedia,
+  // The same sheet from a Wikipedia pin's own corner — a landmark's comment
+  // thread, opened the way a café's is (see onOpenVenueComments above).
+  // Nothing passed leaves the bubble with its lead paragraph and no control
+  // in the corner at all.
+  onOpenWikiComments,
   // The picture in a post's bubble, pressed. What is up there is the thumbnail;
   // this is the page being asked to put the photograph itself on the screen, and
   // it is the only thing anywhere in lo that fetches one. Nothing passed leaves
@@ -775,8 +787,8 @@ export default function MapCard({
   commentsRef.current = onOpenComments;
   const venueCommentsRef = useRef(onOpenVenueComments);
   venueCommentsRef.current = onOpenVenueComments;
-  const wikiReadRef = useRef(onOpenWikipedia);
-  wikiReadRef.current = onOpenWikipedia;
+  const wikiCommentsRef = useRef(onOpenWikiComments);
+  wikiCommentsRef.current = onOpenWikiComments;
   const photoRef = useRef(onOpenPhoto);
   photoRef.current = onOpenPhoto;
   const editPostRef = useRef(onEditPost);
@@ -1280,27 +1292,26 @@ export default function MapCard({
     const map = mapRef.current;
     if (!map) return;
     wikiMarkersRef.current.forEach(({ marker }) => marker.remove());
-    const read = (place) => wikiReadRef.current?.(place);
+    const comments = onOpenWikiComments
+      ? { label: t("comments.venueShort"), open: (place) => wikiCommentsRef.current?.(place) }
+      : null;
     wikiMarkersRef.current = wikiPlaces.map((place) => {
       const marker = preview(
         new mapboxgl.Marker({ element: venueElement("wikipedia"), anchor: "bottom" })
           .setLngLat([place.longitude, place.latitude])
           .setPopup(
             previewPopup().setDOMContent(
-              wikiPopupElement(
-                place,
-                place.description,
-                formatDistance(place.distance),
-                { read: t("wikipedia.read") },
-                read,
-              ),
+              wikiPopupElement(place, place.description, formatDistance(place.distance), comments, {
+                search: t("map.search"),
+                nav: t("map.nav"),
+              }),
             ),
           )
           .addTo(map),
       );
       return { id: place.id, marker };
     });
-  }, [wikiPlaces, t, preview]);
+  }, [wikiPlaces, t, preview, Boolean(onOpenWikiComments)]);
 
   // The pairing the other way round: a row under the pointer in the list opens
   // the bubble on its own pin, so whichever half the reader is looking at, the

@@ -10,19 +10,21 @@ import styles from "./comments.module.css";
 // out at the moment the submit would be refused rather than after it.
 const BODY_MAX = 300;
 
-// What has been said back about one post or OSM venue, and the box to say
-// something yourself.
+// What has been said back about one post, OSM venue or Wikipedia landmark, and
+// the box to say something yourself.
 //
-// A post or public venue is on the ground for whoever comes past it. The bubble
-// on the map says its piece; this is the other half of the exchange: a column of
-// what passers-by wrote, oldest first, because a conversation is read from the
-// top.
+// A post, a public venue or a landmark somebody has read about is on the
+// ground for whoever comes past it. The bubble on the map says its piece; this
+// is the other half of the exchange: a column of what passers-by wrote, oldest
+// first, because a conversation is read from the top.
 //
 // The subject itself is the whole of what says the sheet is up — there is no
 // state where it is open and about nothing — because the sheet names what it is
 // about at the head of the column and the pin that opened it already holds the
-// object. `post` remains the ordinary path in; `venue` selects the parallel OSM
-// endpoints while reusing every pixel and state transition below.
+// object. `post` remains the ordinary path in; `venue` selects the parallel
+// endpoints while reusing every pixel and state transition below — a place off
+// Wikipedia is handed in through the same prop, since its comment thread is
+// filed under the same table (see VENUE_COMMENT_TYPES in server/index.js).
 export default function CommentsModal({ post = null, venue = null, onClose, onAdded }) {
   const { t, i18n } = useTranslation();
   // Opening this column is what reads it — a remark under your post waits in the
@@ -130,7 +132,10 @@ export default function CommentsModal({ post = null, venue = null, onClose, onAd
             what they are remarks on is a conversation walked in on. */}
         {subject && (
           <p className={styles.about}>
-            {venue ? venue.name : post.body || post.place || t("comments.aboutPost")}
+            {/* A landmark's own name is Wikipedia's `title` rather than the
+                `name` an OSM venue answers with — the one field the two kinds
+                of place under this same sheet disagree about the word for. */}
+            {venue ? venue.name ?? venue.title : post.body || post.place || t("comments.aboutPost")}
           </p>
         )}
 

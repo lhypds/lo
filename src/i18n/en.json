@@ -238,9 +238,7 @@
     "title": "Wikipedia",
     "empty": "Nothing on Wikipedia within {{distance}} of here",
     "unavailable": "Could not reach Wikipedia",
-    "loading": "Looking for nearby articles",
-    "read": "read",
-    "open": "Open on Wikipedia"
+    "loading": "Looking for nearby articles"
   },
   "map": {
     "title": "Map",

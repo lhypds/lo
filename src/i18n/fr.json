@@ -238,9 +238,7 @@
     "title": "Wikipédia",
     "empty": "Rien sur Wikipédia à moins de {{distance}} d’ici",
     "unavailable": "Impossible de joindre Wikipédia",
-    "loading": "Recherche d’articles à proximité",
-    "read": "lire",
-    "open": "Ouvrir sur Wikipédia"
+    "loading": "Recherche d’articles à proximité"
   },
   "map": {
     "title": "Carte",

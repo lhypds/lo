@@ -238,9 +238,7 @@
     "title": "Wikipedia",
     "empty": "Im Umkreis von {{distance}} gibt es nichts auf Wikipedia",
     "unavailable": "Wikipedia ist nicht erreichbar",
-    "loading": "Artikel in der Nähe werden gesucht",
-    "read": "lesen",
-    "open": "Auf Wikipedia öffnen"
+    "loading": "Artikel in der Nähe werden gesucht"
   },
   "map": {
     "title": "Karte",
