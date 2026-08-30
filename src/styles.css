@@ -1239,7 +1239,7 @@ html:has(.home-main:not(.home-main-map) .card-pager) {
   max-width: 360px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 12px;
 }
 
 .plain-form label {
