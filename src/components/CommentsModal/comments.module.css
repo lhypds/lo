@@ -9,10 +9,17 @@
 /* Which post this is about: the picture it was left with, where there is one,
    and the caption beside it. The rule under the pair is what separates the
    thing being talked about from the talking. */
+/* The floor is the picture's own box: a post with a photograph and a post with
+   two lines of words then head the sheet at the same height, so the sheet itself
+   is one height rather than three — which is what lets the inbox stand level
+   with it (see messages.module.css). Nothing here can outgrow it: the picture is
+   40px and the caption stops at two lines, both inside the 41px this leaves
+   above the rule. */
 .about {
   display: flex;
   align-items: flex-start;
   gap: 10px;
+  min-height: 52px;
   padding-bottom: 10px;
   border-bottom: 1px solid var(--ink);
 }

@@ -110,8 +110,18 @@ export default function MessagesModal({ isOpen, onClose }) {
   // putting away rather than opening.
   //
   // What a post row hands on is the little of the post the sheet needs to name
-  // what the column is under: its words, or where it was left. The rest of the
-  // post is on the map, which is not what the reader is looking at.
+  // what the column is under: its words, or where it was left, and the picture
+  // it was left with. The rest of the post is on the map, which is not what the
+  // reader is looking at.
+  //
+  // The picture goes across because the sheet draws it, and a comment column
+  // opened from here is the same column the pin on the map opens — one that
+  // named the post by its photograph and one that named it by its words would
+  // be two sheets. It goes over as `imageThumb` because that is what the row's
+  // own `image` already is — the small copy where the post has one and the
+  // picture itself where it does not (see selectPostThreads), which is the
+  // choice postThumb makes on the other side of this anyway, and very often a
+  // file already fetched for the square on this row.
   function openThread(conversation) {
     if (swiped.current) {
       swiped.current = false;
@@ -122,7 +132,12 @@ export default function MessagesModal({ isOpen, onClose }) {
       return;
     }
     if (conversation.kind === "post") {
-      setReadingPost({ id: conversation.postId, body: conversation.post, place: conversation.place });
+      setReadingPost({
+        id: conversation.postId,
+        body: conversation.post,
+        place: conversation.place,
+        imageThumb: conversation.image,
+      });
       return;
     }
     setReading(conversation.username);

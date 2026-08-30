@@ -3,16 +3,22 @@
    still bleeds 8px past the text (see .item), into that inset rather than into a
    margin of its own.
 
-   The same height the chat sheet stands at whether or not there is anything in
-   it, so an empty inbox is not a shorter sheet than a full one and opening a row
-   does not resize the sheet under the pointer. That sheet is its thread (40vh,
-   180–360px) with the composer under it — textarea 64px, footer 30px, and the
-   two gaps of 8 and 12 — so this takes the thread's height plus that 114px. */
+   The same height the comment column stands at whether or not there is anything
+   in it, so an empty inbox is not a shorter sheet than a full one and opening a
+   row does not resize the sheet under the pointer. That sheet is its list (36vh,
+   140–320px) with the post it hangs under over it — 52px to the rule — and the
+   box beneath it — textarea 64px, footer 30px, and the three gaps of 12, 12 and
+   8 — so this takes the list's height plus that 178px.
+
+   And level with the exchange as well, which is cut to this same figure from the
+   other direction (see .thread in message.module.css): the two sheets a row here
+   opens are one height, so which kind of row was pressed is told by what is in
+   the sheet rather than by the sheet changing size. */
 .sheet {
   padding: 0;
-  height: calc(40vh + 114px);
-  min-height: 294px;
-  max-height: 474px;
+  height: calc(36vh + 178px);
+  min-height: 318px;
+  max-height: 498px;
   display: flex;
   flex-direction: column;
 }

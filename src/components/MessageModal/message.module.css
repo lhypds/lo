@@ -14,11 +14,19 @@
 
    Capped against the window as well, because the modal itself stops at 90vh and
    a thread taller than that would push the box off the bottom of it on a short
-   screen. */
+   screen.
+
+   The figures are the comment column's, worn where this sheet has room for them.
+   Both sheets are opened from the same list of conversations and one should not
+   be taller than the other (see messages.module.css), and what the other has
+   that this has not is the post at the head of it: 52px of it and the 12px gap
+   under it. So its list (36vh, 140–320px) plus that 64px lands the two of them
+   on the same height at every size of window — this sheet spending on the
+   exchange what that one spends on saying what the exchange is about. */
 .thread {
-  min-height: 180px;
-  height: 40vh;
-  max-height: 360px;
+  min-height: 204px;
+  height: calc(36vh + 64px);
+  max-height: 384px;
   overflow-y: auto;
   overscroll-behavior: contain;
   padding-right: 2px;
