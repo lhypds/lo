@@ -12,6 +12,13 @@
 // frame — no token, no key, no name — so keep it that way: what goes through here
 // is news, not credentials.
 //
+// The fix is the one line through here that would be worth something to a
+// stranger, and it is safe on the same terms rather than by exception: a
+// cross-origin frame has no geolocation of its own, only what the page around it
+// delegates with `allow="geolocation"`. So a host that can be told where the
+// reader is standing is a host that already had the permission to ask, and one
+// that did not delegate is listening to a frame that never got a fix to post.
+//
 // `detail` is whatever the notice carries beyond its name. The host takes the
 // message apart by `type` and ignores every type it does not know (a phone running
 // an older package is a phone that has to go on working), so a new notice is a new

@@ -10,6 +10,8 @@
 //   "unsupported" this device has no geolocation at all
 //   "error"       the device tried and failed (no signal, timeout)
 
+import { tellHost } from "./host.js";
+
 const ENABLED_KEY = "lo:locationEnabled";
 const LAST_FIX_KEY = "lo:lastFix";
 const FRESH_MS = 60000; // a fix this recent is reused instead of re-asked
@@ -134,6 +136,14 @@ function requestPosition(highAccuracy) {
     if (result.coords) {
       writeStored(LAST_FIX_KEY, JSON.stringify(result.coords));
       emit({ status: "ready", coords: result.coords, at: result.coords.at, stale: false, error: null });
+      // And said out loud, because whoever is holding lo in a frame is standing
+      // exactly where lo is standing. The Even Hub package reads the phone's
+      // position on a beat of its own to feed the glasses, and this beat is the
+      // faster of the two — so a fix published here is a GPS that package no
+      // longer has to wake (see lo-even/src/main.ts). Nothing is asked in
+      // return and nothing is waited for: the host takes this or it does not,
+      // and lo goes on the same either way.
+      tellHost("fix", { fix: result.coords });
     } else {
       const denied = result.error?.code === result.error?.PERMISSION_DENIED;
       if (denied) writeStored(ENABLED_KEY, "no");
