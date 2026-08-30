@@ -1,4 +1,5 @@
 import i18n from "./i18n/index.js";
+import { tellHost } from "./utils/host.js";
 
 // One way in, wherever lo is running: the token its session was opened with,
 // kept here and presented as `Authorization: Bearer` on every request after.
@@ -132,6 +133,57 @@ function geoQuery({ latitude, longitude }) {
   return `lat=${latitude}&lon=${longitude}&lang=${i18n.language || "en"}`;
 }
 
+// One answer, handed on to whoever is hosting lo in a frame.
+//
+// lo and the Even Hub package are two clients of one server reading it off one
+// phone at once, and they read most of the same things: the package feeds a pair
+// of glasses the same place, the same sky, the same street, the same list of who
+// is about (see lo-even/src/services/feeds.ts). So an answer lo has just landed
+// is an answer the package was about to go and ask for itself, and one line over
+// the frame is a request it never makes.
+//
+// How much that saves is the reader's own doing rather than a figure to quote.
+// Who else is about is traded every minute whichever half asks, so that one is
+// saved on every launch; the rest follow whichever panels the reader has put on
+// this dashboard, because a card that is not on the page fetches nothing to
+// hand over. The package asks for everything it lacks exactly as it always did.
+//
+// Named for the feed rather than for the address, because the package holds one
+// slot per feed and has no interest in which of lo's endpoints filled it.
+//
+// **What crosses, and what does not.** Everything wrapped in this is either a
+// read lo's own server answers with no session at all — the place, the sky, what
+// is on, where to eat, what is in force — or it is what is on the ground here
+// and who else is standing on it, which is what lo shows to every signed-in
+// reader who walks down this street. Nothing addressed to the reader personally
+// goes through here: not the inbox, not an exchange, not a column of remarks.
+//
+// The line is drawn there because it cannot be drawn round the audience. lo can
+// be framed by anybody, and the package's own origin is not a thing lo could
+// name in advance (see utils/host.js) — so what a page that framed lo uninvited
+// would learn from all of this is what it could have asked the server for
+// itself, bar where the reader is standing, which the fix has already said.
+function shared(feed, coords, answer) {
+  return answer.then((data) => {
+    tellHost("feed", {
+      feed,
+      // The question this is the answer to. The host holds every feed under the
+      // ground it is about and the language it was asked in, and an answer
+      // arriving without those is one it cannot tell from an answer about
+      // somewhere else. Both go on every feed and are read only where they mean
+      // something: who else is about is a question with no ground in it, and
+      // what is in force comes back in Japanese whatever lo is being read in.
+      lang: i18n.language || "en",
+      // Not always where the reader is standing. The venue cards hold an anchor
+      // and re-ask only once it is a hundred metres behind them (see
+      // VenuesCard), so what goes over is the ground the answer is about.
+      coords: coords ? { latitude: coords.latitude, longitude: coords.longitude } : null,
+      data,
+    });
+    return data;
+  });
+}
+
 export const getSession = () => request("/api/session");
 // The first of the two steps signing in is asked in: whether the name is an
 // account, and whether it has a password yet. Nobody is signed in by it — what
@@ -232,10 +284,10 @@ export const unfollowUser = (username) =>
 export const getFollowers = (username) => request(`/api/users/${encodeURIComponent(username)}/followers`);
 export const getFollowing = (username) => request(`/api/users/${encodeURIComponent(username)}/following`);
 
-export const getLocal = (coords) => request(`/api/local?${geoQuery(coords)}`);
-export const getNearby = (coords) => request(`/api/nearby?${geoQuery(coords)}`);
-export const getEvents = (coords) => request(`/api/events?${geoQuery(coords)}`);
-export const getTrends = (coords) => request(`/api/trends?${geoQuery(coords)}`);
+export const getLocal = (coords) => shared("local", coords, request(`/api/local?${geoQuery(coords)}`));
+export const getNearby = (coords) => shared("nearby", coords, request(`/api/nearby?${geoQuery(coords)}`));
+export const getEvents = (coords) => shared("events", coords, request(`/api/events?${geoQuery(coords)}`));
+export const getTrends = (coords) => shared("trends", coords, request(`/api/trends?${geoQuery(coords)}`));
 // Somewhere to eat and somewhere for a coffee, nearest first. Two addresses
 // rather than one with a kind hung off it, because they are two cards and a
 // reader may well carry one of them without the other.
@@ -243,12 +295,13 @@ export const getTrends = (coords) => request(`/api/trends?${geoQuery(coords)}`);
 // 429. Give these reads room to finish while still bounding a dead connection.
 const VENUE_REQUEST_TIMEOUT_MS = 90 * 1000;
 export const getFood = (coords) =>
-  request(`/api/food?${geoQuery(coords)}`, { timeoutMs: VENUE_REQUEST_TIMEOUT_MS });
+  shared("food", coords, request(`/api/food?${geoQuery(coords)}`, { timeoutMs: VENUE_REQUEST_TIMEOUT_MS }));
 export const getCafes = (coords) =>
-  request(`/api/cafe?${geoQuery(coords)}`, { timeoutMs: VENUE_REQUEST_TIMEOUT_MS });
+  shared("cafe", coords, request(`/api/cafe?${geoQuery(coords)}`, { timeoutMs: VENUE_REQUEST_TIMEOUT_MS }));
 // Wikipedia articles carrying a coordinate nearby, lead paragraph and picture
 // included — nearest first, the same shape the two calls above answer in.
-export const getWikipedia = (coords) => request(`/api/wikipedia?${geoQuery(coords)}`);
+export const getWikipedia = (coords) =>
+  shared("wikipedia", coords, request(`/api/wikipedia?${geoQuery(coords)}`));
 
 // The words behind a headline, asked for by the row's own link rather than by
 // the id the list came back with. The row carries the id as a hint — whether
@@ -265,17 +318,32 @@ export const getArticle = ({ url, title, source, kind }) => {
 // The one reading that does not take the interface language: Yahoo answers in
 // Japanese, and the words the card can translate it translates itself.
 export const getWarnings = ({ latitude, longitude }) =>
-  request(`/api/warnings?lat=${latitude}&lon=${longitude}`);
+  shared("warnings", { latitude, longitude }, request(`/api/warnings?lat=${latitude}&lon=${longitude}`));
 
 // Publishing a fix answers with everyone else's, so the map's minute costs one
 // request; the plain GET is for a reader who has no fix of their own to trade.
+//
+// Both go to the host as `people`, which is the name it holds the answer under
+// and is the same answer either way. No coords with it: who else is out is a
+// question about a radius the server draws round its own idea of where we are,
+// not about a square this client can name — the host keys it on the minute
+// alone, exactly as lo does.
 export const publishPosition = ({ latitude, longitude, accuracy }) =>
-  request("/api/position", { method: "PUT", body: JSON.stringify({ latitude, longitude, accuracy }) });
-export const getPeople = () => request("/api/people");
+  shared(
+    "people",
+    null,
+    request("/api/position", { method: "PUT", body: JSON.stringify({ latitude, longitude, accuracy }) }),
+  );
+export const getPeople = () => shared("people", null, request("/api/people"));
 
 // Posts are everyone's, so the map asks for the ones near it rather than for
 // its own; with no fix to ask from, the newest anywhere is the best there is.
-export const getPosts = (coords) => request(coords ? `/api/posts?${geoQuery(coords)}` : "/api/posts");
+//
+// Shared with the host only when it is about somewhere: the fallback list is the
+// newest anywhere, which answers no question the host ever asks — its own posts
+// feed is always keyed to the ground under it.
+export const getPosts = (coords) =>
+  coords ? shared("posts", coords, request(`/api/posts?${geoQuery(coords)}`)) : request("/api/posts");
 export const createPost = (post) =>
   request(`/api/posts?lang=${i18n.language || "en"}`, { method: "POST", body: JSON.stringify(post) });
 // The words and the photo only — a post stays where and when it was left, so

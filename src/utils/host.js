@@ -19,6 +19,11 @@
 // reader is standing is a host that already had the permission to ask, and one
 // that did not delegate is listening to a frame that never got a fix to post.
 //
+// The answers lo gets back from its own server go the same way and are drawn on
+// the same line — `shared` in api.js, which is where what crosses and what does
+// not is set out, and which is the only other thing in lo that posts through
+// here.
+//
 // `detail` is whatever the notice carries beyond its name. The host takes the
 // message apart by `type` and ignores every type it does not know (a phone running
 // an older package is a phone that has to go on working), so a new notice is a new
