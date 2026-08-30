@@ -53,19 +53,14 @@ export default function PostsPage() {
   // person's page rather than the dashboard. It stays the way back even after
   // the field has been widened or cleared — the button is about the trip here,
   // not about what is on the map now. Without the name — the dashboard's posts
-  // panel presses through with ?post= and, when needed, ?home= — the page is the
-  // whole neighbourhood's and back is home, as before.
+  // panel presses through with ?post= alone — the page is the whole
+  // neighbourhood's and back is home, as before.
+  //
+  // Home is bare "/", even for a reader who came off page three of the
+  // dashboard: which page they were standing on is the dashboard's own to
+  // remember, and it does (see utils/pages.js).
   const author = searchParams.get("author");
-  // A post opened from a later dashboard page carries that page with it. The
-  // explicit target matters for the in-app arrow; browser Back already has the
-  // dashboard's own history entry to return to.
-  const homeNumber = Number(searchParams.get("home"));
-  const homePage = Number.isSafeInteger(homeNumber) && homeNumber > 1 ? homeNumber : null;
-  const backTo = author
-    ? `/${encodeURIComponent(author)}`
-    : homePage
-      ? `/?page=${homePage}`
-      : "/";
+  const backTo = author ? `/${encodeURIComponent(author)}` : "/";
   const [query, setQuery] = useState(() => (author ? formatUsername(author) : ""));
   // Newest first, which is the order the list arrives in and the one this page is
   // for: posts are a present tense, and what was left a minute ago belongs at the

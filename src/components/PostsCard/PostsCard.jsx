@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { AuthImage, Card, Link, Skeleton, useSearchParams } from "../../ui/index.js";
+import { AuthImage, Card, Link, Skeleton } from "../../ui/index.js";
 import { LARGE, SMALL, TALL, TINY, useCardSize } from "../../utils/cards.js";
 import { distanceMeters, formatCoords, formatDistance, formatUsername, relativeTime } from "../../utils/format.js";
 import { postThumb } from "../../utils/image.js";
@@ -23,15 +23,14 @@ import styles from "./posts.module.css";
 // A row leads to the posts page rather than opening anything here: that page is
 // this list with room to breathe and a map that pans to whichever post is asked
 // for. The id goes with the link so it arrives on the one that was pressed, and
-// a later dashboard page goes too so the arrow there can return to it.
+// nothing else has to: which page of the dashboard the row was pressed on is
+// remembered by the dashboard itself, so the arrow back lands on it without
+// having been told (see utils/pages.js).
 // An anchor rather than a button, so the row can be opened in its own tab like
 // any other link on the dashboard.
 export default function PostsCard() {
   const { t, i18n } = useTranslation();
-  const [searchParams] = useSearchParams();
   const { coords, posts, loadingPosts } = useNearbyPosts();
-  const page = Number(searchParams.get("page"));
-  const fromPage = Number.isSafeInteger(page) && page > 1 ? page : null;
   // How tall the reader has left it, anywhere from a single square to six. A
   // list panel is the kind of tile that is worth another row on some days and
   // not on others, which is what the pair of buttons in the heading is for: how
@@ -92,10 +91,7 @@ export default function PostsCard() {
           <ul className={styles.list}>
             {posts.map((post) => (
               <li key={post.id}>
-                <Link
-                  to={`/posts?post=${post.id}${fromPage ? `&home=${fromPage}` : ""}`}
-                  className={styles.item}
-                >
+                <Link to={`/posts?post=${post.id}`} className={styles.item}>
                   {/* Square and cropped, as in the list on the posts page: a row
                       is the same height whichever way the photo was held. */}
                   {post.image && (

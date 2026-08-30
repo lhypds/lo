@@ -19,6 +19,40 @@
 // The two-column mobile grid and four-column web grid use the same row-flow
 // placement, so this simulation applies to both layouts.
 
+// Which page the reader was last standing on, kept in this browser rather than
+// written into the route: it is a position and not an address. A dashboard page
+// is not a place anyone links to, sends anyone else, or should be able to land
+// on with the cards dealt some other way, and the number went stale the moment
+// the window changed shape — so the URL of the dashboard is `/`, as it reads.
+//
+// Only here, and not in the account's file next door (see utils/settings.js).
+// Where a thumb left the strip is about this browser on this screen; the shape
+// of the dashboard travels between devices, but standing on page three of a
+// phone says nothing about where to open a laptop.
+//
+// Counted the way the strip counts, from zero. The route wrote page numbers for
+// people because people read routes; nobody reads this.
+const KEY = "lo:page";
+
+export function openPage() {
+  try {
+    const number = Number(localStorage.getItem(KEY));
+    return Number.isSafeInteger(number) && number > 0 ? number : 0;
+  } catch {
+    // Nothing kept yet, nothing readable, or storage walled off
+    return 0;
+  }
+}
+
+export function keepPage(index) {
+  try {
+    localStorage.setItem(KEY, String(index));
+  } catch {
+    // Best effort: the strip stands where the reader put it for as long as the
+    // tab is open either way
+  }
+}
+
 // Whether a w×h block starting at (row, col) is standing on free ground. Rows
 // past the end of what has been filled are empty by definition — the grid grows
 // downwards as far as it is asked to.

@@ -1,12 +1,12 @@
 import { Suspense, lazy, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
-import { Card, Lightbox, Modal, Skeleton, TileId, showToast, useNavigate, useSearchParams } from "../../ui/index.js";
+import { Card, Lightbox, Modal, Skeleton, TileId, showToast } from "../../ui/index.js";
 import { arrangeCards, cardLabel, cardSpan, useCards } from "../../utils/cards.js";
 import { formatCoords } from "../../utils/format.js";
 import { postPhoto } from "../../utils/image.js";
 import { labelName } from "../../utils/label.js";
-import { paginate } from "../../utils/pages.js";
+import { keepPage, openPage, paginate } from "../../utils/pages.js";
 import { updateVenueComments, useVenues } from "../../utils/venues.js";
 import { getLocationState, refreshLocation } from "../../utils/location.js";
 import CafeCard from "../../components/CafeCard/index.js";
@@ -57,14 +57,6 @@ const SLOP = 10;
 const EDGE = 24;
 const EDGE_MS = 600;
 
-// The route writes page numbers for people (starting at one), while the strip
-// counts them as an array (starting at zero). An absent or malformed number is
-// the opening page.
-function pageIn(searchParams) {
-  const number = Number(searchParams.get("page"));
-  return Number.isSafeInteger(number) && number > 0 ? number - 1 : 0;
-}
-
 // Which card a point is over, by name. The tiles say which card they are (see
 // TileId in ui/Card) rather than being counted off against the list they were
 // dealt from: a card can decline to draw anything at all — the warnings tile does,
@@ -113,8 +105,6 @@ function moveTo(ids, id, to) {
 
 export default function HomePage() {
   const { t, i18n } = useTranslation();
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   // Posts come from the provider rather than from here: they are a reading of
   // the fix, like the place name is, and the refresh in the top bar has to be
   // able to reach them without knowing which page it is sitting on.
@@ -154,12 +144,16 @@ export default function HomePage() {
   // every card once, then move the ones that did not fit onto a second page and
   // mount them again, which for the cards that ask the server something is that
   // question asked twice.
-  const requestedPage = pageIn(searchParams);
-  const [page, setPage] = useState(requestedPage);
+  //
+  // Opened on the page the reader left, read off this browser's shelf as the
+  // state is made rather than watched: where the strip stands is this page's own
+  // business from here on, and the number kept in storage is only how it is
+  // handed back after a reload (see openPage in utils/pages.js).
+  const [page, setPage] = useState(openPage);
   const [grid, setGrid] = useState(null);
   // Whether the strip has been turned yet, which is the whole of what decides
   // whether it slides. A dashboard opened at page three — where the reader was
-  // standing when they left it, written into the route on the way out — is
+  // standing when they left it, kept in this browser on the way out — is
   // measured before it is drawn, so the first transform the track is given is
   // already the one that puts page three under the window. Left to the
   // stylesheet that is a swipe across two pages on arrival, and a page seen to
@@ -213,11 +207,6 @@ export default function HomePage() {
   // same bubble — held out here for the same reason, and doubly so while the map
   // is expanded and is the whole of the page.
   const [viewing, setViewing] = useState(null);
-
-  // A dashboard reached through browser history while it is already mounted
-  // follows the page written in that history entry as well. Usually the trip to
-  // another screen unmounts this page, but search-only history changes do not.
-  useEffect(() => setPage(requestedPage), [requestedPage]);
 
   // Marks are yours and are the same list wherever you are standing, so unlike
   // posts they are not asked for again on every move — only on the refresh in
@@ -499,15 +488,12 @@ export default function HomePage() {
     const next = Math.max(0, Math.min(index, pages.length - 1));
     setTurned(true);
     setPage(next);
-
-    // Replace rather than push: a run of swipes is still one place in browser
-    // history. The entry itself remembers the visible page, so browser Back
-    // after opening a post returns to the same part of the dashboard.
-    const params = new URLSearchParams(searchParams);
-    if (next === 0) params.delete("page");
-    else params.set("page", String(next + 1));
-    const search = params.toString();
-    navigate(`/${search ? `?${search}` : ""}`, { replace: true, scroll: false });
+    // And onto the shelf, so that a reader who opens a post and comes back — or
+    // closes the tab and opens lo again tomorrow — arrives on the page they were
+    // standing on rather than at the front. Nothing goes into the route: a run of
+    // swipes is not a run of places to go back through, and the number would not
+    // survive being sent to anyone anyway (see keepPage in utils/pages.js).
+    keepPage(next);
   }
 
   // The page follows the drag while it is under way and settles when it is let
