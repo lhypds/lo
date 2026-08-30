@@ -17,9 +17,10 @@ const LONG_PRESS_MS = 500;
 // A press that wanders this far was the start of a scroll, not a hold.
 const LONG_PRESS_SLOP = 10;
 
-// One tap: the spot is saved with whatever fix is in hand, and the name sheet
-// opens on it — the name is asked for at the one moment the writer still knows
-// which spot it was, and closing the sheet unasked costs nothing.
+// One tap takes a fix and raises the name sheet on it — the name is asked for at
+// the one moment the writer still knows which spot it was. Save is what keeps
+// the spot; Discard is what does not. Nothing is on the wire until Save, so a
+// sheet closed rather than answered leaves no spot behind to go and take back.
 //
 // Holding the same button is the other thing that can be said about a spot —
 // a post, with words and a photo, left on the map for everyone. Both start from
@@ -34,10 +35,14 @@ export default function MarkButton({ onMarked, onUnmarked, onRenamed, onLongPres
   // a button with no heading to hold.
   const tile = useContext(TileId);
   const [saving, setSaving] = useState(false);
+  // The fix a tap took, held while the sheet asks what to call it. A spot in
+  // hand and not yet kept: it becomes a mark when Save is pressed, and nothing
+  // at all otherwise.
+  const [pending, setPending] = useState(null);
   const [saved, setSaved] = useState(null);
   const [message, setMessage] = useState("");
-  // The name sheet, open on the mark that was just made. It is raised by the
-  // save itself, not by anything the writer has to find afterwards.
+  // The same sheet, opened a second time on a spot already kept — the Edit in
+  // the row under the button. Here it only renames.
   const [editing, setEditing] = useState(false);
   const timerRef = useRef(null);
   const holdRef = useRef(null);
@@ -127,47 +132,51 @@ export default function MarkButton({ onMarked, onUnmarked, onRenamed, onLongPres
     setSaving(true);
     setMessage("");
     setSaved(null);
+    // Whatever the last press left under the button goes now, rather than a few
+    // seconds into this one — its clock would otherwise run out over the sheet.
+    window.clearTimeout(timerRef.current);
     // A tap is also a request for a current position: the mark is stamped with
     // the freshest fix the device can give, not the one the loop happened to
     // read twenty seconds ago. That fix has to be read back from the store —
     // `coords` here is the one this render closed over, which is exactly the
     // position just superseded.
     await refreshLocation().catch(() => {});
-    // Waiting on the device is the long half of a save and nothing has been
-    // sent yet, so a press taken back in this window leaves nothing behind.
+    // Waiting on the device is the long half of a tap and nothing has been sent
+    // yet, so a press taken back in this window leaves nothing behind. The
+    // press that took it back cleared `saving` when it did.
     if (runRef.current !== run) return;
+    setSaving(false);
     const fix = getLocationState().coords ?? coords;
-    try {
-      const { mark: created } = await api.createMark({
-        latitude: fix.latitude,
-        longitude: fix.longitude,
-        accuracy: fix.accuracy,
-        time: new Date().toISOString(),
-      });
-      // Taken back while the mark was already on the wire. The server has it
-      // either way, so it goes back the way undo sends one back — a cancelled
-      // press must not leave a spot in the list nobody meant to keep.
-      if (runRef.current !== run) {
-        api.deleteMark(created.id).catch(() => {});
-        return;
-      }
-      if (navigator.vibrate) navigator.vibrate(20);
-      setSaved(created);
-      setMessage(t("mark.saved"));
-      onMarked?.(created);
-      // The row under the button clears itself after a few seconds, and undo
-      // lives in it — so the clock stops while the sheet is over it and starts
-      // again when it closes, rather than expiring behind a name being typed.
-      window.clearTimeout(timerRef.current);
-      setEditing(true);
-    } catch (error) {
-      if (runRef.current !== run) return;
-      setMessage(error.message);
-      scheduleClear();
-    } finally {
-      // A later press owns the button now; this one has no state left to clear.
-      if (runRef.current === run) setSaving(false);
-    }
+    // Stamped with the moment the fix was taken rather than the moment Save is
+    // pressed: the reader was standing there when they tapped, not when they
+    // finished typing.
+    setPending({
+      latitude: fix.latitude,
+      longitude: fix.longitude,
+      accuracy: fix.accuracy,
+      time: new Date().toISOString(),
+    });
+  }
+
+  // Save. The spot goes up with its name in one request — a mark is created
+  // named, not created and then renamed — and an empty box is still a Save: a
+  // spot may simply not need a name. A failure here is thrown back to the sheet,
+  // which shows it and stays open over the fix it still holds.
+  async function create(label) {
+    const { mark: created } = await api.createMark({ ...pending, label });
+    if (navigator.vibrate) navigator.vibrate(20);
+    setPending(null);
+    setSaved(created);
+    setMessage(t("mark.saved"));
+    onMarked?.(created);
+    scheduleClear();
+  }
+
+  // Discard, and every other way out of the naming sheet. Nothing was sent, so
+  // there is nothing to send back: the fix is dropped and the row under the
+  // button stays empty.
+  function discard() {
+    setPending(null);
   }
 
   async function undo() {
@@ -186,6 +195,16 @@ export default function MarkButton({ onMarked, onUnmarked, onRenamed, onLongPres
     }
   }
 
+  // The row under the button clears itself after a few seconds, and it is the
+  // only way back to the sheet — so the clock stops while the sheet is open and
+  // starts again when it closes, rather than pulling the row out from under a
+  // name still being typed.
+  function openEdit() {
+    if (!saved) return;
+    window.clearTimeout(timerRef.current);
+    setEditing(true);
+  }
+
   function closeEdit() {
     setEditing(false);
     if (saved) scheduleClear();
@@ -199,8 +218,14 @@ export default function MarkButton({ onMarked, onUnmarked, onRenamed, onLongPres
     scheduleClear();
   }
 
-  // The message is a sibling of the button rather than a child: undo is itself
-  // a button, and one cannot sit inside another.
+  // The sheet is one component asking one question — what is this spot called —
+  // on either side of the spot existing. Naming is the tap's own sheet, where
+  // Save is what keeps the spot and Discard is what lets it go; editing is the
+  // Edit in the row, on a spot already kept, where the only answer is a name.
+  const naming = Boolean(pending);
+
+  // The message is a sibling of the button rather than a child: edit and undo
+  // are themselves buttons, and one cannot sit inside another.
   return (
     <div className={styles.tile} data-card={tile ?? undefined}>
       <button
@@ -241,6 +266,10 @@ export default function MarkButton({ onMarked, onUnmarked, onRenamed, onLongPres
         {saved ? (
           <>
             {message} (
+            <button type="button" className={styles.action} onClick={openEdit}>
+              {t("mark.edit")}
+            </button>{" "}
+            {t("mark.or")}{" "}
             <button type="button" className={styles.action} onClick={undo}>
               {t("mark.undo")}
             </button>
@@ -256,15 +285,20 @@ export default function MarkButton({ onMarked, onUnmarked, onRenamed, onLongPres
           sheet would be laid out across this square instead of the window. */}
       {createPortal(
         <MarkModal
-          isOpen={editing}
+          isOpen={naming || editing}
           title={t("mark.nameTitle")}
           submitLabel={t("common.save")}
-          // The name in the language it is being typed in, which on a spot
-          // saved a moment ago is empty anyway — a mark lo saves is saved with
-          // no name at all (see the marks endpoint).
-          initialValue={saved?.label?.[i18n.language] ?? ""}
-          onClose={closeEdit}
-          onSubmit={rename}
+          // Only where closing costs something. On a spot not yet kept, every
+          // way out but Save throws it away and the sheet says so; on one
+          // already kept there is nothing to discard, and Undo sits in the row
+          // under the button for the reader who wants it gone.
+          discardLabel={naming ? t("mark.discard") : undefined}
+          // A spot being named has no name yet. One being renamed carries the
+          // one it has in the language it is being typed in — the rest of the
+          // name is left alone (see the marks endpoint).
+          initialValue={naming ? "" : (saved?.label?.[i18n.language] ?? "")}
+          onClose={naming ? discard : closeEdit}
+          onSubmit={naming ? create : rename}
         />,
         document.body,
       )}

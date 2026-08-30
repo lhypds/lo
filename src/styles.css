@@ -290,14 +290,20 @@ a {
    here it is one row inside a sheet over the map, and at that size it shouts.
    The post sheet already settled what a sheet's scale is — a 30px slab with
    its type at 12px, on both the thing pressed and the thing typed in — and two
-   sheets asking for a line of text should not do it in two different voices. */
-.mark-field input {
-  height: 30px;
-  font-size: 12px;
-}
+   sheets asking for a line of text should not do it in two different voices.
 
-.mark-field button {
-  width: 96px;
+   On its own rather than joined to its button, which is why it carries the
+   whole of a field's look instead of a size: the sheet's answers stand together
+   at its foot (see .modal-actions), and that leaves the box nothing on its right
+   to share an edge with. */
+.mark-field {
+  width: 100%;
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  outline: 0;
+  background: var(--paper);
   font-size: 12px;
 }
 
@@ -309,7 +315,7 @@ a {
    anyway; the row grows to keep the type off its own edges. The one field this
    reaches is the one a sheet asks for a line of text in: naming a spot. */
 @media (pointer: coarse) {
-  .mark-field input {
+  .mark-field {
     height: 36px;
     font-size: 16px;
   }
@@ -1287,6 +1293,13 @@ html:has(.home-main:not(.home-main-map) .card-pager) {
   justify-content: flex-end;
   gap: 8px;
   margin-top: 16px;
+}
+
+/* The margin above is for a confirm, where the row follows a paragraph and has
+   to hold itself off it. A form already spaces its own rows, and asking twice
+   drops the pair too far below the box they answer for. */
+.plain-form .modal-actions {
+  margin-top: 0;
 }
 
 /* The anchor is the one action at the foot of a confirm that is not a press: the
