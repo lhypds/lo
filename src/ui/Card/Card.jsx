@@ -1,15 +1,14 @@
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import styles from "./card.module.css";
 
-// What counts as two presses rather than one, when they are made with a finger.
-// The gap is the browser's own double-click interval as near as anyone states it;
-// the two lengths are in pixels — how far a single tap may travel and still be a
-// tap, and how far the second may land from the first and still be its partner.
-// A finger is a blunter instrument than a pointer, so the second is the looser of
-// the two.
+// What counts as two presses rather than one. The gap is the browser's own
+// double-click interval as near as anyone states it; the slop is how far a single
+// press may travel and still be a press rather than the start of a drag. Where the
+// second press lands relative to the first is not measured — the heading is a
+// narrow strip and its coordinates are not to be trusted inside a WebView (see
+// pressUp).
 const TAP_GAP = 400;
 const TAP_SLOP = 10;
-const TAP_NEAR = 24;
 const CYCLE_DURATION = 560;
 const CYCLE_MIDPOINT = CYCLE_DURATION / 2;
 
@@ -156,18 +155,24 @@ export default function Card({
   function pressUp(event) {
     const down = downRef.current;
     downRef.current = null;
-    if (!down || !event.isPrimary || event.target.closest("button")) return;
+    if (!event.isPrimary || event.target.closest("button")) return;
     // A press that travelled is a drag: the page is being turned under it, or the
-    // list behind it scrolled, and neither is half of a double press.
-    if (Math.abs(event.clientX - down.x) > TAP_SLOP) return;
-    if (Math.abs(event.clientY - down.y) > TAP_SLOP) return;
+    // list behind it scrolled, and neither is half of a double press. Judged only
+    // where the matching down was seen — a lone up, in a frame that dropped its
+    // down, is still counted rather than thrown away.
+    if (down && Math.abs(event.clientX - down.x) > TAP_SLOP) return;
+    if (down && Math.abs(event.clientY - down.y) > TAP_SLOP) return;
     // Already answered — a device that also raises dblclick, or a family delivered
     // alongside this one, turned the card a moment ago on this very gesture.
     if (Date.now() - turnedAtRef.current <= TAP_GAP + TAP_GAP) return;
-    const last = tapRef.current;
+    // Paired on time alone. Where the two presses landed is not asked: the heading
+    // is a 30px strip, so two presses on it inside the interval are the gesture
+    // whatever the pixels say — and the pixels lie in the Even Hub WebView, whose
+    // forwarded pointers jitter far enough between one press and the next to fail
+    // a "near" test that a mouse would pass, which is why the card used to turn
+    // only once every few presses rather than every second one.
     const at = Date.now();
-    const near = Math.abs(event.clientX - last.x) <= TAP_NEAR && Math.abs(event.clientY - last.y) <= TAP_NEAR;
-    if (at - last.at <= TAP_GAP && near) {
+    if (at - tapRef.current.at <= TAP_GAP) {
       tapRef.current = { at: 0, x: 0, y: 0 };
       turnedAtRef.current = at;
       turn();
