@@ -847,7 +847,12 @@ export default function MapCard({
   // passes none.
   const preview = useCallback(
     (marker, id = null) => {
-      if (!HOVERS) return marker;
+      if (!HOVERS) {
+        const popup = marker.getPopup();
+        popup?.on("open", () => wearChosen(marker, true));
+        popup?.on("close", () => wearChosen(marker, false));
+        return marker;
+      }
       const element = marker.getElement();
       const onHover = id === null ? null : hoverPin(id);
       element.addEventListener("mouseenter", () => {
