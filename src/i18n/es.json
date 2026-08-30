@@ -234,6 +234,14 @@
       "cafe": "Cafetería"
     }
   },
+  "wikipedia": {
+    "title": "Wikipedia",
+    "empty": "No hay nada en Wikipedia a menos de {{distance}} de aquí",
+    "unavailable": "No se pudo acceder a Wikipedia",
+    "loading": "Buscando artículos cercanos",
+    "read": "leer",
+    "open": "Abrir en Wikipedia"
+  },
   "map": {
     "title": "Mapa",
     "nav": "ruta",

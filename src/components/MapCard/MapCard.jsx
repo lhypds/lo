@@ -369,6 +369,59 @@ function markPopupElement(mark, named, coords, iso, when, labels, edit, remove) 
 // name and a cuisine cannot answer — the hours, the photographs, whether it is
 // open now. Searched on the name, with the viewport set where the place actually
 // stands, which is what tells two shops of one name apart (see placeSearchUrl).
+// A Wikipedia pin's bubble: the lead, not the whole street. Wearing the same
+// classes a venue's bubble does, because it is the same shape of box — a name
+// with small print under it — and its own picture goes above the name for the
+// reason a post's does (see postPopupElement): the article is what the tile
+// promised, and it should be the first thing a reader sees.
+//
+// One action rather than the pair a venue's bubble carries: there is no
+// walking here to hand off to Google Maps, only the reading itself, which
+// opens the same iframe sheet the card's own row does (see HomePage) —
+// `read` is that hand-off, kept apart from `comments` above it because an
+// article carries no conversation of lo's to open instead.
+function wikiPopupElement(place, description, away, labels, read) {
+  const wrapper = document.createElement("div");
+  wrapper.className = styles.markPopup;
+  // The frame a post's picture bleeds to the edges of, borrowed for the same
+  // reason: the article is what the tile promised, so its picture leads the
+  // bubble the way a post's does rather than sitting inset among the words.
+  if (place.thumbnail) {
+    const frame = document.createElement("span");
+    frame.className = styles.postPopupPhoto;
+    const image = document.createElement("img");
+    image.className = styles.postPopupImage;
+    image.src = place.thumbnail;
+    image.alt = "";
+    frame.append(image);
+    wrapper.append(frame);
+  }
+  const label = document.createElement("strong");
+  label.textContent = place.title;
+  wrapper.append(label);
+  if (description) {
+    const lead = document.createElement("p");
+    lead.className = styles.wikiPopupLead;
+    lead.textContent = description;
+    wrapper.append(lead);
+  }
+  const distance = document.createElement("span");
+  distance.className = styles.markPopupMeta;
+  distance.textContent = away;
+  wrapper.append(distance);
+  const open = document.createElement("button");
+  open.type = "button";
+  open.className = styles.postPopupComments;
+  open.textContent = labels.read;
+  open.setAttribute("aria-label", `${labels.read} ${place.title}`);
+  open.addEventListener("click", (event) => {
+    event.stopPropagation();
+    read(place);
+  });
+  wrapper.append(open);
+  return wrapper;
+}
+
 function venuePopupElement(venue, note, away, comments, labels) {
   const wrapper = document.createElement("div");
   wrapper.className = styles.markPopup;
@@ -665,6 +718,11 @@ export default function MapCard({
   // passes nothing, because a page about where the reader has been is not the
   // place to be told where lunch is.
   venues = [],
+  // Nearby Wikipedia articles, handed in the same way and for the same
+  // reason: the Wikipedia card publishes what it found (see
+  // utils/wikiPlaces.js) and this map draws whatever lands there, which is
+  // nothing at all when the reader has not put that card on the dashboard.
+  wikiPlaces = [],
   // The one spot the page is asking for, as a fresh object every time so that
   // asking twice for the same one lands twice. It opens that pin's bubble and,
   // by default, brings the map to it. `still: true` on the object asks for the
@@ -679,6 +737,10 @@ export default function MapCard({
   onSelectPin,
   onOpenComments,
   onOpenVenueComments,
+  // The article a Wikipedia pin's bubble asks to have opened, answered the
+  // same iframe sheet the card's own row opens (see HomePage). Nothing passed
+  // leaves the bubble with its lead paragraph and no way to read the rest.
+  onOpenWikipedia,
   // The picture in a post's bubble, pressed. What is up there is the thumbnail;
   // this is the page being asked to put the photograph itself on the screen, and
   // it is the only thing anywhere in lo that fetches one. Nothing passed leaves
@@ -713,6 +775,8 @@ export default function MapCard({
   commentsRef.current = onOpenComments;
   const venueCommentsRef = useRef(onOpenVenueComments);
   venueCommentsRef.current = onOpenVenueComments;
+  const wikiReadRef = useRef(onOpenWikipedia);
+  wikiReadRef.current = onOpenWikipedia;
   const photoRef = useRef(onOpenPhoto);
   photoRef.current = onOpenPhoto;
   const editPostRef = useRef(onEditPost);
@@ -733,6 +797,7 @@ export default function MapCard({
   const markMarkersRef = useRef([]);
   const postMarkersRef = useRef([]);
   const venueMarkersRef = useRef([]);
+  const wikiMarkersRef = useRef([]);
   // Read by the marker handlers, which are attached to DOM nodes the map owns
   // and outlive the render that built them.
   const hoverPinRef = useRef(onHoverPin);
@@ -1207,6 +1272,35 @@ export default function MapCard({
       return { id: venue.id, marker };
     });
   }, [venues, t, preview, Boolean(onOpenVenueComments)]);
+
+  // Nearby Wikipedia articles, drawn the same wholesale way as the venues
+  // above and for the same reason — a couple of dozen at most, replaced
+  // whenever the reader walks far enough for the card to ask again.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    wikiMarkersRef.current.forEach(({ marker }) => marker.remove());
+    const read = (place) => wikiReadRef.current?.(place);
+    wikiMarkersRef.current = wikiPlaces.map((place) => {
+      const marker = preview(
+        new mapboxgl.Marker({ element: venueElement("wikipedia"), anchor: "bottom" })
+          .setLngLat([place.longitude, place.latitude])
+          .setPopup(
+            previewPopup().setDOMContent(
+              wikiPopupElement(
+                place,
+                place.description,
+                formatDistance(place.distance),
+                { read: t("wikipedia.read") },
+                read,
+              ),
+            ),
+          )
+          .addTo(map),
+      );
+      return { id: place.id, marker };
+    });
+  }, [wikiPlaces, t, preview]);
 
   // The pairing the other way round: a row under the pointer in the list opens
   // the bubble on its own pin, so whichever half the reader is looking at, the

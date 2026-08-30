@@ -443,6 +443,22 @@
   color: var(--muted);
 }
 
+/* The lead paragraph in a Wikipedia pin's bubble — the one line in any bubble
+   here set in the reading type rather than the small print, because it is the
+   one bubble that is quoting a sentence rather than naming a fact about a
+   place. Clamped to three lines: enough to say what the article is about,
+   short of turning the bubble into somewhere to read the whole thing (that is
+   what the iframe sheet is for). */
+.wikiPopupLead {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+
 /* A spot nobody named wears its coordinates where its name would be. The
    numbers' own type, because that is what they were wearing on the line below
    before they moved up here — but the bubble's size and colour, because this is

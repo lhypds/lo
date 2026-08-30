@@ -195,6 +195,9 @@ export const getTrends = (coords) => request(`/api/trends?${geoQuery(coords)}`);
 // reader may well carry one of them without the other.
 export const getFood = (coords) => request(`/api/food?${geoQuery(coords)}`);
 export const getCafes = (coords) => request(`/api/cafe?${geoQuery(coords)}`);
+// Wikipedia articles carrying a coordinate nearby, lead paragraph and picture
+// included — nearest first, the same shape the two calls above answer in.
+export const getWikipedia = (coords) => request(`/api/wikipedia?${geoQuery(coords)}`);
 
 // The words behind a headline, asked for by the row's own link rather than by
 // the id the list came back with. The row carries the id as a hint — whether

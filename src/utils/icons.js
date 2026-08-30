@@ -104,4 +104,20 @@ export const PIN_GLYPHS = {
       },
     ],
   },
+  // An open book, for the one pin that says "read about this" rather than
+  // "eat here" or "sit down here". Two covers meeting at a spine, the covers
+  // filled paper-white the way the cup's body is and the spine left as a bare
+  // stroke down the middle — a fold rather than a gap, which is what tells an
+  // open book from two separate leaves at a size this small.
+  wikipedia: {
+    transform: inHead(0.6),
+    parts: [
+      {
+        tag: "path",
+        fill: "paper",
+        d: "M12 6.7c-1.6-1.1-3.5-1.7-5.4-1.7-.4 0-.6.3-.6.6v9.8c0 .3.2.6.6.6 1.9 0 3.8.6 5.4 1.7 1.6-1.1 3.5-1.7 5.4-1.7.4 0 .6-.3.6-.6V5.6c0-.3-.2-.6-.6-.6-1.9 0-3.8.6-5.4 1.7z",
+      },
+      { tag: "path", d: "M12 6.7v10.9" },
+    ],
+  },
 };

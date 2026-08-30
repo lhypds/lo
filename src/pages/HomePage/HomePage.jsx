@@ -8,6 +8,7 @@ import { postPhoto } from "../../utils/image.js";
 import { labelName } from "../../utils/label.js";
 import { keepPage, openPage, paginate } from "../../utils/pages.js";
 import { updateVenueComments, useVenues } from "../../utils/venues.js";
+import { useWikiPlaces } from "../../utils/wikiPlaces.js";
 import { getLocationState, refreshLocation } from "../../utils/location.js";
 import CafeCard from "../../components/CafeCard/index.js";
 import ClockCard from "../../components/ClockCard/index.js";
@@ -27,6 +28,7 @@ import PostsCard from "../../components/PostsCard/index.js";
 import TrendsCard from "../../components/TrendsCard/index.js";
 import Warnings from "../../components/Warnings/index.js";
 import WeatherCard from "../../components/WeatherCard/index.js";
+import WikipediaCard from "../../components/WikipediaCard/index.js";
 import { useHere } from "../../components/LocationProvider/index.js";
 
 // mapbox-gl is by far the heaviest thing lo loads, and the login and gate
@@ -127,6 +129,9 @@ export default function HomePage() {
   // (see the props on MapCard), and it is empty whenever neither card is on the
   // dashboard, which is what makes the pins the reader's choice too.
   const venues = useVenues();
+  // What the Wikipedia card has found, on its way to the map for the same
+  // reason the venues are (see useVenues above).
+  const wikiPlaces = useWikiPlaces();
   // Held here, not in the map: expanding it hides the rest of the dashboard.
   const [mapExpanded, setMapExpanded] = useState(false);
   const [marks, setMarks] = useState([]);
@@ -207,6 +212,12 @@ export default function HomePage() {
   // same bubble — held out here for the same reason, and doubly so while the map
   // is expanded and is the whole of the page.
   const [viewing, setViewing] = useState(null);
+  // The article a Wikipedia row or pin has asked to be read, over the page
+  // rather than in the card that opened it — the same reasoning as the sheets
+  // above, and the same reason it is framed rather than fetched: unlike a
+  // newspaper (see ui/PageModal), Wikipedia sends no frame-ancestors, so the
+  // page itself can stand in here instead of a copy of its words.
+  const [wikiReading, setWikiReading] = useState(null);
 
   // Marks are yours and are the same list wherever you are standing, so unlike
   // posts they are not asked for again on every move — only on the refresh in
@@ -416,10 +427,12 @@ export default function HomePage() {
             posts={posts}
             marks={marks}
             venues={venues}
+            wikiPlaces={wikiPlaces}
             expanded={expanded}
             onToggleExpanded={() => setMapExpanded((value) => !value)}
             onOpenComments={setCommenting}
             onOpenVenueComments={setVenueCommenting}
+            onOpenWikipedia={setWikiReading}
             onOpenPhoto={setViewing}
             onRenameMark={setRenamingMark}
             onDeleteMark={askToDeleteMark}
@@ -464,6 +477,9 @@ export default function HomePage() {
       // and is on both (see the second CommentsModal at the foot of the page).
       shown("food") && sized("food", <FoodCard onOpenComments={setVenueCommenting} />),
       shown("cafe") && sized("cafe", <CafeCard onOpenComments={setVenueCommenting} />),
+      // The same sheet the pins on the map open, because it is the same
+      // article either way (see the Modal at the foot of the page).
+      shown("wikipedia") && sized("wikipedia", <WikipediaCard onOpenWikipedia={setWikiReading} />),
       shown("direction") && sized("direction", <DirectionCard />),
     ].filter(Boolean),
   );
@@ -972,6 +988,35 @@ export default function HomePage() {
           its own: the map is the whole page while it is expanded, and this is
           opened from the map. */}
       <Lightbox photo={postPhoto(viewing)} onClose={() => setViewing(null)} />
+
+      {/* The article a Wikipedia row or pin asked for, out here for the same
+          reason the two sheets above are: it is opened from the card and from
+          the map alike, and either one is a container-sized tile that would
+          crop a sheet mounted inside it. */}
+      <Modal
+        isOpen={Boolean(wikiReading)}
+        onClose={() => setWikiReading(null)}
+        title={t("wikipedia.title")}
+        closeOnOverlay
+        large
+        header={
+          wikiReading && (
+            <a
+              className="modal-away"
+              href={wikiReading.url}
+              target="_blank"
+              rel="noreferrer noopener"
+            >
+              {t("wikipedia.open")}
+              <span aria-hidden="true"> ↗</span>
+            </a>
+          )
+        }
+      >
+        {wikiReading && (
+          <iframe className="wikipedia-frame" src={wikiReading.url} title={wikiReading.title} />
+        )}
+      </Modal>
     </div>
   );
 }

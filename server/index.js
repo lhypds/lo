@@ -59,6 +59,7 @@ import {
   lookupVenues,
   lookupWarnings,
   lookupWeather,
+  lookupWikipedia,
   placeLine,
 } from "./geo.js";
 import { MAX_IMAGE_BYTES, imageFile, isStoredName, storeImage } from "./images.js";
@@ -872,6 +873,22 @@ function venuesRoute(kind) {
 
 app.get("/api/food", venuesRoute("food"));
 app.get("/api/cafe", venuesRoute("cafe"));
+
+// Nearby articles, with their lead paragraph and a picture where Wikipedia has
+// one — no comment counts to add on the way out, unlike the two routes above:
+// an article is not a place lo's readers are talking to each other about.
+app.get("/api/wikipedia", async (req, res, next) => {
+  const coords = parseCoords(req.query);
+  if (!coords) return res.status(400).json({ error: "Invalid coordinates" });
+  try {
+    res.json(await lookupWikipedia(coords.latitude, coords.longitude, requestedLang(req)));
+  } catch (error) {
+    if (isUpstreamDown(error)) {
+      return res.status(504).json({ error: "Timed out looking up nearby Wikipedia articles" });
+    }
+    next(error);
+  }
+});
 
 // The reading behind one row, asked for by the row's own link, and the only
 // place a story is ever fetched. The first reader to press a row waits about a

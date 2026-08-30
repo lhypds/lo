@@ -20,6 +20,7 @@
 // naming: it stops at no border, so those two are in the list below without ever
 // appearing in COVERAGE. Where it is thin — and it is thin in places — the card
 // answers honestly with a short list rather than with somebody else's town.
+// Wikipedia joins them for the same reason, behind the nearby-articles card.
 //
 // The two Google tables were read from the upstreams on 2026-08-26 and are the
 // sort of thing that changes a country or two a year, not a week.
@@ -48,6 +49,7 @@ export const COMPONENTS = [
   "trends",
   "food",
   "cafe",
+  "wikipedia",
 ];
 
 /* --------------------------------------------------------------- countries */
