@@ -26,7 +26,7 @@ function coordKey(coords) {
 
 // The face of the set: live sound in the square, the station's name under it,
 // and the three buttons a radio has ever needed — back a station, play or stop,
-// on a station. Place and distance live together in the heading's corner, where
+// on a station. How far the station is stands in the heading's corner, where
 // the clock wears its zone, leaving the whole body to the station itself.
 //
 // What is deliberately not on the tile is a list. Eight verified stations
@@ -85,14 +85,14 @@ export default function RadioCard() {
 
   const shown = shownStation(radio);
   const sounding = radio.status === "on" || radio.status === "tuning";
-  const meta = shown
-    ? [
-        shown.place,
-        Number.isFinite(shown.metres) ? formatDistance(shown.metres).replace(/\s+/g, "") : null,
-      ]
-        .filter(Boolean)
-        .join(" · ") || null
-    : null;
+  // One or the other, never both: the pair ran past the corner's width. A
+  // distance is the sharper of the two — it says how far the sound comes from —
+  // and the place stands in only where the station has no coordinates.
+  let meta = null;
+  if (shown) {
+    if (Number.isFinite(shown.metres)) meta = formatDistance(shown.metres).replace(/\s+/g, "");
+    else meta = shown.place || null;
+  }
 
   let body;
   if (!shown && loading) {
