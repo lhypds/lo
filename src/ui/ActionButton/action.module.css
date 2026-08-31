@@ -9,8 +9,10 @@
    Both are under the 44px a touch guideline would ask for, which was already
    true of the one size there used to be: lo is a page of small type read at
    arm's length, and a bar of thumb-sized boxes would be the page. Nothing here
-   is destructive on a mis-hit — every one of them opens a sheet or changes the
-   height of a tile. */
+   costs anything on a mis-hit — every one of them opens a sheet or changes the
+   height of a tile, and the one that takes a tile off the page (the minus at the
+   bottom of its ladder, see CardSize) puts it back in the plus menu it came
+   from with everything the reader decided about it still on it. */
 .actionButton {
   position: relative;
   width: var(--action-w);

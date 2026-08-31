@@ -16,7 +16,8 @@
   },
   "cards": {
     "bigger": "大きく",
-    "smaller": "小さく"
+    "smaller": "小さく",
+    "remove": "外す"
   },
   "export": {
     "title": "書き出し",
@@ -211,6 +212,26 @@
     "unavailable": "Google トレンドに接続できません",
     "loading": "Google トレンドを読み込み中"
   },
+  "radio": {
+    "title": "ラジオ",
+    "loading": "ラジオ局を探しています",
+    "empty": "この地域のラジオ局は見つかりません",
+    "unavailable": "radio-browser に接続できません",
+    "play": "再生",
+    "stop": "停止",
+    "next": "次の局",
+    "prev": "前の局",
+    "place": "場所",
+    "distance": "距離",
+    "visualization": "波形を切り替え",
+    "visualizationMode": {
+      "scope": "オシロスコープ",
+      "mirror": "ミラー波形",
+      "ring": "円形波形",
+      "winamp": "Winamp スペクトラム",
+      "blank": "非表示"
+    }
+  },
   "food": {
     "title": "食事",
     "empty": "ここから{{distance}}以内に飲食店はありません",
@@ -237,6 +258,13 @@
     "unavailable": "ウィキペディアに接続できません",
     "loading": "近くの記事を探しています",
     "open": "ウィキペディアで開く"
+  },
+  "history": {
+    "title": "昔の写真",
+    "empty": "ここから{{distance}}以内に昔の写真はありません",
+    "unavailable": "Wikimedia Commons に接続できません",
+    "loading": "昔の写真を探しています",
+    "open": "Wikimedia Commons で開く"
   },
   "map": {
     "title": "地図",

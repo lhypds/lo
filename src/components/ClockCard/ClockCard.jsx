@@ -4,6 +4,7 @@ import { Card } from "../../ui/index.js";
 import { cardTurned, turnCard } from "../../utils/cards.js";
 import { toggleHour12, useHour12 } from "../../utils/units.js";
 import { useHere } from "../LocationProvider/index.js";
+import CardSize from "../CardSize/index.js";
 import ClockDial from "./ClockDial.jsx";
 import styles from "./clock.module.css";
 
@@ -165,6 +166,7 @@ export default function ClockCard() {
     <Card
       title={t("clock.title")}
       meta={offset}
+      action={<CardSize id="clock" />}
       square
       flipHint={t("clock.turn")}
       defaultFlipped={cardTurned("clock")}

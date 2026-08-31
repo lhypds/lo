@@ -536,6 +536,76 @@ const selectUsers = db.prepare(`
   ORDER BY u.last_login_at IS NULL, u.last_login_at DESC, u.username
 `);
 
+// The same by-hand reading as the list above, asked about somebody in
+// particular (see lo.js) — and a second statement rather than a row of the
+// first, because the two questions want different things of an account. A
+// roster is read across accounts, so it carries what can be compared straight
+// down a column and leaves out what only means anything on its own line; this
+// is read about one person, usually because they have just written in, so it
+// carries the whole of what lo is holding on them. The last fix the list holds
+// back is in it for exactly that reason: one line about one person is not the
+// column of a roster to be pasted about.
+//
+// The password itself, where the list says only whether there is one. Reading a
+// password — one, for the account that has asked — is why the column is kept in
+// the clear at all (see the note on it), and this is the reading it was kept for.
+//
+// The counts are subqueries rather than joins for the same reason the posts
+// figure is one above: they are five unrelated questions about one row, and a
+// join per figure would multiply the row by every one of them.
+const selectUserDetail = db.prepare(`
+  SELECT
+    u.id,
+    u.username,
+    u.created_at AS createdAt,
+    u.last_login_at AS lastLoginAt,
+    u.last_ip AS lastIp,
+    u.last_latitude AS lastLatitude,
+    u.last_longitude AS lastLongitude,
+    u.last_position_at AS lastPositionAt,
+    u.password,
+    -- Whether there is a standing link, never the key itself. A password is read
+    -- to be handed back to the account it belongs to; a link key is a way in
+    -- with no name typed alongside it, and nothing is served by putting one on a
+    -- screen. That an account has one is the whole of what a reading wants.
+    u.link_key IS NOT NULL AS hasLink,
+    u.discoverable,
+    -- The file name under data/images rather than the URL PROFILE_COLUMNS makes
+    -- of it: what reads this has a terminal rather than an <img>, and the name
+    -- is the half of it that can be looked for on disk.
+    u.avatar,
+    u.links,
+    u.bio,
+    u.work,
+    u.email,
+    u.website,
+    u.line_id AS line,
+    u.whatsapp,
+    u.wechat,
+    (SELECT COUNT(*) FROM posts p WHERE p.user_id = u.id) AS posts,
+    -- Both kinds at once: a remark under a photo and a remark on a venue are the
+    -- same act on two different pegs, and what this figure answers is how much
+    -- the account has said.
+    (SELECT COUNT(*) FROM post_comments c WHERE c.user_id = u.id)
+      + (SELECT COUNT(*) FROM venue_comments c WHERE c.user_id = u.id) AS comments,
+    (SELECT COUNT(*) FROM follows f WHERE f.followee_id = u.id) AS followers,
+    (SELECT COUNT(*) FROM follows f WHERE f.follower_id = u.id) AS following,
+    -- Lines still standing, in both directions, and how many of the incoming
+    -- ones have not been opened. A message its sender took back down is counted
+    -- in none of the three: it is gone as far as the exchange is concerned, and a
+    -- figure that still had it in would be counting something nobody can read.
+    (SELECT COUNT(*) FROM messages m WHERE m.from_user = u.id AND m.deleted_at IS NULL) AS sent,
+    (SELECT COUNT(*) FROM messages m WHERE m.to_user = u.id AND m.deleted_at IS NULL) AS received,
+    (SELECT COUNT(*) FROM messages m
+      WHERE m.to_user = u.id AND m.read_at IS NULL AND m.deleted_at IS NULL) AS unread,
+    -- Devices still holding a credential, which is the nearest thing lo has to
+    -- "signed in": a session outlives the browser it was handed to, so the
+    -- expired ones are left out rather than counted as somebody who is here.
+    (SELECT COUNT(*) FROM sessions s WHERE s.user_id = u.id AND s.expires_at > ?) AS sessions
+  FROM users u
+  WHERE u.username = ?
+`);
+
 // The one column no reader of a user ever gets handed. Everything else about an
 // account travels as a row — the profile columns above go out to whoever asks
 // for the page — so the password is read on its own, by the one statement that
@@ -1165,6 +1235,20 @@ export function listUsers() {
   return selectUsers
     .all()
     .map((row) => ({ ...row, discoverable: row.discoverable === 1, hasPassword: row.hasPassword === 1 }));
+}
+
+// One account, whole, or null where there is no such name — which is the answer
+// the command line turns into "does not exist" rather than an empty sheet of
+// labels. The switches come back as yes and no like every other reading of them,
+// and the links as the list they were written from.
+//
+// Now is passed in rather than asked of SQLite so that the session count is
+// measured against the same clock the endpoint retires them by (see the check in
+// index.js), which is the process's own.
+export function getUserDetail(username) {
+  const row = withLinks(selectUserDetail.get(Date.now(), username) ?? null);
+  if (!row) return null;
+  return { ...row, discoverable: row.discoverable === 1, hasLink: row.hasLink === 1 };
 }
 
 export function createUser(username, password) {

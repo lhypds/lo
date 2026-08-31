@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import net from "node:net";
 import os from "node:os";
 import path from "node:path";
+import { Readable } from "node:stream";
 import { fileURLToPath } from "node:url";
 import express from "express";
 import { ZipArchive } from "archiver";
@@ -53,8 +54,10 @@ import { COMPONENTS, componentsFor, countryList } from "./countries.js";
 import {
   isUpstreamDown,
   lookupEvents,
+  lookupHistory,
   lookupNearby,
   lookupPlace,
+  lookupRadio,
   lookupTrends,
   lookupVenues,
   lookupWarnings,
@@ -116,6 +119,31 @@ migrateMarks();
 
 const port = Number(process.env.PORT) || 3014;
 const isProduction = process.env.NODE_ENV === "production";
+
+// A radio stream is sent through lo before it reaches the browser. That makes
+// it same-origin audio, which is the one kind the Web Audio API is allowed to
+// inspect for the live waveform on RadioCard. The ticket keeps this from
+// becoming a general-purpose fetch endpoint: only URLs that lookupRadio has
+// already handed to the browser can be played through it, and a restart makes
+// every old ticket expire naturally.
+const radioStreamKey = crypto.randomBytes(32);
+const RADIO_CONNECT_TIMEOUT_MS = 8000;
+
+function radioStreamSignature(url) {
+  return crypto.createHmac("sha256", radioStreamKey).update(url).digest("base64url");
+}
+
+function radioListenUrl(url) {
+  const query = new URLSearchParams({ url, signature: radioStreamSignature(url) });
+  return `/api/radio/stream?${query}`;
+}
+
+function validRadioStream(url, signature) {
+  if (!/^https?:\/\//i.test(url) || typeof signature !== "string") return false;
+  const expected = Buffer.from(radioStreamSignature(url));
+  const received = Buffer.from(signature);
+  return expected.length === received.length && crypto.timingSafeEqual(expected, received);
+}
 
 const USERNAME_RE =
   /^[a-z0-9_\p{Script_Extensions=Han}\p{Script_Extensions=Hiragana}\p{Script_Extensions=Katakana}\p{Script_Extensions=Hangul}-]{1,32}$/u;
@@ -896,6 +924,30 @@ app.get("/api/wikipedia", async (req, res, next) => {
   }
 });
 
+// The old photographs of this ground, answered the way the wikipedia route
+// answers: rows with lo's own comment figures on the way out, and the place —
+// which is the reader's language's business — asked for beside the cached,
+// language-free list rather than inside it.
+app.get("/api/history", async (req, res, next) => {
+  const coords = parseCoords(req.query);
+  if (!coords) return res.status(400).json({ error: "Invalid coordinates" });
+  try {
+    const result = await lookupHistory(coords.latitude, coords.longitude);
+    const place = await lookupPlace(coords.latitude, coords.longitude, requestedLang(req)).catch(() => null);
+    const counts = getVenueCommentCounts(result.items.map((item) => item.id));
+    res.json({
+      ...result,
+      place,
+      items: result.items.map((item) => ({ ...item, comments: counts[item.id] ?? 0 })),
+    });
+  } catch (error) {
+    if (isUpstreamDown(error)) {
+      return res.status(504).json({ error: "Timed out looking up old photographs" });
+    }
+    next(error);
+  }
+});
+
 // The reading behind one row, asked for by the row's own link, and the only
 // place a story is ever fetched. The first reader to press a row waits about a
 // second for it — Google's address has to be resolved before the publisher can
@@ -936,6 +988,82 @@ app.get("/api/trends", async (req, res, next) => {
     res.json(await lookupTrends(coords.latitude, coords.longitude, requestedLang(req)));
   } catch (error) {
     if (isUpstreamDown(error)) return res.status(504).json({ error: "Timed out looking up trends" });
+    next(error);
+  }
+});
+
+// No lang: a station's name is its own in any language, and the list is ranked
+// against the place rather than the reader.
+app.get("/api/radio/stream", async (req, res, next) => {
+  const url = typeof req.query.url === "string" ? req.query.url : "";
+  const signature = typeof req.query.signature === "string" ? req.query.signature : "";
+  if (!validRadioStream(url, signature)) return res.status(403).json({ error: "Invalid radio stream" });
+
+  // The connection gets the same bounded wait as every other upstream call,
+  // but the body does not: a healthy radio response is deliberately endless.
+  // Closing the tab or retuning aborts that endless read immediately rather
+  // than leaving the server listening to a station nobody can hear.
+  const controller = new AbortController();
+  const connectTimer = setTimeout(() => controller.abort(), RADIO_CONNECT_TIMEOUT_MS);
+  res.on("close", () => controller.abort());
+
+  try {
+    const upstream = await fetch(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; lo/0.1; radio player)",
+        Accept: "audio/*, application/ogg, */*",
+        "Icy-MetaData": "0",
+      },
+      signal: controller.signal,
+    });
+    clearTimeout(connectTimer);
+    if (!upstream.ok || !upstream.body) {
+      controller.abort();
+      return res.status(upstream.status || 502).json({ error: "Radio stream did not answer" });
+    }
+
+    // Only the headers a media decoder needs cross this boundary. In
+    // particular, no upstream cache or cookie policy is allowed to become the
+    // app's own; live sound is never stored by lo.
+    const contentType = upstream.headers.get("content-type");
+    if (contentType) res.set("Content-Type", contentType);
+    for (const header of ["icy-br", "icy-description", "icy-genre", "icy-name", "icy-url"]) {
+      const value = upstream.headers.get(header);
+      if (value) res.set(header, value);
+    }
+    res.set("Cache-Control", "no-store");
+
+    const stream = Readable.fromWeb(upstream.body);
+    stream.on("error", (error) => {
+      if (controller.signal.aborted) return;
+      if (!res.headersSent) return next(error);
+      res.destroy(error);
+    });
+    stream.pipe(res);
+  } catch (error) {
+    clearTimeout(connectTimer);
+    if (controller.signal.aborted) {
+      if (!res.headersSent && !res.destroyed) res.status(504).json({ error: "Radio stream timed out" });
+      return;
+    }
+    next(error);
+  }
+});
+
+app.get("/api/radio", async (req, res, next) => {
+  const coords = parseCoords(req.query);
+  if (!coords) return res.status(400).json({ error: "Invalid coordinates" });
+  try {
+    const result = await lookupRadio(coords.latitude, coords.longitude);
+    res.json({
+      ...result,
+      items: result.items.map((station) => ({
+        ...station,
+        listenUrl: radioListenUrl(station.url),
+      })),
+    });
+  } catch (error) {
+    if (isUpstreamDown(error)) return res.status(504).json({ error: "Timed out looking up radio stations" });
     next(error);
   }
 });
@@ -1266,7 +1394,7 @@ app.post("/api/posts/:postId/comments", requireSession, (req, res) => {
 // carry (`node/123`, `wikipedia/456`), and spelling it as two path segments
 // avoids relying on an encoded slash surviving every proxy between the app and
 // Express.
-const VENUE_COMMENT_TYPES = new Set(["node", "way", "relation", "wikipedia"]);
+const VENUE_COMMENT_TYPES = new Set(["node", "way", "relation", "wikipedia", "history"]);
 
 function venueCommentTarget(req, res) {
   const type = String(req.params.type ?? "");

@@ -45,6 +45,28 @@
   height: calc(var(--tile) * 3 + 20px);
 }
 
+/* In the one-column narrow layout (see .card-grid in styles.css, same
+   breakpoint) `wide` is the single column, so `wide square` is no longer four
+   tiles and the ratio would draw the largest panel the grid has at exactly the
+   height of the smallest. Counted out of --tile instead, with the gap between
+   the two rows it stands in place of — which is the size the page has already
+   counted it as, at every column count (see cardSpan in utils/cards.js). The
+   other two need nothing here: .half is one row of the module and .tall is
+   three, however many columns there are.
+
+   What does go with the column is the bottom of the ladder: one square and two
+   side by side are the same tile when there is only one place to stand, so a
+   card at its smallest and a card one rung up are the same height down here.
+   That is the width talking rather than the ladder — there is no arrangement of
+   one column in which they differ — and the rungs above them still say what they
+   have always said. */
+@media (max-width: 312px) {
+  .wide.square {
+    aspect-ratio: auto;
+    height: calc(var(--tile) * 2 + 10px);
+  }
+}
+
 /* In the four-column web layout (see .card-grid in styles.css, same
    breakpoint), covering four squares means half the grid rather than all of
    it. `wide` on its own still means the full width — that is the expanded map,

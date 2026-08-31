@@ -10,7 +10,9 @@
 // - Google Trends  — trending searches (RSS) https://trends.google.com/trending
 // - Wikipedia      — nearby places, articles https://www.mediawiki.org/wiki/API
 // - Wikidata       — the same article's other languages https://www.wikidata.org
+// - Wikimedia Commons — old photographs of here https://commons.wikimedia.org
 // - Overpass       — food and cafés (OSM)    https://overpass-api.de
+// - radio-browser  — local radio stations    https://www.radio-browser.info
 // - Yahoo! 天気・災害 — Japanese weather warnings https://typhoon.yahoo.co.jp
 //
 // Requests are coarse-keyed and cached: a phone reporting a position every few
@@ -1194,6 +1196,237 @@ export function lookupWikipedia(latitude, longitude, lang = "en") {
   }));
 }
 
+/* ---------------------------------------------------------------- history -- */
+
+// What this ground used to look like: photographs taken here long enough ago to
+// be a different here, off Wikimedia Commons — the encyclopaedia's attic, and
+// the one corner of it that files pictures by where the camera stood.
+//
+// The attic is not arranged for this question. Commons' geosearch works on File
+// pages and hands back a coordinate for every hit, but the geotagged corpus
+// skews hard to the present — five hundred files around a Kyoto crossroads and
+// three of them older than the phone that took the rest — and the dates live in
+// EXIF-style metadata that costs a second question per fifty files. Scanning
+// the lot was tried and is the wrong shape: eleven requests a view to reject
+// five hundred sunsets. So the old ones are fished for twice, cheaply, and only
+// the catch pays for metadata:
+//
+// - by name: a scanned photograph very often carries its year in its filename —
+//   1928ビル, "Sensō-ji (1967-05-04 by Roger W)" — so the five hundred titles
+//   the one geosearch answer already holds are sifted for a year old enough.
+//   Camera serials fake this constantly (IMG_1895.jpg), which is why a name is
+//   only ever a candidacy: the metadata confirms or the file goes.
+// - by arrival: the earliest files *uploaded* near here, which CirrusSearch can
+//   sort by. Commons opened in 2004, so the first uploads on any ground are by
+//   now old photographs themselves — the digicam record of the street before
+//   the smartphone — and the scans early editors seeded articles with.
+//
+// What counts as old slides: a photograph at least twenty years gone. A fixed
+// line (the last century, say) reads cleaner and answers worse every year;
+// this one keeps the card at "a different here" as the present moves, and the
+// 2000s-era street it admits today is already gone from the ground outside.
+const COMMONS_API = "https://commons.wikimedia.org/w/api.php";
+const HISTORY_RADIUS_M = 3000;
+const HISTORY_AGE_Y = 20;
+// A day, and an hour on nothing found: the attic gains a photograph of a
+// neighbourhood far more rarely than the neighbourhood asks.
+const HISTORY_TTL_MS = 24 * 60 * 60 * 1000;
+const HISTORY_EMPTY_TTL_MS = 60 * 60 * 1000;
+const HISTORY_GRID = 2;
+const MAX_HISTORY = 12;
+// One geosearch page, one CirrusSearch page, one metadata batch — the API's
+// own three limits, which is what holds a view to three requests.
+const HISTORY_SCAN = 500;
+const HISTORY_EARLIEST = 50;
+const HISTORY_CONFIRM = 50;
+const HISTORY_DESCRIPTION_CHARS = 240;
+
+// The first thing in the text that reads as a year of the photographic era.
+// Asked of filenames and of DateTimeOriginal alike — the latter arrives as
+// anything from bare EXIF ("2010:11:27 15:31") to a sentence ("circa 1900") to
+// a <time> element, and the year is the one part every form carries.
+function yearIn(text) {
+  const match = String(text).match(/\b(18[3-9]\d|19\d\d|20\d\d)\b/);
+  return match ? Number(match[1]) : null;
+}
+
+// What the photograph is called on the page, or failing that a filename undone
+// back into words: the File: prefix and the extension off, the underscores
+// out, and the bare numeric id Flickr imports drag in dropped from the end.
+//
+// The page's own name is preferred and not trusted: ObjectName is free-form
+// wikitext flattened to a line, and on the old prints this card actually
+// surfaces it arrives as every language at once with QuickStatements syntax
+// between them ("Japanese: 『目黒新富士』 New Fuji, Meguro title QS:P1476…").
+// The machine tail is cut and a language label at the front dropped; what is
+// still too long to be a name after that was never one, and the filename —
+// written by a person to fit a filesystem — reads better than any cut of it.
+const PHOTO_TITLE_MAX = 80;
+
+function photoTitle(title, objectName) {
+  const named = plainText(objectName)
+    .replace(/\btitle QS:.*$/, "")
+    .replace(/^[A-Z][a-z]+:\s*/, "")
+    .trim();
+  if (named && named.length <= PHOTO_TITLE_MAX) return named;
+  return String(title)
+    .replace(/^File:/, "")
+    .replace(/\.[a-z0-9]+$/i, "")
+    .replace(/_+/g, " ")
+    .replace(/\s*\(\d{6,}\)\s*$/, "")
+    .trim();
+}
+
+// Commons metadata values arrive as HTML — descriptions wrapped in language
+// divs, dates in <time> elements — and a card prints text.
+function plainText(html) {
+  return decodeXml(String(html ?? "").replace(/<[^>]*>/g, " "))
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+// Every geotagged file within the walk, nearest first — which for this card is
+// one answer and one sieve: the coordinates on the way back are the pins, and
+// the titles are the first of the two nets above.
+async function fetchCommonsFiles(latitude, longitude) {
+  const url = new URL(COMMONS_API);
+  url.searchParams.set("action", "query");
+  url.searchParams.set("list", "geosearch");
+  url.searchParams.set("gscoord", `${latitude}|${longitude}`);
+  url.searchParams.set("gsradius", String(HISTORY_RADIUS_M));
+  url.searchParams.set("gsnamespace", "6");
+  url.searchParams.set("gslimit", String(HISTORY_SCAN));
+  url.searchParams.set("format", "json");
+  const data = await getJson(url.href);
+  return data.query?.geosearch ?? [];
+}
+
+// The second net: the files that have been on Commons longest, of those taken
+// near here. No coordinates in this answer — the confirm step asks for them —
+// and no promise of age either: earliest-uploaded is a scent, not a date, and
+// the metadata decides as it decides for everything else.
+async function fetchEarliestUploads(latitude, longitude) {
+  const url = new URL(COMMONS_API);
+  url.searchParams.set("action", "query");
+  url.searchParams.set("list", "search");
+  url.searchParams.set("srsearch", `nearcoord:${HISTORY_RADIUS_M}m,${latitude},${longitude}`);
+  url.searchParams.set("srnamespace", "6");
+  url.searchParams.set("srlimit", String(HISTORY_EARLIEST));
+  url.searchParams.set("srsort", "create_timestamp_asc");
+  url.searchParams.set("srprop", "");
+  url.searchParams.set("format", "json");
+  const data = await getJson(url.href);
+  return data.query?.search ?? [];
+}
+
+// The metadata for every candidate at once — the date that confirms or
+// dismisses it, the picture, the file page, and coordinates for the rows the
+// second net brought in without any.
+async function confirmHistoryFiles(titles) {
+  const url = new URL(COMMONS_API);
+  url.searchParams.set("action", "query");
+  url.searchParams.set("titles", titles.join("|"));
+  url.searchParams.set("prop", "imageinfo|coordinates");
+  url.searchParams.set("iiprop", "url|size|mime|extmetadata");
+  url.searchParams.set("iiurlwidth", String(WIKI_THUMB));
+  url.searchParams.set("iiextmetadatafilter", "DateTimeOriginal|ObjectName|ImageDescription");
+  url.searchParams.set("colimit", "max");
+  url.searchParams.set("format", "json");
+  const data = await getJson(url.href);
+  return Object.values(data.query?.pages ?? {});
+}
+
+export function lookupHistory(latitude, longitude) {
+  // No language in the key: a photograph is in none, and the one written field
+  // that survives to the card is whatever language its uploader wrote.
+  const ttl = (value) => (value.items.length === 0 ? HISTORY_EMPTY_TTL_MS : HISTORY_TTL_MS);
+  return cached(`history:${gridKey(latitude, longitude, HISTORY_GRID)}`, ttl, async () => {
+    const centre = gridCentre(latitude, longitude, HISTORY_GRID);
+    const cutoff = new Date().getFullYear() - HISTORY_AGE_Y;
+
+    const nearby = await fetchCommonsFiles(centre.latitude, centre.longitude);
+    const standsAt = new Map(nearby.map((row) => [row.pageid, { latitude: row.lat, longitude: row.lon }]));
+    const named = nearby.filter((row) => {
+      const year = yearIn(row.title);
+      return year !== null && year <= cutoff;
+    });
+    // This net failing is a smaller wrong than an empty card: the named files
+    // still answer, and the next view past the TTL casts it again.
+    const earliest = await fetchEarliestUploads(centre.latitude, centre.longitude).catch((error) => {
+      console.warn(`upstream: ${error.message}`);
+      return [];
+    });
+    // The named candidates first when the two nets overfill the batch — a file
+    // that says its year is the rarer catch, and the one the card is for.
+    const caught = new Set(named.map((row) => row.pageid));
+    const candidates = [...named, ...earliest.filter((row) => !caught.has(row.pageid))].slice(0, HISTORY_CONFIRM);
+    if (candidates.length === 0) return { items: [] };
+
+    const items = [];
+    for (const page of confirmed(await confirmHistoryFiles(candidates.map((row) => row.title)))) {
+      // The date the file claims for itself outranks the name it was saved
+      // under: IMG_1895.jpg was taken in 2010 and says so, and the metadata
+      // saying so is what dismisses it. Only a file with no claim at all falls
+      // back to the year in its name.
+      const info = page.imageinfo[0];
+      const meta = info.extmetadata ?? {};
+      const year = yearIn(plainText(meta.DateTimeOriginal?.value)) ?? yearIn(page.title);
+      if (year === null || year > cutoff) continue;
+      // Where the camera stood: the geosearch answer where the file was in it,
+      // and the confirm step's own coordinates where the second net found it.
+      // A photograph nobody placed on the ground has no place on a card that
+      // is about the ground.
+      const stands = page.coordinates?.[0]
+        ? { latitude: page.coordinates[0].lat, longitude: page.coordinates[0].lon }
+        : standsAt.get(page.pageid);
+      if (!stands) continue;
+      const title = photoTitle(page.title, meta.ObjectName?.value);
+      const description = plainText(meta.ImageDescription?.value);
+      items.push({
+        // Namespaced the way a wikipedia row's id is, and for the same two
+        // readers: the map's shared pin store, and the venue comment column —
+        // a photograph of the street is somewhere lo's readers can leave a
+        // word exactly as the street's café is.
+        id: `history/${page.pageid}`,
+        title,
+        year,
+        description:
+          description && description !== title
+            ? description.length > HISTORY_DESCRIPTION_CHARS
+              ? `${description.slice(0, HISTORY_DESCRIPTION_CHARS)}…`
+              : description
+            : null,
+        source: "commons.wikimedia.org",
+        url: info.descriptionurl ?? `https://commons.wikimedia.org/?curid=${page.pageid}`,
+        latitude: stands.latitude,
+        longitude: stands.longitude,
+        ...pictureFields(
+          info.thumburl ? { source: info.thumburl, width: info.thumbwidth, height: info.thumbheight } : null,
+        ),
+      });
+    }
+    return { items };
+  }).then(({ items }) => ({
+    radius: HISTORY_RADIUS_M,
+    items: items
+      .map((item) => ({ ...item, distance: Math.round(metresBetween({ latitude, longitude }, item)) }))
+      // Oldest first, which is this card's nearest: the year is the reading,
+      // and the walk to where it was taken is the second figure on the row.
+      .sort((a, b) => a.year - b.year || a.distance - b.distance)
+      .slice(0, MAX_HISTORY),
+  }));
+}
+
+// A photograph, confirmed to be one: pages the batch could not answer for go,
+// and so does everything that dates old without being a photograph — the
+// typography PNGs and scanned documents that wear their subject's year in
+// their metadata. Film and scans of film are JPEG and TIFF on Commons; what
+// this trades away (the rare old photograph filed as PNG) is smaller than the
+// noise it closes the door on.
+function confirmed(pages) {
+  return pages.filter((page) => /^image\/(jpeg|tiff)$/.test(page.imageinfo?.[0]?.mime ?? ""));
+}
+
 /* ----------------------------------------------------------------- trends -- */
 
 // What the place is searching for. Google files these by ISO-3166-2 subregion
@@ -1715,5 +1948,220 @@ export function lookupWarnings(latitude, longitude) {
     if (searched.length === 0) throw new Error("typhoon.yahoo.co.jp returned no warnings");
 
     return prefectureWarningResult(searched, prefecture);
+  });
+}
+
+/* ------------------------------------------------------------------ radio -- */
+
+// What this place sounds like: the stations broadcasting around the fix, for a
+// tile with a play button on it. radio-browser.info is a community directory in
+// the OpenStreetMap mould — key-free, worldwide, uneven — and, like Overpass,
+// it earns no line in COVERAGE: where it is thin the card answers with a short
+// list or none, which is the truth about the place's directory entry if not
+// about its airwaves.
+//
+// The directory is honest about what a station is called and where its website
+// is, and unreliable about everything this card actually needs: most entries
+// carry no coordinates, the `state` field is freehand (東京都, tokyo and Tokyo
+// are three spellings of one prefecture), and `lastcheckok` cannot be trusted
+// because the checker follows redirects a browser's <audio> cannot. So the
+// stations are ranked by the best of what is there — distance where a station
+// says where it stands, the prefecture's own name where it names one, national
+// click-count for the rest — and then each stream is actually knocked on before
+// it is put on the card. A station the reader presses and gets silence from is
+// this card failing at the one thing it does.
+const RADIO_HOSTS = [
+  "https://de1.api.radio-browser.info",
+  "https://at1.api.radio-browser.info",
+  "https://fi1.api.radio-browser.info",
+];
+const RADIO_TTL_MS = 6 * 60 * 60 * 1000;
+// An empty answer is more often the directory having a bad minute than a
+// country with no radio, so it is kept briefly and asked again.
+const RADIO_EMPTY_TTL_MS = 30 * 60 * 1000;
+const RADIO_GRID = 1; // ~11 km — station distances, not street addresses
+// How many rows are asked of the directory, how many streams are knocked on,
+// and how many verified stations the card is handed to walk through.
+const RADIO_CANDIDATES = 100;
+const RADIO_CHECKED = 14;
+const MAX_RADIO = 8;
+// Inside this a station with coordinates outranks everything: a community
+// station across town is the card's best answer, one across the country is not.
+const RADIO_NEAR_M = 250_000;
+// A live Icecast mount answers its headers well inside this; a dead one is the
+// thing being filtered out, and fourteen of these run side by side.
+const RADIO_CHECK_TIMEOUT_MS = 5000;
+
+// Stream hosts that answer by listener IP rather than for everyone: connect
+// from the wrong country and what plays is a courteous recording — "sorry,
+// this station is not available in your territory" — over a stream that is, by
+// transport, indistinguishable from the real one (200, audio/mpeg, icy
+// headers, no length, never ends; measured 2026-09-01). No check this file can
+// run hears the words, so the networks that do this are written down instead,
+// the way the coverage tables are. Dropping them costs the card the national
+// commercial networks, which is a smaller wrong than it looks: lo's reader is
+// as often as not a traveller whose roaming IP is still their home country's,
+// which is exactly the listener these streams turn away — and the community
+// stations the card is really for turn nobody away.
+//
+// - musicradio.com — Global (UK): Capital, Heart, LBC, Classic FM, Smooth
+const GEOFENCED_HOSTS = ["musicradio.com"];
+
+function geofenced(url) {
+  try {
+    const host = new URL(url).hostname;
+    return GEOFENCED_HOSTS.some((fenced) => host === fenced || host.endsWith(`.${fenced}`));
+  } catch {
+    return true;
+  }
+}
+
+// The FM frequency where the station wrote it into its own name — "Shonan Beach
+// FM 78.9", "Radio Mix Kyoto FM87.0" — which is the only place the directory
+// keeps one. Bounded to the band so a "Radio 24.7" stays a name: no FM dial
+// anywhere runs outside 65–108 MHz. Internet-only stations have none, and the
+// card says `net` where the band would go rather than inventing a number.
+function frequencyOf(name) {
+  for (const [, digits] of name.matchAll(/(\d{2,3}\.\d)\b/g)) {
+    const value = Number(digits);
+    if (value >= 65 && value <= 108) return digits;
+  }
+  return null;
+}
+
+// The freehand `state` field, kept only where it reads as a place: entries are
+// community-typed and a hash tag or a pasted URL turns up in there.
+function stationPlace(state) {
+  const value = firstString(state);
+  return /[#/:]/.test(value) ? "" : value;
+}
+
+// The words this fix's own region answers to, folded for comparing against the
+// directory's freehand spellings. Asked for twice — in English and in the
+// country's own reading language (see wikiEdition) — because the directory
+// holds both: FM世田谷 is filed under 東京都 and its neighbour under Tokyo.
+async function regionNames(latitude, longitude, countryCode) {
+  const languages = new Set(["en"]);
+  const native = wikiEdition(countryCode);
+  if (native && PLACE_LANGUAGE[native]) languages.add(native);
+  const names = new Set();
+  for (const language of languages) {
+    const place = await lookupPlace(latitude, longitude, language).catch(() => null);
+    for (const name of [place?.region, place?.name]) {
+      const folded = firstString(name).normalize("NFKC").toLowerCase();
+      if (folded) names.add(folded);
+    }
+  }
+  return names;
+}
+
+async function fetchStations(countryCode) {
+  const query = new URLSearchParams({
+    countrycode: countryCode,
+    hidebroken: "true",
+    order: "clickcount",
+    reverse: "true",
+    limit: String(RADIO_CANDIDATES),
+  });
+  // Mirrors of one database, tried in order: the directory asks clients to
+  // spread themselves rather than lean on one host, and a mirror having a bad
+  // minute should cost this card a retry rather than the answer.
+  let refused;
+  for (const host of RADIO_HOSTS) {
+    try {
+      return await getJson(`${host}/json/stations/search?${query}`);
+    } catch (error) {
+      refused = error;
+    }
+  }
+  throw refused;
+}
+
+// Whether pressing play would actually produce sound, asked the only way that
+// answers it: a GET, read as far as the headers and no further. An Icecast
+// mount answers a GET with the stream itself, so the body has to be dropped
+// before it becomes a download. What survives the directory's own filters and
+// still fails here is mostly the JCBA simulcasts — token-gated HLS that 403s a
+// bare request — and streams whose hosts have simply gone.
+async function streamAlive(url) {
+  try {
+    const response = await fetch(url, {
+      headers: { "User-Agent": USER_AGENT, Accept: "audio/*, application/ogg, */*" },
+      signal: AbortSignal.timeout(RADIO_CHECK_TIMEOUT_MS),
+    });
+    response.body?.cancel().catch(() => {});
+    if (!response.ok) return false;
+    const type = firstString(response.headers.get("content-type")).toLowerCase();
+    // A mount that names no type at all still says what it is by speaking icy.
+    return (
+      type.startsWith("audio/") || type === "application/ogg" || response.headers.has("icy-name")
+    );
+  } catch {
+    return false;
+  }
+}
+
+export function lookupRadio(latitude, longitude) {
+  // Keyed without a language: a station list is in whatever words its stations
+  // are, and every reader standing here is asking for the same one.
+  const ttl = (result) => (result.items.length === 0 ? RADIO_EMPTY_TTL_MS : RADIO_TTL_MS);
+  return cached(`radio:${gridKey(latitude, longitude, RADIO_GRID)}`, ttl, async () => {
+    const here = gridCentre(latitude, longitude, RADIO_GRID);
+    const place = await lookupPlace(latitude, longitude, "en").catch(() => null);
+    const country = firstString(place?.countryCode).toUpperCase();
+    if (!/^[A-Z]{2}$/.test(country)) return { items: [] };
+    const region = await regionNames(latitude, longitude, country);
+
+    const seen = new Set();
+    const candidates = (await fetchStations(country))
+      .map((row) => {
+        const name = firstString(row.name);
+        const url = firstString(row.url_resolved, row.url);
+        const at =
+          Number.isFinite(row.geo_lat) && Number.isFinite(row.geo_long)
+            ? { latitude: row.geo_lat, longitude: row.geo_long }
+            : null;
+        return {
+          name,
+          url,
+          homepage: firstString(row.homepage) || null,
+          frequency: frequencyOf(name),
+          place: stationPlace(row.state) || null,
+          metres: at ? Math.round(metresBetween(here, at)) : null,
+          clicks: Number.isFinite(row.clickcount) ? row.clickcount : 0,
+          local: region.has(firstString(row.state).normalize("NFKC").toLowerCase()),
+        };
+      })
+      .filter((row) => {
+        // No name or no stream is no station; HLS is dropped outright, because
+        // a bare <audio> cannot play it in most browsers and the ones behind
+        // .m3u8 here are token-gated anyway (the check below would only spend
+        // five seconds finding that out per station per cache entry). The
+        // geo-fenced networks go with them — see GEOFENCED_HOSTS.
+        if (!row.name || !row.url || /\.m3u8(\?|$)/i.test(row.url) || geofenced(row.url)) return false;
+        // The same mount filed twice, or one station entered by two people.
+        const key = `${row.name.normalize("NFKC").toLowerCase()}|${row.url}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      // Three shelves: stations that say where they stand and stand near,
+      // nearest first; then the region's own by the directory's popularity;
+      // then the rest of the country the same way.
+      .sort((a, b) => {
+        const shelf = (row) => (row.metres != null && row.metres <= RADIO_NEAR_M ? 0 : row.local ? 1 : 2);
+        return shelf(a) - shelf(b) || (shelf(a) === 0 ? a.metres - b.metres : b.clicks - a.clicks);
+      })
+      .slice(0, RADIO_CHECKED);
+
+    // Knocked on side by side — the slow ones are the dead ones, and fourteen
+    // sequential five-second timeouts would be over a minute of them.
+    const alive = await Promise.all(candidates.map((row) => streamAlive(row.url).then((ok) => ok && row)));
+    return {
+      items: alive
+        .filter(Boolean)
+        .slice(0, MAX_RADIO)
+        .map(({ clicks, local, ...row }) => row),
+    };
   });
 }

@@ -5,6 +5,7 @@ import { Card, Modal, Skeleton } from "../../ui/index.js";
 import { relativeTime } from "../../utils/format.js";
 import { formatWarningWindow, warningKindKey, warningLevel } from "../../utils/warnings.js";
 import { useHere } from "../LocationProvider/index.js";
+import CardSize from "../CardSize/index.js";
 import styles from "./warnings.module.css";
 
 // What Yahoo! 防災速報 would have pushed to a phone standing here: the 特別警報,
@@ -202,8 +203,9 @@ export default function Warnings() {
   return (
     <Card
       title={t("warnings.title")}
-      // One of the six fixed opening cubes: warnings no longer carries resize
-      // controls or a wider panel state.
+      // One of the six fixed opening cubes: warnings carries no resize controls
+      // and no wider panel state, only the minus that takes it off the page.
+      action={<CardSize id="warnings" />}
       square
       flush
       className={styles.square}

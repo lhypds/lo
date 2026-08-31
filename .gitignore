@@ -8,3 +8,4 @@ db.sqlite-shm
 db.sqlite-wal
 npm-debug.log*
 .vscode/
+.claude/

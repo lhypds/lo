@@ -288,6 +288,10 @@ export const getLocal = (coords) => shared("local", coords, request(`/api/local?
 export const getNearby = (coords) => shared("nearby", coords, request(`/api/nearby?${geoQuery(coords)}`));
 export const getEvents = (coords) => shared("events", coords, request(`/api/events?${geoQuery(coords)}`));
 export const getTrends = (coords) => shared("trends", coords, request(`/api/trends?${geoQuery(coords)}`));
+// The stations broadcasting around here, nearest the server could rank them
+// first, every one of them already knocked on — a row that comes back is a row
+// that plays (see lookupRadio in server/geo.js).
+export const getRadio = (coords) => shared("radio", coords, request(`/api/radio?${geoQuery(coords)}`));
 // Somewhere to eat and somewhere for a coffee, nearest first. Two addresses
 // rather than one with a kind hung off it, because they are two cards and a
 // reader may well carry one of them without the other.
@@ -302,6 +306,9 @@ export const getCafes = (coords) =>
 // included — nearest first, the same shape the two calls above answer in.
 export const getWikipedia = (coords) =>
   shared("wikipedia", coords, request(`/api/wikipedia?${geoQuery(coords)}`));
+// The old photographs taken on this ground, oldest first — Wikimedia Commons'
+// geotagged files, already sifted for age (see lookupHistory in server/geo.js).
+export const getHistory = (coords) => shared("history", coords, request(`/api/history?${geoQuery(coords)}`));
 
 // The words behind a headline, asked for by the row's own link rather than by
 // the id the list came back with. The row carries the id as a hint — whether

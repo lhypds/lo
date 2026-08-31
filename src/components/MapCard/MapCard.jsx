@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import { ActionButton, Card, useNavigate } from "../../ui/index.js";
+import { ActionButton, Card, TileId, useNavigate } from "../../ui/index.js";
 import { distanceMeters, formatCoords, formatDateTime, formatDistance, formatUsername } from "../../utils/format.js";
 import { MARK_PIN_EYE, MARK_PIN_PATH, MARK_PIN_TIP_Y, PIN_GLYPHS } from "../../utils/icons.js";
 import { authImageUrl, postThumb } from "../../utils/image.js";
@@ -13,6 +13,7 @@ import { labelName } from "../../utils/label.js";
 import { venueParts } from "../../utils/venues.js";
 import { useAuth } from "../AuthProvider/index.js";
 import { useHere } from "../LocationProvider/index.js";
+import CardSize from "../CardSize/index.js";
 import styles from "./map.module.css";
 
 const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
@@ -910,6 +911,12 @@ export default function MapCard({
 }) {
   const { t, i18n } = useTranslation();
   const { coords } = useHere();
+  // Which tile of the dashboard this is, or nothing at all on the two pages that
+  // draw a map without the grid around it (see TileId in ui/Card). It is what
+  // decides whether the heading carries the minus that takes a card off the page:
+  // the marks page and the posts page are a map beside a list rather than a card
+  // among cards, and there is no dashboard there to take it off.
+  const tile = useContext(TileId);
   const { user } = useAuth();
   // For the byline in a post's bubble, which is hand-built DOM outside the tree
   // and so cannot carry a Link of its own (see postPopupElement)
@@ -1487,7 +1494,12 @@ export default function MapCard({
 
   // Nearby Wikipedia articles, drawn the same wholesale way as the venues
   // above and for the same reason — a couple of dozen at most, replaced
-  // whenever the reader walks far enough for the card to ask again.
+  // whenever the reader walks far enough for the card to ask again. The old
+  // photographs the history card publishes ride this same layer: their rows
+  // arrive in the wiki rows' own shape wearing a `kind` (see HomePage, and
+  // utils/historyPlaces.js), and the kind is the one thing this effect reads
+  // that a wiki row does not carry — it decides which drawing goes in the
+  // pin's head, a W for "read about this" or a clock for "this spot, then".
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -1501,7 +1513,7 @@ export default function MapCard({
     const photo = onOpenPhoto ? (place) => photoRef.current?.(place) : null;
     const labels = { search: t("map.search"), nav: t("map.nav"), read: t("map.read"), photo: t("post.photoOpen") };
     wikiMarkersRef.current = wikiPlaces.map((place) => {
-      const element = venueElement("wikipedia");
+      const element = venueElement(place.kind === "history" ? "history" : "wikipedia");
       // The picture the article has, under the pin — the same stamp a post
       // carries, and the reason a landmark is worth one is the same: a street of
       // W's says an encyclopaedia has been here, and the pictures say what about.
@@ -1698,9 +1710,9 @@ export default function MapCard({
     <p className={styles.noToken}>{TOKEN ? t("map.unavailable") : t("map.noToken")}</p>
   );
 
-  // Both tooltips are anchored right rather than centred under their button.
-  // These two stand at the far right of the heading of a tile that is itself at
-  // the right of the grid, and the boxes under them are wider than the buttons
+  // Every tooltip along here is anchored right rather than centred under its
+  // button. These stand at the far right of the heading of a tile that is itself
+  // at the right of the grid, and the boxes under them are wider than the buttons
   // are: centred, they hang off the side of the card and out over the page.
   const actions = (
     <span className={styles.actions}>
@@ -1737,6 +1749,15 @@ export default function MapCard({
           )}
         </ActionButton>
       )}
+      {/* Not while the map is the whole window. Expanded, this is not a tile on
+          a grid any more — the page has emptied everything else out from under
+          it (see .home-main-map in styles.css) — so a button that takes a card
+          off a dashboard is answering a question nobody is looking at, and it
+          stands next to the collapse arrows as a second way to make the map go
+          away with a very different meaning. The way out of full screen is the
+          arrows; the way to put the card away is where it always was, in the
+          heading of the square. */}
+      {tile && !expanded && <CardSize id={tile} />}
     </span>
   );
 

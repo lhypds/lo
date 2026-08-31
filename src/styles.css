@@ -548,7 +548,7 @@ a {
 /* Two columns on mobile. The tiles are squares, so the column count is what
    sets their size — dropping to one would make each tile as tall as the screen
    is wide, which is the opposite of compact. The web breakpoint below raises
-   this to four.
+   this to four, and the narrow one under it drops to one where two will not go.
 
    Published as --cols because the page has to count squares to know where the
    window fills up, and the count is the stylesheet's answer rather than
@@ -579,6 +579,35 @@ a {
      pixel or they put the panels beside them out of line. */
   container-type: inline-size;
   --tile: calc((100cqw - 10px) / 2);
+}
+
+/* And one column where two of them will not fit.
+
+   How narrow that is comes off the layout rather than out of the air: 140px is
+   the floor for a square, which is what the narrowest window the page is laid
+   out for already gives it — 320px (see the query at the top of this file),
+   less the 12px gutter down each side and the 10px between the columns, halved,
+   is 143. Two squares standing on that floor want 314px of window, so this is
+   every width below it, written at the first even number under the crossing the
+   way the rest of the numbers here are written.
+
+   Nothing on a phone is ever down here, which is the point: what is down here is
+   a frame — lo in a split view, in a host's panel, in a desktop window dragged in
+   past the width of any handset. There the choice is not one column against two.
+   It is one square that can be read against two that cannot, and the cost the
+   comment above names — a tile as tall as the frame is wide — is the price of the
+   only one of those that is worth drawing.
+
+   --tile follows the count as it does at both the other widths: with one column
+   there is no gap to take out of the grid before splitting it, so a square is
+   the whole of it. Which is all the cards need to be told — every one of them is
+   already counted out of --tile (see ui/Card), and the page reads --cols back to
+   work out where the window fills up (see HomePage). */
+@media (max-width: 312px) {
+  .card-grid {
+    --cols: 1;
+    --tile: 100cqw;
+  }
 }
 
 /* A card's heading is also its handle: held for half a second it picks the card

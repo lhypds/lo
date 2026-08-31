@@ -16,7 +16,8 @@
   },
   "cards": {
     "bigger": "Bigger",
-    "smaller": "Smaller"
+    "smaller": "Smaller",
+    "remove": "Remove"
   },
   "export": {
     "title": "Export",
@@ -214,6 +215,26 @@
     "unavailable": "Could not reach Google Trends",
     "loading": "Reading Google Trends"
   },
+  "radio": {
+    "title": "Radio",
+    "loading": "Looking for stations",
+    "empty": "No stations found for here",
+    "unavailable": "Could not reach radio-browser",
+    "play": "Play",
+    "stop": "Stop",
+    "next": "Next station",
+    "prev": "Previous station",
+    "place": "Place",
+    "distance": "Distance",
+    "visualization": "Change visualization",
+    "visualizationMode": {
+      "scope": "Oscilloscope",
+      "mirror": "Mirrored waveform",
+      "ring": "Radial waveform",
+      "winamp": "Winamp spectrum",
+      "blank": "Blank"
+    }
+  },
   "food": {
     "title": "Food",
     "empty": "Nowhere to eat within {{distance}} of here",
@@ -240,6 +261,13 @@
     "unavailable": "Could not reach Wikipedia",
     "loading": "Looking for nearby articles",
     "open": "Open on Wikipedia"
+  },
+  "history": {
+    "title": "History",
+    "empty": "No old photographs within {{distance}} of here",
+    "unavailable": "Could not reach Wikimedia Commons",
+    "loading": "Looking for old photographs",
+    "open": "Open on Wikimedia Commons"
   },
   "map": {
     "title": "Map",

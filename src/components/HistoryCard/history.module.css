@@ -1,0 +1,261 @@
+/* The wikipedia card's sheet, rule for rule (see wikipedia.module.css, which
+   copied it from the venues panel in its turn) — one class added, the year at
+   the left of every row, which is this card's own reading. A list that scrolls
+   inside the tile it was given rather than setting a height of its own. */
+.scroll {
+  height: 100%;
+  overflow-y: auto;
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.list li + li {
+  border-top: 1px solid var(--line);
+}
+
+/* One line, year and name at one end and distance at the other — there is no
+   middle line to a row here, unlike a venue's: a photograph has only what it
+   is called, when it was taken and how far off the camera stood. A button
+   undone the way a venue's row is, for the same reason: what is pressed is
+   the row, not a control the browser drew.
+
+   Centred rather than sat on a baseline, which a row of words alone could be:
+   there is a picture on the left of some of these now, and a 32px square has
+   no baseline to share with the title beside it. */
+.item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* The picture the article has, at the size and with the border a post's row
+   draws its photograph at (see posts.module.css): at 32px a white-cornered
+   picture bleeds into the row without one. */
+.thumb {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--ink);
+  background: var(--soft);
+  object-fit: cover;
+}
+
+/* The reading, at the head of the row where a list sorted by it can be read
+   straight down — in the small mono the row's other figures are set in, since
+   it is one of them, and tabular so the column of them stands still. */
+.year {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+/* The two figures about the article that are not the article, out on the
+   right — how far off it is, and how much has been said about it — the same
+   pair a venue's row carries (see venues.module.css). */
+.figures {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.distance {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.comments {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+}
+
+/* On a single square the row keeps its shape — a title still fits a line, and
+   there is no middle line here to drop the way a venue's cube drops its
+   amenity and cuisine. */
+.square .item {
+  padding: 6px 8px;
+}
+
+.empty {
+  margin: 0;
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  color: var(--muted);
+  text-align: center;
+  font-size: 11px;
+}
+
+.square .empty {
+  padding: 8px;
+}
+
+@media (hover: hover) {
+  .item:hover {
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  .item:hover .year,
+  .item:hover .distance,
+  .item:hover .comments {
+    color: var(--paper);
+  }
+}
+
+/* The way out to the article, on the sheet's own top bar between the title and
+   the close (see the header the card hands Modal). Drawn as the reader's own
+   way out to a publisher is (see .away in PageModal): small, grey until it is
+   wanted, and allowed to give up its width to the ellipsis rather than push the
+   close button off the end of the bar. */
+.away {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 40%;
+  padding: 2px 4px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 12px;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.away:hover {
+  color: var(--ink);
+}
+
+/* --------------------------------------------------------------- preview -- */
+/* What a row opens, inside the sheet the whole window is dimmed behind — the
+   wikipedia card's own preview, which on this card is nearly all picture: the
+   photograph is the thing itself rather than the illustration of an article,
+   and the lines under it are when, what it shows, and the walk to where the
+   camera stood. */
+.preview {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Full width and cropped to a band, the way a post's picture in its own bubble
+   on the map is (see map.module.css): this is a preview of the article and
+   not a place to look at the photograph itself. */
+.previewImage {
+  width: 100%;
+  height: 160px;
+  margin-bottom: 8px;
+  object-fit: cover;
+  background: var(--soft);
+}
+
+/* The button undone around the picture, where pressing it opens the full
+   photograph — the browser's own button chrome is taken off entirely, the way
+   a post's photo frame is (see .postPopupPhoto in map.module.css), and the
+   cursor is the one hint the box is worth pressing. */
+.previewPhoto {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: zoom-in;
+}
+
+.previewName {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  margin: 0 0 4px;
+  font-size: 14px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+/* The lead paragraph, clamped the way the map's own popup clamps it (see
+   .wikiPopupLead in map.module.css) — long enough to say what the place is,
+   short of turning a preview sheet into the reading it is a preview of. */
+.previewSummary {
+  margin: 0 0 4px;
+  font-size: 13px;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
+  overflow: hidden;
+}
+
+.previewMeta {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.actions {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.group {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.action {
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 12px;
+  text-decoration: underline;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .action:hover {
+    color: var(--ink);
+    text-decoration: none;
+  }
+}

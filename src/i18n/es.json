@@ -16,7 +16,8 @@
   },
   "cards": {
     "bigger": "Más grande",
-    "smaller": "Más pequeño"
+    "smaller": "Más pequeño",
+    "remove": "Quitar"
   },
   "export": {
     "title": "Exportar",
@@ -214,6 +215,26 @@
     "unavailable": "No se pudo acceder a Google Trends",
     "loading": "Leyendo Google Trends"
   },
+  "radio": {
+    "title": "Radio",
+    "loading": "Buscando emisoras",
+    "empty": "No se encontraron emisoras para este lugar",
+    "unavailable": "No se pudo acceder a radio-browser",
+    "play": "Reproducir",
+    "stop": "Detener",
+    "next": "Siguiente emisora",
+    "prev": "Emisora anterior",
+    "place": "Lugar",
+    "distance": "Distancia",
+    "visualization": "Cambiar visualización",
+    "visualizationMode": {
+      "scope": "Osciloscopio",
+      "mirror": "Onda reflejada",
+      "ring": "Onda radial",
+      "winamp": "Espectro Winamp",
+      "blank": "En blanco"
+    }
+  },
   "food": {
     "title": "Comida",
     "empty": "No hay ningún lugar donde comer a menos de {{distance}} de aquí",
@@ -240,6 +261,13 @@
     "unavailable": "No se pudo acceder a Wikipedia",
     "loading": "Buscando artículos cercanos",
     "open": "Abrir en Wikipedia"
+  },
+  "history": {
+    "title": "Antaño",
+    "empty": "No hay fotos antiguas a menos de {{distance}} de aquí",
+    "unavailable": "No se pudo acceder a Wikimedia Commons",
+    "loading": "Buscando fotos antiguas",
+    "open": "Abrir en Wikimedia Commons"
   },
   "map": {
     "title": "Mapa",

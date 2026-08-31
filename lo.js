@@ -4,14 +4,16 @@
 // closing an account by hand.
 //
 //   npx lo user list
+//   npx lo user <username>
 //   npx lo user add <username> <password>
 //   npx lo user delete <username>
 
-import { createUser, deleteUser, getUser, listUsers } from "./server/db.js";
-import { countMarks, isSafeName } from "./server/users.js";
+import { createUser, deleteUser, getUser, getUserDetail, listUsers } from "./server/db.js";
+import { countMarks, getSettings, isSafeName } from "./server/users.js";
 
 const USAGE = `Usage:
   lo user list
+  lo user <username>
   lo user add <username> <password>
   lo user delete <username>`;
 
@@ -56,6 +58,138 @@ function day(stamp) {
 
 function minute(stamp) {
   return stamp ? `${stamp.slice(0, 10)} ${stamp.slice(11, 16)}` : "never";
+}
+
+/* -------------------------------------------------------------- one account */
+
+// A sheet about one account is read down rather than across, so the values start
+// at a column of their own and the labels sit in the margin: what the eye runs
+// down is the right-hand side, and a label is there for the line it cannot
+// place. Wide enough for the longest of them with a gap after it.
+const LABEL = 11;
+
+function line(label, value) {
+  console.log(`  ${pad(label, LABEL)}${value}`.trimEnd());
+}
+
+// A value that is several — the links, and a bio somebody wrote in paragraphs.
+// The label goes on the first of them and the rest come in under the same
+// column, which is what makes four links read as one answer rather than four.
+function block(label, values) {
+  values.forEach((value, index) => line(index === 0 ? label : "", value));
+}
+
+// Four decimals is about ten metres, which is finer than the fix behind it ever
+// is and short enough to be read off a screen and typed into a map.
+function place(latitude, longitude) {
+  return `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+}
+
+function count(number, one, many) {
+  return `${number} ${number === 1 ? one : many}`;
+}
+
+// How lo is shown to this account, as the one line it comes to: the clock, the
+// scale, the face of the map, the language and how much of the dashboard has
+// been moved about. An account with no settings.json has never answered any of
+// it — which is not the same as having chosen the defaults, and says so.
+function shown(settings) {
+  if (!settings) return "nothing saved";
+  const cards = Object.keys(settings.layout).length;
+  return [
+    settings.units.hour12 ? "12-hour" : "24-hour",
+    settings.units.fahrenheit ? "Fahrenheit" : "Celsius",
+    `${settings.mapStyle} map`,
+    settings.lang ?? "the browser's language",
+    cards > 0 ? count(cards, "card arranged", "cards arranged") : null,
+  ]
+    .filter(Boolean)
+    .join(", ");
+}
+
+// Everywhere else the account keeps one, a row each: what they call the place
+// and the address they gave for it. One with no address is left out rather than
+// printed as a word with nothing after it — the column is written whole by the
+// sheet that saves it and lo has never looked inside it, so what comes back here
+// is whatever a browser put there.
+function links(kept) {
+  const rows = kept
+    .map((link) => ({ kind: String(link?.kind ?? "").trim() || "link", value: String(link?.value ?? "").trim() }))
+    .filter((link) => link.value);
+  const columns = Math.max(0, ...rows.map((link) => width(link.kind)));
+  return rows.map((link) => `${pad(link.kind, columns)}  ${link.value}`);
+}
+
+// Everything lo is holding on one account, in the order somebody reading about a
+// person asks for it: how they stand with lo, then what they have put up about
+// themselves, then what they have left behind.
+//
+// The account's own block prints every line, "never" and "none" included, so
+// that two accounts read side by side have the same shape and a blank is an
+// answer rather than a missing row. The profile block prints only what has been
+// filled in: nine mostly-empty labels is a screen of nothing, and what a profile
+// is worth reading for is the parts of it somebody bothered with.
+function show(detail) {
+  // The name as the row spells it rather than as it was typed at the shell: the
+  // column is unique without regard to case, so Alice and alice are one account,
+  // and the one with the capital on it is the one that was opened.
+  console.log(detail.username);
+  line("opened", day(detail.createdAt));
+  line("sign-in", detail.lastLoginAt ? `${minute(detail.lastLoginAt)} from ${detail.lastIp ?? "somewhere"}` : "never");
+  // When first and where second, which is how the line above it reads as well:
+  // the two are the same question about two kinds of appearance, and a stamp at
+  // the front of both is what lets one be held against the other.
+  //
+  // Both halves of the fix or neither, since a fix is a pair: an account carrying
+  // one number and not the other is a row half-written, and half a position is
+  // not somewhere.
+  const fix = detail.lastLatitude != null && detail.lastLongitude != null;
+  line("last fix", fix ? `${minute(detail.lastPositionAt)} at ${place(detail.lastLatitude, detail.lastLongitude)}` : "never");
+  // The password as it stands, which is what whoever runs this was almost
+  // certainly asked for (see the note on the column in db.js). Null is an account
+  // whose password is still to be chosen — by its owner, at the next sign-in —
+  // rather than one with an empty password.
+  line("password", detail.password ?? "not chosen yet");
+  line("link", detail.hasLink ? "one standing" : "none");
+  line("on the map", detail.discoverable ? "yes" : "hidden");
+  line("signed in", detail.sessions > 0 ? count(detail.sessions, "device", "devices") : "no device");
+
+  const profile = [
+    ["bio", String(detail.bio ?? "").split("\n")],
+    ["work", [detail.work]],
+    ["email", [detail.email]],
+    ["website", [detail.website]],
+    ["line", [detail.line]],
+    ["whatsapp", [detail.whatsapp]],
+    ["wechat", [detail.wechat]],
+    ["avatar", [detail.avatar]],
+    // The kind is the reader's own word for wherever it is (see the links
+    // column), so it is printed as it was written rather than looked up — and
+    // padded to the widest of them, since one of those words may be CJK and the
+    // addresses beside them are what the block is read for.
+    ["links", links(detail.links)],
+  ]
+    .map(([label, values]) => [label, values.filter((value) => String(value ?? "").trim())])
+    .filter(([, values]) => values.length > 0);
+  if (profile.length > 0) {
+    console.log("");
+    for (const [label, values] of profile) block(label, values);
+  }
+
+  console.log("");
+  line("posts", String(detail.posts));
+  // The one figure here that is not a row of the database: marks are the lines in
+  // the account's own marks.json (see users.js), and a name the folder could not
+  // be called has no file to count — which cannot happen to an account opened by
+  // lo, and is still not a crash.
+  line("marks", isSafeName(detail.username) ? String(countMarks(detail.username)) : "unreadable folder name");
+  line("comments", String(detail.comments));
+  line("followers", String(detail.followers));
+  line("following", String(detail.following));
+  line("messages", `${detail.sent} sent, ${detail.received} received, ${detail.unread} unread`);
+
+  console.log("");
+  line("settings", isSafeName(detail.username) ? shown(getSettings(detail.username)) : "unreadable folder name");
 }
 
 const [group, action, ...rest] = process.argv.slice(2);
@@ -114,5 +248,16 @@ if (action === "list") {
   if (!deleteUser(username)) fail(`"${username}" does not exist`);
   console.log(`Deleted ${username}`);
 } else {
-  fail(USAGE);
+  // Anything that is not one of the three words above is read as a name, which
+  // is what makes the common reading the short one: `lo user alice` rather than
+  // `lo user show alice`. The cost is that the three words win over an account
+  // called one of them — a name lo would let somebody register — and a roster
+  // that cannot be listed is worse than a single account that has to be read out
+  // of `lo user list`.
+  const [extra] = rest;
+  if (extra) fail(USAGE);
+  const username = normalize(action);
+  const detail = getUserDetail(username);
+  if (!detail) fail(`"${username}" does not exist`);
+  show(detail);
 }

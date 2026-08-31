@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Suspense, lazy, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
 import { Card, Lightbox, Modal, Skeleton, TileId, showToast } from "../../ui/index.js";
@@ -8,9 +8,11 @@ import { postPhoto } from "../../utils/image.js";
 import { labelName } from "../../utils/label.js";
 import { keepPage, openPage, paginate } from "../../utils/pages.js";
 import { updateVenueComments, useVenues } from "../../utils/venues.js";
+import { updateHistoryComments, useHistoryPlaces } from "../../utils/historyPlaces.js";
 import { updateWikiComments, useWikiPlaces, wikiPhoto } from "../../utils/wikiPlaces.js";
 import { getLocationState, refreshLocation } from "../../utils/location.js";
 import CafeCard from "../../components/CafeCard/index.js";
+import CardSize from "../../components/CardSize/index.js";
 import ClockCard from "../../components/ClockCard/index.js";
 import CommentsModal from "../../components/CommentsModal/index.js";
 import DirectionCard from "../../components/DirectionCard/index.js";
@@ -18,6 +20,7 @@ import EventsCard from "../../components/EventsCard/index.js";
 import FoodCard from "../../components/FoodCard/index.js";
 import Header from "../../components/Header/index.js";
 import HereStrip from "../../components/HereStrip/index.js";
+import HistoryCard from "../../components/HistoryCard/index.js";
 import LocationGate from "../../components/LocationGate/index.js";
 import MarkButton from "../../components/MarkButton/index.js";
 import MarkModal from "../../components/MarkModal/index.js";
@@ -25,6 +28,7 @@ import NewsCard from "../../components/NewsCard/index.js";
 import PeopleCard from "../../components/PeopleCard/index.js";
 import PostModal from "../../components/PostModal/index.js";
 import PostsCard from "../../components/PostsCard/index.js";
+import RadioCard from "../../components/RadioCard/index.js";
 import TrendsCard from "../../components/TrendsCard/index.js";
 import Warnings from "../../components/Warnings/index.js";
 import WeatherCard from "../../components/WeatherCard/index.js";
@@ -132,6 +136,16 @@ export default function HomePage() {
   // What the Wikipedia card has found, on its way to the map for the same
   // reason the venues are (see useVenues above).
   const wikiPlaces = useWikiPlaces();
+  // And what the history card has, which rides the map's landmark layer beside
+  // it: the two lists arrive in one shape and differ in the `kind` their rows
+  // wear, which is what picks the drawing in the pin's head (see MapCard).
+  // Joined under useMemo so a render in which neither store spoke hands the
+  // map the same array and its markers stand rather than rebuild.
+  const historyPlaces = useHistoryPlaces();
+  const storiedPlaces = useMemo(
+    () => (historyPlaces.length > 0 ? [...wikiPlaces, ...historyPlaces] : wikiPlaces),
+    [wikiPlaces, historyPlaces],
+  );
   // Held here, not in the map: expanding it hides the rest of the dashboard.
   const [mapExpanded, setMapExpanded] = useState(false);
   const [marks, setMarks] = useState([]);
@@ -409,8 +423,11 @@ export default function HomePage() {
             // The map's own card, drawn by the page while mapbox-gl is still on
             // the wire: the tile that lands here is a titled square, so the
             // thing holding its place has to be one too or the grid rearranges
-            // itself around the heaviest thing it is waiting for.
-            <Card title={t("map.title")} square flush>
+            // itself around the heaviest thing it is waiting for. The minus is
+            // part of being one: mapbox-gl is the heaviest thing lo fetches, and
+            // a reader who does not want the map is exactly the one who should
+            // not have to wait for it to arrive before saying so.
+            <Card title={t("map.title")} action={<CardSize id="map" />} square flush>
               <Skeleton fill label={t("common.loading")} />
             </Card>
           }
@@ -426,7 +443,7 @@ export default function HomePage() {
             posts={posts}
             marks={marks}
             venues={venues}
-            wikiPlaces={wikiPlaces}
+            wikiPlaces={storiedPlaces}
             expanded={expanded}
             onToggleExpanded={() => setMapExpanded((value) => !value)}
             onOpenComments={setCommenting}
@@ -470,6 +487,7 @@ export default function HomePage() {
       shown("nearby") && sized("nearby", <NewsCard />),
       shown("events") && sized("events", <EventsCard />),
       shown("trends") && sized("trends", <TrendsCard />),
+      shown("radio") && sized("radio", <RadioCard />),
       // The same sheet the pins on the map open, because it is the same
       // conversation about the same place: a card and a bubble are two views of
       // one list, and what is added from either goes back into the venue store
@@ -484,6 +502,11 @@ export default function HomePage() {
           "wikipedia",
           <WikipediaCard onOpenComments={setWikiCommenting} onOpenPhoto={setViewing} />,
         ),
+      // The same remarks sheet and the same Lightbox as the landmarks above,
+      // because an old photograph of the street is the same two kinds of thing:
+      // somewhere to leave a word, and a picture to look at properly.
+      shown("history") &&
+        sized("history", <HistoryCard onOpenComments={setWikiCommenting} onOpenPhoto={setViewing} />),
       shown("direction") && sized("direction", <DirectionCard />),
     ].filter(Boolean),
   );
@@ -987,13 +1010,18 @@ export default function HomePage() {
         onAdded={(venue, comments) => updateVenueComments(venue.kind, venue.id, comments)}
       />
 
-      {/* A Wikipedia landmark's own thread, off the wiki store rather than the
-          venue one: it carries no `kind` to split two lists by, being the only
-          kind this store keeps (see utils/wikiPlaces.js). */}
+      {/* A Wikipedia landmark's thread, or an old photograph's — one sheet for
+          both, because a thread is opened by a row and a row knows its own id.
+          The count is put back on whichever shelf the row came off: each of
+          the two updates answers only for ids it is holding, so the other is
+          a no-op (see utils/wikiPlaces.js and utils/historyPlaces.js). */}
       <CommentsModal
         venue={wikiCommenting}
         onClose={() => setWikiCommenting(null)}
-        onAdded={(place, comments) => updateWikiComments(place.id, comments)}
+        onAdded={(place, comments) => {
+          updateWikiComments(place.id, comments);
+          updateHistoryComments(place.id, comments);
+        }}
       />
 
       {/* And the photograph over the lot of it — from the picture in a post's

@@ -4,6 +4,7 @@ import { cardTurned, turnCard } from "../../utils/cards.js";
 import { toFahrenheit, toggleFahrenheit, useFahrenheit } from "../../utils/units.js";
 import { weatherIcon, weatherLabelKey } from "../../utils/weather.js";
 import { useHere } from "../LocationProvider/index.js";
+import CardSize from "../CardSize/index.js";
 import WeatherGlyph from "./WeatherGlyph.jsx";
 import WeatherHours from "./WeatherHours.jsx";
 import styles from "./weather.module.css";
@@ -43,7 +44,10 @@ export default function WeatherCard() {
   // still no weather in it.
   if (!weather) {
     return (
-      <Card title={t("weather.title")} square>
+      // The minus stands in the heading whether or not the reading arrived: a
+      // card that is waiting or empty is exactly the one a reader may want off
+      // the page.
+      <Card title={t("weather.title")} action={<CardSize id="weather" />} square>
         {loadingLocal ? (
           <Skeleton fill label={t("common.loading")} />
         ) : (
@@ -88,6 +92,7 @@ export default function WeatherCard() {
     <Card
       title={t("weather.title")}
       meta={range}
+      action={<CardSize id="weather" />}
       square
       flipHint={t("weather.turn")}
       defaultFlipped={cardTurned("weather")}

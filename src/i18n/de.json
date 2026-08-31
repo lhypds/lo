@@ -16,7 +16,8 @@
   },
   "cards": {
     "bigger": "Größer",
-    "smaller": "Kleiner"
+    "smaller": "Kleiner",
+    "remove": "Entfernen"
   },
   "export": {
     "title": "Exportieren",
@@ -214,6 +215,26 @@
     "unavailable": "Google Trends ist nicht erreichbar",
     "loading": "Google Trends wird gelesen"
   },
+  "radio": {
+    "title": "Radio",
+    "loading": "Sender werden gesucht",
+    "empty": "Keine Sender für diesen Ort gefunden",
+    "unavailable": "radio-browser ist nicht erreichbar",
+    "play": "Abspielen",
+    "stop": "Stopp",
+    "next": "Nächster Sender",
+    "prev": "Voriger Sender",
+    "place": "Ort",
+    "distance": "Entfernung",
+    "visualization": "Visualisierung wechseln",
+    "visualizationMode": {
+      "scope": "Oszilloskop",
+      "mirror": "Gespiegelte Welle",
+      "ring": "Radiale Welle",
+      "winamp": "Winamp-Spektrum",
+      "blank": "Leer"
+    }
+  },
   "food": {
     "title": "Essen",
     "empty": "Im Umkreis von {{distance}} gibt es nichts zu essen",
@@ -240,6 +261,13 @@
     "unavailable": "Wikipedia ist nicht erreichbar",
     "loading": "Artikel in der Nähe werden gesucht",
     "open": "Auf Wikipedia öffnen"
+  },
+  "history": {
+    "title": "Damals",
+    "empty": "Im Umkreis von {{distance}} gibt es keine alten Fotos",
+    "unavailable": "Wikimedia Commons ist nicht erreichbar",
+    "loading": "Alte Fotos werden gesucht",
+    "open": "Auf Wikimedia Commons öffnen"
   },
   "map": {
     "title": "Karte",

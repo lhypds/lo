@@ -3,6 +3,7 @@ import { Card, Link, Skeleton } from "../../ui/index.js";
 import { distanceMeters, formatDistance, formatUsername, relativeTime } from "../../utils/format.js";
 import { useAuth } from "../AuthProvider/index.js";
 import { useHere } from "../LocationProvider/index.js";
+import CardSize from "../CardSize/index.js";
 import styles from "./people.module.css";
 
 // Who else has a tab open around here, as a list — and the only place they are
@@ -71,6 +72,7 @@ export default function PeopleCard() {
       // the rows differently from the way they are drawn would be the panel
       // arguing with itself.
       meta={rows.length + (me ? 1 : 0) || null}
+      action={<CardSize id="people" />}
       square
       flush
       // The rows are trimmed to what fits the fixed cube (see people.module.css).

@@ -96,10 +96,13 @@ const SIZES = [TINY, SMALL, LARGE, TALL];
 // weather and the map are that by nature, and so is the direction tile, which
 // stands outside their block on the grid and is the same kind of thing on it.
 //
-// Such a card says so as a ladder with one rung rather than by leaving the pair
-// out: the page has to know how much of the grid every card covers to work out
-// where it breaks into pages (see utils/pages.js), and a card that never offers
-// the reader a choice of size still has one.
+// Such a card says so as a ladder with one rung rather than by having no ladder:
+// the page has to know how much of the grid every card covers to work out where
+// it breaks into pages (see utils/pages.js), and a card that never offers the
+// reader a choice of size still has one. What stands in its heading is the minus
+// alone — one rung is nothing to grow by and still something to press down from,
+// because the press below the bottom rung takes the card off the page (see
+// CardSize and removeCard).
 //
 // `fixed` is a card that is not the reader's to put away — the mark button, which
 // is lo's own doing rather than a reading of anything, and the one tile a
@@ -133,9 +136,11 @@ export const CARDS = [
   { id: "food", label: "food.title", off: true, min: TINY },
   { id: "cafe", label: "cafe.title", off: true, min: TINY },
   { id: "wikipedia", label: "wikipedia.title", off: true, min: TINY },
+  { id: "history", label: "history.title", off: true, min: TINY },
   { id: "nearby", label: "news.title", off: true, min: TINY },
   { id: "events", label: "events.title", off: true, min: TINY },
   { id: "trends", label: "trends.title", off: true, min: TINY },
+  { id: "radio", label: "radio.title", off: true, min: TINY, max: TINY },
   { id: "direction", label: "direction.title", own: true, off: true, min: TINY, max: TINY },
 ];
 
@@ -314,6 +319,21 @@ export function toggleCard(id) {
 
 export function resizeCard(id, size) {
   if (cardSizes(id).includes(size)) decide({ [id]: { size } });
+}
+
+// One rung below the bottom one. A panel already cut to a single square has
+// nothing smaller to be cut to, and rather than spend the minus there the press
+// is read as the step it plainly is: less of this card, and less than one square
+// is none of it (see CardSize). Not a second control — the same button, one
+// press further — and nothing is lost by it, because the card goes back to the
+// plus menu it came from with everything the reader decided about it intact.
+//
+// A card that is not the reader's to put away is not the reader's to cut away
+// either, so the fixed ones are left alone here the way toggleCard leaves them.
+export function removeCard(id) {
+  const card = BY_ID.get(id);
+  if (!card || card.fixed) return;
+  decide({ [id]: { on: false } });
 }
 
 // Which side of a two-sided card is up — the clock, whose back is the same hour

@@ -16,7 +16,8 @@
   },
   "cards": {
     "bigger": "Agrandir",
-    "smaller": "Réduire"
+    "smaller": "Réduire",
+    "remove": "Retirer"
   },
   "export": {
     "title": "Exporter",
@@ -214,6 +215,26 @@
     "unavailable": "Impossible de joindre Google Trends",
     "loading": "Lecture de Google Trends"
   },
+  "radio": {
+    "title": "Radio",
+    "loading": "Recherche des stations",
+    "empty": "Aucune station trouvée pour ici",
+    "unavailable": "Impossible de joindre radio-browser",
+    "play": "Écouter",
+    "stop": "Arrêter",
+    "next": "Station suivante",
+    "prev": "Station précédente",
+    "place": "Lieu",
+    "distance": "Distance",
+    "visualization": "Changer la visualisation",
+    "visualizationMode": {
+      "scope": "Oscilloscope",
+      "mirror": "Onde miroir",
+      "ring": "Onde radiale",
+      "winamp": "Spectre Winamp",
+      "blank": "Vide"
+    }
+  },
   "food": {
     "title": "Restaurants",
     "empty": "Aucun endroit où manger à moins de {{distance}} d’ici",
@@ -240,6 +261,13 @@
     "unavailable": "Impossible de joindre Wikipédia",
     "loading": "Recherche d’articles à proximité",
     "open": "Ouvrir sur Wikipédia"
+  },
+  "history": {
+    "title": "Autrefois",
+    "empty": "Aucune photo ancienne à moins de {{distance}} d’ici",
+    "unavailable": "Impossible de joindre Wikimedia Commons",
+    "loading": "Recherche de photos anciennes",
+    "open": "Ouvrir sur Wikimedia Commons"
   },
   "map": {
     "title": "Carte",

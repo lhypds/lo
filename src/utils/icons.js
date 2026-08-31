@@ -138,4 +138,19 @@ export const PIN_GLYPHS = {
       },
     ],
   },
+  // A clock face, for the pin that says "this spot, then": a ring with two
+  // hands at ten past ten, which is the one time a drawn clock is known by —
+  // both hands up and apart, so neither lies along the other or along the rim.
+  // Two hairlines inside a ring survives the glance where a camera would not:
+  // at nine pixels a camera, a house and a bag are the same small lidded box,
+  // and the fork comment above already buried that genre of drawing. The ring
+  // is papered for the cup's reason — of what this pin and a landmark's put on
+  // one street, only the letter has to be a silhouette.
+  history: {
+    transform: inHead(0.58),
+    parts: [
+      { tag: "circle", fill: "paper", cx: "12", cy: "12", r: "8.5" },
+      { tag: "path", d: "M8.6 10.1 12 12l4.8-2.7" },
+    ],
+  },
 };
