@@ -42,18 +42,60 @@ export const RADIO_SPECTRUM_BINS = RADIO_WAVEFORM_SAMPLES / 2;
 // plays a chunked endless stream through a media pipeline Web Audio cannot see
 // into: the graph builds without complaint, the station comes out of the
 // speaker, and every sample handed back sits at dead centre for as long as it
-// plays. Nothing in the API admits to this, so the only way to know is to watch
-// for a while and notice that nothing ever moved.
+// plays. Nothing in the API admits to this, so for any browser not already
+// known to have it (see isWebKitPhone) the only way to find out is to watch for
+// a while and notice that nothing ever moved.
 //
 // Three seconds of it, because dead air is a thing a station can carry and a
 // second of silence is not evidence of anything. The verdict latches for the
 // session either way: a browser that can tap one stream can tap the next, and
-// one that cannot is spared the graph from here on — which on iOS is also what
-// hands the station back its lock screen and its AirPlay.
+// one that cannot is spared the graph from here on.
+// Kept across visits, because it is a fact about the browser rather than about
+// the station or the session, and because reaching it costs three seconds of
+// listening plus the retune after it — a price worth paying once and not on
+// every reload. Stored as the date it was reached and believed for a month:
+// long enough that a reader stops meeting the wait, short enough that a browser
+// which grows the ability to be read the ordinary way is given it back.
+const VERDICT_KEY = "lo:radio-analyser-blind";
+const VERDICT_GOOD_FOR_MS = 30 * 24 * 60 * 60 * 1000;
+
+function rememberedVerdict() {
+  try {
+    const at = Number(localStorage.getItem(VERDICT_KEY));
+    return Number.isFinite(at) && at > 0 && Date.now() - at < VERDICT_GOOD_FOR_MS;
+  } catch {
+    // A private frame may deny storage. The probe below simply runs again.
+    return false;
+  }
+}
+
+// The one browser that does not have to prove it: every engine on iOS is
+// WebKit's, and WebKit's is the one that cannot be read. Waiting three seconds
+// to discover that on a device already known to fail costs a reader the wait
+// twice over — once for the probe and once for the retune after it — so iOS
+// opens on the decoding engine from the first press.
+//
+// iPadOS asks to be taken for a Mac, and is caught by the touch points a Mac
+// does not have. A browser wrongly caught here would be one that plays radio
+// through lo's decoder when it did not have to: a working drawing either way,
+// and no lock screen. That is the whole of the risk, and it is why the test is
+// this narrow.
+function isWebKitPhone() {
+  if (typeof navigator === "undefined") return false;
+  const agent = navigator.userAgent || "";
+  if (/iPhone|iPod|iPad/.test(agent)) return true;
+  return /Macintosh/.test(agent) && navigator.maxTouchPoints > 1;
+}
+
 const ANALYSER_PROOF_MS = 3000;
 let analyserProven = false;
 let analyserFlatSince = 0;
-let analyserBlind = false;
+// Named for what it means rather than for how it was reached: known outright,
+// remembered from a previous visit, or earned in three seconds by the probe
+// below — the rest of this file cannot tell the three apart and has no reason
+// to. The probe stays for every browser that is none of the above: whatever
+// else turns out to have this fault is caught the same way iOS was.
+let analyserBlind = isWebKitPhone() || rememberedVerdict();
 
 // Anything at all off the resting value. One sample is enough: this asks
 // whether the analyser is connected to the sound, not how loud the sound is,
@@ -102,6 +144,12 @@ function judgeAnalyser(moved) {
   if (!analyserFlatSince) analyserFlatSince = now;
   else if (now - analyserFlatSince >= ANALYSER_PROOF_MS) {
     analyserBlind = true;
+    try {
+      localStorage.setItem(VERDICT_KEY, String(Date.now()));
+    } catch {
+      // Not kept; this tab still has the verdict, and the next one earns it
+      // again in three seconds.
+    }
     unhook();
     // The same station again, on the engine that can be read (see play). It
     // costs the second or so of buffering a retune costs, once per session and
@@ -238,13 +286,13 @@ export function stopRadio() {
 // same signed address; they differ in who does the decoding, and therefore in
 // whether the sound can be read on the way past.
 //
-// The ordinary media element is the default everywhere, and stays the default
-// on every browser that has not been caught out by judgeAnalyser: it is the one
-// the phone will carry into the background, put on a lock screen and hand to a
-// pair of headphones. The decoding engine is what a browser gets once its
-// analyser has been shown to be no tap on the sound — and only for the signed
-// address, since a cross-origin fetch of a station's own URL would be refused
-// before it started.
+// The ordinary media element is the default everywhere it can be read: it is
+// the one the phone will carry into the background, put on a lock screen and
+// hand to a pair of headphones, and none of that is worth giving up for a
+// drawing that would have worked anyway. The decoding engine is what a browser
+// gets where the analyser is no tap on the sound — known outright on iOS,
+// earned by the probe anywhere else — and only for the signed address, since a
+// cross-origin fetch of a station's own URL would be refused before it started.
 function play(station) {
   if (analyserBlind && station.listenUrl) return playDecoded(station);
   playThroughElement(station, station.listenUrl || station.url, !analyserBlind);
@@ -279,6 +327,7 @@ function playDecoded(station) {
   tuner = playDecodedStream(station.listenUrl, {
     context: audioContext,
     destination: analyser,
+    codec: station.codec,
     onStatus: (status) => emit({ ...state, status }),
     onUnsupported: () => playThroughElement(station, station.listenUrl, false),
   });

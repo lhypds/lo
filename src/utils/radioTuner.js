@@ -50,6 +50,20 @@ const DECODERS = [
   { type: /^audio\/(aac|aacp|x-aac|mp4a)\b/i, load: () => import("@wasm-audio-decoders/aac").then((m) => m.AACDecoder) },
 ];
 
+// What the directory calls a codec, said as the content-type the mount is
+// expected to answer with. Only a hint: the header below is what actually
+// chooses. Its whole job is to start the right Web Assembly download on the
+// press rather than a round trip later, which on a phone is most of the wait
+// between pressing play and the first mark appearing.
+const HINTS = new Map([
+  ["MP3", "audio/mpeg"],
+  ["MP2", "audio/mpeg"],
+  ["MP1", "audio/mpeg"],
+  ["AAC", "audio/aac"],
+  ["AAC+", "audio/aac"],
+  ["AACP", "audio/aac"],
+]);
+
 const loading = new Map();
 
 // One import per kind for the session, kept as the promise rather than the
@@ -72,7 +86,13 @@ function decoderFor(type) {
 // `onUnsupported` is the one thing a media element never has to say: that this
 // mount is not something the decoder can read at all. It is not a failure of
 // the station, so it is not "dead" — it is this engine standing aside.
-export function playDecodedStream(url, { context, destination, onStatus, onUnsupported }) {
+export function playDecodedStream(url, { context, destination, codec, onStatus, onUnsupported }) {
+  // Before anything else, and deliberately not awaited: the download and the
+  // compile run alongside the stream opening rather than after it. A hint that
+  // turns out to be wrong costs one unused import and nothing else — the real
+  // decoder is chosen from the content-type either way.
+  if (codec && HINTS.has(codec)) decoderFor(HINTS.get(codec));
+
   const controller = new AbortController();
   // Every source still scheduled or sounding. A stream is bought several
   // seconds ahead of the ear, so a retune that only stopped reading bytes would

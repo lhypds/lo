@@ -2125,6 +2125,14 @@ export function lookupRadio(latitude, longitude) {
           name,
           url,
           homepage: firstString(row.homepage) || null,
+          // A guess at what the mount will answer with rather than a promise —
+          // the directory is crowdsourced and a station can change encoders
+          // without telling it, so nothing is decided on this. It is carried
+          // because a guess arriving with the row is worth a great deal to a
+          // client that has to fetch a Web Assembly decoder before it can draw
+          // anything: it can start the right download on the press instead of
+          // waiting for the stream's own headers to say (see radioTuner.js).
+          codec: firstString(row.codec).toUpperCase() || null,
           frequency: frequencyOf(name),
           place: stationPlace(row.state) || null,
           metres: at ? Math.round(metresBetween(here, at)) : null,
