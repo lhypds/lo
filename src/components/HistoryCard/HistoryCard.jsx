@@ -127,7 +127,9 @@ export default function HistoryCard({ onOpenComments = null, onOpenPhoto = null 
   return (
     <Card
       title={t("history.title")}
-      meta={cube ? null : result?.place?.name}
+      // How many moments this place has on record rather than its name — see
+      // VenuesCard, whose corner this is kept in step with.
+      meta={items.length || null}
       action={<CardSize id="history" />}
       wide={!cube}
       half={size === SMALL}

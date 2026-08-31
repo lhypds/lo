@@ -249,11 +249,14 @@ export default function VenuesCard({ kind, onOpenComments = null }) {
   return (
     <Card
       title={t(`${kind}.title`)}
-      // Dropped on a cube, where the heading is sharing one column with the pair
-      // of size buttons: the place name is the line that can go, because every
-      // row under it is already carrying a distance from here, and a tile among
-      // tiles that are all about here does not have to say so twice.
-      meta={cube ? null : result?.place?.name}
+      // How many are within a walk, and not the name of the place they are in.
+      // The place was the line that could go: every row under it already
+      // carries a distance from here, and a tile among tiles that are all
+      // about here does not have to say so twice. What the corner could not say
+      // before is whether this is two cafés or twenty — which is the difference
+      // between a list worth opening and one already read at a glance. A number
+      // also fits the cube, where the name never did.
+      meta={items.length || null}
       action={<CardSize id={kind} />}
       // A cube is the one size that is not the width of the panel column: a
       // square standing in a single column of the grid, which is what `square`

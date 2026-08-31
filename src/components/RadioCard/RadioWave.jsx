@@ -115,7 +115,7 @@ function fillColumns(columns, samples, tapered = true) {
 // bins at the right. Bars rise at once and fall in steps; the cap waits, then
 // falls more slowly — that held peak is the detail that makes this recognisably
 // Winamp rather than a generic row of equalizer bars.
-function updateBars(bins, levels, peaks, holds, live) {
+function updateBars(bins, levels, peaks, holds) {
   // Where the bands stop. The buffer runs to the Nyquist rate — near 24kHz on
   // most machines — and mapping the analyzer across all of it leaves the
   // right-hand bands permanently dark: a 128kbps stream is lowpassed around
@@ -141,7 +141,7 @@ function updateBars(bins, levels, peaks, holds, live) {
     // leaves the right-hand half of the analyzer dead through most music.
     let loudest = 0;
     for (let bin = from; bin < to; bin += 1) if (bins[bin] > loudest) loudest = bins[bin];
-    const target = live ? Math.min(1, Math.max(0, (loudest - 24) / 200) ** 0.8) : 0;
+    const target = Math.min(1, Math.max(0, (loudest - 24) / 200) ** 0.8);
 
     levels[index] = target >= levels[index] ? target : Math.max(target, levels[index] - 0.05);
     if (levels[index] >= peaks[index]) {
@@ -155,7 +155,15 @@ function updateBars(bins, levels, peaks, holds, live) {
   }
 }
 
-export default function RadioWave({ active }) {
+// `readable` is whether there is an analyser on the sound at all (see emit in
+// utils/radio.js). It is not the same question as `active`: a station can be
+// sounding perfectly well with nothing in the path to read it — an older server
+// answering without a same-origin address, a mount whose codec lo has no
+// decoder for, or the moment on iOS between the analyser being found blind and
+// the same station coming back on the engine that can be read. All three draw
+// the still centre line, and none of them spends a frame a thirtieth of a
+// second redrawing it.
+export default function RadioWave({ active, readable }) {
   const { t } = useTranslation();
   const [mode, setMode] = useState(savedMode);
   const canvasRef = useRef(null);
@@ -376,16 +384,29 @@ export default function RadioWave({ active }) {
       // out, which is the difference between a face and a switched-off drawing.
       if (mode === "blank") return drawBlank();
       if (!active) return drawOff();
+      // A false out of either reader means there is nothing to read — an older
+      // server answering without a same-origin address, a browser that would
+      // not build the graph, or one whose analyser was found to be no tap on
+      // the sound at all (see judgeAnalyser). All three are the set sounding
+      // where lo cannot hear it, and the centre line is the honest picture of
+      // that, the same one the off state wears. Bars falling to an empty box,
+      // which is what this used to draw, said the station had gone quiet.
       if (mode === "winamp") {
-        // A false here means there is no analyser to read — an older server
-        // answering without a same-origin address, or a browser that would not
-        // build the graph. The bands fall to nothing and stay there.
-        const live = readRadioSpectrum(bins);
-        updateBars(bins, levels, peaks, holds, live);
+        if (!readRadioSpectrum(bins)) {
+          levels.fill(0);
+          peaks.fill(0);
+          holds.fill(0);
+          return drawOff();
+        }
+        updateBars(bins, levels, peaks, holds);
         return drawSpectrum();
       }
-      if (readRadioWaveform(samples)) fillColumns(columns, samples, mode !== "ring");
-      else columns.fill(0);
+      if (!readRadioWaveform(samples)) {
+        columns.fill(0);
+        ghost.fill(0);
+        return drawOff();
+      }
+      fillColumns(columns, samples, mode !== "ring");
       if (mode === "mirror") return drawMirror();
       if (mode === "ring") return drawRing();
       return drawScope();
@@ -400,8 +421,10 @@ export default function RadioWave({ active }) {
 
     // A waveform is the reading itself rather than decorative motion, so it
     // keeps sampling while sound is live; the loop is not started at all while
-    // the set is off, or while the blank face is up, which is the whole of
-    // their idle cost.
+    // the set is off, while the blank face is up, or while there is nothing on
+    // the sound to read, which is the whole of their idle cost. Each of those
+    // three is a dependency of this effect, so the loop comes back by itself on
+    // the station that can be heard again.
     const observer = new ResizeObserver(() => {
       measure();
       render();
@@ -409,13 +432,13 @@ export default function RadioWave({ active }) {
     observer.observe(canvas);
     measure();
     render();
-    if (active && mode !== "blank") animation = window.requestAnimationFrame(frame);
+    if (active && readable && mode !== "blank") animation = window.requestAnimationFrame(frame);
 
     return () => {
       observer.disconnect();
       window.cancelAnimationFrame(animation);
     };
-  }, [active, mode]);
+  }, [active, readable, mode]);
 
   function cycleMode() {
     const next = MODES[(MODES.indexOf(mode) + 1) % MODES.length];

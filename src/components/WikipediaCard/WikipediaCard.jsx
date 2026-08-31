@@ -133,7 +133,9 @@ export default function WikipediaCard({ onOpenComments = null, onOpenPhoto = nul
   return (
     <Card
       title={t("wikipedia.title")}
-      meta={cube ? null : result?.place?.name}
+      // How many articles stand behind the tile rather than where they are —
+      // see VenuesCard, whose corner this is kept in step with.
+      meta={items.length || null}
       action={<CardSize id="wikipedia" />}
       wide={!cube}
       half={size === SMALL}

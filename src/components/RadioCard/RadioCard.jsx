@@ -26,8 +26,8 @@ function coordKey(coords) {
 
 // The face of the set: live sound in the square, the station's name under it,
 // and the three buttons a radio has ever needed — back a station, play or stop,
-// on a station. How far the station is stands in the heading's corner, where
-// the clock wears its zone, leaving the whole body to the station itself.
+// on a station. Where the station is stands in the heading's corner, where the
+// clock wears its zone, leaving the whole body to the station itself.
 //
 // What is deliberately not on the tile is a list. Eight verified stations
 // stand behind the one shown, walked either way from the buttons nearest
@@ -85,13 +85,14 @@ export default function RadioCard() {
 
   const shown = shownStation(radio);
   const sounding = radio.status === "on" || radio.status === "tuning";
-  // One or the other, never both: the pair ran past the corner's width. A
-  // distance is the sharper of the two — it says how far the sound comes from —
-  // and the place stands in only where the station has no coordinates.
+  // One or the other, never both: the pair ran past the corner's width. The
+  // place is the one that answers "where is this station", which is what a
+  // reader asks of a radio, and the distance stands in only where the station
+  // named no place to put there.
   let meta = null;
   if (shown) {
-    if (Number.isFinite(shown.metres)) meta = formatDistance(shown.metres).replace(/\s+/g, "");
-    else meta = shown.place || null;
+    if (shown.place) meta = shown.place;
+    else if (Number.isFinite(shown.metres)) meta = formatDistance(shown.metres).replace(/\s+/g, "");
   }
 
   let body;
@@ -109,7 +110,7 @@ export default function RadioCard() {
               the same kind of measured instrument as the clock and direction
               dials. It settles to a hairline while quiet or tuning rather than
               inventing movement before the stream has spoken. */}
-          <RadioWave active={sounding} />
+          <RadioWave active={sounding} readable={radio.readable} />
           {/* The station's name and nothing else. The tuner used to caption
               itself here — "no signal" for a stream that would not answer, and
               a word for tuning before that — but a line that appears and goes
