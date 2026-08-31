@@ -520,6 +520,10 @@ const EVENT_TERMS =
 // An event is stale the moment it is over, so the listing only looks back a
 // fortnight — long enough to catch a run that is still going.
 const EVENT_WINDOW = "when:14d";
+// The second attempt's, where a fortnight came back empty. Wider because the
+// second attempt is not asking a better-phrased version of the first question:
+// it is asking a thinner press, and a fortnight of a thin press is nothing.
+const EVENT_WINDOW_WIDE = "when:30d";
 const EVENTS_TTL_MS = 30 * 60 * 1000;
 // Nothing found is worth asking again about soon; a full answer keeps.
 const EVENTS_EMPTY_TTL_MS = 5 * 60 * 1000;
@@ -527,9 +531,9 @@ const MAX_EVENT_ITEMS = 12;
 
 // City level, not ward level: a ward has its own news, but its events get
 // written up under the name of the city they are in.
-async function fetchEventNews(place, locale) {
+async function fetchEventNews(place, locale, window) {
   for (const name of [place?.name, place?.region].filter(Boolean)) {
-    const batch = await fetchNewsFeed(searchUrl(`${name} ${EVENT_TERMS} ${EVENT_WINDOW}`, locale)).catch(() => []);
+    const batch = await fetchNewsFeed(searchUrl(`${name} ${EVENT_TERMS} ${window}`, locale)).catch(() => []);
     if (batch.length > 0) return batch;
   }
   return [];
@@ -542,7 +546,36 @@ export function lookupEvents(latitude, longitude, lang = "en") {
 
   return cached(key, ttl, async () => {
     const place = await lookupPlace(latitude, longitude, language).catch(() => null);
-    const items = await fetchEventNews(place, readerLocale(language, place?.countryCode));
+    const reader = readerLocale(language, place?.countryCode);
+    let items = await fetchEventNews(place, reader, EVENT_WINDOW);
+
+    // Nothing on in the reader's own language — which for a reader abroad is the
+    // ordinary answer rather than a rare one, and says nothing at all about
+    // whether anything is on. So ask a second time the way the news card does:
+    // the place's own edition, under the name that edition's papers write it in.
+    //
+    // Both halves are doing work. Google indexes a name as it is written and does
+    // not fold 倫敦 into 伦敦, while the geocoder hands back whichever of the two
+    // it happens to hold — so the reader's name for a place cannot be trusted to
+    // be the one the press searched under. And the window is the other half: a
+    // fortnight of Chinese writing about what is on in London is genuinely empty
+    // where a month of it is not.
+    //
+    // The answer comes back in the local language, which is the bargain struck
+    // for the news card above and the same one here — what is on, written up
+    // where it is happening, beats an empty panel in a language you read.
+    if (items.length === 0) {
+      const native = nativeLocale(place?.countryCode);
+      // Where the country runs no edition of its own the reader's is already the
+      // one Google would answer with, so only the window widens.
+      const localPlace = native
+        ? await lookupPlace(latitude, longitude, wikiEdition(place.countryCode)).catch(() => place)
+        : place;
+      items = await fetchEventNews(localPlace, native ?? reader, EVENT_WINDOW_WIDE);
+    }
+
+    // The reader's own name for where they are standing, whichever edition
+    // ended up answering: the card puts it in the heading, not in a row.
     return { place, items: dedupe(items).slice(0, MAX_EVENT_ITEMS) };
   });
 }
