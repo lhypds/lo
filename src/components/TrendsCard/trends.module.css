@@ -105,19 +105,32 @@
   white-space: nowrap;
 }
 
+/* The sentence that stands in for the list stands in the middle of the tile,
+   not a fixed drop below its title. Set near the top it reads as the first row
+   of a list whose other rows are still on their way — which is exactly what it
+   is not: it is the whole answer, and all of what would be under it is nothing.
+   Centred, the empty tile reads as an empty tile, the way the venues and
+   wikipedia panels beside it already say the same thing.
+
+   The height is a floor rather than a height so that a long sentence in a small
+   tile still grows the way it always did and scrolls at the bottom of the tile,
+   instead of being centred over its own overflow. */
 .empty {
   margin: 0;
-  padding: 34px 12px;
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
   color: var(--muted);
   text-align: center;
   font-size: 11px;
 }
 
-/* The sentence that stands in for the list is a sentence and not a word, so on
-   a cube it is given the room instead of the air around it — otherwise most of
-   it sits below the fold of a tile nobody scrolls. */
+/* Narrower on a cube, where the sentence is wrapping across about ninety pixels
+   and every one of them it is not given is a line more of wrapping. */
 .square .empty {
-  padding: 12px 8px;
+  padding: 8px;
 }
 
 @media (hover: hover) {
