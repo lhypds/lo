@@ -997,9 +997,24 @@ html:has(.home-main:not(.home-main-map) .card-pager) {
   font-weight: 400;
 }
 
+/* In the middle of the room it has rather than a fixed drop below the heading,
+   which is the answer the dashboard's tiles already give (see .empty in
+   PostsCard's stylesheet). 64px down a page this tall read as the first row of a
+   list whose others were still on their way — which is what it is not: it is the
+   whole answer, and all of what would be under it is nothing.
+
+   The height is a floor rather than a height, so a long sentence on a short
+   screen still grows and scrolls at the bottom of the page instead of being
+   centred over its own overflow. What it centres in is the scroller's content
+   box, which leaves .list-scroll's own padding outside the sum: the line lands a
+   few pixels above true centre, which is where one line of type wants to be. */
 .empty-state {
   margin: 0;
-  padding: 64px 0;
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
   color: var(--muted);
   text-align: center;
   font-size: 13px;

@@ -13,8 +13,15 @@
   list-style: none;
 }
 
-.list li + li {
-  border-top: 1px solid var(--line);
+/* Under every row rather than between them, so the run ends on a line instead of
+   fading into the paper. Between-only left the last listing and the space below
+   it parted by nothing, which on a list short enough to leave space read as one
+   still going — and a panel holding a single listing carried no rule at all,
+   which read as a row that had not finished arriving. Nothing is added at the
+   top: the heading's own border is the line this list starts on, and a second
+   one under it would sit against it as a thickening rather than a rule. */
+.list li {
+  border-bottom: 1px solid var(--line);
 }
 
 .item {
