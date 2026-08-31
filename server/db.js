@@ -504,6 +504,38 @@ const deleteUserByName = db.prepare(`
   WHERE username = ?
 `);
 
+// Every account there is, which is the by-hand reading the columns above were
+// kept for (see the note on last_ip): who is here, since when, whether they are
+// still turning up and from where. Deliberately not built on PROFILE_COLUMNS —
+// this is the opposite question. A profile is what one account says about itself
+// to whoever comes past; this is the table itself, and it carries the two things
+// held back from every reader, which is safe only because its one caller is the
+// command line (see lo.js) and never an endpoint.
+//
+// The last fix is not in it, though the column sits right beside the address. A
+// list is read out and pasted about, and where somebody was standing is a line
+// about one person rather than a column of a roster — the map is the one place
+// in lo that publishes anybody's whereabouts, and it has a switch on it.
+//
+// Newest sign-in first, with the never-seen at the bottom by name: the order the
+// question is asked in is "who is still using this", and an account that has
+// never been signed into has no answer to give.
+const selectUsers = db.prepare(`
+  SELECT
+    u.username,
+    u.created_at AS createdAt,
+    u.last_login_at AS lastLoginAt,
+    u.last_ip AS lastIp,
+    u.discoverable,
+    -- Whether one has been chosen, never which: the administrator who reads a
+    -- password reads one, for the account that has just written in, and a list
+    -- that hands over everybody's is a different thing on the screen.
+    u.password IS NOT NULL AS hasPassword,
+    (SELECT COUNT(*) FROM posts p WHERE p.user_id = u.id) AS posts
+  FROM users u
+  ORDER BY u.last_login_at IS NULL, u.last_login_at DESC, u.username
+`);
+
 // The one column no reader of a user ever gets handed. Everything else about an
 // account travels as a row — the profile columns above go out to whoever asks
 // for the page — so the password is read on its own, by the one statement that
@@ -1125,6 +1157,14 @@ export function updateProfile(userId, profile) {
     kept(profile.wechat),
     userId,
   );
+}
+
+// SQLite answers both of those in 1 and 0, and what reads them is a table of
+// words — the same turn the switch gets in getUser above.
+export function listUsers() {
+  return selectUsers
+    .all()
+    .map((row) => ({ ...row, discoverable: row.discoverable === 1, hasPassword: row.hasPassword === 1 }));
 }
 
 export function createUser(username, password) {
