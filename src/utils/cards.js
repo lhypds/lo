@@ -385,6 +385,17 @@ export function cardTurned(id) {
   return decided[id]?.turned === true;
 }
 
+// Whether the reader has the card on the page. Read rather than subscribed to,
+// like the turning above, and asked by the one thing that outlives a tile: the
+// radio's sound, which has to know on the way out whether the tile went because
+// the reader took the card off the dashboard or because the dashboard itself
+// was left for another screen (see holdRadioTile in utils/radio.js). Only the
+// reader's answer is in this, not the country's — every country has stations,
+// so for the one card that asks, what the layout says is the whole of it.
+export function cardOn(id) {
+  return isOn(decided, id);
+}
+
 // Where the tiles stand, as ids, first to last — the answer to a card having been
 // picked up by its heading and set down somewhere else (see HomePage).
 //

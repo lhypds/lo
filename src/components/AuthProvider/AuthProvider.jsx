@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useState } from "rea
 import i18n from "../../i18n/index.js";
 import { showToast, useNavigate } from "../../ui/index.js";
 import { tellHost } from "../../utils/host.js";
+import { stopRadio } from "../../utils/radio.js";
 import { adoptSettings, forgetSettings } from "../../utils/settings.js";
 // Imported for the side effect of registering, since nothing on this path reads
 // them: every store that keeps one of the reader's answers has to be in the map
@@ -294,6 +295,11 @@ export function AuthProvider({ children }) {
     // Nothing further is written against a session that has ended. The page keeps
     // the shape it is in — signing out is not a request for a different dashboard.
     forgetSettings();
+    // The station was playing for the person signing out, and the login screen
+    // has nothing to stop it with. Quiet before the screen changes hands: a
+    // change of page leaves the radio sounding now (see holdRadioTile), and
+    // this is the one that is not a change of page.
+    stopRadio();
     setUser(null);
     // The host is holding a session of its own, minted at the same sign-in against
     // the same account, and nothing about this one ending reaches it (see

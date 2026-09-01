@@ -79,8 +79,9 @@ export default function RadioCard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, reloadToken]);
 
-  // While this tile stands the sound may keep coming; when the last one goes
-  // the tuner is switched off behind it (see holdRadioTile).
+  // The sound outlives this tile: leaving the dashboard for another screen
+  // keeps the station playing, and only taking the card off the page — or
+  // signing out — switches the tuner off behind it (see holdRadioTile).
   useEffect(() => holdRadioTile(), []);
 
   const shown = shownStation(radio);

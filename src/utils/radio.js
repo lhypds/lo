@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { cardOn } from "./cards.js";
 import { playDecodedStream } from "./radioTuner.js";
 
 // The tuner. One station sounding at a time, held here rather than in the card,
@@ -446,14 +447,21 @@ export function prevStation() {
   step(-1);
 }
 
-// The sound is the tile's: while a radio card stands anywhere on the page it
-// keeps sounding — across re-renders, page turns of the strip, and the modals
-// that open over the dashboard — and when the last one goes it stops, whether
-// the reader took the card off or left for another screen. A stream sounding
-// with its one control unmounted would be a noise nothing on the page owns up
-// to. Counted rather than assumed singular, and settled a tick later, so the
-// remount inside a re-render (StrictMode rehearses exactly this) reads as the
-// tile still standing.
+// The sound is the card's, not the tile's. While the radio card is on the
+// dashboard it keeps sounding — across re-renders, page turns of the strip, the
+// modals that open over the dashboard, and the trips away from it: a reader who
+// goes to look at the posts or at a person and comes back finds the station
+// where they left it, the way a radio goes on playing when you leave the room.
+// What stops it is the card being taken off the page — the one control the
+// sound has is gone then rather than out of the room — and signing out (see
+// AuthProvider), which is the reader leaving rather than the page.
+//
+// Which of the two a tile going away was is asked of the layout on the way out
+// rather than guessed from the tile: a tile unmounted with the card still on
+// the dashboard is a dashboard that was left, and one unmounted with the card
+// off is a card that was put away. Counted rather than assumed singular, and
+// settled a tick later, so the remount inside a re-render (StrictMode rehearses
+// exactly this) reads as the tile still standing.
 let tiles = 0;
 
 export function holdRadioTile() {
@@ -461,7 +469,7 @@ export function holdRadioTile() {
   return () => {
     tiles -= 1;
     setTimeout(() => {
-      if (tiles === 0) stopRadio();
+      if (tiles === 0 && !cardOn("radio")) stopRadio();
     }, 0);
   };
 }
