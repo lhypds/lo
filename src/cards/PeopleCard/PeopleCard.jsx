@@ -56,16 +56,20 @@ const FAR_M = 500_000;
 // The region drops out when the geocoder has not named it yet — a country on its
 // own is still an answer — and where neither is known the distance stands,
 // because a figure that says little is better than a row that says nothing.
+// Handed back as its parts rather than as a line, because the dot between a
+// region and its country is drawn rather than typed: this row is set in the
+// monospace face, where a space is a whole character cell and " · " comes out
+// nearly twice as wide as the same three marks in the strip at the top of the
+// page. The parts are put back together in the markup, with a separator set to
+// the width that line has (see .where in the stylesheet).
 function whereabouts(away, person, home, locale) {
-  if (!Number.isFinite(away)) return "";
+  if (!Number.isFinite(away)) return [];
   if (away >= FAR_M) {
     const abroad = person.country && person.country.toUpperCase() !== home;
-    const line = [person.region, abroad ? formatCountry(person.country, locale) : ""]
-      .filter(Boolean)
-      .join(" · ");
-    if (line) return line;
+    const parts = [person.region, abroad ? formatCountry(person.country, locale) : ""].filter(Boolean);
+    if (parts.length > 0) return parts;
   }
-  return formatDistance(away);
+  return [formatDistance(away)];
 }
 
 export default function PeopleCard() {
@@ -149,7 +153,13 @@ export default function PeopleCard() {
                 <span className={styles.dot} aria-hidden="true" />
                 <span className={styles.who}>{formatUsername(person.username)}</span>
                 <span className={styles.itemMeta}>
-                  {where && <span>{where}</span>}
+                  {where.length > 0 && (
+                    <span className={styles.where}>
+                      {where.map((part) => (
+                        <span key={part}>{part}</span>
+                      ))}
+                    </span>
+                  )}
                   {/* A position is only worth as much as its age — a dot ten
                       minutes old is somebody who has already walked off. */}
                   <time dateTime={person.time}>{relativeTime(person.time, i18n.language, t)}</time>
