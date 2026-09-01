@@ -101,10 +101,13 @@ export default function EventsCard() {
   return (
     <Card
       title={t("events.title")}
-      // The place name goes on a cube, where the heading is sharing one column
-      // with the pair of size buttons: it is a label rather than a claim, and
-      // every row under it is about here anyway.
-      meta={cube ? null : result?.place?.name}
+      // How many listings there are, as on the news panel beside it and every
+      // other list on the page. The place name that stood here before was a
+      // label rather than a claim — every row under it is about here anyway —
+      // and it was already dropped on a cube; the count is worth having at
+      // every size, and it is short enough that a cube can hold it too. Nothing
+      // rather than a nought: the line under the heading says "nothing on".
+      meta={items.length || null}
       action={<CardSize id="events" />}
       // A cube is the one size that is not the width of the panel column: a
       // square standing in a single column of the grid, which is what `square`

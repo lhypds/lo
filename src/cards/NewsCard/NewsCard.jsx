@@ -117,6 +117,11 @@ export default function NewsCard() {
   return (
     <Card
       title={t("news.title")}
+      // How many stories the wire came back with, as on the posts panel: the
+      // tile is a window onto a list that scrolls, so the figure is the one
+      // thing the rows on screen cannot say for themselves. Nothing rather than
+      // a nought — the line under the heading says "nothing to report" in words.
+      meta={items.length || null}
       action={<CardSize id="nearby" />}
       // A cube is the one size that is not the width of the panel column: a
       // square standing in a single column of the grid, which is what `square`
