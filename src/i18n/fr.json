@@ -143,8 +143,6 @@
   },
   "news": {
     "title": "Actualités",
-    "local": "Local",
-    "places": "Autour de vous",
     "empty": "Rien à signaler dans les environs",
     "unavailable": "Impossible de joindre le service d’actualités",
     "loading": "Lecture des actualités locales"

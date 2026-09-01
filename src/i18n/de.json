@@ -143,8 +143,6 @@
   },
   "news": {
     "title": "Nachrichten",
-    "local": "Lokal",
-    "places": "In deiner Umgebung",
     "empty": "Keine Meldungen aus der Umgebung",
     "unavailable": "Der Nachrichtendienst ist nicht erreichbar",
     "loading": "Nachrichten aus der Umgebung werden gelesen"

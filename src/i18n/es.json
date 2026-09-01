@@ -143,8 +143,6 @@
   },
   "news": {
     "title": "Noticias",
-    "local": "Local",
-    "places": "A tu alrededor",
     "empty": "No hay noticias en los alrededores",
     "unavailable": "No se pudo acceder al servicio de noticias",
     "loading": "Leyendo las noticias locales"

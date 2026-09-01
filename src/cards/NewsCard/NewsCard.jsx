@@ -73,10 +73,6 @@ export default function NewsCard() {
   }, [key, language, reloadToken]);
 
   const items = result?.items ?? [];
-  // The newswire answers with articles; when it has nothing for this corner of
-  // the map the server sends Wikipedia's nearby places instead, and the heading
-  // follows.
-  const kind = items.length > 0 && items.every((item) => item.kind === "place") ? "places" : "local";
 
   let body;
   if (loading && items.length === 0) {
@@ -121,13 +117,6 @@ export default function NewsCard() {
   return (
     <Card
       title={t("news.title")}
-      // The one heading on the dashboard that keeps its meta on a cube, because
-      // this one is a claim and not a label: "Local" and "Around you" are the
-      // difference between headlines from here and a list of what happens to be
-      // standing nearby, and the row that used to say which — the publisher — is
-      // the very thing a cube drops. The place name behind it is a label, so it
-      // goes the way the others do.
-      meta={items.length > 0 ? t(`news.${kind}`) : cube ? null : result?.place?.name}
       action={<CardSize id="nearby" />}
       // A cube is the one size that is not the width of the panel column: a
       // square standing in a single column of the grid, which is what `square`

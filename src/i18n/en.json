@@ -143,8 +143,6 @@
   },
   "news": {
     "title": "News",
-    "local": "Local",
-    "places": "Around you",
     "empty": "Nothing to report around here",
     "unavailable": "Could not reach the news service",
     "loading": "Reading the neighbourhood"

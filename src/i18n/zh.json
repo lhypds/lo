@@ -140,8 +140,6 @@
   },
   "news": {
     "title": "新闻",
-    "local": "本地",
-    "places": "你的周边",
     "empty": "附近暂无可报道的内容",
     "unavailable": "无法连接新闻服务",
     "loading": "正在读取周边"
