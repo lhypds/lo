@@ -69,25 +69,33 @@ function gridCentre(latitude, longitude, digits) {
 }
 
 // How long a stale answer that has just been served stands before the upstream
-// is asked again. Without this, a reader polling a dead upstream would wait out
-// every mirror on every turn only to be handed the same old list at the end of
-// it: the answer is already known, and the waiting buys nothing.
+// is asked again. It covers two moments: a reload that failed leaves the old
+// list standing this long before anybody tries again, and a reload still in the
+// air answers everyone who asks meanwhile with the same old list rather than
+// queueing them behind it — the answer is already known, and the waiting buys
+// nothing.
 const STALE_RETRY_MS = 5 * 60 * 1000;
 
 // One flight per key: ten cards asking at once produce a single upstream call,
 // and a failure is never cached, so the next attempt tries again for real.
 // ttl may be a function of the value, for answers whose worth varies.
 //
-// `staleMs` is how long past its expiry a value may still be handed to a reader
-// whose reload failed — asked for by the callers whose answer keeps well and
-// whose upstream does not (see lookupVenues). It is counted from when the value
-// was fetched and not from the last attempt, so a permanently dead upstream runs
-// the grace out and starts failing honestly rather than renewing itself into
-// serving last week's list forever.
+// `staleMs` is how long past its expiry a value is still worth handing out —
+// asked for by the callers whose answer keeps well and whose upstream does not
+// (see lookupVenues). A value inside that grace is served at once and its reload
+// put behind it rather than in front: the reader whose square expired an hour
+// ago gets last week's list now, and the fresh one is on the shelf for whoever
+// asks next, instead of every first look waiting out however many seconds the
+// upstream takes to repeat itself. The grace is counted from when the value was
+// fetched and not from the last attempt, so a permanently dead upstream runs it
+// out and starts failing honestly rather than renewing itself into serving last
+// week's list forever.
 function cached(key, ttl, load, { staleMs = 0 } = {}) {
   const hit = cache.get(key);
-  if (hit?.pending) return hit.pending;
+  // Takes in the stale entry wearing its reload (set below), which goes on
+  // answering until the reload lands or the retry window shuts.
   if (hit && hit.expiresAt > Date.now()) return Promise.resolve(hit.value);
+  if (hit?.pending) return hit.pending;
 
   const stale = staleMs > 0 && hit?.loadedAt + staleMs > Date.now() ? hit : null;
 
@@ -100,13 +108,22 @@ function cached(key, ttl, load, { staleMs = 0 } = {}) {
     })
     .catch((error) => {
       if (stale) {
-        console.warn(`upstream: ${key} answered from a stale entry (${error.message})`);
+        console.warn(`upstream: ${key} kept its stale entry (${error.message})`);
         cache.set(key, { ...stale, expiresAt: Date.now() + STALE_RETRY_MS });
         return stale.value;
       }
       cache.delete(key);
       throw error;
     });
+
+  // With something to show meanwhile, show it: the entry keeps its value and its
+  // age, carries the reload beside them, and answers out of hand for the length
+  // of the retry window — past which whoever asks next joins the reload, by then
+  // the honest thing to wait on. With nothing in hand, the reload is the answer.
+  if (stale) {
+    cache.set(key, { ...stale, expiresAt: Date.now() + STALE_RETRY_MS, pending });
+    return Promise.resolve(stale.value);
+  }
   cache.set(key, { pending });
   return pending;
 }
@@ -643,8 +660,8 @@ export function lookupEvents(latitude, longitude, lang = "en") {
 // Overpass. The only upstream in this file that is asked a question rather than
 // handed an address, and the question is worth reading:
 //
-//   [out:json][timeout:20];
-//   nwr[amenity=cafe][name](around:1500,35.01,135.77);
+//   [out:json][timeout:15];
+//   nwr[amenity~"^(restaurant|fast_food|food_court|cafe)$"][name](around:1500,35.01,135.77);
 //   out tags center;
 //
 // `nwr` is node, way and relation at once, because the same café is a dropped
@@ -715,9 +732,9 @@ const OVERPASS_TIMEOUT_MS = 17000;
 // browser will hold the request open (see VENUE_REQUEST_TIMEOUT_MS in api.js) —
 // and far longer than a reader will sit in front of a spinner. So the walk is
 // given a wall clock of its own: each instance is asked with whatever is left of
-// it, and when it runs out lo stops and says so. Forty seconds, because the two
-// cards queue through here one after the other and both must fit inside the
-// browser's minute and a half.
+// it, and when it runs out lo stops and says so. Forty seconds, because a
+// square with nothing in its near ring queues the wider one behind this walk,
+// and both must fit inside the browser's minute and a half.
 const OVERPASS_WALK_MS = 40000;
 
 // How long an instance that answered goes on being the one lo asks first.
@@ -763,10 +780,10 @@ const OVERPASS_SLOW_SHARE = 0.5;
 // the list with nothing.
 //
 // Every instance being down at once is one fact, and it costs forty seconds to
-// establish. The dashboard then asks the same question again immediately — the
-// other card, whose query has been queued behind this one the whole time — and
-// without this it would spend another forty seconds establishing the same fact,
-// putting the second card past the minute and a half the browser will wait.
+// establish. The next query through the queue — a wider ring, a neighbouring
+// square, the refresh behind a stale answer — would otherwise spend another
+// forty seconds establishing the same fact, putting whatever asked for it past
+// the minute and a half the browser will wait.
 //
 // So a completed walk that found nobody is remembered for a few minutes, and
 // during those minutes an Overpass query fails at once instead of going out.
@@ -914,11 +931,18 @@ function askOverpass(query) {
   return turn;
 }
 
-// The two cards, as the amenities OSM files each of them under. Two questions
-// rather than one list with a filter over it: "where can I eat" and "where can I
-// sit down with a coffee" are asked at different hours and answered by different
-// streets, and a reader who wants one of them on the dashboard need not carry
-// the other (see utils/cards.js).
+// The two cards, as the amenities OSM files each of them under. Two cards still
+// — "where can I eat" and "where can I sit down with a coffee" are asked at
+// different hours and answered by different streets, and a reader who wants one
+// of them on the dashboard need not carry the other (see utils/cards.js) — but
+// one question to Overpass, sorted onto the cards by this table on the way back.
+// They were two questions for a while, and the second spent its life queued
+// behind the first: the queries go out one at a time on purpose (see
+// askOverpass), so a dashboard carrying both cards paid for the walk twice and
+// showed the coffee half of the street however many seconds after the food
+// half. One query over the union of these amenities is the same rows for half
+// the trouble — half the reader's wait, and half of what lo asks of hardware
+// somebody else pays for.
 //
 // The amenities themselves rather than either upstream's way of asking about
 // them, because there are two upstreams now and this is the part they agree on.
@@ -929,15 +953,19 @@ const VENUE_AMENITIES = {
   cafe: ["cafe"],
 };
 
-// The same, in Overpass's own words. One amenity is an exact match rather than a
-// regular expression of one — the same rows either way, and the cheaper of the
-// two on hardware that is having enough trouble already.
-const VENUE_TAGS = Object.fromEntries(
-  Object.entries(VENUE_AMENITIES).map(([kind, amenities]) => [
-    kind,
-    amenities.length === 1 ? `amenity=${amenities[0]}` : `amenity~"^(${amenities.join("|")})$"`,
-  ]),
+// Which card a row belongs on, read back off the amenity Overpass matched — the
+// door the one answer is sorted at.
+const VENUE_KIND_BY_AMENITY = Object.fromEntries(
+  Object.entries(VENUE_AMENITIES).flatMap(([kind, amenities]) => amenities.map((amenity) => [amenity, kind])),
 );
+
+// The kinds being asked about, in Overpass's own words. One amenity is an exact
+// match rather than a regular expression of one — the same rows either way, and
+// the cheaper of the two on hardware that is having enough trouble already.
+function venueTag(kinds) {
+  const amenities = kinds.flatMap((kind) => VENUE_AMENITIES[kind]);
+  return amenities.length === 1 ? `amenity=${amenities[0]}` : `amenity~"^(${amenities.join("|")})$"`;
+}
 
 // A walk first, and the surrounding country only if the walk turned up nothing.
 // The second ring is never paid for in a town; it is there for the places where
@@ -1008,10 +1036,10 @@ function firstCuisine(tags, language) {
   return firstString(localizedTag(tags, "cuisine", language).split(";")[0]);
 }
 
-async function fetchVenues(kind, latitude, longitude, radius, language) {
+async function fetchVenues(kinds, latitude, longitude, radius, language) {
   const query =
     `[out:json][timeout:${OVERPASS_QUERY_TIMEOUT_S}];` +
-    `nwr[${VENUE_TAGS[kind]}][name](around:${radius},${latitude},${longitude});` +
+    `nwr[${venueTag(kinds)}][name](around:${radius},${latitude},${longitude});` +
     `out tags center;`;
   const data = await askOverpass(query);
 
@@ -1037,6 +1065,64 @@ async function fetchVenues(kind, latitude, longitude, radius, language) {
       };
     })
     .filter(Boolean);
+}
+
+// The rows of the one answer that belong on one card.
+function venueRows(rows, kind) {
+  return rows.filter((row) => VENUE_KIND_BY_AMENITY[row.category] === kind);
+}
+
+// The walk out and then the surrounding country, for every kind at once: each
+// ring is one query over whichever kinds the ring before left unanswered, so a
+// town costs a single query for both cards and only somewhere emptier pays for
+// a second. Each kind keeps the ring that actually answered for it — the card's
+// empty sentence names the ring that really came back empty, and a kind found
+// on the near ring is not made to wear the wide one's radius.
+//
+// This never rejects: a ring that could not be asked is written onto the kinds
+// that were still asking, as `{ error }` where the found ones have their rows.
+// A kind answered by an earlier ring keeps its answer whatever happens to the
+// later one — a walk that found the restaurants and then lost every instance
+// before the cafés owes the reader the restaurants it found.
+async function walkVenueRings(latitude, longitude, language) {
+  const found = {};
+  let asking = Object.keys(VENUE_AMENITIES);
+  for (const radius of VENUE_RADII_M) {
+    let rows;
+    try {
+      rows = await fetchVenues(asking, latitude, longitude, radius, language);
+    } catch (error) {
+      for (const kind of asking) found[kind] = { error };
+      return found;
+    }
+    for (const kind of asking) {
+      const items = venueRows(rows, kind);
+      if (items.length > 0) found[kind] = { radius, items };
+    }
+    asking = asking.filter((kind) => !found[kind]);
+    if (asking.length === 0) break;
+  }
+  // Nothing in either ring, and the card should say so about the wider one:
+  // "nothing within six kilometres" is the claim that was actually checked.
+  for (const kind of asking) found[kind] = { radius: VENUE_RADII_M.at(-1), items: [] };
+  return found;
+}
+
+// One walk per square, however many cards are asking. The cache below already
+// folds ten readings of one card into one call; this folds the two cards into
+// one walk, which that cache cannot do for them because they are filed under
+// different keys on purpose. The flight is let go as it settles — what it
+// learned lives on in the cache entries, and a promise held longer than that
+// would be a second cache with no expiry on it.
+const venueWalks = new Map(); // centre:language -> Promise
+function walkVenues(centre, language) {
+  const key = `${centre.latitude},${centre.longitude}:${language}`;
+  let walk = venueWalks.get(key);
+  if (!walk) {
+    walk = walkVenueRings(centre.latitude, centre.longitude, language).finally(() => venueWalks.delete(key));
+    venueWalks.set(key, walk);
+  }
+  return walk;
 }
 
 // The same question put to something that is not an Overpass instance at all.
@@ -1117,7 +1203,30 @@ async function fetchVenuesFromPhoton(kind, latitude, longitude, radius, language
     .filter(Boolean);
 }
 
-// Both cards, told apart by which amenities they ask about.
+// A list that came from the fallback keeps for a quarter of an hour rather than
+// the hour a full one gets. It is missing the cuisines, and the hour exists to
+// save an upstream the trouble of a question whose answer has not changed —
+// which is no argument for sitting on the thinner answer once Overpass is
+// taking questions again.
+function venueTtl(value) {
+  if (value.items.length === 0) return VENUE_EMPTY_TTL_MS;
+  return value.source === "photon" ? VENUE_SPARE_TTL_MS : VENUE_TTL_MS;
+}
+
+// What one card's walk learned about the other card's question, filed under the
+// other card's key. Only onto an empty shelf or an expired one: a fresh entry is
+// at worst the same age as this walk, and a reload already in the air is this
+// same walk seen from the other side — both are left as they stand.
+function primeVenues(kind, language, grid, place, found) {
+  const key = `venues:${kind}:${language}:${grid}`;
+  const hit = cache.get(key);
+  if (hit?.pending || (hit && hit.expiresAt > Date.now())) return;
+  const value = { place, ...found, source: "overpass" };
+  const now = Date.now();
+  cache.set(key, { expiresAt: now + venueTtl(value), loadedAt: now, value });
+}
+
+// Both cards, told apart by which half of the one walk each takes home.
 //
 // What is cached is the list around the middle of the square; how far each row
 // is from the reader is worked out afterwards, per request, from the fix they
@@ -1127,55 +1236,47 @@ async function fetchVenuesFromPhoton(kind, latitude, longitude, radius, language
 // costs no upstream call.
 export function lookupVenues(kind, latitude, longitude, lang = "en") {
   const language = PLACE_LANGUAGE[lang] ?? "en";
-  const key = `venues:${kind}:${language}:${gridKey(latitude, longitude, VENUE_GRID)}`;
-  // A list that came from the fallback keeps for a quarter of an hour rather than
-  // the hour a full one gets. It is missing the cuisines, and the hour exists to
-  // save an upstream the trouble of a question whose answer has not changed —
-  // which is no argument for sitting on the thinner answer once Overpass is
-  // taking questions again.
-  const ttl = (value) => {
-    if (value.items.length === 0) return VENUE_EMPTY_TTL_MS;
-    return value.source === "photon" ? VENUE_SPARE_TTL_MS : VENUE_TTL_MS;
-  };
+  const grid = gridKey(latitude, longitude, VENUE_GRID);
+  const key = `venues:${kind}:${language}:${grid}`;
 
   const load = async () => {
     const centre = gridCentre(latitude, longitude, VENUE_GRID);
     const place = await lookupPlace(latitude, longitude, language).catch(() => null);
 
-    // The walk out and then the surrounding country, whichever upstream is being
-    // walked: both are asked the same two rings in the same order.
-    const rings = async (ask) => {
+    const walked = await walkVenues(centre, language);
+    // The other card's half of the answer, put where that card will look.
+    // Usually it is looking already — the two ask within the same breath and
+    // share the walk — but one put on the dashboard twenty minutes after the
+    // other finds its list on the shelf instead of buying a second walk for
+    // rows the first one carried home.
+    for (const [other, found] of Object.entries(walked)) {
+      if (other !== kind && !found.error) primeVenues(other, language, grid, place, found);
+    }
+    const mine = walked[kind];
+    if (!mine.error) return { place, ...mine, source: "overpass" };
+
+    // Overpass having nothing to say about this ground is an answer and is
+    // returned above. Only Overpass having said nothing at all reaches here —
+    // the same two rings in the same order, put to the other upstream.
+    const found = await (async () => {
       for (const radius of VENUE_RADII_M) {
-        const items = await ask(radius);
+        const items = await fetchVenuesFromPhoton(kind, centre.latitude, centre.longitude, radius, language);
         if (items.length > 0) return { radius, items };
       }
-      // Nothing in either ring, and the card should say so about the wider one:
-      // "nothing within six kilometres" is the claim that was actually checked.
       return { radius: VENUE_RADII_M.at(-1), items: [] };
-    };
+    })().catch(() => null);
 
-    try {
-      const found = await rings((radius) => fetchVenues(kind, centre.latitude, centre.longitude, radius, language));
-      return { place, ...found, source: "overpass" };
-    } catch (error) {
-      // Overpass having nothing to say about this ground is an answer and is
-      // returned above. Only Overpass having said nothing at all reaches here.
-      const found = await rings((radius) =>
-        fetchVenuesFromPhoton(kind, centre.latitude, centre.longitude, radius, language),
-      ).catch(() => null);
-
-      // An empty answer from the fallback is not worth the claim it would make.
-      // "Nothing within six kilometres" is a strong thing to tell a reader, and
-      // lo will say it on the strength of the upstream it asked properly or not
-      // at all — so an empty one here is passed over, and what the reader gets is
-      // the stale list if there is one and the honest failure if there is not.
-      if (!found || found.items.length === 0) throw error;
-      console.warn(`upstream: ${kind} answered from photon.komoot.io (${error.message})`);
-      return { place, ...found, source: "photon" };
-    }
+    // An empty answer from the fallback is not worth the claim it would make.
+    // "Nothing within six kilometres" is a strong thing to tell a reader, and
+    // lo will say it on the strength of the upstream it asked properly or not
+    // at all — so an empty one here is passed over, and what the reader gets is
+    // the stale list if there is one and the honest failure if there is not.
+    if (!found || found.items.length === 0) throw mine.error;
+    console.warn(`upstream: ${kind} answered from photon.komoot.io (${mine.error.message})`);
+    return { place, ...found, source: "photon" };
   };
 
-  return cached(key, ttl, load, { staleMs: VENUE_STALE_MS }).then(({ place, radius, items }) => ({
+  return cached(key, venueTtl, load, { staleMs: VENUE_STALE_MS }).then(({ place, radius, items }) => ({
     place,
     radius,
     items: items

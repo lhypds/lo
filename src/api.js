@@ -308,12 +308,13 @@ export const getTrends = (coords) => shared("trends", coords, request(`/api/tren
 export const getRadio = (coords) => shared("radio", coords, request(`/api/radio?${geoQuery(coords)}`));
 // Somewhere to eat and somewhere for a coffee, nearest first. Two addresses
 // rather than one with a kind hung off it, because they are two cards and a
-// reader may well carry one of them without the other.
-// The server queues its Overpass queries one at a time and walks a list of
-// public instances until one of them answers, so these two reads can genuinely
-// take a while — a card waiting behind the other one, each with half a minute of
-// mirrors to get through. Room to finish, and still a bound on a dead
-// connection (see askOverpass in server/geo.js).
+// reader may well carry one of them without the other — though the server
+// answers both out of one OpenStreetMap walk, so carrying both costs one wait.
+// That wait can still genuinely run long: the server queues its Overpass
+// queries one at a time and walks a list of public instances until one of them
+// answers, with a wider second ring queued behind the first where the near one
+// came back empty. Room to finish, and still a bound on a dead connection (see
+// askOverpass in server/geo.js).
 const VENUE_REQUEST_TIMEOUT_MS = 90 * 1000;
 export const getFood = (coords) =>
   shared("food", coords, request(`/api/food?${geoQuery(coords)}`, { timeoutMs: VENUE_REQUEST_TIMEOUT_MS }));
