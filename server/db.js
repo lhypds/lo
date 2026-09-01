@@ -453,6 +453,32 @@ db.exec(`
   -- as a list; the primary key answers the other question, which is "do I
   -- already have this one".
   CREATE INDEX IF NOT EXISTS articles_kind_idx ON articles(kind, published_at DESC);
+
+  -- The other half of the same answer: the rows lo tried to read and could not.
+  -- A story whose address Google will not translate, a publisher that answers a
+  -- server with a consent wall, a page whose words are not in its markup — none
+  -- of the three comes good on a second attempt an hour later, and every one of
+  -- them costs two round trips and several seconds to find out.
+  --
+  -- Kept for the reader rather than for the bookkeeping. A row that has no
+  -- reading behind it is a row that goes out to the publisher's own page, and it
+  -- can be drawn as one — with the mark that says so — instead of looking like
+  -- every other row until it is pressed and apologises (see NewsCard). The
+  -- second use is the wait: the reader who presses one anyway is answered from
+  -- here rather than sent to Google and back again.
+  --
+  -- Keyed exactly like articles above: a digest of the address the feed gave, so
+  -- the two tables answer the same question from the same key.
+  CREATE TABLE IF NOT EXISTS unreadable (
+    id TEXT PRIMARY KEY,
+    link TEXT NOT NULL,
+    -- Which step gave up: resolve, fetch, or empty. Not for the reader — the
+    -- sheet says the same thing whichever it was — but for how long the answer
+    -- is worth keeping, since a page that would not load is a different kind of
+    -- no from a page that loaded with no prose in it (see articles.js).
+    reason TEXT NOT NULL,
+    tried_at TEXT NOT NULL
+  );
 `);
 
 // The account grew a profile after the first accounts were opened, so the
@@ -1895,4 +1921,33 @@ export function rememberArticle(article) {
 // The row only — the words are a file, and nothing here reads them.
 export function findArticle(id) {
   return selectArticle.get(id) ?? null;
+}
+
+// The failed reading, kept under the same key as a successful one. Newest
+// attempt wins: the reason and the clock are the whole row, and both are about
+// the last time lo asked rather than the first.
+const upsertUnreadable = db.prepare(`
+  INSERT INTO unreadable (id, link, reason, tried_at)
+  VALUES (?, ?, ?, ?)
+  ON CONFLICT(id) DO UPDATE SET
+    reason = excluded.reason,
+    tried_at = excluded.tried_at
+`);
+
+const selectUnreadable = db.prepare(`SELECT * FROM unreadable WHERE id = ?`);
+const deleteUnreadable = db.prepare(`DELETE FROM unreadable WHERE id = ?`);
+
+export function rememberUnreadable({ id, link, reason }) {
+  upsertUnreadable.run(id, link, reason, new Date().toISOString());
+}
+
+export function findUnreadable(id) {
+  return selectUnreadable.get(id) ?? null;
+}
+
+// A story that turned out to be readable after all — a paywall lifted, a
+// publisher that answered this time. Called where the reading is stored, so the
+// two tables never both claim the same row.
+export function forgetUnreadable(id) {
+  deleteUnreadable.run(id);
 }

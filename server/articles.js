@@ -27,7 +27,13 @@ import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { rememberArticle, findArticle } from "./db.js";
+import {
+  findArticle,
+  findUnreadable,
+  forgetUnreadable,
+  rememberArticle,
+  rememberUnreadable,
+} from "./db.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const articlesDir = path.resolve(__dirname, "..", "data", "articles");
@@ -282,6 +288,45 @@ function previewOf(lines) {
   if (opening.length <= PREVIEW_CHARS) return opening;
   return `${opening.slice(0, PREVIEW_CHARS).trimEnd()}…`;
 }
+
+/* -------------------------------------------------------- no reading at all -- */
+
+// How long a "there is nothing to read here" is worth keeping, by what went
+// wrong. A page that would not load may load tomorrow — a publisher's block is
+// often a rate limit, and Google's translation of an address is fragile by
+// nature — so that answer is held for an afternoon and no longer. A page that
+// loaded and had no prose in it is the publisher's own doing: the words are
+// behind a script, or the story is a video with a caption. That does not change
+// until the site is rebuilt, so it is held for a week rather than re-asked every
+// afternoon on the chance.
+const RETRY_AFTER_MS = {
+  resolve: 6 * 60 * 60 * 1000,
+  fetch: 6 * 60 * 60 * 1000,
+  empty: 7 * 24 * 60 * 60 * 1000,
+};
+
+// Whether lo already knows there is no reading behind this row and it is not yet
+// worth going to find out again. Two callers, for two different reasons: the
+// harvest below, so a second reader is not made to wait for the same nothing,
+// and the feed routes, so a row that opens the publisher's page instead of a
+// sheet can be drawn as one from the start (see /api/nearby).
+export function unreadable(link) {
+  const row = findUnreadable(articleId(link));
+  if (!row) return false;
+  const age = Date.now() - Date.parse(row.tried_at);
+  // An unparseable stamp is not a reason to keep saying no.
+  if (!Number.isFinite(age)) return false;
+  return age < (RETRY_AFTER_MS[row.reason] ?? RETRY_AFTER_MS.fetch);
+}
+
+// The whole of what a failed step does: write down which step it was, and answer
+// null, which is what every caller of harvest already understands.
+function noReading(link, reason) {
+  rememberUnreadable({ id: articleId(link), link, reason });
+  return null;
+}
+
+/* ----------------------------------------------------------------- storage -- */
 
 export async function readStoredArticle(id) {
   if (!isArticleId(id)) return null;

@@ -528,10 +528,18 @@ async function fetchWikipediaNearby(latitude, longitude, lang) {
 
 // The same story from six outlets is one story; the first copy through wins,
 // because the feed already sorted them newest first.
+//
+// What counts as the same title is letters and digits only, folded to one width.
+// Punctuation is where two wires re-typing one headline differ and the headline
+// does not: a wave dash for a fullwidth tilde, （両丹日日新聞） against
+// (両丹日日新聞). Collapsing runs of whitespace caught none of that, and it went
+// unnoticed while each card showed a single feed, since one feed rarely carries
+// a story twice. Merging feeds is what puts the two spellings side by side —
+// and a duplicate now costs a row that a second listing would have had.
 function dedupe(items) {
   const seen = new Set();
   return items.filter((item) => {
-    const key = item.title.toLowerCase().replace(/\s+/g, " ").slice(0, 80);
+    const key = item.title.normalize("NFKC").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "").slice(0, 80);
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -594,23 +602,48 @@ const EVENT_TERMS =
 // An event is stale the moment it is over, so the listing only looks back a
 // fortnight — long enough to catch a run that is still going.
 const EVENT_WINDOW = "when:14d";
-// The second attempt's, where a fortnight came back empty. Wider because the
+// The second attempt's, where a fortnight came back thin. Wider because the
 // second attempt is not asking a better-phrased version of the first question:
 // it is asking a thinner press, and a fortnight of a thin press is nothing.
 const EVENT_WINDOW_WIDE = "when:30d";
 const EVENTS_TTL_MS = 30 * 60 * 1000;
 // Nothing found is worth asking again about soon; a full answer keeps.
 const EVENTS_EMPTY_TTL_MS = 5 * 60 * 1000;
-const MAX_EVENT_ITEMS = 12;
+// As long a listing as the news card's, and for the same reason. Twelve was set
+// when a single search was the whole supply and looked generous against it; it
+// was in fact the binding constraint everywhere, and the panel showed the same
+// dozen rows whether the newswire had answered with forty listings or ninety.
+const MAX_EVENT_ITEMS = 20;
 
 // City level, not ward level: a ward has its own news, but its events get
 // written up under the name of the city they are in.
+//
+// Both names, though, and asked at once rather than one as the other's fallback.
+// The region was unreachable as a fallback — it was tried only where the city
+// came back with nothing, which for anywhere big enough to hold an event does
+// not happen — and it was never really a worse question, only a different one. A
+// prefecture writes up its own museums and its own festivals under its own name,
+// and none of that is filed under the city sitting in the middle of it.
 async function fetchEventNews(place, locale, window) {
-  for (const name of [place?.name, place?.region].filter(Boolean)) {
-    const batch = await fetchNewsFeed(searchUrl(`${name} ${EVENT_TERMS} ${window}`, locale)).catch(() => []);
-    if (batch.length > 0) return batch;
+  const names = [];
+  for (const name of [place?.name, place?.region]) {
+    if (name && !names.includes(name)) names.push(name);
   }
-  return [];
+  const batches = await Promise.all(
+    names.map((name) => fetchNewsFeed(searchUrl(`${name} ${EVENT_TERMS} ${window}`, locale)).catch(() => [])),
+  );
+  return batches.flat();
+}
+
+// Two feeds laid end to end are not a listing. Every city row would stand ahead
+// of every regional one, and with the list cut at twenty the region would be
+// back to contributing nothing at all — the fallback problem again, one step
+// further down. Each feed arrives newest first, so one order by the clock is
+// what actually merges them. An undated item sorts to the bottom rather than the
+// top, which is where the epoch puts it and where it belongs.
+function byNewest(items) {
+  const stamp = (item) => (item.time ? Date.parse(item.time) : 0);
+  return [...items].sort((a, b) => stamp(b) - stamp(a));
 }
 
 export function lookupEvents(latitude, longitude, lang = "en") {
@@ -621,9 +654,9 @@ export function lookupEvents(latitude, longitude, lang = "en") {
   return cached(key, ttl, async () => {
     const place = await lookupPlace(latitude, longitude, language).catch(() => null);
     const reader = readerLocale(language, place?.countryCode);
-    let items = await fetchEventNews(place, reader, EVENT_WINDOW);
+    let items = dedupe(await fetchEventNews(place, reader, EVENT_WINDOW));
 
-    // Nothing on in the reader's own language — which for a reader abroad is the
+    // Little on in the reader's own language — which for a reader abroad is the
     // ordinary answer rather than a rare one, and says nothing at all about
     // whether anything is on. So ask a second time the way the news card does:
     // the place's own edition, under the name that edition's papers write it in.
@@ -638,19 +671,30 @@ export function lookupEvents(latitude, longitude, lang = "en") {
     // The answer comes back in the local language, which is the bargain struck
     // for the news card above and the same one here — what is on, written up
     // where it is happening, beats an empty panel in a language you read.
-    if (items.length === 0) {
+    //
+    // Short of a full panel, not empty, is the test. Empty was too strict by a
+    // mile: a Chinese reader in London got one stray piece on the City as a
+    // financial centre, one is not nought, and the sixty-odd listings the English
+    // edition was holding stayed behind a door that never opened. And the test
+    // doubles as the budget — somewhere with a press of its own fills twenty rows
+    // on the first pass and never spends a request here, so the second pass is
+    // paid for only where the first one came up short.
+    if (items.length < MAX_EVENT_ITEMS) {
       const native = nativeLocale(place?.countryCode);
       // Where the country runs no edition of its own the reader's is already the
       // one Google would answer with, so only the window widens.
       const localPlace = native
         ? await lookupPlace(latitude, longitude, wikiEdition(place.countryCode)).catch(() => place)
         : place;
-      items = await fetchEventNews(localPlace, native ?? reader, EVENT_WINDOW_WIDE);
+      const wider = await fetchEventNews(localPlace, native ?? reader, EVENT_WINDOW_WIDE);
+      // The reader's own edition led, so its wording of a story it shares with
+      // the local press is the copy already in hand and the one dedupe keeps.
+      items = dedupe([...items, ...wider]);
     }
 
     // The reader's own name for where they are standing, whichever edition
     // ended up answering: the card puts it in the heading, not in a row.
-    return { place, items: dedupe(items).slice(0, MAX_EVENT_ITEMS) };
+    return { place, items: byNewest(items).slice(0, MAX_EVENT_ITEMS) };
   });
 }
 
