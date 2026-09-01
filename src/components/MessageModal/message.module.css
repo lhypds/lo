@@ -73,6 +73,10 @@
   color: var(--muted);
   font-family: var(--mono);
   font-size: 10px;
+  /* The other side's name is the way through to their page, and a name in lo
+     wears no line for it: grey mono over the words either way, whether it is
+     one to press or your own. */
+  text-decoration: none;
 }
 
 /* Ruled like everything else in lo, and turned over on your own lines: black on
@@ -169,4 +173,13 @@
 .footer button:disabled {
   opacity: 0.4;
   cursor: default;
+}
+
+/* Said only where there is a pointer to say it to, and only on the half of the
+   exchange that goes anywhere: your own name is a span and has nothing to
+   underline. */
+@media (hover: hover) {
+  a.who:hover {
+    text-decoration: underline;
+  }
 }
