@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
 import { AuthImage, Link, Modal, Skeleton, TextArea } from "../../ui/index.js";
+import { nameLink } from "../../utils/back.js";
 import { formatUsername, relativeTime } from "../../utils/format.js";
 import { postThumb } from "../../utils/image.js";
 import { useHere } from "../LocationProvider/index.js";
@@ -26,7 +27,12 @@ const BODY_MAX = 300;
 // endpoints while reusing every pixel and state transition below — a place off
 // Wikipedia is handed in through the same prop, since its comment thread is
 // filed under the same table (see VENUE_COMMENT_TYPES in server/index.js).
-export default function CommentsModal({ post = null, venue = null, onClose, onAdded }) {
+// `back` is how whoever mounted it would open it again, on the same subject: the
+// note a name pressed in the column leaves behind, so the ← on the profile it
+// leads to comes back here (see utils/back.js). Every mounter hands one over —
+// the dashboard and the posts page for a post's remarks, the dashboard again for
+// a venue's and a landmark's, the inbox for the column a row of it opens.
+export default function CommentsModal({ post = null, venue = null, back = null, onClose, onAdded }) {
   const { t, i18n } = useTranslation();
   // Opening this column is what reads it — a remark under your post waits in the
   // same inbox a letter does — and the answer says how much is left waiting
@@ -199,14 +205,15 @@ export default function CommentsModal({ post = null, venue = null, onClose, onAd
                     <div className={styles.head}>
                       {/* Through to the person, which is the one thing to do with
                           a name here — the same hand-off the byline in the bubble
-                          on the map makes, and to the same page. */}
+                          on the map makes, and to the same page. The column goes
+                          with the press and leaves a note where it was standing,
+                          so the ← on the profile comes back to these remarks
+                          rather than to the dashboard: finding out who wrote one
+                          of them is part of reading them (see utils/back.js). */}
                       <Link
                         to={`/${encodeURIComponent(comment.username)}`}
                         className={styles.who}
-                        onClick={(event) => {
-                          if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-                          onClose();
-                        }}
+                        {...nameLink(back, onClose)}
                       >
                         {formatUsername(comment.username)}
                       </Link>

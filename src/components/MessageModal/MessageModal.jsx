@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
 import { Link, Modal, Skeleton, TextArea } from "../../ui/index.js";
+import { nameLink } from "../../utils/back.js";
 import { formatUsername, relativeTime } from "../../utils/format.js";
 import { useAuth } from "../AuthProvider/index.js";
 import { useHere } from "../LocationProvider/index.js";
@@ -46,7 +47,13 @@ function same(a, b) {
 // this is open and about nobody. Two things mount it — a row in the inbox, and
 // the button on somebody's profile — and both of them have a name in hand or
 // they would not be pressing anything.
-export default function MessageModal({ username, onClose }) {
+//
+// `back` is how whoever mounted it would open it again: the note a name pressed
+// in here leaves behind, so that the ← on the profile it leads to comes back to
+// this exchange (see utils/back.js). Both mounters hand one over, since both can
+// put the sheet back up — the inbox on the thread it was reading, a profile on
+// the conversation its button starts.
+export default function MessageModal({ username, back = null, onClose }) {
   const { t, i18n } = useTranslation();
   // Whose the lines on the right are. The server says which side each one hangs
   // on and never says a name for them — `mine` is the whole of what comes down —
@@ -300,16 +307,19 @@ export default function MessageModal({ username, onClose }) {
                         // is no longer underneath it. A held modifier is asking for
                         // a tab, and leaves the conversation where it was.
                         //
+                        // And the way back with it: the sheet writes itself down on
+                        // the entry it is standing on, so the ← on the profile comes
+                        // back to this exchange rather than to the dashboard — the
+                        // reader stepped out of a conversation to see who they were
+                        // talking to, not to leave it (see utils/back.js).
+                        //
                         // Only their side. Your own name over your own lines is not
                         // a way anywhere — it is there to say which half of the
                         // exchange is yours.
                         <Link
                           to={`/${encodeURIComponent(who)}`}
                           className={styles.who}
-                          onClick={(event) => {
-                            if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-                            onClose();
-                          }}
+                          {...nameLink(back, onClose)}
                         >
                           {formatUsername(who)}
                         </Link>

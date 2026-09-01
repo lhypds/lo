@@ -106,9 +106,11 @@ export default function TrendsCard() {
       // Kept even on a cube, where every other panel drops its meta. This one is
       // not a label but the scope of the claim — trending in Kyoto and trending
       // in Japan are two different lists, and the card is not entitled to let a
-      // reader assume the narrower one just because the tile got small. It is one
-      // word, and the heading squeezes it before it squeezes the buttons (see
-      // .meta in ui/Card).
+      // reader assume the narrower one just because the tile got small. It is
+      // rarely one word — "préfecture de Kyoto" is what a French phone gets — and
+      // the heading is the right place to answer that: the meta is the first
+      // thing on it to be shortened and the last to stand in the way of the
+      // card's own name (see .meta in ui/Card).
       meta={where}
       action={<CardSize id="trends" />}
       // A cube is the one size that is not the width of the panel column: a

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
-import { AuthImage, Link, showToast } from "../../ui/index.js";
+import { AuthImage, Link, showToast, useLocation } from "../../ui/index.js";
+import { reopening } from "../../utils/back.js";
 import { copyText } from "../../utils/clipboard.js";
 import { CONTACTS } from "../../utils/contacts.js";
 import { formatCoords, formatUsername, relativeTime } from "../../utils/format.js";
@@ -95,6 +96,24 @@ export default function UserProfile({ username }) {
       cancelled = true;
     };
   }, [username]);
+
+  // Coming back from a profile one of this page's own sheets led to: a name in
+  // the followers or following list, or the name over the far side of the
+  // exchange. After the reading above rather than before it, because that one
+  // clears both of them on the way in — a page arriving on a new name puts its
+  // sheets down, and this is the one arrival where one of them is being picked
+  // up again (see utils/back.js).
+  //
+  // On the location rather than on the name: the exchange is with the person
+  // whose page this is, so the name it leads to is this same page, and coming
+  // back to it is a step the profile underneath does not change for.
+  const location = useLocation();
+  useEffect(() => {
+    const sheet = reopening(["follows", "chat"]);
+    if (!sheet) return;
+    if (sheet.kind === "chat") setMessaging(true);
+    else setListing(sheet.mode);
+  }, [location]);
 
   const name = formatUsername(username);
   // Your own page, which is the one profile with nothing to press: following
@@ -445,13 +464,27 @@ export default function UserProfile({ username }) {
           pressed on. Mounted whether or not either is open — the sheet draws
           nothing until it has a list to draw (see ui/Modal), and keeping it here
           is what lets the two figures be the whole of the way in. */}
-      <FollowsModal username={username} mode={listing} onClose={() => setListing(null)} />
+      <FollowsModal
+        username={username}
+        mode={listing}
+        back={listing ? { kind: "follows", mode: listing } : null}
+        onClose={() => setListing(null)}
+      />
 
       {/* And the exchange with whoever this page is about, over the page it was
           opened from — the same sheet the inbox opens, reached from the other
           end. Mounted only while it is up: unlike the sheet above it, this one
           fetches on the name it is given, and a name is always in hand here. */}
-      {messaging && <MessageModal username={username} onClose={() => setMessaging(false)} />}
+      {messaging && (
+        <MessageModal
+          username={username}
+          // The name over the far side of the exchange is this page's own, so
+          // pressing it lands the reader where they already are — with the sheet
+          // down, which is what the press was for. The ← puts it back up.
+          back={{ kind: "chat" }}
+          onClose={() => setMessaging(false)}
+        />
+      )}
 
       {/* Your own account, over your own page — the same sheet the top bar's
           figure opens, reached from the edit button under your name. Only on

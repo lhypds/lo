@@ -94,7 +94,14 @@
 .head {
   display: flex;
   align-items: center;
-  gap: 10px;
+  /* Four rather than the eight it reads as, because a button is mostly margin:
+     the icon inside one is 12px in a box of 22 (see ActionButton), so five of
+     the white between the meta and the mark a reader sees is already inside the
+     button and the gap only adds to it. Four puts nine pixels between the two,
+     which is what the line at the top of the page puts around its own dot — the
+     measure every small gap in lo is set against. The title asks for more air
+     than that after it and takes it as a margin of its own. */
+  gap: 4px;
   height: 30px;
   flex: 0 0 auto;
   padding: 0 6px;
@@ -109,58 +116,54 @@
   -webkit-user-select: none;
 }
 
+/* The name of the card, and the first thing on the heading a reader needs: a
+   card with a name and no count still says what it is, and a count with no name
+   does not. So the title takes the width of the row — which is also what sends
+   the meta and the buttons hard right, with no auto margin anywhere — and it is
+   the last item on the row to be shortened (see .meta).
+
+   Able to give way all the same, which shortens nothing that fits: it is only
+   reached where the heading is wider than the tile it is on and the meta has
+   already gone. Without it such a heading does not shorten at all — a nowrap
+   flex item will not go below its own text — and the buttons at the right end
+   are pushed out through the card's border instead. Each card is meant to carry
+   a name its own smallest size can hold and not lean on this (see the two that
+   swap heading with size — PeopleCard, Warnings); it is here so that a
+   translation nobody measured is a name cut short rather than a control off the
+   edge of the page. */
 .title {
-  margin: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+  /* With the four the row itself puts between its items, ten between the name
+     and whatever stands after it. */
+  margin: 0 6px 0 0;
   font-family: var(--display);
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.02em;
   white-space: nowrap;
-  /* Able to give way, which shortens nothing that fits: it is only reached where
-     the heading is wider than the tile it is on. Without it such a heading does
-     not shorten at all — a nowrap flex item will not go below its own text — and
-     the buttons at the right end are pushed out through the card's border
-     instead. Each card is meant to carry a name its own smallest size can hold
-     and not lean on this (see the two that swap heading with size — PeopleCard,
-     Warnings); it is here so that a translation nobody measured is a name cut
-     short rather than a control off the edge of the page. */
-  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* The right end of the heading, hard against the edge. The meta is the part of it
-   that gives way — a long place name is cut short — and a button never.
+/* What the card says about itself: a count, a scope, a place name. It is the
+   part of the heading that gives way, and it gives way first — 999 against the
+   title's 1 is the whole of what says a card is named before it is annotated.
+   Shrunk out of the row altogether it leaves the title the full width, which is
+   the right answer on a tile too narrow for both.
 
-   Four rather than the eight it reads as, because a button is mostly margin: the
-   icon inside one is 12px in a box of 22 (see ActionButton), so five of the white
-   between the place and the mark a reader sees is already inside the button and
-   the gap only adds to it. Four puts nine pixels between the two, which is what
-   the line at the top of the page puts around its own dot — the measure every
-   small gap in lo is set against.
+   min-width is what lets it go at all: a nowrap line's own smallest size is the
+   whole line, so left alone it refuses to shorten.
 
-   No min-width here, and that is the whole of what keeps the pair on the card.
-   Left alone, a flex item will not shrink below its own smallest content, and
-   this one's smallest content is the buttons: the meta beside them collapses to
-   nothing and they do not (the two rules below), so the tail has a floor at
-   their width and the shrinking a wide heading calls for has nowhere to go but
-   the title, which is where it belongs. Told min-width: 0, the tail went on
-   shrinking past that floor — a name no tile can hold, "Publications à
-   proximité" on a French phone, came out cut short *and* with the pair hanging
-   through the card's right border, because a flex box squeezed under its
-   contents does not clip them, it lets them out. */
-.tail {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.tail > :not(.meta) {
-  flex: 0 0 auto;
-}
-
+   It stands on the row beside the title rather than grouped with the buttons at
+   the right end, and that is not tidying. A group has a floor at the width of
+   its contents and a flex box will not shrink under it, so the meta's whole
+   line was that floor: every pixel a heading was over came out of the title
+   instead, and "préfecture de Kyoto" on a phone tile left the trends card with
+   no name on it at all. On the row itself the meta is an item in its own right,
+   and one that can be told to go first. */
 .meta {
+  flex: 0 999 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -168,6 +171,13 @@
   color: var(--muted);
   font-family: var(--mono);
   font-size: 10px;
+}
+
+/* Whatever the card gives the reader to press, at the right end of the heading
+   and never anywhere else: it is not shortened and it is not moved, whatever the
+   name and the meta in front of it are doing. */
+.head > :not(.title):not(.meta) {
+  flex: 0 0 auto;
 }
 
 .body {

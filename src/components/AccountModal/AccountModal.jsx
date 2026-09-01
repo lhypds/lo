@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
 import { Link, Modal, showToast, useNavigate } from "../../ui/index.js";
+import { nameLink } from "../../utils/back.js";
 import { formatUsername } from "../../utils/format.js";
 import { useAuth } from "../AuthProvider/index.js";
 import ProfileForm from "../ProfileForm/index.js";
@@ -318,14 +319,15 @@ export default function AccountModal({ isOpen, onClose }) {
                 answer: this is what a name in lo links to and what goes in a
                 message to somebody. The sheet closes behind a plain press, since
                 what is on the other side is the page it would otherwise be
-                covering; a held modifier is asking for a tab and leaves it up. */}
+                covering; a held modifier is asking for a tab and leaves it up.
+                And it is written down where it stands, so the ← on your page
+                brings the account back rather than going home — half of what
+                anybody looks at their own page for is to go back in and change
+                something (see utils/back.js). */}
             <Link
               className={styles.address}
               to={`/${encodeURIComponent(user.username)}`}
-              onClick={(event) => {
-                if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-                onClose();
-              }}
+              {...nameLink({ kind: "account" }, onClose)}
             >
               /{user.username}
             </Link>

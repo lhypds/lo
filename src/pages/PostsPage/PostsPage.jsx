@@ -1,7 +1,8 @@
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
-import { Lightbox, Modal, showToast, useSearchParams } from "../../ui/index.js";
+import { Lightbox, Modal, showToast, useLocation, useSearchParams } from "../../ui/index.js";
+import { reopening } from "../../utils/back.js";
 import { formatUsername } from "../../utils/format.js";
 import { postPhoto } from "../../utils/image.js";
 import { filterBy } from "../../utils/search.js";
@@ -117,6 +118,17 @@ export default function PostsPage() {
     arrivedRef.current = true;
     setFocus({ ...target });
   }, [wanted, posts]);
+
+  // Coming back from a profile a byline in the comment column led to: the column
+  // goes back up over the post it was under, on the post the note carries rather
+  // than on one found again in a list that has moved on since (see
+  // utils/back.js). Not the map — where the reader was standing is the entry's
+  // own, and the browser puts that back itself.
+  const location = useLocation();
+  useEffect(() => {
+    const sheet = reopening(["post"]);
+    if (sheet) setCommenting(sheet.subject);
+  }, [location]);
 
   // The words, where they were left, and who left them — the three things a
   // row says, and the three a post is remembered by. The name is folded in as
@@ -259,6 +271,7 @@ export default function PostsPage() {
           closes. */}
       <CommentsModal
         post={commenting}
+        back={commenting ? { kind: "post", subject: commenting } : null}
         onClose={() => setCommenting(null)}
         onAdded={(post, comments) => replacePost({ ...post, comments })}
       />

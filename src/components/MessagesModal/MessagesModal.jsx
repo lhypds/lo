@@ -30,7 +30,11 @@ const rowKey = (row) => (row.kind === "post" ? `post:${row.postId}` : `person:${
 // is what a row is about and where the press goes. A person opens the exchange
 // (see MessageModal); a post opens its comment column (see CommentsModal), and
 // is in the list because the post is yours or because you have written under it.
-export default function MessagesModal({ isOpen, onClose }) {
+//
+// `open` is a thread to stand on rather than a list to look at: the sheet is
+// being put back up for a reader who left one of its conversations by pressing a
+// name in it, and what they left was the conversation (see utils/back.js).
+export default function MessagesModal({ isOpen, open = null, onClose }) {
   const { t, i18n } = useTranslation();
   const { noteUnread } = useHere();
   const [conversations, setConversations] = useState([]);
@@ -79,6 +83,17 @@ export default function MessagesModal({ isOpen, onClose }) {
   useEffect(() => {
     if (isOpen) load();
   }, [isOpen, load]);
+
+  // And the conversation over it, where the sheet was opened on one. The list
+  // underneath is asked for all the same: it is what closing the thread goes
+  // back to, and it should be the list as it stands rather than as it stood
+  // before the trip. Only on the way in — a thread closed afterwards is closed,
+  // and the reader is looking at the inbox they came back to.
+  useEffect(() => {
+    if (!isOpen || !open) return;
+    if (open.kind === "post") setReadingPost(open.post);
+    else setReading(open.username);
+  }, [isOpen, open]);
 
   // Which row has its delete revealed, and nothing when none has. One at a time:
   // a swipe on one row is also the gesture that puts any other row back.
@@ -304,8 +319,20 @@ export default function MessagesModal({ isOpen, onClose }) {
           either: the exchange a name on a profile writes into, and the comment
           column a bubble on the map opens. A row here is a way back to a
           conversation, not a second place to have it. */}
-      <MessageModal username={reading} onClose={closeThread} />
-      <CommentsModal post={readingPost} onClose={closeThread} />
+      {/* And the way back out of either of them, for a reader who presses one of
+          the names inside: the inbox standing on this thread is what the ← on
+          that person's profile comes back to, which is two sheets rather than
+          one — the list, and the conversation over it (see utils/back.js). */}
+      <MessageModal
+        username={reading}
+        back={reading ? { kind: "inbox", thread: { kind: "person", username: reading } } : null}
+        onClose={closeThread}
+      />
+      <CommentsModal
+        post={readingPost}
+        back={readingPost ? { kind: "inbox", thread: { kind: "post", post: readingPost } } : null}
+        onClose={closeThread}
+      />
     </>
   );
 }

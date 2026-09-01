@@ -22,7 +22,11 @@ export function RouterProvider({ children }) {
       return;
     }
     const next = `${target.pathname}${target.search}${target.hash}`;
-    window.history[options.replace ? "replaceState" : "pushState"]({}, "", next);
+    // What the entry is to carry besides its address, which is nothing for most
+    // trips. An entry's own state is where lo keeps what belongs to a position
+    // rather than to a place — whether there is a step back from here, and what
+    // was standing open before it was taken (see utils/back.js).
+    window.history[options.replace ? "replaceState" : "pushState"](options.state ?? {}, "", next);
     setLocation(currentLocation());
     if (options.scroll !== false) window.scrollTo(0, 0);
   }, []);
@@ -44,7 +48,10 @@ export function useSearchParams() {
   return [useMemo(() => new URLSearchParams(search), [search])];
 }
 
-export function Link({ to, onClick, children, ...props }) {
+// `state` is the entry's, not the anchor's: it is handed to the router on a
+// plain press and never reaches the element, since an <a> has no such attribute
+// and would carry it into the page as one.
+export function Link({ to, state, onClick, children, ...props }) {
   const navigate = useNavigate();
   return (
     <a
@@ -63,7 +70,7 @@ export function Link({ to, onClick, children, ...props }) {
           return;
         }
         event.preventDefault();
-        navigate(to);
+        navigate(to, { state });
       }}
     >
       {children}

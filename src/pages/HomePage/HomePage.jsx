@@ -1,7 +1,8 @@
 import { Suspense, lazy, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
-import { Card, Lightbox, Modal, Skeleton, TileId, showToast } from "../../ui/index.js";
+import { Card, Lightbox, Modal, Skeleton, TileId, showToast, useLocation } from "../../ui/index.js";
+import { reopening } from "../../utils/back.js";
 import { arrangeCards, cardLabel, cardSpan, useCards } from "../../utils/cards.js";
 import { formatCoords } from "../../utils/format.js";
 import { postPhoto } from "../../utils/image.js";
@@ -231,6 +232,26 @@ export default function HomePage() {
   // even though both are answered by the same CommentsModal underneath (see
   // the two instances of it near the foot of this file).
   const [wikiCommenting, setWikiCommenting] = useState(null);
+
+  // Coming back from a profile a byline in one of those columns led to: the sheet
+  // goes back up over the dashboard, on the subject it was under. Three kinds
+  // because there are three states above holding one sheet between them, and the
+  // note says which — a landmark's thread put back into the venue's state would
+  // hand its count to the wrong shelf when the reader writes under it (see
+  // utils/back.js).
+  //
+  // The subject is the note's own copy rather than a row looked up again in a
+  // list that has moved on: what the reader is coming back to is the column they
+  // left, and a post that has drifted out of the neighbourhood since is still
+  // the post they were reading under.
+  const location = useLocation();
+  useEffect(() => {
+    const sheet = reopening(["post", "venue", "wiki"]);
+    if (!sheet) return;
+    if (sheet.kind === "post") setCommenting(sheet.subject);
+    else if (sheet.kind === "venue") setVenueCommenting(sheet.subject);
+    else setWikiCommenting(sheet.subject);
+  }, [location]);
 
   // Marks are yours and are the same list wherever you are standing, so unlike
   // posts they are not asked for again on every move — only on the refresh in
@@ -1004,6 +1025,7 @@ export default function HomePage() {
           new figure on it, which is what the pins are drawn from. */}
       <CommentsModal
         post={commenting}
+        back={commenting ? { kind: "post", subject: commenting } : null}
         onClose={() => setCommenting(null)}
         onAdded={(post, comments) => replacePost({ ...post, comments })}
       />
@@ -1013,6 +1035,7 @@ export default function HomePage() {
           rather than to the post provider. */}
       <CommentsModal
         venue={venueCommenting}
+        back={venueCommenting ? { kind: "venue", subject: venueCommenting } : null}
         onClose={() => setVenueCommenting(null)}
         onAdded={(venue, comments) => updateVenueComments(venue.kind, venue.id, comments)}
       />
@@ -1024,6 +1047,7 @@ export default function HomePage() {
           a no-op (see utils/wikiPlaces.js and utils/historyPlaces.js). */}
       <CommentsModal
         venue={wikiCommenting}
+        back={wikiCommenting ? { kind: "wiki", subject: wikiCommenting } : null}
         onClose={() => setWikiCommenting(null)}
         onAdded={(place, comments) => {
           updateWikiComments(place.id, comments);

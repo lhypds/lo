@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
 import { AuthImage, Link, Modal, Skeleton } from "../../ui/index.js";
+import { nameLink } from "../../utils/back.js";
 import { formatUsername, relativeTime } from "../../utils/format.js";
 import styles from "./follows.module.css";
 
@@ -19,7 +20,12 @@ import styles from "./follows.module.css";
 //
 // A row is a name and, where its owner has put one up, a picture: the rest of
 // who somebody is lives on their own page, which every row is a way through to.
-export default function FollowsModal({ username, mode, onClose }) {
+//
+// `back` is the profile underneath putting this list back up again, for a reader
+// who walks through one of the rows: reading a list of people is following it
+// down, and the ← on any of them comes back to the place in the list rather than
+// to the dashboard (see utils/back.js).
+export default function FollowsModal({ username, mode, back = null, onClose }) {
   const { t, i18n } = useTranslation();
   const [people, setPeople] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -92,14 +98,16 @@ export default function FollowsModal({ username, mode, onClose }) {
                     over another profile would be a list about somebody who is
                     no longer underneath it. A held modifier is asking for a tab
                     and leaves the sheet up, the same way the account sheet
-                    hands over its own address. */}
+                    hands over its own address.
+
+                    And the list is written down where it stands on the way out,
+                    so the ← on the page it leads to opens it again: a reader
+                    working down a list of names is coming back to the next one
+                    (see utils/back.js). */}
                 <Link
                   to={`/${encodeURIComponent(person.username)}`}
                   className={styles.item}
-                  onClick={(event) => {
-                    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-                    onClose();
-                  }}
+                  {...nameLink(back, onClose)}
                 >
                   {person.avatar && (
                     <AuthImage className={styles.avatar} src={person.avatar} alt="" width="28" height="28" />

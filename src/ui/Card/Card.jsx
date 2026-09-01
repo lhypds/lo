@@ -219,17 +219,17 @@ export default function Card({
       }
     >
       <h2 className={styles.title}>{title}</h2>
-      {/* What the card says about itself and whatever it gives the reader to
-          press are one group at the right end, rather than two things each
-          asked to find their own way there: sent right on their own they split
-          the free space between them and the meta line ends up stranded in the
-          middle of the heading. */}
-      {(meta != null || action) && (
-        <span className={styles.tail}>
-          {meta != null && <span className={styles.meta}>{meta}</span>}
-          {action}
-        </span>
-      )}
+      {/* What the card says about itself, and whatever it gives the reader to
+          press, stand on the same row as the title rather than in a group of
+          their own at the right end. Grouped, the pair had a floor at the width
+          of the meta — a nowrap line's smallest size is the whole line, and a
+          flex box will not shrink under its contents — so a long place name took
+          the heading and the title was the one squeezed away to nothing. The
+          title holds the row instead and the meta gives way first (see
+          card.module.css); nothing is stranded in the middle of the heading,
+          because the width the title takes is what sends both right. */}
+      {meta != null && <span className={styles.meta}>{meta}</span>}
+      {action}
     </header>
   );
 

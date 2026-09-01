@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ActionButton, Link, useNavigate } from "../../ui/index.js";
+import { ActionButton, Link, useLocation, useNavigate } from "../../ui/index.js";
+import { cameBack, reopening, stepBack } from "../../utils/back.js";
 import { MARK_PIN_EYE, MARK_PIN_PATH, POST_ICON } from "../../utils/icons.js";
 import { useAuth } from "../AuthProvider/index.js";
 import { useHere } from "../LocationProvider/index.js";
@@ -33,11 +34,38 @@ export default function Header({ back = false, backTo = "/", cards = false }) {
   // always nought.
   const { unread } = useHere();
   const navigate = useNavigate();
+  const location = useLocation();
   // The two sheets opened from here and nowhere else, so the bar holds them open
   // itself rather than through a module anything could call.
   const [accountOpen, setAccountOpen] = useState(false);
   const [messagesOpen, setMessagesOpen] = useState(false);
-  const backHome = backTo === "/" || backTo.startsWith("/?");
+  // Which thread the inbox is to open on, when it is being put back up rather
+  // than opened: a reader who left a conversation by pressing a name in it comes
+  // back to the conversation, not to the list with it somewhere in it. Nothing
+  // for a press on the envelope, which is the inbox as such.
+  const [thread, setThread] = useState(null);
+  // Where the reader came from, which the entry they are standing on knows and
+  // this cannot: a profile reached by pressing a name is a step back rather than
+  // a trip home, and the button says so as well as doing it.
+  const trip = cameBack();
+  const backHome = !trip && (backTo === "/" || backTo.startsWith("/?"));
+
+  // Coming back to the page a name was pressed on. Both of the bar's own sheets
+  // can be the one it was pressed in — the inbox, which is nothing but other
+  // people's names, and the account, whose one link is your own — and the bar is
+  // where they are held, so the bar is what puts them back up (see
+  // utils/back.js). The note is taken on the way in and is gone afterwards: a
+  // sheet closed after it has been handed back stays closed.
+  useEffect(() => {
+    const sheet = reopening(["inbox", "account"]);
+    if (!sheet) return;
+    if (sheet.kind === "account") {
+      setAccountOpen(true);
+      return;
+    }
+    setThread(sheet.thread ?? null);
+    setMessagesOpen(true);
+  }, [location]);
 
   // There is no refresh button. The dashboard keeps itself current — the fix
   // every thirty seconds, the weather and the place name behind it, who else is
@@ -51,7 +79,10 @@ export default function Header({ back = false, backTo = "/", cards = false }) {
       <header className="topbar">
         <span className="topbar-brand">
           {back ? (
-            <ActionButton tooltip={t(backHome ? "header.backHome" : "header.back")} onClick={() => navigate(backTo)}>
+            <ActionButton
+              tooltip={t(backHome ? "header.backHome" : "header.back")}
+              onClick={() => stepBack(navigate, backTo)}
+            >
               <svg viewBox="0 0 24 24">
                 <path d="m15 18-6-6 6-6" />
               </svg>
@@ -141,7 +172,19 @@ export default function Header({ back = false, backTo = "/", cards = false }) {
           there would be pinned under it. Out here they are children of the page,
           like every other sheet in lo — and because the bar is on every page, so
           are they. */}
-      {user && <MessagesModal isOpen={messagesOpen} onClose={() => setMessagesOpen(false)} />}
+      {user && (
+        <MessagesModal
+          isOpen={messagesOpen}
+          open={thread}
+          onClose={() => {
+            setMessagesOpen(false);
+            // The thread the sheet was put back on goes with it: the next press
+            // on the envelope is the inbox being opened, not a conversation
+            // being resumed.
+            setThread(null);
+          }}
+        />
+      )}
       {user && <AccountModal isOpen={accountOpen} onClose={() => setAccountOpen(false)} />}
     </>
   );
