@@ -68,6 +68,14 @@ function minute(stamp) {
 // place. Wide enough for the longest of them with a gap after it.
 const LABEL = 11;
 
+// What an empty field comes to. The account's own block has a word for each of
+// its blanks — "never", "none", "no device" — because each of those is a
+// different kind of nothing and reads as a sentence about the account. A profile
+// field has only the one kind, and nine lines of "not filled in" is a wall of the
+// same sentence; the dash is the mark the roster already puts under "from" for an
+// address lo never made out.
+const EMPTY = "—";
+
 function line(label, value) {
   console.log(`  ${pad(label, LABEL)}${value}`.trimEnd());
 }
@@ -138,11 +146,11 @@ function links(kept) {
 // person asks for it: how they stand with lo, then what they have put up about
 // themselves, then what they have left behind.
 //
-// The account's own block prints every line, "never" and "none" included, so
+// Every line of all three blocks is printed, "never" and the dash included, so
 // that two accounts read side by side have the same shape and a blank is an
-// answer rather than a missing row. The profile block prints only what has been
-// filled in: nine mostly-empty labels is a screen of nothing, and what a profile
-// is worth reading for is the parts of it somebody bothered with.
+// answer rather than a missing row. A label with nothing after it says the field
+// was left empty, which is worth knowing about a profile — a label that is not
+// there at all says nothing, and reads as lo having declined to look.
 function show(detail) {
   // The name as the row spells it rather than as it was typed at the shell: the
   // column is unique without regard to case, so Alice and alice are one account,
@@ -183,13 +191,16 @@ function show(detail) {
     // padded to the widest of them, since one of those words may be CJK and the
     // addresses beside them are what the block is read for.
     ["links", links(detail.links)],
-  ]
-    .map(([label, values]) => [label, values.filter((value) => String(value ?? "").trim())])
-    .filter(([, values]) => values.length > 0);
-  if (profile.length > 0) {
-    console.log("");
-    for (const [label, values] of profile) block(label, values);
-  }
+  ].map(([label, values]) => {
+    // The empty ones dropped from inside a field rather than from the sheet: a
+    // bio's blank lines are not rows of it, and a link with a name and no address
+    // is not one either. A field left with nothing at all after that is a field
+    // nobody filled in, and gets the dash and its label like any other.
+    const filled = values.filter((value) => String(value ?? "").trim());
+    return [label, filled.length > 0 ? filled : [EMPTY]];
+  });
+  console.log("");
+  for (const [label, values] of profile) block(label, values);
 
   console.log("");
   line("posts", String(detail.posts));
