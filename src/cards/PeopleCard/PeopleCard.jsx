@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Card, Link, Skeleton } from "../../ui/index.js";
-import { distanceMeters, formatDistance, formatUsername, relativeTime } from "../../utils/format.js";
+import { distanceMeters, formatCountry, formatDistance, formatUsername, relativeTime } from "../../utils/format.js";
 import { useAuth } from "../../components/AuthProvider/index.js";
 import { useHere } from "../../components/LocationProvider/index.js";
 import CardSize from "../../components/CardSize/index.js";
@@ -10,7 +10,7 @@ import styles from "./people.module.css";
 // shown at all: the map draws the ground and the reader standing on it, not
 // everyone else. Type answers "is anybody near me" better than a scatter of
 // dots did anyway, because it can be ordered — nearest first, with a name and a
-// distance on every row.
+// reading of where they are on every row.
 //
 // The list is the provider's, traded for our own fix on the minute loop, so the
 // panel costs no request of its own.
@@ -26,19 +26,67 @@ import styles from "./people.module.css";
 // underneath; a person turned out to be one answer and not two, so the page is
 // all of it — which is what a middle click or a held modifier was already
 // reaching for, and is a thing that can be kept, shared or opened in a tab.
+
+// Past this the number has stopped being an answer. Under it a distance places
+// somebody — the next street, the far side of town, an hour on a train — and
+// over it every figure says the same thing, which is "not here": 1,160 km and
+// 8,140 km are one fact read twice, and neither of them is the fact worth having
+// about somebody that far off. Whereabouts they are is.
+//
+// Five hundred kilometres because that is about where the two readings change
+// places. A person 300 km away is somewhere you could be tonight; a person 900
+// km away is somewhere else, and the name of the somewhere else is the whole of
+// what the row can usefully say.
+const FAR_M = 500_000;
+
+// What a row says about where somebody is: how far, or whereabouts — never both,
+// since the tile has one slot for it and a place beside a number would be the row
+// answering twice.
+//
+// Whereabouts is the region and the country: "Kyōto-fu · Japan", which says the
+// thing a reader wants off a name they have found halfway around the world. Both
+// in the reader's own language — the country because the browser can name a code
+// in any of them, the region because the server annotates the list in the
+// language it was asked in.
+//
+// The country drops out of it when it is the reader's own, which is what keeps
+// the swap from making the row worse: somebody 3,000 km from Shanghai is in
+// Xinjiang, and saying so is worth more than "China" and more than 3,000 km,
+// where saying so about somebody in Japan would leave off the half that matters.
+// The region drops out when the geocoder has not named it yet — a country on its
+// own is still an answer — and where neither is known the distance stands,
+// because a figure that says little is better than a row that says nothing.
+function whereabouts(away, person, home, locale) {
+  if (!Number.isFinite(away)) return "";
+  if (away >= FAR_M) {
+    const abroad = person.country && person.country.toUpperCase() !== home;
+    const line = [person.region, abroad ? formatCountry(person.country, locale) : ""]
+      .filter(Boolean)
+      .join(" · ");
+    if (line) return line;
+  }
+  return formatDistance(away);
+}
+
 export default function PeopleCard() {
   const { t, i18n } = useTranslation();
-  const { coords, people, loadingPeople } = useHere();
+  const { coords, place, people, loadingPeople } = useHere();
   const { user } = useAuth();
 
-  // Nearest first, and with the distance each row shows in hand. Without a fix
+  // Which country the reader is standing in, off the same lookup the place name
+  // in the top bar comes from. Unknown until it lands, and unknown reads as "not
+  // the same country" — a row would rather name a country it turns out the
+  // reader is also in than show a figure that says nothing.
+  const home = (place?.countryCode ?? "").toUpperCase();
+
+  // Nearest first, and with the reading each row shows in hand. Without a fix
   // of our own there is no distance to sort on, and the order the server sent —
   // most recently seen first — is the better one anyway.
   const rows = people
-    .map((person) => ({
-      person,
-      away: coords ? distanceMeters(coords, person) : Infinity,
-    }))
+    .map((person) => {
+      const away = coords ? distanceMeters(coords, person) : Infinity;
+      return { person, where: whereabouts(away, person, home, i18n.language), away };
+    })
     .sort((a, b) => a.away - b.away);
 
   // You, at the top of it. The list is who is around here and you are one of
@@ -93,7 +141,7 @@ export default function PeopleCard() {
               </Link>
             </li>
           )}
-          {rows.map(({ person, away }) => (
+          {rows.map(({ person, where }) => (
             <li key={person.username}>
               <Link to={`/${encodeURIComponent(person.username)}`} className={styles.item}>
                 {/* A bullet for the row — a person is somewhere, and a small
@@ -101,7 +149,7 @@ export default function PeopleCard() {
                 <span className={styles.dot} aria-hidden="true" />
                 <span className={styles.who}>{formatUsername(person.username)}</span>
                 <span className={styles.itemMeta}>
-                  {Number.isFinite(away) && <span>{formatDistance(away)}</span>}
+                  {where && <span>{where}</span>}
                   {/* A position is only worth as much as its age — a dot ten
                       minutes old is somebody who has already walked off. */}
                   <time dateTime={person.time}>{relativeTime(person.time, i18n.language, t)}</time>

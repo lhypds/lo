@@ -49,7 +49,8 @@
     "createTitle": "Nueva cuenta",
     "createConfirm": "Nadie usa todavía «{{name}}». ¿Crear la cuenta y elegir una contraseña?",
     "create": "Crear",
-    "linkDead": "Este enlace de inicio de sesión ya no funciona."
+    "linkDead": "Este enlace de inicio de sesión ya no funciona.",
+    "linkUnreachable": "Ahora mismo no se puede conectar con lo. Prueba el enlace dentro de un momento."
   },
   "account": {
     "title": "Cuenta",

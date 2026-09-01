@@ -49,7 +49,8 @@
     "createTitle": "New account",
     "createConfirm": "No one is using “{{name}}” yet. Create it and choose a password?",
     "create": "Create",
-    "linkDead": "That sign-in link no longer works."
+    "linkDead": "That sign-in link no longer works.",
+    "linkUnreachable": "Cannot reach lo just now. Try the link again in a moment."
   },
   "account": {
     "title": "Account",

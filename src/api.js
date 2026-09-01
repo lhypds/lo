@@ -58,6 +58,15 @@ export function authHeaders() {
   return sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {};
 }
 
+// Whether this browser is holding a token at all. Not whether it is any good —
+// only the server can say that, and only a 401 is it saying so — but the
+// difference between a load that has a session to ask about and one that has
+// nothing to ask about. Which is what lets a server that could not be reached be
+// told apart from nobody being signed in (see AuthProvider).
+export function hasSession() {
+  return Boolean(sessionToken);
+}
+
 // A request that has lost its connection must eventually make room for the next
 // turn of a poller. Browsers put no useful upper bound on fetch by themselves,
 // which is especially visible in an embedded WebView moving between networks:
@@ -335,13 +344,22 @@ export const getWarnings = ({ latitude, longitude }) =>
 // question about a radius the server draws round its own idea of where we are,
 // not about a square this client can name — the host keys it on the minute
 // alone, exactly as lo does.
+//
+// The language does go up, which it did not have to while a row was a name, a
+// pair of coordinates and a stamp. A row now carries the region its person is
+// standing in — the one part of the answer that is words rather than figures,
+// and the reader's own words at that (see the people panel) — so the list is
+// asked for in the language it is going to be read in.
 export const publishPosition = ({ latitude, longitude, accuracy }) =>
   shared(
     "people",
     null,
-    request("/api/position", { method: "PUT", body: JSON.stringify({ latitude, longitude, accuracy }) }),
+    request(`/api/position?lang=${i18n.language || "en"}`, {
+      method: "PUT",
+      body: JSON.stringify({ latitude, longitude, accuracy }),
+    }),
   );
-export const getPeople = () => shared("people", null, request("/api/people"));
+export const getPeople = () => shared("people", null, request(`/api/people?lang=${i18n.language || "en"}`));
 
 // Posts are everyone's, so the map asks for the ones near it rather than for
 // its own; with no fix to ask from, the newest anywhere is the best there is.

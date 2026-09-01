@@ -49,7 +49,8 @@
     "createTitle": "Nouveau compte",
     "createConfirm": "Personne n’utilise encore « {{name}} ». Créer ce compte et choisir un mot de passe ?",
     "create": "Créer",
-    "linkDead": "Ce lien de connexion ne fonctionne plus."
+    "linkDead": "Ce lien de connexion ne fonctionne plus.",
+    "linkUnreachable": "lo est injoignable pour l’instant. Réessayez le lien dans un moment."
   },
   "account": {
     "title": "Compte",

@@ -220,6 +220,28 @@ export function lookupPlace(latitude, longitude, lang = "en") {
   });
 }
 
+// What is already known about a square, and nothing waited for. The one caller
+// is the presence list, which annotates a row per person on a loop that turns
+// every minute for every open tab: it wants the region each of them is in, in
+// the language of whoever is reading, and it wants it without ever putting a
+// geocoder in front of the answer to "who is about".
+//
+// So a miss is not a wait. It asks — the answer is filed in the same cache the
+// hit above comes out of, a second later, for whoever asks next — and says it
+// does not know yet, which the caller has a fallback for. A minute later the
+// same row is annotated for free, and stays that way for the day the entry
+// lives (see PLACE_TTL_MS). The alternative is a list of people that arrives
+// only as fast as somebody else's server can name a hundred prefectures.
+//
+// A pending lookup counts as not known: it is a promise, and this returns places.
+export function knownPlace(latitude, longitude, lang = "en") {
+  const language = PLACE_LANGUAGE[lang] ?? "en";
+  const hit = cache.get(`place:${language}:${gridKey(latitude, longitude, PLACE_GRID)}`);
+  if (hit && !hit.pending && hit.expiresAt > Date.now()) return hit.value;
+  void lookupPlace(latitude, longitude, lang).catch(() => {});
+  return null;
+}
+
 // The one line a spot is filed under — as much of district, city and region as
 // the geocoder knows, narrowest first. Null where it knew none of it, which is
 // the sea and not much else.

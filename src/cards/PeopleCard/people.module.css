@@ -51,8 +51,8 @@
   text-decoration: none;
 }
 
-/* A bullet, and no more than that: the row's own reading is the name and the
-   distance, and a disc big enough to look like a marker promises a legend the
+/* A bullet, and no more than that: the row's own reading is the name and where
+   they are, and a disc big enough to look like a marker promises a legend the
    panel does not have. The row is aligned on the baseline, so an empty box of
    this height stands on it — 6px against the name's 9px of x-height sits low in
    the line, where a bullet belongs. */
@@ -128,13 +128,15 @@
   font-size: 11px;
 }
 
-/* On a single square the row keeps the name and how far off, and drops how long
-   ago: a name squeezed to two letters and an ellipsis is a row that has stopped
-   answering, and of the two readings beside it the distance is the one the list is
-   ordered by — nearest first, which is the question the tile is here for. The age
-   comes back the moment the panel is given the width of a line.
+/* On a single square the row keeps the name and where they are — how far off, or
+   which region and country when that is too far for a figure to say anything —
+   and drops how long ago: a name squeezed to two letters and an ellipsis is a row
+   that has stopped answering, and of the two readings beside it the whereabouts is
+   the one the list is ordered by — nearest first, which is the question the tile
+   is here for. The age comes back the moment the panel is given the width of a
+   line.
    The separator goes with it: it is drawn by the age's own ::before, so there is
-   no dot left hanging off the end of the distance.
+   no dot left hanging off the end of the whereabouts.
 
    A class the card hands down rather than a container query, for the reason the
    warnings card gives at length: a square and a panel are within ten pixels of

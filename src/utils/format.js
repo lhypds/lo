@@ -38,6 +38,31 @@ export function formatDistance(meters) {
   return `${(meters / 1000).toFixed(meters < 10000 ? 2 : 1)} km`;
 }
 
+// A country in the reader's language, out of the two letters a position is filed
+// under. The browser has the list — every language it can render a date in it can
+// also name a country in — so lo carries no table of its own for this and no
+// two hundred lines of it in each of the files that hold the rest of the words.
+//
+// Empty for anything that is not a country code, and empty too when the browser
+// hands the code straight back, which is how Intl says it has never heard of it:
+// two capitals where a country name should be read as a bug rather than as an
+// answer, and the caller has a better thing to fall back on.
+// ZZ is the other way it says so — the code CLDR keeps for a region nobody has
+// named, which comes back as "Unknown Region" in the reader's own language and
+// would sit in the row looking like an answer. Asked for rather than listed,
+// since the sentence it comes back as is a different one in every language.
+export function formatCountry(code, locale) {
+  if (!/^[A-Za-z]{2}$/.test(code ?? "")) return "";
+  const region = code.toUpperCase();
+  try {
+    const names = new Intl.DisplayNames([locale], { type: "region" });
+    const name = names.of(region);
+    return name === region || name === names.of("ZZ") ? "" : name;
+  } catch {
+    return "";
+  }
+}
+
 // "3 min ago" without pulling in a date library: anything older than a week is
 // better served by the date itself, which the caller renders instead.
 export function relativeTime(iso, locale, t) {

@@ -219,6 +219,21 @@ db.exec(`
     latitude REAL NOT NULL,
     longitude REAL NOT NULL,
     accuracy REAL,
+    -- Which country the pair above falls in, as the two letters ISO files it
+    -- under. The one reading of a position that survives being far away: a
+    -- distance says where somebody is only while they are near enough for a
+    -- number to mean something, and past that "8,140 km" and "3,270 km" are the
+    -- same fact read twice (see the people panel, which shows the country
+    -- instead). Written beside the fix rather than on the account because it is
+    -- a reading of this fix — it goes stale the moment the account moves, and
+    -- the row it is in is overwritten when that happens.
+    --
+    -- The code and not the name: a name is in some language, and the reader's
+    -- browser can put the code into theirs. Null where the geocoder was
+    -- unreachable when the fix was filed, and left as it was rather than
+    -- cleared when a later lookup fails — the last country somebody was in is a
+    -- better guess about where they are than nothing.
+    country_code TEXT,
     updated_at TEXT NOT NULL
   );
 
@@ -473,6 +488,14 @@ if (!messageColumns.has("deleted_at")) db.exec(`ALTER TABLE messages ADD COLUMN 
 // the picture itself, which is what they were all drawing before.
 const postColumns = new Set(db.prepare(`PRAGMA table_info(posts)`).all().map((column) => column.name));
 if (!postColumns.has("image_thumb")) db.exec(`ALTER TABLE posts ADD COLUMN image_thumb TEXT`);
+
+// The country a fix is in, added to a table that has been filing fixes without
+// one. Every row already there keeps the blank until its account publishes its
+// next position, which is a minute away for anybody with a tab open and forever
+// for everybody else — and a row nobody is refreshing is one the presence window
+// has already dropped, so the blanks are on positions nothing reads.
+const positionColumns = new Set(db.prepare(`PRAGMA table_info(positions)`).all().map((column) => column.name));
+if (!positionColumns.has("country_code")) db.exec(`ALTER TABLE positions ADD COLUMN country_code TEXT`);
 
 // What a person is, as far as anyone else is concerned: the name, when they
 // turned up, the line they wrote about themselves and the ways to reach them.
@@ -1200,10 +1223,25 @@ const updateLastPosition = db.prepare(`
   WHERE id = ?
 `);
 
+// And the country that fix turned out to be in, written a moment after it —
+// the coordinates come off a sensor and are filed the instant they arrive,
+// where the country has to be asked of a geocoder (see fileCountry in
+// index.js). So it is its own statement rather than a column of the upsert
+// above, and the fix is never made to wait on it.
+//
+// Which leaves one gap: an account that has just crossed a border keeps the old
+// country for as long as the lookup takes. That is a fraction of a second on a
+// warm cache and a country's width of nothing either way — the two letters are
+// answering "which country is this person in", and the answer was true a minute
+// ago.
+const updatePositionCountry = db.prepare(`
+  UPDATE positions SET country_code = ? WHERE user_id = ?
+`);
+
 // Everyone but the asker: the reader's own dot comes from their own sensor,
 // which is always fresher than the round trip through here.
 const selectOtherPositions = db.prepare(`
-  SELECT u.username, p.latitude, p.longitude, p.accuracy, p.updated_at AS time
+  SELECT u.username, p.latitude, p.longitude, p.accuracy, p.country_code AS country, p.updated_at AS time
   FROM positions p
   JOIN users u ON u.id = p.user_id
   WHERE p.user_id <> ? AND p.updated_at >= ? AND u.discoverable = 1
@@ -1609,6 +1647,17 @@ export function savePosition(userId, { latitude, longitude, accuracy }) {
   const spread = accuracy ?? null;
   upsertPosition.run(userId, latitude, longitude, spread, now);
   updateLastPosition.run(latitude, longitude, spread, now, userId);
+}
+
+// The country of the fix just filed, once the geocoder has said which one it is.
+// A code or nothing: a lookup that failed leaves the column as it was rather
+// than blanking it, because the country somebody was in an hour ago is a better
+// answer about where they are than no answer at all — and the fix underneath it
+// is this account's own, so the two are rarely more than a street apart.
+export function savePositionCountry(userId, countryCode) {
+  const code = typeof countryCode === "string" ? countryCode.trim().toUpperCase() : "";
+  if (!/^[A-Z]{2}$/.test(code)) return;
+  updatePositionCountry.run(code, userId);
 }
 
 // `since` is an ISO timestamp: same format the column is written in, so the

@@ -49,7 +49,8 @@
     "createTitle": "Neues Konto",
     "createConfirm": "„{{name}}“ wird noch von niemandem verwendet. Konto erstellen und Passwort wählen?",
     "create": "Erstellen",
-    "linkDead": "Dieser Anmeldelink funktioniert nicht mehr."
+    "linkDead": "Dieser Anmeldelink funktioniert nicht mehr.",
+    "linkUnreachable": "lo ist gerade nicht erreichbar. Versuchen Sie den Link gleich noch einmal."
   },
   "account": {
     "title": "Konto",

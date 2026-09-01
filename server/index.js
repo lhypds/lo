@@ -42,6 +42,7 @@ import {
   readConversation,
   recordLogin,
   savePosition,
+  savePositionCountry,
   saveSession,
   setDiscoverable,
   setLinkKey,
@@ -53,6 +54,7 @@ import {
 import { COMPONENTS, componentsFor, countryList } from "./countries.js";
 import {
   isUpstreamDown,
+  knownPlace,
   lookupEvents,
   lookupHistory,
   lookupNearby,
@@ -1602,8 +1604,53 @@ app.get("/api/images/:name", requireSession, (req, res) => {
 // claim lo cannot stand behind.
 const PRESENCE_WINDOW_MS = 10 * 60 * 1000;
 
-function livePeople(userId) {
-  return getOtherPositions(userId, new Date(Date.now() - PRESENCE_WINDOW_MS).toISOString());
+// Which part of a country somebody is standing in — the prefecture, the state,
+// the province — in the language of whoever is reading the list. The country
+// beside it is filed with the position as two letters and named by the reader's
+// own browser (see PeopleCard); a region has no such table anywhere, so it is
+// text and it has to come from here, which is why this one field is worked out
+// per reader rather than written down once.
+//
+// The city where the geocoder has no subdivision to give, since "where in Japan"
+// is answered by Kyoto as well as by Kyōto-fu, and nothing at all where the only
+// name it knows is the country's — the row already says the country.
+//
+// Null until the square this person is standing on has been looked up in this
+// reader's language, which is a minute for a list that has just met somebody new
+// (see knownPlace) and never again for the rest of the day.
+function regionOf(person, lang) {
+  const place = knownPlace(person.latitude, person.longitude, lang);
+  if (!place) return null;
+  return [place.region, place.name].find((label) => label && label !== place.country) ?? null;
+}
+
+// Who is out there, each with the reading of where they are that a distance
+// cannot give: the country their fix was filed under and, where it is known, the
+// region inside it.
+function livePeople(userId, lang) {
+  const since = new Date(Date.now() - PRESENCE_WINDOW_MS).toISOString();
+  return getOtherPositions(userId, since).map((person) => ({ ...person, region: regionOf(person, lang) }));
+}
+
+// Which country the fix just filed is in, written down beside it — the reading
+// the people panel falls back on when somebody turns out to be too far away for
+// a distance to say anything (see PeopleCard).
+//
+// Asked in no particular language: a country code is the same two letters in all
+// of them, so every reader on the same square shares the one cached lookup —
+// which is also why this is nearly free. A fix is filed every minute per open
+// tab and the geocoder is asked about a square roughly a kilometre across once a
+// day, so all but the first of those minutes is a hit in memory.
+//
+// Never waited on. Presence is lo's own answer about its own users and the one
+// loop with no upstream in it; a geocoder having a bad afternoon must not be
+// able to slow down or fail the trade that tells everybody who is about. So this
+// is started and let go of, the column lands a moment later, and a failure
+// leaves the last known country standing.
+function fileCountry(userId, location) {
+  return lookupPlace(location.latitude, location.longitude)
+    .then((place) => savePositionCountry(userId, place?.countryCode))
+    .catch(() => {});
 }
 
 // Who else is out — and how much is waiting to be read, which has nothing to do
@@ -1612,7 +1659,7 @@ function livePeople(userId) {
 // turning every minute. A poller of its own would be a second beat asking a
 // question this one can answer for free.
 app.get("/api/people", requireSession, (req, res) => {
-  res.json({ people: livePeople(req.user.id), unread: countUnread(req.user.id) });
+  res.json({ people: livePeople(req.user.id, requestedLang(req)), unread: countUnread(req.user.id) });
 });
 
 // Telling the server where you are and asking who else is out are the same
@@ -1621,7 +1668,8 @@ app.put("/api/position", requireSession, (req, res) => {
   const location = parseLocation(req.body);
   if (!location) return res.status(400).json({ error: "Invalid coordinates" });
   savePosition(req.user.id, location);
-  res.json({ people: livePeople(req.user.id), unread: countUnread(req.user.id) });
+  void fileCountry(req.user.id, location);
+  res.json({ people: livePeople(req.user.id, requestedLang(req)), unread: countUnread(req.user.id) });
 });
 
 // Everything a screen standing at one spot opens with, in one answer: where this
@@ -1642,6 +1690,11 @@ app.post("/api/dashboard", requireSession, async (req, res, next) => {
       lookupWeather(location.latitude, location.longitude),
     ]);
     const place = placeAnswer.status === "fulfilled" ? placeAnswer.value : null;
+    // The country beside the fix filed above (see fileCountry), off the lookup
+    // this answer was making anyway rather than off one of its own — the reader
+    // asked for the name of where they are, and which country that is came back
+    // in the same breath.
+    savePositionCountry(req.user.id, place?.countryCode);
     const components = componentsFor(place?.countryCode);
 
     const [nearbyAnswer, eventsAnswer, trendsAnswer] = await Promise.allSettled([
@@ -1670,7 +1723,7 @@ app.post("/api/dashboard", requireSession, async (req, res, next) => {
       events: eventsAnswer.status === "fulfilled" ? eventsAnswer.value?.items ?? [] : [],
       trends: trendsAnswer.status === "fulfilled" ? trendsAnswer.value?.items ?? [] : [],
       posts: getPostsNear(location, POSTS_RADIUS_M, 20),
-      people: livePeople(req.user.id),
+      people: livePeople(req.user.id, lang),
     });
   } catch (error) {
     next(error);

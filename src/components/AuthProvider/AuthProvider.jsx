@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import i18n from "../../i18n/index.js";
 import { showToast, useNavigate } from "../../ui/index.js";
 import { tellHost } from "../../utils/host.js";
@@ -20,6 +20,7 @@ import "../../utils/units.js";
 import * as api from "../../api.js";
 
 const storageKey = "lo:user";
+const accountKey = "lo:account";
 const AuthContext = createContext(null);
 
 // The last name signed in from this browser. Not a credential and no longer a way
@@ -68,6 +69,70 @@ function hashWithoutKey() {
   return rest ? `#${rest}` : "";
 }
 
+// The account the last answered session check came back with. Not a credential —
+// the token in api.js is the whole of what authenticates anything, and this is
+// only the name and profile that came down beside it — and kept for one thing: a
+// load that could not reach the server has an account to draw rather than a login
+// screen it has no business showing (see start below).
+function rememberAccount(user) {
+  try {
+    localStorage.setItem(accountKey, JSON.stringify(user));
+  } catch {
+    // Storage denied, as a partitioned or private frame is allowed to. The
+    // session still lasts as long as the page is open; only the reading of it
+    // from behind a dead connection is lost.
+  }
+}
+
+function rememberedAccount() {
+  try {
+    const account = JSON.parse(localStorage.getItem(accountKey) || "null");
+    return typeof account?.username === "string" ? account : null;
+  } catch {
+    return null;
+  }
+}
+
+function forgetAccount() {
+  try {
+    localStorage.removeItem(accountKey);
+  } catch {
+    // Nothing was kept, so there is nothing to clear.
+  }
+}
+
+// The one answer that means nobody is signed in: the server saying it does not
+// know this token — it aged out, it was revoked, or there was never one. api.js
+// has thrown the copy away by the time this is asked.
+//
+// Everything else a failed request can be is not that. A refused connection while
+// the server is coming back up, a proxy answering 502 in front of it, a phone
+// whose network is not up yet, a read that ran out its thirty seconds: in every
+// one of those the token is untouched and as good as it was a moment ago. The
+// question simply went unasked, and a question that went unasked is not a
+// sign-out.
+function signedOut(error) {
+  return error?.status === 401;
+}
+
+// So it is asked again before it is believed. A restart takes the server down and
+// brings it up in one breath (see restart.sh), and a page reloaded into that gap
+// gets a refused connection rather than an answer. Two seconds of the loading
+// screen is a cheaper thing to spend than a sign-out, and a 401 skips all of it —
+// a browser with no session waits for nothing.
+const RETRY_DELAYS = [500, 1500];
+
+async function askSession() {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await api.getSession();
+    } catch (error) {
+      if (signedOut(error) || attempt >= RETRY_DELAYS.length) throw error;
+      await new Promise((resolve) => setTimeout(resolve, RETRY_DELAYS[attempt]));
+    }
+  }
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [ready, setReady] = useState(false);
@@ -80,18 +145,43 @@ export function AuthProvider({ children }) {
 
     async function start() {
       let signedIn = null;
+      // Whether the session below is one the server confirmed or one taken on
+      // trust from the last load, which is the difference between a URL that has
+      // done its work and one that has not (see the foot of this).
+      let unverified = false;
       try {
-        const data = await api.getSession();
+        const data = await askSession();
         signedIn = data.user;
+        rememberAccount(data.user);
         // What this account has decided about how lo is shown to it, which came
         // down with the session rather than being asked for after it: the stores
         // have already drawn this page from the copy in localStorage, and this is
         // the answer from whichever device was last used (see utils/settings.js).
         adoptSettings(data.user.username, data.settings);
-      } catch {
-        // Nobody is signed in here, or the saved session expired or was revoked.
-        // Either way the login screen is the answer: a password is not something
-        // this browser is holding on anybody's behalf.
+      } catch (error) {
+        if (signedOut(error)) {
+          // Nobody is signed in here, or the saved session expired or was
+          // revoked. Either way the login screen is the answer: a password is not
+          // something this browser is holding on anybody's behalf.
+          forgetAccount();
+        } else {
+          // The server was never reached to be asked. The session stands, and the
+          // page is drawn from the account this browser last saw — sending a
+          // reader to a login screen over a connection error would be sending
+          // them to a screen that cannot log anybody in either, and the token
+          // they still hold would have opened the page as soon as the line came
+          // back.
+          //
+          // Settings are deliberately left alone here. adoptSettings with nothing
+          // to adopt reads as "this account has never saved any" and offers this
+          // browser's up as the account's, which against a server that is merely
+          // late would put defaults over the real file (see utils/settings.js).
+          // The stores are already showing what this browser last held, which is
+          // the right answer in any case; what this session decides is kept here
+          // and reaches the account at the next load that gets through.
+          signedIn = api.hasSession() ? rememberedAccount() : null;
+          unverified = Boolean(signedIn);
+        }
       }
 
       // A key is spent only where there is nothing to spend it on. A link will
@@ -99,17 +189,26 @@ export function AuthProvider({ children }) {
       // same way a name in one never did — arriving on a phone signed in as
       // somebody else and being quietly turned into a different person is worse
       // than being left where the link put you.
+      let keyUnanswered = false;
       if (!signedIn && key) {
         try {
           const data = await api.loginWithKey(key);
           signedIn = data.user;
           localStorage.setItem(storageKey, data.user.username);
+          rememberAccount(data.user);
           adoptSettings(data.user.username, data.settings);
-        } catch {
+        } catch (error) {
           // A key that was withdrawn, or replaced by a newer link. Said out loud
           // rather than swallowed: the login screen on its own looks like a link
           // that did nothing, and the reader has to know to go and get another.
-          if (!cancelled) showToast(i18n.t("auth.linkDead"), 2400);
+          //
+          // Unless nothing answered, which is a different thing to say: the key is
+          // as good as it was, and what the reader has to know is to try it again
+          // rather than to go and ask for another one.
+          keyUnanswered = !signedOut(error);
+          if (!cancelled) {
+            showToast(i18n.t(keyUnanswered ? "auth.linkUnreachable" : "auth.linkDead"), 2400);
+          }
         }
       }
 
@@ -117,6 +216,14 @@ export function AuthProvider({ children }) {
       setUser(signedIn);
       setReady(true);
       if (!requested && !key) return;
+      // A key stays in the URL wherever it was not actually spent — nothing
+      // answered when it was offered, or it was never offered because a session
+      // taken on trust was standing in front of it. Stripping it is what makes a
+      // spent key spent, and taking out one that was not would leave the reader
+      // on a login screen with the one thing that could have got them past it
+      // gone from the address bar. Left where it is, a reload is the whole of
+      // trying again.
+      if (keyUnanswered || (unverified && key)) return;
 
       // Both have done their job the moment they have been read, so both come
       // back out of the URL. The name because a bookmark or a shared link should
@@ -148,6 +255,7 @@ export function AuthProvider({ children }) {
   async function login(username, password) {
     const data = await api.login(username, password);
     localStorage.setItem(storageKey, data.user.username);
+    rememberAccount(data.user);
     adoptSettings(data.user.username, data.settings);
     setUser(data.user);
     return data.user;
@@ -159,14 +267,30 @@ export function AuthProvider({ children }) {
   async function register(username, password) {
     const data = await api.createUser(username, password);
     localStorage.setItem(storageKey, data.user.username);
+    rememberAccount(data.user);
     adoptSettings(data.user.username, data.settings);
     setUser(data.user);
     return data.user;
   }
 
+  // The account itself changing under a signed-in session — the profile page
+  // saving a bio, or reading back what another device saved. Signing in is what
+  // sets the account; this only ever refreshes it, and the kept copy follows so
+  // that a load which cannot reach the server draws the profile as it was last
+  // saved rather than as it was last signed in with.
+  //
+  // Its identity has to hold still across renders: a caller watches it (see
+  // AccountModal), and one made afresh every time would be an effect that ran
+  // every time.
+  const updateUser = useCallback((account) => {
+    setUser(account);
+    rememberAccount(account);
+  }, []);
+
   async function logout() {
     await api.logout().catch(() => {});
     localStorage.removeItem(storageKey);
+    forgetAccount();
     // Nothing further is written against a session that has ended. The page keeps
     // the shape it is in — signing out is not a request for a different dashboard.
     forgetSettings();
@@ -183,10 +307,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    // `updateUser` is for the account itself changing under a signed-in session —
-    // the profile page saving a bio, or reading back what another device saved.
-    // Signing in is what sets the account; this only ever refreshes it.
-    <AuthContext.Provider value={{ user, ready, login, register, logout, updateUser: setUser }}>
+    <AuthContext.Provider value={{ user, ready, login, register, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

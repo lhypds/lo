@@ -49,7 +49,8 @@
     "createTitle": "新建账号",
     "createConfirm": "还没有人用“{{name}}”。创建账号并设置密码？",
     "create": "创建",
-    "linkDead": "这个登录链接已经失效。"
+    "linkDead": "这个登录链接已经失效。",
+    "linkUnreachable": "暂时连不上 lo，稍后再试一次这个链接。"
   },
   "account": {
     "title": "账号",
