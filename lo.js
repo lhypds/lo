@@ -84,7 +84,7 @@ function fix(row) {
   const at = `${row.lastLatitude.toFixed(4)}, ${row.lastLongitude.toFixed(4)}`;
   const meters = row.lastAccuracy;
   if (!Number.isFinite(meters)) return at;
-  return `${at} ${meters < 1000 ? `±${Math.round(meters)} m` : `±${(meters / 1000).toFixed(1)} km`}`;
+  return `${at} ${meters < 1000 ? `±${Math.round(meters)}m` : `±${(meters / 1000).toFixed(1)}km`}`;
 }
 
 // And what the geocoder called that spot, which is the reading of a fix somebody

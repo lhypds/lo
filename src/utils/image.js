@@ -1,5 +1,9 @@
-// A photo on a post: compressed to WebP here in the browser, then uploaded to
-// /api/images, which stores it under data/images and serves it back by URL.
+// A photo on a post or a mark: compressed to WebP here in the browser, then
+// uploaded to /api/images, which stores it and serves it back by URL. Where it
+// is stored depends on what it ends up on and is the server's business — a
+// mark's stays a file in the writer's own folder so it comes out in their
+// export, a post's moves into the database every account reads (see
+// server/images.js).
 //
 // Doing the compression here rather than on the server is what keeps lo free of
 // an image library — every browser that can draw the map can also encode a

@@ -144,7 +144,7 @@ export default function DirectionCard() {
         <dl className={styles.rows}>
           <div>
             <dt>{altitude?.ground ? t("direction.ground") : t("direction.altitude")}</dt>
-            <dd>{altitude ? `${Math.round(altitude.metres)} m` : NONE}</dd>
+            <dd>{altitude ? `${Math.round(altitude.metres)}m` : NONE}</dd>
           </div>
           {/* Off the GPS and so on the tile whatever the handset's own
               instruments are doing — a phone that will not give up its gyroscope

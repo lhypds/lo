@@ -14,8 +14,8 @@ export function formatUsername(username) {
 
 export function formatAccuracy(meters) {
   if (!Number.isFinite(meters)) return "";
-  if (meters < 1000) return `±${Math.round(meters)} m`;
-  return `±${(meters / 1000).toFixed(1)} km`;
+  if (meters < 1000) return `±${Math.round(meters)}m`;
+  return `±${(meters / 1000).toFixed(1)}km`;
 }
 
 const EARTH_RADIUS_M = 6_371_008.8;
@@ -30,12 +30,12 @@ export function distanceMeters(a, b) {
   return 2 * EARTH_RADIUS_M * Math.asin(Math.min(1, Math.sqrt(h)));
 }
 
-// Three significant figures at every scale: a 4 m gap reads as 4.2 m, a city
-// crossing as 12.3 km.
+// Three significant figures at every scale: a 4m gap reads as 4.2m, a city
+// crossing as 12.3km.
 export function formatDistance(meters) {
   if (!Number.isFinite(meters)) return "";
-  if (meters < 1000) return `${meters < 10 ? meters.toFixed(1) : Math.round(meters)} m`;
-  return `${(meters / 1000).toFixed(meters < 10000 ? 2 : 1)} km`;
+  if (meters < 1000) return `${meters < 10 ? meters.toFixed(1) : Math.round(meters)}m`;
+  return `${(meters / 1000).toFixed(meters < 10000 ? 2 : 1)}km`;
 }
 
 // A country in the reader's language, out of the two letters a position is filed

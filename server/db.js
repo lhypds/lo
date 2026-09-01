@@ -97,7 +97,9 @@ db.exec(`
     -- Null on an account opened before there were passwords, which is what the
     -- login step reads as "this one is still to be chosen".
     password TEXT,
-    -- A file name from data/images, the same as a post's photo and never bytes
+    -- The file name of a picture in this account's own folder, never bytes. The
+    -- one thing in that folder everybody else may read, since a face on a post
+    -- is not a private matter — see selectAvatarOwner, which is what says so.
     avatar TEXT,
     bio TEXT,
     -- What they do. One of the trades the sheet offers, kept as the slug the
@@ -206,8 +208,9 @@ db.exec(`
 
   -- A mark is private and says only "I was here"; a post is public and says
   -- something about the spot, so it carries words, maybe a photo, and the name
-  -- of whoever left it. The photo is a file name from data/images, never bytes:
-  -- the row stays small enough to hand out by the hundred.
+  -- of whoever left it. The photo is a name into the images table below, never
+  -- bytes: the row stays small enough to hand out by the hundred, and a hundred
+  -- posts is a hundred short strings rather than a hundred photographs.
   --
   -- Two file names, because a photo is stored twice (see compressPhoto): the
   -- picture itself, and a thumbnail of it that every list, row and bubble draws
@@ -235,6 +238,31 @@ db.exec(`
   -- a profile, which reads what somebody has been leaving about. Same shape as
   -- the marks index, since it answers the same question about one account.
   CREATE INDEX IF NOT EXISTS posts_user_time_idx ON posts(user_id, time DESC);
+
+  -- The bytes of every picture a post carries. A photograph is the one thing in
+  -- lo that is not text, and where it is kept follows the same line everything
+  -- else does: a post is left out on the ground for whoever comes past, so its
+  -- picture is read by every account that comes past it, and a thing every
+  -- account reads belongs where the rest of what accounts show each other is.
+  -- A mark's photograph is the opposite — private, read back by one account —
+  -- and it is a file in that account's own folder instead (see images.js).
+  --
+  -- Named after the digest of its own bytes, which is what makes the name a key
+  -- worth having: the same photo posted twice is one row, and a name never
+  -- points at different bytes than it did before, so the URL can be cached
+  -- forever. The type is the one the bytes were sniffed as — never the
+  -- Content-Type the upload claimed (see storeImage).
+  --
+  -- Rows are never deleted. A name is a digest, so a post being edited or
+  -- deleted says nothing about whether another post is pointing at the same
+  -- bytes — the same reason the folder keeps what a mark let go of until a
+  -- sweep can see the whole picture.
+  CREATE TABLE IF NOT EXISTS images (
+    name TEXT PRIMARY KEY,
+    type TEXT NOT NULL,
+    bytes BLOB NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  ) WITHOUT ROWID;
 
   -- Where each account is right now, one row per user and overwritten in place:
   -- this is presence, not history. Marks are the table that keeps things.
@@ -592,6 +620,21 @@ const updateProfileFields = db.prepare(`
   WHERE id = ?
 `);
 
+// Whose folder a picture is the profile picture in — and, by being answerable
+// at all, that the picture is one. An avatar lives in its owner's folder beside
+// their marks (see images.js), and it is the one thing in there that everybody
+// else has to be able to read: the folder is private, and a face on a post is
+// not. So this column is what says a name may be served out of somebody's
+// folder to somebody who is not them, and a name it does not answer for stays
+// where it is.
+const selectAvatarOwner = db.prepare(`
+  SELECT username FROM users WHERE avatar = ?
+`);
+
+const selectAvatars = db.prepare(`
+  SELECT username, avatar FROM users WHERE avatar IS NOT NULL
+`);
+
 const insertUser = db.prepare(`
   INSERT INTO users (username, password)
   VALUES (?, ?)
@@ -683,9 +726,9 @@ const selectUserDetail = db.prepare(`
     -- screen. That an account has one is the whole of what a reading wants.
     u.link_key IS NOT NULL AS hasLink,
     u.discoverable,
-    -- The file name under data/images rather than the URL PROFILE_COLUMNS makes
-    -- of it: what reads this has a terminal rather than an <img>, and the name
-    -- is the half of it that can be looked for on disk.
+    -- The file name in the account's own folder rather than the URL
+    -- PROFILE_COLUMNS makes of it: what reads this has a terminal rather than an
+    -- <img>, and the name is the half of it that can be looked for on disk.
     u.avatar,
     u.links,
     u.bio,
@@ -908,6 +951,30 @@ const updatePostContent = db.prepare(`
 const deletePostById = db.prepare(`
   DELETE FROM posts
   WHERE id = ? AND user_id = ?
+`);
+
+/* ------------------------------------------------------------------- images */
+
+// OR IGNORE, because the name is the digest of the bytes: a row already under
+// that name holds the same photograph, and writing it again would be spending a
+// megabyte to arrive where the table already is. It is the ordinary case rather
+// than the odd one — the same picture posted twice, a post edited without its
+// photo being changed, a restart re-reading a file it has already taken in.
+const insertImage = db.prepare(`
+  INSERT OR IGNORE INTO images (name, type, bytes)
+  VALUES (?, ?, ?)
+`);
+
+const selectImage = db.prepare(`SELECT type, bytes FROM images WHERE name = ?`);
+const selectImageName = db.prepare(`SELECT name FROM images WHERE name = ?`);
+
+// Every photograph the posts table is pointing at, both files of each: the
+// picture and the thumbnail every list draws in its place. Read once on the way
+// up, by the migration that moves what data/images was holding in here.
+const selectPostImageNames = db.prepare(`
+  SELECT image AS name FROM posts WHERE image IS NOT NULL
+  UNION
+  SELECT image_thumb AS name FROM posts WHERE image_thumb IS NOT NULL
 `);
 
 /* ------------------------------------------------------------------ follows */
@@ -1555,6 +1622,38 @@ export function updatePost(userId, postId, post) {
 
 export function deletePost(userId, postId) {
   return deletePostById.run(postId, userId).changes > 0;
+}
+
+// The bytes of a post's photograph, put where every account can read them. What
+// hands them over is the claim a post makes on a picture the author uploaded
+// into their own folder (see claimForPost in images.js) — a post is public, so
+// its picture leaves the folder that only its owner can be handed.
+export function putImage(name, type, bytes) {
+  insertImage.run(name, type, bytes);
+  return name;
+}
+
+// The picture behind a name, or nothing where the table is not the one holding
+// it — which is the ordinary answer for a mark's photograph or an avatar, since
+// those never come in here.
+export function getImage(name) {
+  return selectImage.get(name) ?? null;
+}
+
+export function hasImage(name) {
+  return selectImageName.get(name) != null;
+}
+
+export function postImageNames() {
+  return selectPostImageNames.all().map((row) => row.name);
+}
+
+export function avatarOwner(name) {
+  return selectAvatarOwner.get(name)?.username ?? null;
+}
+
+export function avatars() {
+  return selectAvatars.all();
 }
 
 // Both presses answer with the state they left behind rather than with whether

@@ -92,7 +92,7 @@ export default function RadioCard() {
   let meta = null;
   if (shown) {
     if (shown.place) meta = shown.place;
-    else if (Number.isFinite(shown.metres)) meta = formatDistance(shown.metres).replace(/\s+/g, "");
+    else if (Number.isFinite(shown.metres)) meta = formatDistance(shown.metres);
   }
 
   let body;

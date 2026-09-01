@@ -1,11 +1,13 @@
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
-import { isStoredName } from "./images.js";
+import { isSafeName, isStoredName, userDir, usersDir } from "./paths.js";
+
+export { isSafeName, userDir };
 
 // What an account keeps that is nobody else's business, kept as files rather
 // than as rows: data/users/<username>/, one folder per account, with marks.json
-// and settings.json in it.
+// and settings.json in it — and the photographs the marks point at, in an
+// images/ folder beside them (see images.js).
 //
 // The database is for the things accounts say to each other — a post is left on
 // the ground for whoever comes past, a message is addressed to somebody, a
@@ -25,40 +27,10 @@ import { isStoredName } from "./images.js";
 // every row it serves, so a read here is not the thing that would make it block.
 // Sync also keeps the endpoints the shape they were when marks were a table: no
 // route grew an await for the sake of the shelf they moved to.
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const usersDir = path.resolve(__dirname, "..", "data", "users");
-
-// A username is a folder name here, so it is checked before it is joined to a
-// path rather than trusted for having come out of the users table. The pattern
-// is the account-name pattern from index.js with the traversal characters that
-// were never in it spelled out by their absence: no dot, no slash, no separator
-// of any kind, so a name that passes this cannot address anything but its own
-// folder under data/users.
-const SAFE_NAME_RE =
-  /^[a-z0-9_\p{Script_Extensions=Han}\p{Script_Extensions=Hiragana}\p{Script_Extensions=Katakana}\p{Script_Extensions=Hangul}-]{1,32}$/u;
-
-// What the folder is called: the account's name said the one way lo says it, so
-// that every route asking about the same account asks about the same folder. The
-// users table is unique without regard to case, which means one account can never
-// be two folders here — and an account opened by hand before that was true (see
-// lo.js) still has somewhere for its things to go rather than a 500 in place of
-// its list.
-function folderName(username) {
-  return String(username ?? "").trim().normalize("NFKC").toLowerCase();
-}
-
-export function isSafeName(username) {
-  return SAFE_NAME_RE.test(folderName(username));
-}
-
-// The folder an account's own things live in. Throwing rather than returning
-// null: every caller is about to read or write inside it, and a path that could
-// not be built is a bug in the caller rather than a state to handle.
-export function userDir(username) {
-  const name = folderName(username);
-  if (!SAFE_NAME_RE.test(name)) throw new Error(`Unsafe username: ${username}`);
-  return path.join(usersDir, name);
-}
+//
+// Where the folder is and what it is called are in paths.js, one module down,
+// because images.js needs the same two answers and neither of these should be
+// importing the other for them.
 
 export function hasUserDir(username) {
   return isSafeName(username) && fs.existsSync(userDir(username));
@@ -181,26 +153,64 @@ function readLabel(value, places) {
   return label;
 }
 
-const IMAGE_PATH = "/api/images/";
-
-// Where a mark's photograph is read from, which is where every picture in lo is
-// read from: the stored file, named after its own bytes (see images.js). A spot
-// can carry one for the reason a post can — the reader was standing there and
-// the picture is what they would have written down if a picture were words.
+// Where a mark's photograph is: a file in this account's own folder, under
+// images/, named after its own bytes (see images.js). A spot can carry one for
+// the reason a post can — the reader was standing there and the picture is what
+// they would have written down if a picture were words.
 //
-// Written into the file as the address rather than as the bare name the posts
-// table keeps. A table's column is joined against and prefixed on the way out; a
-// marks.json is a thing somebody opens and reads, and a line saying
-// `/api/images/3f…webp` is one they can follow. A file that says the bare name —
-// hand-written, or exported by another tool — is read as the same thing.
+// Two forms of the same thing, and which one is used says who is about to read
+// it. `images/3f….webp` is what goes in the file, because the file is a thing
+// somebody unzips: marks.json comes out of the export with the photographs in a
+// folder beside it, and a line saying `images/3f….webp` is one that resolves to
+// the picture on their own disk, in their own image viewer, with lo nowhere in
+// sight. `/api/images/3f….webp` is what goes to the client, because a browser
+// has to ask the server for it.
+//
+// Both are read back, and so is the bare name the posts table keeps: a file
+// written by an older lo says the URL, one assembled by hand or by another tool
+// is likeliest to say the name, and all three are the same photograph.
 //
 // Anything that is not a name this server wrote is dropped rather than kept: the
 // endpoints check what they are handed, and this is the same check standing
 // between an imported file and every list that draws from it.
-function readPhotoName(value) {
+const IMAGE_DIR = "images/";
+const IMAGE_URL = "/api/images/";
+
+function photoName(value) {
   if (typeof value !== "string" || !value) return null;
-  const name = value.startsWith(IMAGE_PATH) ? value.slice(IMAGE_PATH.length) : value;
-  return isStoredName(name) ? `${IMAGE_PATH}${name}` : null;
+  const name = value.slice(value.lastIndexOf("/") + 1);
+  return isStoredName(name) ? name : null;
+}
+
+function readPhotoName(value) {
+  const name = photoName(value);
+  return name ? `${IMAGE_DIR}${name}` : null;
+}
+
+// The same mark said to a browser instead of to a person with a zip. Only the
+// two photo fields differ, and only in their prefix — everything else about a
+// mark reads the same in a file and on a wire.
+function servedMark(mark) {
+  if (!mark?.image) return mark;
+  return {
+    ...mark,
+    image: `${IMAGE_URL}${photoName(mark.image)}`,
+    imageThumb: mark.imageThumb ? `${IMAGE_URL}${photoName(mark.imageThumb)}` : null,
+  };
+}
+
+// Every picture this account's marks are pointing at, as the bare names they are
+// called on disk. What the sweep keeps and what the migration goes looking for
+// (see images.js) — the folder's side of the same question the file answers.
+export function markImageNames(username) {
+  const names = new Set();
+  for (const mark of readMarkFile(username).marks) {
+    for (const field of [mark.image, mark.imageThumb]) {
+      const name = photoName(field);
+      if (name) names.add(name);
+    }
+  }
+  return names;
 }
 
 // Newest first, which is the order the list page reads them in and the order the
@@ -286,8 +296,10 @@ function writeMarkFile(username, { marks, nextId }) {
   writeJson(markFile(username), { nextId, marks: sortMarks(marks) });
 }
 
+// To a client, so the photographs are addresses it can fetch rather than the
+// paths the file keeps them under (see readPhotoName).
 export function getMarks(username, limit = 200) {
-  return readMarkFile(username).marks.slice(0, limit);
+  return readMarkFile(username).marks.slice(0, limit).map(servedMark);
 }
 
 // The folder's own marks.json, whole and in the order the file is written in.
@@ -330,7 +342,7 @@ export function createMark(username, { time, latitude, longitude, accuracy, labe
   // dropped by the next reading of it, which is a spot quietly lost.
   if (!mark) throw new Error("Not a mark");
   writeMarkFile(username, { marks: [mark, ...file.marks], nextId: file.nextId + 1 });
-  return mark;
+  return servedMark(mark);
 }
 
 // Null when there is no such mark, which is how the endpoint tells a stale id
@@ -367,7 +379,7 @@ export function updateMark(username, markId, { label, lang, photo }) {
     ...file,
     marks: file.marks.map((item) => (item.id === markId ? edited : item)),
   });
-  return edited;
+  return servedMark(edited);
 }
 
 export function deleteMark(username, markId) {
@@ -482,9 +494,12 @@ export function importMarks(username, rows) {
 // is, and every later reading of them has to go on allowing for both.
 //
 // What changes in a file: `place`, the geocoder's line for where the phone was,
-// goes; a plain-string label becomes a label in a language; and `places` folds
-// into the languages the label has nothing for, its empty strings — the three a
-// mark carried to say it had no name — not written down again.
+// goes; a plain-string label becomes a label in a language; `places` folds into
+// the languages the label has nothing for, its empty strings — the three a mark
+// carried to say it had no name — not written down again; and a photograph
+// written down as `/api/images/3f…webp`, back when there was one folder of them
+// for the whole server, becomes the `images/3f…webp` sitting next to the file
+// (see readPhotoName, and migrateImages in images.js for the picture itself).
 //
 // The one thing it cannot know is which language a plain-string label was typed
 // in — no version of the file recorded that. English is where it goes, which is a

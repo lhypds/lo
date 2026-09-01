@@ -22,7 +22,7 @@
   "export": {
     "title": "Exportar",
     "zip": "ZIP",
-    "confirm": "¿Descargar tus marcas y ajustes en un archivo ZIP?",
+    "confirm": "¿Descargar tus marcas, fotos y ajustes en un archivo ZIP?",
     "download": "Descargar",
     "working": "Preparando",
     "failed": "No se pudo crear la exportación"
@@ -125,8 +125,8 @@
     "set": "Anochecer",
     "light": "Luz",
     "untilRise": "Amanece en",
-    "duration": "{{hours}} h {{minutes}} min",
-    "durationMinutes": "{{minutes}} min",
+    "duration": "{{hours}}h {{minutes}}m",
+    "durationMinutes": "{{minutes}}m",
     "offset": "UTC{{offset}}"
   },
   "weather": {

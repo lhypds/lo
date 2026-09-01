@@ -22,7 +22,7 @@
   "export": {
     "title": "書き出し",
     "zip": "ZIP",
-    "confirm": "marks と設定を ZIP ファイルとしてダウンロードしますか？",
+    "confirm": "marks と写真、設定を ZIP ファイルとしてダウンロードしますか？",
     "download": "ダウンロード",
     "working": "作成中",
     "failed": "書き出しを作成できませんでした"
@@ -122,8 +122,8 @@
     "set": "日の入り",
     "light": "日照",
     "untilRise": "日の出まで",
-    "duration": "{{hours}} 時間 {{minutes}} 分",
-    "durationMinutes": "{{minutes}} 分",
+    "duration": "{{hours}}h {{minutes}}m",
+    "durationMinutes": "{{minutes}}m",
     "offset": "UTC{{offset}}"
   },
   "weather": {

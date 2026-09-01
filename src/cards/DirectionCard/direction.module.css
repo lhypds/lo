@@ -109,7 +109,6 @@
 /* The unit is the part of a reading that never changes, so it is set back from
    the figure that does — the same weight as the row's own name. */
 .unit {
-  margin-left: 4px;
   color: var(--muted);
 }
 

@@ -67,7 +67,17 @@ import {
   lookupWikipedia,
   placeLine,
 } from "./geo.js";
-import { MAX_IMAGE_BYTES, imageFile, isStoredName, storeImage } from "./images.js";
+import {
+  MAX_IMAGE_BYTES,
+  claimForPost,
+  migrateImages,
+  ownImage,
+  readImage,
+  storeImage,
+  sweepAllUserImages,
+  sweepUserImages,
+} from "./images.js";
+import { isStoredName } from "./paths.js";
 import { articleId, harvest, readStoredArticle } from "./articles.js";
 // The account's own folder: what only that account ever reads back, kept as
 // files rather than as rows (see users.js). Named on the way in, because half of
@@ -112,12 +122,23 @@ try {
 // genuinely dead.
 net.setDefaultAutoSelectFamilyAttemptTimeout(2000);
 
-// The one thing done to the data on the way up rather than on the way past. The
+// The things done to the data on the way up rather than on the way past. The
 // database's own migrations run as db.js is imported, a line or two above this;
 // the accounts' files have none of their own, and a shape they have stopped being
-// written in is worth one (see migrateMarks). It is quiet where there is nothing
-// to do, which is every start after the first.
+// written in is worth one (see migrateMarks). All three are quiet where there is
+// nothing to do, which is every start after the first.
+//
+// The photographs move before the files that point at them are rewritten, so
+// that a start interrupted between the two leaves marks.json still saying where
+// the pictures actually are.
+migrateImages();
 migrateMarks();
+// And the folders lose whatever nothing points at any more — a photo picked and
+// abandoned, one taken off a mark, one a post has since claimed. Done here as
+// well as after each write because the writes are the only other chance: an
+// account that has not touched a mark since the file was orphaned would carry it
+// in its export forever.
+sweepAllUserImages();
 
 const port = Number(process.env.PORT) || 3014;
 const isProduction = process.env.NODE_ENV === "production";
@@ -536,6 +557,12 @@ app.put("/api/me/settings", requireSession, (req, res) => {
 // than a report assembled for the occasion — what comes down is what is on disk,
 // readable in any editor, and re-readable by lo if it is ever put back.
 //
+// The photographs come with it, since they are in there too (see images.js) —
+// which is why a mark's picture is a file in the folder rather than a row: what
+// unzips is marks.json with an images/ folder beside it and every photo line in
+// the file pointing into it, so the spots and the pictures of them arrive as one
+// thing that can be opened with lo nowhere in sight.
+//
 // Owner only, and the name in the path has to be the name on the session: a zip
 // of somebody's own things is not a thing to hand out on request.
 app.get("/api/users/:username/export.zip", requireSession, (req, res) => {
@@ -659,7 +686,7 @@ const PROFILE_POSTS = 20;
 // One reading of the whole profile, whatever it was sent by — the same reason
 // a post has one. An empty field means cleared rather than untouched: the sheet
 // holds every field, so what it sends back is the whole of them.
-function readProfile(payload) {
+function readProfile(username, payload) {
   const fields = {};
   for (const [field, limit] of Object.entries(PROFILE_LIMITS)) {
     const value = String(payload?.[field] ?? "").trim().normalize("NFKC");
@@ -701,9 +728,17 @@ function readProfile(payload) {
 
   // The picture arrives as a name /api/images already wrote, never as bytes —
   // the same rule a post's photo is held to, and for the same reason: anything
-  // else would let this endpoint name a file of its own choosing.
+  // else would let this endpoint name a file of its own choosing. It stays in
+  // the owner's folder, unlike a post's, since a face is theirs and belongs in
+  // their takeout; this column is what lets everybody else read it (see
+  // selectAvatarOwner in db.js).
+  // And it has to be a picture this account actually uploaded, since the column
+  // is what says a file in their folder may be read by everybody. A name they do
+  // not have is a face that would draw as a broken frame on every post they have
+  // left, and — were the folder ever asked on the strength of the column alone —
+  // a way to point at somebody else's private photograph.
   const avatar = String(payload?.avatar ?? "").trim();
-  if (avatar && !isStoredName(avatar)) return { error: "Invalid avatar" };
+  if (avatar && !ownImage(username, avatar)) return { error: "Invalid avatar" };
   fields.avatar = avatar;
 
   const { links, error } = readLinks(payload);
@@ -714,9 +749,13 @@ function readProfile(payload) {
 }
 
 app.patch("/api/me", requireSession, (req, res) => {
-  const { profile, error } = readProfile(req.body);
+  const { profile, error } = readProfile(req.user.username, req.body);
   if (error) return res.status(400).json({ error });
   updateProfile(req.user.id, profile);
+  // The face that was there before is nothing's now — an avatar is the one
+  // picture in the folder that only one thing ever points at, so changing it
+  // orphans the old one exactly.
+  sweepUserImages(req.user.username);
   res.json({ user: getUser(req.user.username) });
 });
 
@@ -1230,6 +1269,9 @@ app.patch("/api/marks/:markId", requireSession, (req, res) => {
   if (error) return res.status(400).json({ error });
   const mark = editMark(req.user.username, markId, { label, lang: requestedLang(req), photo });
   if (!mark) return res.status(404).json({ error: "No such mark", code: "MARK_NOT_FOUND" });
+  // An edit that took the photograph off leaves the file in the folder with
+  // nothing pointing at it, and the folder is what the reader downloads.
+  sweepUserImages(req.user.username);
   res.json({ mark });
 });
 
@@ -1244,7 +1286,9 @@ app.patch("/api/marks/:markId", requireSession, (req, res) => {
 // back. Not an error where the list was already empty: what was asked for is a
 // list with nothing in it, and there is one.
 app.delete("/api/marks", requireSession, (req, res) => {
-  res.json({ removed: clearMarks(req.user.username), count: 0 });
+  const removed = clearMarks(req.user.username);
+  sweepUserImages(req.user.username);
+  res.json({ removed, count: 0 });
 });
 
 app.delete("/api/marks/:markId", requireSession, (req, res) => {
@@ -1253,6 +1297,9 @@ app.delete("/api/marks/:markId", requireSession, (req, res) => {
   if (!removeMark(req.user.username, markId)) {
     return res.status(404).json({ error: "No such mark", code: "MARK_NOT_FOUND" });
   }
+  // The spot's photograph goes with it, unless another spot is wearing the same
+  // one — which is a thing the sweep can see and this line cannot.
+  sweepUserImages(req.user.username);
   res.status(204).end();
 });
 
@@ -1300,6 +1347,15 @@ app.post("/api/posts", requireSession, async (req, res, next) => {
   const suppliedTime = req.body?.time ? new Date(req.body.time) : new Date();
   if (Number.isNaN(suppliedTime.getTime())) return res.status(400).json({ error: "Invalid time" });
 
+  // The photograph moves out of the author's folder and into the table, because
+  // a post is read by whoever comes past and its picture has to be too (see
+  // claimForPost). Before the row is written rather than after: a post pointing
+  // at bytes lo does not have is a broken frame on everybody's map, and a picture
+  // in the table that no post ended up mentioning is a row nothing reads.
+  if (!claimForPost(req.user.username, [content.image, content.imageThumb])) {
+    return res.status(400).json({ error: "Invalid image" });
+  }
+
   try {
     // Looked up here rather than trusted from the client, for the same reason a
     // mark's is: the place name is what the post is filed under, and it should
@@ -1311,6 +1367,10 @@ app.post("/api/posts", requireSession, async (req, res, next) => {
       time: suppliedTime.toISOString(),
       place: placeLine(place),
     });
+    // The folder's copy is no longer the only one, so it goes with the next
+    // sweep — unless one of this account's own marks is wearing the same
+    // photograph, which is what the sweep is there to notice.
+    sweepUserImages(req.user.username);
     res.status(201).json({ post });
   } catch (requestError) {
     next(requestError);
@@ -1331,19 +1391,25 @@ app.patch("/api/posts/:postId", requireSession, (req, res) => {
   if (!Number.isInteger(postId) || postId < 1) return res.status(400).json({ error: "Invalid post ID" });
   const { content, error } = readPostContent(req.body);
   if (error) return res.status(400).json({ error });
+  // A picture added by the edit, claimed the same way the first one was. One
+  // that was already on the post is in the table and costs nothing here.
+  if (!claimForPost(req.user.username, [content.image, content.imageThumb])) {
+    return res.status(400).json({ error: "Invalid image" });
+  }
 
-  // The photo it was carrying stays on disk: it is named after its own bytes, so
-  // another post may be pointing at the same file — the same reason deleting a
-  // post leaves it alone.
+  // The photo it was carrying stays in the table: it is named after its own
+  // bytes, so another post may be pointing at the same row — the same reason
+  // deleting a post leaves it alone.
   const post = updatePost(req.user.id, postId, content);
   if (!post) return res.status(404).json({ error: "No such post", code: "POST_NOT_FOUND" });
+  sweepUserImages(req.user.username);
   res.json({ post });
 });
 
 app.delete("/api/posts/:postId", requireSession, (req, res) => {
   const postId = Number(req.params.postId);
   if (!Number.isInteger(postId) || postId < 1) return res.status(400).json({ error: "Invalid post ID" });
-  // The image file stays: it is named after its own bytes, so another post may
+  // The image row stays: it is named after its own bytes, so another post may
   // be pointing at the same one.
   if (!deletePost(req.user.id, postId)) {
     return res.status(404).json({ error: "No such post", code: "POST_NOT_FOUND" });
@@ -1553,6 +1619,11 @@ app.delete("/api/messages/:username", requireSession, (req, res) => {
 // keeps lo free of an image library — every browser that can show the map can
 // also encode a canvas — and means the wire carries the small file rather than
 // the 8 MB one off a phone.
+//
+// Into the uploader's own folder, whatever the picture is about to become: what
+// it is about to become is not known here and is not known on the sheet either
+// until the writer presses something (see storeImage). A mark's photograph is
+// then already where it lives; a post's is copied into the table on its way in.
 app.post(
   "/api/images",
   requireSession,
@@ -1562,7 +1633,7 @@ app.post(
       return res.status(400).json({ error: "The image is empty" });
     }
     try {
-      const stored = await storeImage(req.body);
+      const stored = await storeImage(req.user.username, req.body);
       if (!stored) return res.status(415).json({ error: "Unsupported image format" });
       res.json(stored);
     } catch (error) {
@@ -1575,25 +1646,33 @@ app.post(
 // its own — it makes its own request and there is nowhere on it to put a header.
 // So the client never points a tag straight here: `authImageUrl` fetches the
 // bytes with the header and hands the tag an object URL instead.
+//
+// One address for pictures kept in two places, because which place a photograph
+// is in is lo's business rather than its reader's: a mark's is a file in the
+// asking account's folder, a post's is a row every account may read, and an
+// avatar is a file in somebody else's folder that the users table has said may
+// be looked at. readImage is where that is decided, and it decides who may see
+// what as much as where it is — so a picture this reader may not have is
+// answered the same way as one that is not there.
 app.get("/api/images/:name", requireSession, (req, res) => {
-  const file = imageFile(req.params.name);
-  if (!file) return res.status(400).json({ error: "Invalid image name" });
-  res.sendFile(
-    file.path,
-    {
-      headers: {
-        "Content-Type": file.type,
-        // Content-addressed, so the bytes behind a name never change.
-        "Cache-Control": "private, max-age=31536000, immutable",
-        "X-Content-Type-Options": "nosniff",
-      },
-    },
-    (error) => {
-      if (!error || res.headersSent) return;
-      if (error.code === "ENOENT") return res.status(404).json({ error: "No such image" });
-      res.status(500).json({ error: "Server error" });
-    },
-  );
+  const found = readImage(req.user.username, req.params.name);
+  if (!found) return res.status(404).json({ error: "No such image" });
+
+  const headers = {
+    "Content-Type": found.type,
+    // Content-addressed, so the bytes behind a name never change.
+    "Cache-Control": "private, max-age=31536000, immutable",
+    "X-Content-Type-Options": "nosniff",
+  };
+  if (found.bytes) {
+    res.set(headers);
+    return res.send(found.bytes);
+  }
+  res.sendFile(found.path, { headers }, (error) => {
+    if (!error || res.headersSent) return;
+    if (error.code === "ENOENT") return res.status(404).json({ error: "No such image" });
+    res.status(500).json({ error: "Server error" });
+  });
 });
 
 /* ----------------------------------------------------------------- presence */

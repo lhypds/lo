@@ -159,7 +159,8 @@ export default function WeatherCard() {
           <div>
             <dt>{t("weather.wind")}</dt>
             <dd>
-              {round(current.windSpeed)} {units?.wind ?? "km/h"}
+              {round(current.windSpeed)}
+              {units?.wind ?? "km/h"}
             </dd>
           </div>
         </dl>

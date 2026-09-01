@@ -22,7 +22,7 @@
   "export": {
     "title": "Exporter",
     "zip": "ZIP",
-    "confirm": "Télécharger vos repères et réglages dans un fichier ZIP ?",
+    "confirm": "Télécharger vos repères, photos et réglages dans un fichier ZIP ?",
     "download": "Télécharger",
     "working": "Préparation",
     "failed": "Impossible de créer l’exportation"
@@ -125,8 +125,8 @@
     "set": "Coucher",
     "light": "Lumière",
     "untilRise": "Lever dans",
-    "duration": "{{hours}} h {{minutes}} min",
-    "durationMinutes": "{{minutes}} min",
+    "duration": "{{hours}}h {{minutes}}m",
+    "durationMinutes": "{{minutes}}m",
     "offset": "UTC{{offset}}"
   },
   "weather": {
