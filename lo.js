@@ -60,6 +60,47 @@ function minute(stamp) {
   return stamp ? `${stamp.slice(0, 10)} ${stamp.slice(11, 16)}` : "never";
 }
 
+/* -------------------------------------------------------------- the last fix */
+
+// Both halves of a fix or neither, since a fix is a pair: an account carrying one
+// number and not the other is a row half-written, and half a position is not
+// somewhere. Empty where there is none, which both readings below have their own
+// word for — the roster has a column to keep straight and the sheet has a line to
+// fill, and "never" belongs to one of them and not the other.
+//
+// Four decimals is about ten metres, which is finer than the fix behind it ever
+// is and short enough to be read off a screen and typed into a map.
+//
+// And how well the device knew after it, which is the half of a fix the
+// coordinates cannot say: ten metres and ten kilometres are printed alike, and
+// only this tells whether the line means a doorway or the district it is in. The
+// browser's own words for it (see formatAccuracy in src/utils/format.js) — the
+// same figure is on screen beside the reader's own dot, and a person holding the
+// two against each other should not have to convert between them. Nothing at all
+// where the fix arrived without one, which is a device declining to say rather
+// than a fix good to zero metres: the blank is the answer.
+function fix(row) {
+  if (row.lastLatitude == null || row.lastLongitude == null) return "";
+  const at = `${row.lastLatitude.toFixed(4)}, ${row.lastLongitude.toFixed(4)}`;
+  const meters = row.lastAccuracy;
+  if (!Number.isFinite(meters)) return at;
+  return `${at} ${meters < 1000 ? `±${Math.round(meters)} m` : `±${(meters / 1000).toFixed(1)} km`}`;
+}
+
+// And what the geocoder called that spot, which is the reading of a fix somebody
+// can actually scan: a column of coordinates is a column nobody can read down,
+// and two accounts eight thousand kilometres apart are told apart at a glance by
+// the country and not by the fourth decimal of a latitude.
+//
+// Narrowest first — Kyōto, JP — the way an address is written everywhere, and the
+// country alone where the geocoder had no subdivision to give or has not been
+// asked yet. Empty where neither is known, which is an account that has not filed
+// a position since the columns existed (see the schema) as well as one that has
+// never filed one at all; the fix beside it is what tells those apart.
+function where(row) {
+  return [row.lastRegion, row.lastCountry].filter(Boolean).join(", ");
+}
+
 /* -------------------------------------------------------------- one account */
 
 // A sheet about one account is read down rather than across, so the values start
@@ -85,26 +126,6 @@ function line(label, value) {
 // column, which is what makes four links read as one answer rather than four.
 function block(label, values) {
   values.forEach((value, index) => line(index === 0 ? label : "", value));
-}
-
-// Four decimals is about ten metres, which is finer than the fix behind it ever
-// is and short enough to be read off a screen and typed into a map.
-function place(latitude, longitude) {
-  return `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
-}
-
-// And how well the device knew, which is the half of a fix the coordinates
-// cannot say: ten metres and ten kilometres are printed alike above, and only
-// this tells whether the line means a doorway or the district it is in. The
-// browser's own words for it (see formatAccuracy in src/utils/format.js) — the
-// same figure is on screen beside the reader's own dot, and a person holding the
-// two against each other should not have to convert between them.
-//
-// Nothing at all where the fix arrived without one, which is a device declining
-// to say rather than a fix good to zero metres: the blank is the answer.
-function spread(meters) {
-  if (!Number.isFinite(meters)) return "";
-  return meters < 1000 ? ` ±${Math.round(meters)} m` : ` ±${(meters / 1000).toFixed(1)} km`;
 }
 
 function count(number, one, many) {
@@ -162,12 +183,14 @@ function show(detail) {
   // the two are the same question about two kinds of appearance, and a stamp at
   // the front of both is what lets one be held against the other.
   //
-  // Both halves of the fix or neither, since a fix is a pair: an account carrying
-  // one number and not the other is a row half-written, and half a position is
-  // not somewhere.
-  const fix = detail.lastLatitude != null && detail.lastLongitude != null;
-  const at = fix ? `${place(detail.lastLatitude, detail.lastLongitude)}${spread(detail.lastAccuracy)}` : null;
-  line("last fix", at ? `${minute(detail.lastPositionAt)} at ${at}` : "never");
+  // The coordinates and then the name for them, which is the order they were
+  // arrived at: lo is handed a pair of numbers by a sensor and asks a geocoder
+  // what they are called. The name is left off where nobody has answered that yet
+  // rather than stood in for — an account can have a fix and no country for as
+  // long as the lookup behind it takes (see filePlace in server/index.js).
+  const at = fix(detail);
+  const named = where(detail);
+  line("last fix", at ? `${minute(detail.lastPositionAt)} at ${at}${named ? ` in ${named}` : ""}` : "never");
   // The password as it stands, which is what whoever runs this was almost
   // certainly asked for (see the note on the column in db.js). Null is an account
   // whose password is still to be chosen — by its owner, at the next sign-in —
@@ -233,6 +256,14 @@ if (action === "list") {
     // and has no table to be counted in. One file opened per account, which is
     // nothing at the size a list read by hand ever is.
     //
+    // Where each of them last was, in the two readings that answer different
+    // questions about it: the coordinates with their spread, which is the fix
+    // itself and can be pasted into a map, and the country and region, which is
+    // the one anybody can actually read down a column. Neither stands in for the
+    // other — a name with no numbers cannot be checked and a column of numbers
+    // cannot be scanned — and an account may have the fix and not the name, since
+    // the name is a geocoder's answer that arrives after it (see filePlace).
+    //
     // The last cell is what is unusual about an account rather than a field of
     // it: most have neither word in it, and empty there is the ordinary case.
     const rows = users.map((user) => [
@@ -240,15 +271,20 @@ if (action === "list") {
       day(user.createdAt),
       minute(user.lastLoginAt),
       user.lastIp ?? "—",
+      fix(user) || "never",
+      where(user) || "—",
       String(user.posts),
       String(countMarks(user.username)),
       [user.hasPassword ? null : "no password", user.discoverable ? null : "hidden"].filter(Boolean).join(", "),
     ]);
     // The figures right, everything else left, and the widths taken off the
     // header as well so a column is never narrower than the word above it.
-    const table = [["name", "opened", "last sign-in", "from", "posts", "marks", ""], ...rows];
+    const table = [
+      ["name", "opened", "last sign-in", "from", "last fix", "where", "posts", "marks", ""],
+      ...rows,
+    ];
     const widths = table[0].map((_, column) => Math.max(...table.map((row) => width(row[column]))));
-    const align = (column) => (column === 4 || column === 5 ? "right" : "left");
+    const align = (column) => (column === 6 || column === 7 ? "right" : "left");
     for (const row of table) {
       console.log(row.map((cell, column) => pad(cell, widths[column], align(column))).join("  ").trimEnd());
     }

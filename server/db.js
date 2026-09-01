@@ -163,6 +163,30 @@ db.exec(`
     -- of that line to believe (see lo.js).
     last_accuracy REAL,
     last_position_at TEXT,
+    -- What that fix came to when it was put to a geocoder: the country as the two
+    -- letters ISO files it under, and the subdivision inside it as a name. The
+    -- pair above says where somebody is to anyone holding a map; these two say it
+    -- to somebody reading a list, which is the whole of why they are written down
+    -- rather than worked out at the reading (see lo.js) — a roster of coordinates
+    -- is a roster nobody can scan.
+    --
+    -- The same reading positions.country_code keeps, on the other shelf and for
+    -- the other question: that copy is presence, thrown away when the account
+    -- moves or drops out of the window, and this one is the account's own last
+    -- known whereabouts and outlives both.
+    --
+    -- In English, always, whatever language the reader who filed the fix was
+    -- browsing in (see filePlace in index.js). A region is a name and a name is in
+    -- some language, and a column holding whichever one the last browser happened
+    -- to ask in is a column that cannot be read down. The country is spared that
+    -- by being a code — the same two letters everywhere — which is why it is
+    -- stored as one.
+    --
+    -- Both written together or neither: a region belongs to a country, and a
+    -- subdivision left standing from the last country somebody was in would be a
+    -- worse answer than none.
+    last_country TEXT,
+    last_region TEXT,
     created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
   );
 
@@ -437,6 +461,14 @@ for (const column of [
   "last_ip",
   "last_login_at",
   "last_position_at",
+  // And what the fix was named, which arrived later still. Empty until the
+  // account files its next position: the geocoder could be asked about the
+  // coordinates already sitting in the row, but that is one request per account
+  // on a start, for a reading of a fix that may be a month old — and the country
+  // is copied from the presence row just below anyway, where it was written at
+  // the moment the fix was.
+  "last_country",
+  "last_region",
 ]) {
   if (!userColumns.has(column)) db.exec(`ALTER TABLE users ADD COLUMN ${column} TEXT`);
 }
@@ -462,6 +494,24 @@ if (addedAccuracy) {
     UPDATE users
     SET last_accuracy = (
       SELECT p.accuracy FROM positions p
+      WHERE p.user_id = users.id AND p.updated_at = users.last_position_at
+    )
+    WHERE last_position_at IS NOT NULL
+  `);
+}
+
+// And the country, off the same shelf and on the same terms: the presence row
+// named this fix when it was filed, so where the stamps agree the two letters
+// over there are about this very fix and are copied rather than asked for again.
+// No region beside it — nothing has ever written one down, and the geocoder that
+// could say is not worth a request per account on a start (see the loop above).
+// So an old account reads as a country until it next files a position, which is
+// the next minute it has a tab open.
+if (!userColumns.has("last_country")) {
+  db.exec(`
+    UPDATE users
+    SET last_country = (
+      SELECT p.country_code FROM positions p
       WHERE p.user_id = users.id AND p.updated_at = users.last_position_at
     )
     WHERE last_position_at IS NOT NULL
@@ -564,10 +614,13 @@ const deleteUserByName = db.prepare(`
 // held back from every reader, which is safe only because its one caller is the
 // command line (see lo.js) and never an endpoint.
 //
-// The last fix is not in it, though the column sits right beside the address. A
-// list is read out and pasted about, and where somebody was standing is a line
-// about one person rather than a column of a roster — the map is the one place
-// in lo that publishes anybody's whereabouts, and it has a switch on it.
+// The last fix is in it, coordinates and spread and the names the geocoder gave
+// them. This is the one thing here that is nobody's business but the account's
+// and whoever runs the server — the map is the other place in lo that publishes
+// where somebody is, and it has a switch on it that this deliberately ignores,
+// because a hidden account is hidden from the other readers and not from the
+// person holding the database. Which is the whole reason this statement is not
+// built on PROFILE_COLUMNS and the whole reason its one caller is a command line.
 //
 // Newest sign-in first, with the never-seen at the bottom by name: the order the
 // question is asked in is "who is still using this", and an account that has
@@ -578,6 +631,11 @@ const selectUsers = db.prepare(`
     u.created_at AS createdAt,
     u.last_login_at AS lastLoginAt,
     u.last_ip AS lastIp,
+    u.last_latitude AS lastLatitude,
+    u.last_longitude AS lastLongitude,
+    u.last_accuracy AS lastAccuracy,
+    u.last_country AS lastCountry,
+    u.last_region AS lastRegion,
     u.discoverable,
     -- Whether one has been chosen, never which: the administrator who reads a
     -- password reads one, for the account that has just written in, and a list
@@ -594,9 +652,9 @@ const selectUsers = db.prepare(`
 // roster is read across accounts, so it carries what can be compared straight
 // down a column and leaves out what only means anything on its own line; this
 // is read about one person, usually because they have just written in, so it
-// carries the whole of what lo is holding on them. The last fix the list holds
-// back is in it for exactly that reason: one line about one person is not the
-// column of a roster to be pasted about.
+// carries the whole of what lo is holding on them — the profile included, which
+// is nine fields nobody would put in a table and the first thing anybody asks
+// about a name they have just been handed.
 //
 // The password itself, where the list says only whether there is one. Reading a
 // password — one, for the account that has asked — is why the column is kept in
@@ -616,6 +674,8 @@ const selectUserDetail = db.prepare(`
     u.last_longitude AS lastLongitude,
     u.last_accuracy AS lastAccuracy,
     u.last_position_at AS lastPositionAt,
+    u.last_country AS lastCountry,
+    u.last_region AS lastRegion,
     u.password,
     -- Whether there is a standing link, never the key itself. A password is read
     -- to be handed back to the account it belongs to; a link key is a way in
@@ -1223,11 +1283,11 @@ const updateLastPosition = db.prepare(`
   WHERE id = ?
 `);
 
-// And the country that fix turned out to be in, written a moment after it —
-// the coordinates come off a sensor and are filed the instant they arrive,
-// where the country has to be asked of a geocoder (see fileCountry in
-// index.js). So it is its own statement rather than a column of the upsert
-// above, and the fix is never made to wait on it.
+// And what that fix turned out to be called, written a moment after it — the
+// coordinates come off a sensor and are filed the instant they arrive, where a
+// country has to be asked of a geocoder (see filePlace in index.js). So these are
+// their own statements rather than columns of the two above, and a fix is never
+// made to wait on a name.
 //
 // Which leaves one gap: an account that has just crossed a border keeps the old
 // country for as long as the lookup takes. That is a fraction of a second on a
@@ -1236,6 +1296,14 @@ const updateLastPosition = db.prepare(`
 // ago.
 const updatePositionCountry = db.prepare(`
   UPDATE positions SET country_code = ? WHERE user_id = ?
+`);
+
+// The account's own copy, which is the presence row's country and the region
+// inside it. Both columns in one statement because they are one reading (see the
+// note on them in the schema): a region is a name inside a country, and writing
+// the two apart is how a row ends up saying Kyōto, France.
+const updateLastPlace = db.prepare(`
+  UPDATE users SET last_country = ?, last_region = ? WHERE id = ?
 `);
 
 // Everyone but the asker: the reader's own dot comes from their own sensor,
@@ -1649,15 +1717,33 @@ export function savePosition(userId, { latitude, longitude, accuracy }) {
   updateLastPosition.run(latitude, longitude, spread, now, userId);
 }
 
-// The country of the fix just filed, once the geocoder has said which one it is.
-// A code or nothing: a lookup that failed leaves the column as it was rather
-// than blanking it, because the country somebody was in an hour ago is a better
-// answer about where they are than no answer at all — and the fix underneath it
-// is this account's own, so the two are rarely more than a street apart.
-export function savePositionCountry(userId, countryCode) {
+// What the fix just filed is called, once the geocoder has said. Both shelves
+// from the one answer, the same way savePosition writes the coordinates to both:
+// the presence row, which the map and the people panel read, and the account's
+// own row, which the roster does.
+//
+// A country or nothing at all. A lookup that failed leaves every column as it
+// was rather than blanking it, because the country somebody was in an hour ago is
+// a better answer about where they are than no answer — and the fix underneath it
+// is this account's own, so the two are rarely more than a street apart. Which is
+// also why a country lo cannot read is not a reason to keep the region that came
+// with it: an answer that did not name a country did not name what is inside one
+// either.
+//
+// The region may be empty under a country that is perfectly good — a geocoder
+// with nothing but the country for the square. That is written as null and clears
+// whatever was there, which is the point of the two columns moving together: it
+// means this country, no region, rather than this country and the last one's
+// prefecture.
+//
+// The region arrives worked out rather than as a field of the place, because
+// which of a geocoder's names is the region is a judgement and lo makes it in one
+// spot (see regionIn in index.js).
+export function savePlace(userId, countryCode, region) {
   const code = typeof countryCode === "string" ? countryCode.trim().toUpperCase() : "";
   if (!/^[A-Z]{2}$/.test(code)) return;
   updatePositionCountry.run(code, userId);
+  updateLastPlace.run(code, String(region ?? "").trim() || null, userId);
 }
 
 // `since` is an ISO timestamp: same format the column is written in, so the
