@@ -883,6 +883,27 @@ app.get("/api/local", async (req, res, next) => {
   }
 });
 
+// Where somewhere else is, in words. The reading above answers about the ground
+// underfoot and carries the sky and the card list with it; this one is asked
+// about a spot the reader is not standing on — a mark being edited, which is
+// stored as coordinates and nothing else (see the marks endpoint) — and a sheet
+// that wants the name of the district has no use for the weather there.
+//
+// The line comes back made up rather than as three names to be joined, so that
+// what a spot is filed under is written in one place and reads the same whether
+// it was worked out here or landed with a post.
+app.get("/api/place", async (req, res, next) => {
+  const coords = parseCoords(req.query);
+  if (!coords) return res.status(400).json({ error: "Invalid coordinates" });
+  try {
+    const place = await lookupPlace(coords.latitude, coords.longitude, requestedLang(req));
+    res.json({ place, line: placeLine(place) });
+  } catch (error) {
+    if (isUpstreamDown(error)) return res.status(504).json({ error: "Timed out looking up where that is" });
+    next(error);
+  }
+});
+
 // The country list itself, which is what every components list above is read
 // out of: every country lo can find itself standing in, and the dashboard it
 // would be able to build there.

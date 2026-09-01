@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
 import { Modal, Skeleton, TextArea } from "../../ui/index.js";
 import { formatUsername, relativeTime } from "../../utils/format.js";
+import { useAuth } from "../AuthProvider/index.js";
 import { useHere } from "../LocationProvider/index.js";
 import styles from "./message.module.css";
 
@@ -47,6 +48,10 @@ function same(a, b) {
 // they would not be pressing anything.
 export default function MessageModal({ username, onClose }) {
   const { t, i18n } = useTranslation();
+  // Whose the lines on the right are. The server says which side each one hangs
+  // on and never says a name for them — `mine` is the whole of what comes down —
+  // so the only place your own name is to be had is the session.
+  const { user } = useAuth();
   // Reading a thread is what marks it read, and the answer says how much is left
   // waiting — so the dot in the top bar goes out as the words arrive rather than
   // on the next turn of the presence loop.
@@ -225,6 +230,13 @@ export default function MessageModal({ username, onClose }) {
   // the boundary it is: everything above, seen; anything below, not yet.
   const readTo = messages.reduce((last, message) => (message.mine && message.read ? message.id : last), null);
 
+  // The two names the sheet has to draw. The other side's is the sheet itself —
+  // there is no state where this is open and about nobody — and your own comes
+  // from the session, which is why it is the one that can be missing: a load that
+  // could not reach the server draws its thread before the account comes back. A
+  // line with no name over it is better than a bare "@".
+  const me = user?.username ?? "";
+
   return (
     <Modal
       isOpen={Boolean(username)}
@@ -267,25 +279,30 @@ export default function MessageModal({ username, onClose }) {
             )
           ) : (
             <ul className={styles.lines}>
-              {messages.map((message) => (
-                <li key={message.id} className={message.mine ? `${styles.line} ${styles.mine}` : styles.line}>
-                  {/* The words in a box and when they were said under it. Which
-                      side of the sheet the box hangs on is the whole of who said
-                      it — a name on every line of a conversation between two
-                      people is the same two names down the page. */}
-                  <span className={styles.bubble}>{message.body}</span>
-                  {/* When it was said, and on the last line the far side has had
-                      in front of them, that it has been. One small grey line
-                      under the words either way: being read is a fact about a
-                      message of the same size as when it was sent. */}
-                  <span className={styles.meta}>
-                    <time className={styles.when} dateTime={message.time}>
-                      {relativeTime(message.time, i18n.language, t)}
-                    </time>
-                    {message.id === readTo && <span className={styles.read}>{t("messages.read")}</span>}
-                  </span>
-                </li>
-              ))}
+              {messages.map((message) => {
+                const who = message.mine ? me : username;
+                return (
+                  <li key={message.id} className={message.mine ? `${styles.line} ${styles.mine}` : styles.line}>
+                    {/* Who said it over the words and when they were said under
+                        them, so a line carries the whole of what it is between
+                        the two. The side it hangs on says it as well, and saying
+                        it twice is the point: a sheet read at a glance is read by
+                        the side, and one read closely has the name to read. */}
+                    {who && <span className={styles.who}>{formatUsername(who)}</span>}
+                    <span className={styles.bubble}>{message.body}</span>
+                    {/* When it was said, and on the last line the far side has had
+                        in front of them, that it has been. One small grey line
+                        under the words either way: being read is a fact about a
+                        message of the same size as when it was sent. */}
+                    <span className={styles.meta}>
+                      <time className={styles.when} dateTime={message.time}>
+                        {relativeTime(message.time, i18n.language, t)}
+                      </time>
+                      {message.id === readTo && <span className={styles.read}>{t("messages.read")}</span>}
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>

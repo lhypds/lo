@@ -41,11 +41,11 @@
   list-style: none;
 }
 
-/* Which side a line hangs on is the whole of who said it: a name on every row of
-   a conversation between exactly two people is the same two names down the page.
-   Each row is its own column so the time sits under the words rather than beside
-   them — a bubble is as wide as its sentence, and a time set next to a one-word
-   line would be further left than the time above it. */
+/* Each row is its own column: the name over the words and the time under them,
+   rather than either set beside the bubble — a bubble is as wide as its sentence,
+   and a name or a time hung off a one-word line would sit further in than the one
+   above it. Which side the row hangs on says who said it too; the name over it
+   says the same thing in words, for a sheet being read rather than scanned. */
 .line {
   max-width: 78%;
   display: flex;
@@ -58,6 +58,21 @@
 .mine {
   align-self: flex-end;
   align-items: flex-end;
+}
+
+/* The name over the words, in the mono the app writes names in and at the size
+   the time under them is written at: a name and a time are the two small facts
+   about a line, and one drawn louder than the other would read as part of what
+   was said. Held off the bubble by the row's own gap, so the three sit as one
+   block rather than as a heading with a paragraph under it. */
+.who {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
 }
 
 /* Ruled like everything else in lo, and turned over on your own lines: black on
@@ -88,7 +103,7 @@
 .meta {
   display: flex;
   align-items: baseline;
-  gap: 6px;
+  gap: 4px;
 }
 
 .when,

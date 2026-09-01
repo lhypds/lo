@@ -9,7 +9,7 @@ import { directionsLink, searchLink } from "../../utils/maps.js";
 import { publishHistoryPlaces, updateHistoryComments, useHistoryPlaces } from "../../utils/historyPlaces.js";
 import CardSize from "../../components/CardSize/index.js";
 import { useHere } from "../../components/LocationProvider/index.js";
-import styles from "./history.module.css";
+import styles from "./then.module.css";
 
 const NONE = [];
 
@@ -19,14 +19,16 @@ const NONE = [];
 const MOVED_M = 100;
 
 // What this ground used to look like — the photographs taken here long enough
-// ago to be a different here, off Wikimedia Commons, oldest first. Row for row
+// ago to be a different here, off Wikimedia Commons, oldest first. Near enough
 // the wikipedia card's own shape (see WikipediaCard, which this copies the way
 // that card copies VenuesCard), with one figure added at the left of every row
-// and the top of every preview: the year, which on this card is the reading.
+// and the top of every preview: the year, which on this card is the reading —
+// and which is all a row says, the title having turned out to be a caption
+// nobody could read at that width (see then.module.css).
 // `onOpenComments` and `onOpenPhoto` are handed down exactly as that card's
 // are — an old photograph of the street is somewhere lo's readers can leave a
 // word, and pressing the picture puts it up in the page's one Lightbox.
-export default function HistoryCard({ onOpenComments = null, onOpenPhoto = null }) {
+export default function ThenCard({ onOpenComments = null, onOpenPhoto = null }) {
   const { t, i18n } = useTranslation();
   const { coords, reloadToken } = useHere();
   const size = useCardSize("history");
@@ -97,15 +99,24 @@ export default function HistoryCard({ onOpenComments = null, onOpenPhoto = null 
           const comments = counts.get(item.id) ?? item.comments ?? 0;
           return (
             <li key={item.id}>
-              <button type="button" className={styles.item} onClick={() => setOpen(item.id)}>
+              <button
+                type="button"
+                className={styles.item}
+                onClick={() => setOpen(item.id)}
+                aria-label={`${item.year} ${item.title}`}
+              >
                 {item.thumbnail && (
                   <img className={styles.thumb} src={item.thumbnailSmall || item.thumbnail} alt="" loading="lazy" />
                 )}
-                {/* The year leads the row rather than trailing it with the
-                    distance: down this list it is the thing that changes, and
-                    the reason any of these rows earned their place. */}
+                {/* The year alone, where the title used to stand beside it. What
+                    a photograph is filed under on Commons is its caption or its
+                    filename — a line long enough to fill this row twice and cut
+                    to an ellipsis before it has said anything — so the row is
+                    the picture, the year and the walk, and the title waits in
+                    the sheet the row opens. It is still what the row is called
+                    out loud, on the label above: a name is worth its length to
+                    a reader who cannot see the thumbnail. */}
                 <span className={styles.year}>{item.year}</span>
-                <span className={styles.name}>{item.title}</span>
                 <span className={styles.figures}>
                   <span className={styles.distance}>{formatDistance(item.distance)}</span>
                   {comments > 0 && (

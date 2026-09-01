@@ -45,7 +45,7 @@
 .itemMeta {
   display: flex;
   align-items: baseline;
-  gap: 8px;
+  gap: 4px;
   color: var(--muted);
   font-family: var(--mono);
   font-size: 10px;
@@ -58,9 +58,12 @@
   white-space: nowrap;
 }
 
+/* One space either side of the dot and no more: the 4px the flex gap gives it on
+   its left, the same 4px on its right, which in this type is the width of the
+   space it stands for. */
 .itemMeta > * + *::before {
   content: "·";
-  margin-right: 8px;
+  margin-right: 4px;
 }
 
 /* On a single square the row keeps the headline and drops the publisher. The

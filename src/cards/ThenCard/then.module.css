@@ -17,15 +17,17 @@
   border-top: 1px solid var(--line);
 }
 
-/* One line, year and name at one end and distance at the other — there is no
-   middle line to a row here, unlike a venue's: a photograph has only what it
-   is called, when it was taken and how far off the camera stood. A button
-   undone the way a venue's row is, for the same reason: what is pressed is
-   the row, not a control the browser drew.
+/* One line, the year at one end and the distance at the other — there is no
+   middle line to a row here, unlike a venue's, and no name either: a
+   photograph off Commons is filed under a caption or a filename, and neither
+   is a thing to read down a column (see .year).
+
+   A button undone the way a venue's row is, for the same reason: what is
+   pressed is the row, not a control the browser drew.
 
    Centred rather than sat on a baseline, which a row of words alone could be:
-   there is a picture on the left of some of these now, and a 32px square has
-   no baseline to share with the title beside it. */
+   there is a picture on the left of some of these, and a 32px square has no
+   baseline to share with the figure beside it. */
 .item {
   width: 100%;
   display: flex;
@@ -53,24 +55,17 @@
 }
 
 /* The reading, at the head of the row where a list sorted by it can be read
-   straight down — in the small mono the row's other figures are set in, since
-   it is one of them, and tabular so the column of them stands still. */
+   straight down, and now the whole of what a row says in words — so it takes
+   the width the title had, which is what keeps the distance out at the right.
+   In the row's own size rather than the small mono the figures out there are
+   set in: it is the subject of the row and not one of its measurements. Mono
+   and tabular all the same, so the column of years stands still. */
 .year {
-  flex: 0 0 auto;
-  color: var(--muted);
-  font-family: var(--mono);
-  font-size: 10px;
-  font-variant-numeric: tabular-nums;
-}
-
-.name {
   flex: 1;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-family: var(--mono);
   font-size: 12px;
-  line-height: 1.45;
+  font-variant-numeric: tabular-nums;
 }
 
 /* The two figures about the article that are not the article, out on the
@@ -102,9 +97,9 @@
   font-size: 10px;
 }
 
-/* On a single square the row keeps its shape — a title still fits a line, and
-   there is no middle line here to drop the way a venue's cube drops its
-   amenity and cuisine. */
+/* On a single square the row keeps its shape — a year and a distance fit a
+   line at any width, and there is nothing left here to drop the way a venue's
+   cube drops its amenity and cuisine. */
 .square .item {
   padding: 6px 8px;
 }
@@ -131,7 +126,8 @@
     color: var(--paper);
   }
 
-  .item:hover .year,
+  /* The year is not in this list: it takes the row's own colour now, and the
+     row's own colour is what a hover turns over. */
   .item:hover .distance,
   .item:hover .comments {
     color: var(--paper);

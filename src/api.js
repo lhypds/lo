@@ -294,6 +294,11 @@ export const getFollowers = (username) => request(`/api/users/${encodeURICompone
 export const getFollowing = (username) => request(`/api/users/${encodeURIComponent(username)}/following`);
 
 export const getLocal = (coords) => shared("local", coords, request(`/api/local?${geoQuery(coords)}`));
+// What a spot somewhere else is called, as the one line it is filed under. Not
+// handed to the host with the rest of them: the feeds above are all answers
+// about the ground the reader is standing on, and this is a question asked about
+// a mark that may be a country away from it.
+export const getPlace = (coords) => request(`/api/place?${geoQuery(coords)}`);
 export const getNearby = (coords) => shared("nearby", coords, request(`/api/nearby?${geoQuery(coords)}`));
 export const getEvents = (coords) => shared("events", coords, request(`/api/events?${geoQuery(coords)}`));
 export const getTrends = (coords) => shared("trends", coords, request(`/api/trends?${geoQuery(coords)}`));

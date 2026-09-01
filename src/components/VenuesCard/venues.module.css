@@ -149,7 +149,7 @@
 .meta {
   display: flex;
   align-items: baseline;
-  gap: 8px;
+  gap: 4px;
   min-width: 0;
   color: var(--muted);
   font-family: var(--mono);
@@ -163,9 +163,12 @@
   white-space: nowrap;
 }
 
+/* One space either side of the dot and no more: the 4px the flex gap gives it on
+   its left, the same 4px on its right, which in this type is the width of the
+   space it stands for. */
 .meta > * + *::before {
   content: "·";
-  margin-right: 8px;
+  margin-right: 4px;
 }
 
 /* The right-hand column, which is one figure on most rows and two on the rows

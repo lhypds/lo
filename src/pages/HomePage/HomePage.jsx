@@ -21,13 +21,13 @@ import EventsCard from "../../cards/EventsCard/index.js";
 import FoodCard from "../../cards/FoodCard/index.js";
 import Header from "../../components/Header/index.js";
 import HereStrip from "../../components/HereStrip/index.js";
-import HistoryCard from "../../cards/HistoryCard/index.js";
 import LocationGate from "../../components/LocationGate/index.js";
 import MarkButton from "../../cards/MarkButton/index.js";
 import NewsCard from "../../cards/NewsCard/index.js";
 import PeopleCard from "../../cards/PeopleCard/index.js";
 import PostsCard from "../../cards/PostsCard/index.js";
 import RadioCard from "../../cards/RadioCard/index.js";
+import ThenCard from "../../cards/ThenCard/index.js";
 import TrendsCard from "../../cards/TrendsCard/index.js";
 import Warnings from "../../cards/Warnings/index.js";
 import WeatherCard from "../../cards/WeatherCard/index.js";
@@ -510,7 +510,7 @@ export default function HomePage() {
       // because an old photograph of the street is the same two kinds of thing:
       // somewhere to leave a word, and a picture to look at properly.
       shown("history") &&
-        sized("history", <HistoryCard onOpenComments={setWikiCommenting} onOpenPhoto={setViewing} />),
+        sized("history", <ThenCard onOpenComments={setWikiCommenting} onOpenPhoto={setViewing} />),
       shown("direction") && sized("direction", <DirectionCard />),
     ].filter(Boolean),
   );

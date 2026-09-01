@@ -70,6 +70,12 @@ export default function ComposeModal({ isOpen, coords, place, mark = null, post 
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [dragging, setDragging] = useState(false);
+  // The name of the place an edit is about, looked up because the row cannot
+  // carry it: a mark is stored as coordinates and nothing else (see the marks
+  // endpoint). Empty until the answer lands, and empty for good where it never
+  // does — the line above the box says where the spot is either way, and the
+  // coordinates are the half of that which is always known.
+  const [around, setAround] = useState("");
   // Two ways to the same photo, because they are two different requests to the
   // phone: `capture` asks for the camera itself, and without it the same input
   // asks for what is already in the album. One input cannot be both — the
@@ -141,6 +147,29 @@ export default function ComposeModal({ isOpen, coords, place, mark = null, post 
     // is open is asking for the box to be about that language now, and the name
     // it holds belongs to the one that was showing.
   }, [isOpen, mark, post, written, i18n.language]);
+
+  // The words for where an edit is, which are the one part of the line above the
+  // box that has to be asked for. A post was filed under its place the moment it
+  // was left and carries it about ever since; a mark carries nothing but its
+  // coordinates, so the sheet asks here — in the language it is being read in,
+  // which is why switching language asks again.
+  useEffect(() => {
+    setAround("");
+    if (!isOpen || !written || post?.place) return undefined;
+    let live = true;
+    api
+      .getPlace({ latitude: written.latitude, longitude: written.longitude })
+      .then((data) => {
+        if (live) setAround(data?.line ?? "");
+      })
+      // A geocoder that did not answer costs the line its second half and
+      // nothing else. There is nothing to say about it on a sheet that is here
+      // to take a name and a photograph.
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [isOpen, written, post, i18n.language]);
 
   // A photo let go a little wide of the sheet must not cost the draft: left to
   // itself the browser opens the file over the page, and the half-written post
@@ -408,14 +437,25 @@ export default function ComposeModal({ isOpen, coords, place, mark = null, post 
     }
   }
 
+  // Where this is, said the same way whichever of the four sheets it is: the
+  // coordinates, and after them the line the spot is filed under — district,
+  // city, region — as much of it as anybody knows.
+  //
+  // Both halves rather than one or the other. The coordinates are the truth
+  // about a spot and the one thing every one of them has, and they are also
+  // eleven digits nobody recognises the doorway from; the names are how a reader
+  // knows at a glance that the app agrees which spot this is, and they are a
+  // name several thousand doorways share. Said together they answer the question
+  // once, and a sheet opened on a mark now says as much about where it is as the
+  // one that kept it did.
+  //
   // An edit says where the row is, not where its author is: the ground is the one
-  // thing about it that cannot be rewritten. A mark has no place name to say it
-  // by — a geocoder's line is where the phone was rather than what the spot is,
-  // and lo stopped writing one down (see POST /api/marks) — so it is read by its
-  // coordinates, which are the truth about it and the one thing every mark has.
-  const where = editing
-    ? (post?.place ?? "") || formatCoords(written.latitude, written.longitude)
-    : place || (coords ? formatCoords(coords.latitude, coords.longitude) : "");
+  // thing about it that cannot be rewritten. Its names come from the row where
+  // the row has them — a post is filed under its place when it is left — and are
+  // asked for where it has none, which is every mark (see the effect above).
+  const fix = editing ? written : coords;
+  const filed = editing ? (post?.place ?? "") || around : place;
+  const where = [fix ? formatCoords(fix.latitude, fix.longitude) : "", filed].filter(Boolean).join(" · ");
 
   // The sheet says which of the four things it is doing, and the toggle below
   // the title is how the reader changes their mind about the half of that the
