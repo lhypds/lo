@@ -117,10 +117,11 @@ export default function HomePage() {
   //
   // Read rather than asked for — useHere and not useNearbyPosts. The page draws
   // no posts of its own; what it does is hand whatever list is standing to the
-  // map, and the thing that makes there be one is the posts panel below, if the
-  // reader has put it on the dashboard. So an untouched dashboard is a map of
-  // marks, and nothing is fetched on behalf of a reader who has not asked to see
-  // what is around them (see LocationProvider).
+  // map, and the thing that makes there be one is the posts panel below, which
+  // arrives on the dashboard rather than waiting to be asked for (see
+  // utils/cards.js). A reader who takes that panel off is back to a map of
+  // marks: nothing is fetched on behalf of a dashboard with nowhere to put the
+  // answer (see LocationProvider).
   const { coords, place, posts, addPost, replacePost, supports, reloadToken } = useHere();
   // Which cards are on the page, and how much of the grid each of them covers.
   // Both halves of the first in one question — what this country can feed and
@@ -458,10 +459,10 @@ export default function HomePage() {
           }
         >
           {/* Everything that is here: the spots you kept and you standing among
-              them, and — where the reader has added the panel that asks for
-              them — the posts whoever came past left, and where lunch is where
-              they have added those cards. Three lists on the same square, each
-              of them on it exactly when its card is on the page. The marks page
+              them, and — while the panel that asks for them is on the page — the
+              posts whoever came past left, and where lunch is where the reader
+              has added those cards. Three lists on the same square, each of
+              them on it exactly when its card is on the page. The marks page
               answers a different question — where have I been, in order — which
               is why that one carries a list and this one does not. */}
           <MapCard
@@ -495,12 +496,20 @@ export default function HomePage() {
         onUpdated={(mark) => setMarks((current) => current.map((item) => (item.id === mark.id ? mark : item)))}
       />,
     ),
-    // The last two defaults complete the six-square opening page on mobile:
-    // time, weather, map, mark, people and warnings, in that order. Optional
-    // cards are appended below rather than being allowed to insert themselves
-    // into this block.
+    // The last two of the six that fill the opening page on mobile: time,
+    // weather, map, mark, people and warnings, in that order.
     shown("people") && sized("people", <PeopleCard />),
     shown("warnings") && sized("warnings", <Warnings />),
+    // And the two defaults that arrive behind that page — what is on the air
+    // here, and what the people who stood here wrote down. Written after the
+    // warnings rather than among them because the warnings are Japan's card and
+    // nobody else's (see server/countries.js): where they are not drawn the
+    // wireless takes the square they left and the opening page is full either
+    // way, which is the whole reason these are the two that arrive on (see
+    // utils/cards.js). Optional cards are appended below rather than being
+    // allowed to insert themselves into this block.
+    shown("radio") && sized("radio", <RadioCard />),
+    shown("posts") && sized("posts", <PostsCard />),
   ].filter(Boolean);
 
   // Every card the reader explicitly adds follows the defaults, ordered by the
@@ -508,11 +517,9 @@ export default function HomePage() {
   // card takes the next available grid position or starts the next page.
   const addedTiles = inAdditionOrder(
     [
-      shown("posts") && sized("posts", <PostsCard />),
       shown("nearby") && sized("nearby", <NewsCard />),
       shown("events") && sized("events", <EventsCard />),
       shown("trends") && sized("trends", <TrendsCard />),
-      shown("radio") && sized("radio", <RadioCard />),
       // The same sheet the pins on the map open, because it is the same
       // conversation about the same place: a card and a bubble are two views of
       // one list, and what is added from either goes back into the venue store

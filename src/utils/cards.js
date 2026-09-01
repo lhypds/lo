@@ -39,11 +39,28 @@ const SIZES = [TINY, SMALL, LARGE, TALL];
 // width of the panel column they would have been two more rows to scroll past on
 // a phone, and at a square each they are one row that answers both.
 //
+// Two more arrive behind that block: what the place sounds like, and what the
+// people who stood here wrote down. The wireless asks nothing of the reader — a
+// country has stations or it has none — and the posts are the other half of the
+// mark button, which is already on the page: a dashboard that offers to keep
+// where you are standing and never shows what anybody else kept is half of that
+// trade.
+//
+// Behind rather than in, because a phone holds six squares at a time and the six
+// above are the ones worth the screen it opens on. Which page each of the two
+// falls on is the country's answer rather than this list's: what is in force is
+// Japan's card and nowhere else's (see server/countries.js), so where it is not
+// drawn the wireless comes up into the square it left and the opening page is
+// full either way — the posts alone behind it there, the pair of them behind it
+// in Japan. Which is also why these two are the ones turned on: a default that
+// only ever lands on a page the thumb has to go looking for is a card turned on
+// for nobody.
+//
 // Everything still off the page is a reading of a wider place than the one you
 // are in, and which of those readings are worth the room is not a question lo can
 // answer for a reader it has not met: the plus in the top bar is where they
-// answer it, and a dashboard that starts as a block of squares — six of them
-// where the country can feed the warnings, five where it cannot — is a page that
+// answer it, and a dashboard that starts as a block of squares — eight of them
+// where the country can feed the warnings, seven where it cannot — is a page that
 // asks rather than one that has to be cleared.
 //
 // `min` is the smallest a panel can be cut to, and also the size it arrives at: a
@@ -52,12 +69,13 @@ const SIZES = [TINY, SMALL, LARGE, TALL];
 // until the reader asks for otherwise.
 //
 // That is the whole shape of the thing. lo opens as blocks — the time, the sky,
-// the ground, the button, who is around, what is in force — and a panel added
-// from the plus arrives as one more block beside them rather than as a strip
-// thrown across the column. Which of them is worth a second tile is a question
-// about that reader on that day, and the pair of buttons in every heading is
-// where they answer it; a page that arrives already answering it for them is a
-// page that has to be cleared before it can be read.
+// the ground, the button, who is around, what is in force, what is on the air,
+// what was written here — and a panel added from the plus arrives as one more
+// block beside them rather than as a strip thrown across the column. Which of
+// them is worth a second tile is a question about that reader on that day, and
+// the pair of buttons in every heading is where they answer it; a page that
+// arrives already answering it for them is a page that has to be cleared before
+// it can be read.
 //
 // What it costs is the second thing on each row, never the first, and each panel
 // gives up its own second thing in its own stylesheet. The posts panel keeps the
@@ -132,7 +150,7 @@ export const CARDS = [
   { id: "mark", label: "mark.button", own: true, fixed: true, min: TINY, max: TINY },
   { id: "warnings", label: "warnings.title", min: TINY, max: TINY },
   { id: "people", label: "people.nearby", own: true, min: TINY, max: TINY },
-  { id: "posts", label: "posts.nearby", own: true, off: true, min: TINY },
+  { id: "posts", label: "posts.nearby", own: true, min: TINY },
   { id: "food", label: "food.title", off: true, min: TINY },
   { id: "cafe", label: "cafe.title", off: true, min: TINY },
   { id: "wikipedia", label: "wikipedia.title", off: true, min: TINY },
@@ -140,7 +158,7 @@ export const CARDS = [
   { id: "nearby", label: "news.title", off: true, min: TINY },
   { id: "events", label: "events.title", off: true, min: TINY },
   { id: "trends", label: "trends.title", off: true, min: TINY },
-  { id: "radio", label: "radio.title", off: true, min: TINY, max: TINY },
+  { id: "radio", label: "radio.title", min: TINY, max: TINY },
   { id: "direction", label: "direction.title", own: true, off: true, min: TINY, max: TINY },
 ];
 
