@@ -78,7 +78,7 @@ import {
   sweepUserImages,
 } from "./images.js";
 import { isStoredName } from "./paths.js";
-import { articleId, harvest, readStoredArticle } from "./articles.js";
+import { articleId, harvest, readStoredArticle, unreadable } from "./articles.js";
 // The account's own folder: what only that account ever reads back, kept as
 // files rather than as rows (see users.js). Named on the way in, because half of
 // these words are already taken by something in db.js — `createMark` was a row
@@ -911,11 +911,31 @@ app.get("/api/countries", (req, res) => {
   res.json({ components: COMPONENTS, countries: countryList(requestedLang(req)) });
 });
 
+// Which of these rows lo already knows it cannot read, marked on the way out.
+//
+// Added after the cached lookup rather than inside it, exactly as the venue
+// comment counts are and for the same reason: what the newswire answered is
+// shared between every reader standing on this square for the next half hour,
+// and whether a story turned out to be readable is a thing lo learns during that
+// half hour. Baked into the cached value it would be as stale as the value; put
+// here it is current on every reading, and costs one primary-key lookup per row.
+//
+// Only the noes are said. A row with nothing marked on it is a row lo has not
+// tried yet, which is most of them and is not the same claim as "this one is
+// readable" — the card treats it as a story to open and finds out (see NewsCard).
+function withReadings(result) {
+  const items = result?.items ?? [];
+  return {
+    ...result,
+    items: items.map((item) => (unreadable(item.url) ? { ...item, readable: false } : item)),
+  };
+}
+
 app.get("/api/nearby", async (req, res, next) => {
   const coords = parseCoords(req.query);
   if (!coords) return res.status(400).json({ error: "Invalid coordinates" });
   try {
-    res.json(await lookupNearby(coords.latitude, coords.longitude, requestedLang(req)));
+    res.json(withReadings(await lookupNearby(coords.latitude, coords.longitude, requestedLang(req))));
   } catch (error) {
     if (isUpstreamDown(error)) return res.status(504).json({ error: "Timed out looking up what is nearby" });
     next(error);
@@ -926,7 +946,7 @@ app.get("/api/events", async (req, res, next) => {
   const coords = parseCoords(req.query);
   if (!coords) return res.status(400).json({ error: "Invalid coordinates" });
   try {
-    res.json(await lookupEvents(coords.latitude, coords.longitude, requestedLang(req)));
+    res.json(withReadings(await lookupEvents(coords.latitude, coords.longitude, requestedLang(req))));
   } catch (error) {
     if (isUpstreamDown(error)) return res.status(504).json({ error: "Timed out looking up events" });
     next(error);
@@ -1836,8 +1856,11 @@ app.post("/api/dashboard", requireSession, async (req, res, next) => {
           weatherAnswer.status === "rejected" ? "weather" : null,
         ].filter(Boolean),
       },
-      nearby: nearbyAnswer.status === "fulfilled" ? nearbyAnswer.value?.items ?? [] : [],
-      events: eventsAnswer.status === "fulfilled" ? eventsAnswer.value?.items ?? [] : [],
+      // Marked with what lo knows about reading them, as the two routes of
+      // their own do: the same rows go to the same cards whichever call brought
+      // them, so they arrive carrying the same answer either way.
+      nearby: nearbyAnswer.status === "fulfilled" ? withReadings(nearbyAnswer.value).items : [],
+      events: eventsAnswer.status === "fulfilled" ? withReadings(eventsAnswer.value).items : [],
       trends: trendsAnswer.status === "fulfilled" ? trendsAnswer.value?.items ?? [] : [],
       posts: getPostsNear(location, POSTS_RADIUS_M, 20),
       people: livePeople(req.user.id, lang),

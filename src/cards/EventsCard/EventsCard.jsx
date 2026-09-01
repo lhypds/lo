@@ -42,6 +42,10 @@ export default function EventsCard() {
   const [loading, setLoading] = useState(() => Boolean(coords));
   // The listing the reader is on, read over the dashboard. See ui/PageModal.
   const [reading, setReading] = useState(null);
+  // The rows that turned out to have no reading behind them, found out by this
+  // reader a moment ago rather than by the server half an hour ago. Same as on
+  // the news panel, and for the same reason (see NewsCard).
+  const [unreadable, setUnreadable] = useState(() => new Set());
   const requestRef = useRef(0);
 
   const key = coordKey(coords);
@@ -83,17 +87,34 @@ export default function EventsCard() {
   } else {
     body = (
       <ul className={styles.list}>
-        {items.map((item) => (
-          <li key={item.url}>
-            <a {...sheetLink(item.url, () => setReading(item))} className={styles.item}>
-              <span className={styles.itemTitle}>{item.title}</span>
-              <span className={styles.itemMeta}>
-                <span className={styles.source}>{item.source}</span>
-                {item.time && <time dateTime={item.time}>{relativeTime(item.time, language, t)}</time>}
-              </span>
-            </a>
-          </li>
-        ))}
+        {items.map((item) => {
+          // A listing lo cannot read is a row that goes out to the site it came
+          // off, and says so before it is pressed rather than after (see the
+          // same three lines on the news panel).
+          const away = item.readable === false || unreadable.has(item.url);
+          return (
+            <li key={item.url}>
+              <a
+                {...(away
+                  ? { href: item.url, target: "_blank", rel: "noreferrer noopener" }
+                  : sheetLink(item.url, () => setReading(item)))}
+                className={away ? `${styles.item} ${styles.away}` : styles.item}
+              >
+                {away && (
+                  <span className={styles.mark}>
+                    <span aria-hidden="true">↗</span>
+                    <span className="sr-only">{t("reader.away")}</span>
+                  </span>
+                )}
+                <span className={styles.itemTitle}>{item.title}</span>
+                <span className={styles.itemMeta}>
+                  <span className={styles.source}>{item.source}</span>
+                  {item.time && <time dateTime={item.time}>{relativeTime(item.time, language, t)}</time>}
+                </span>
+              </a>
+            </li>
+          );
+        })}
       </ul>
     );
   }
@@ -126,6 +147,7 @@ export default function EventsCard() {
         source={reading?.source}
         time={reading?.time}
         kind="event"
+        onUnreadable={(url) => setUnreadable((known) => new Set(known).add(url))}
         onClose={() => setReading(null)}
       />
     </Card>

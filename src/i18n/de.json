@@ -203,6 +203,7 @@
   "reader": {
     "title": "Artikel",
     "open": "Öffnen",
+    "away": "Öffnet die Seite des Herausgebers",
     "loading": "Artikel wird gelesen",
     "unavailable": "Dieser Artikel konnte hier nicht gelesen werden – seine Seite ist nur einen Tipp entfernt",
     "paywalled": "Der Rest dieses Artikels liegt hinter der Bezahlschranke des Herausgebers.",

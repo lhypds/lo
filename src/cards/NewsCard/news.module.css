@@ -25,12 +25,53 @@
   border-bottom: 1px solid var(--line);
 }
 
+/* A grid rather than a column of flex, so that a row which leaves lo can grow a
+   second column for the mark that says so without the headline and the line
+   under it being wrapped in anything. One column when there is no mark, which is
+   most rows and is the same row as before. */
 .item {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 1fr;
+  align-content: start;
   gap: 4px;
   padding: 9px 10px;
   text-decoration: none;
+}
+
+/* The row that goes out to the publisher: an arrow in a column of its own down
+   the left, and the headline and its line moved over beside it.
+
+   Left rather than trailing the headline, which is where the same arrow sits
+   everywhere else in lo (see .away in PageModal): those are single links a
+   reader has already decided to follow, and this is a list being scanned. Down
+   the left the marks line up under each other and answer the question the
+   scanning reader is actually asking — which of these opens here and which of
+   these is a trip out — in one glance down the column rather than one look per
+   row at wherever that row's headline happened to end. */
+.away {
+  grid-template-columns: auto 1fr;
+  column-gap: 6px;
+}
+
+.away .itemTitle,
+.away .itemMeta {
+  grid-column: 2;
+}
+
+/* On the headline's first line, not in the middle of the row: the arrow belongs
+   to the top of the row the way a bullet does, and a two-line headline would
+   otherwise leave it floating in the crook of the wrap. The headline's own size
+   and line box are what put it there — same type scale, same 17-odd pixels of
+   line — while the colour is the one the line under the headline is drawn in,
+   because it is the same kind of thing: what lo can tell you about this row
+   without your having to open it. */
+.mark {
+  grid-column: 1;
+  grid-row: 1;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .itemTitle {
@@ -82,6 +123,13 @@
   padding: 6px 8px;
 }
 
+/* The arrow stays on a cube — which of these rows is a trip out is worth as much
+   in one square as in six — and the space around it does not: it is one glyph
+   against about ninety pixels of headline. */
+.square .away {
+  column-gap: 4px;
+}
+
 .square .source {
   display: none;
 }
@@ -130,7 +178,8 @@
     color: var(--paper);
   }
 
-  .item:hover .itemMeta {
+  .item:hover .itemMeta,
+  .item:hover .mark {
     color: var(--paper);
   }
 }

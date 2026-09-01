@@ -43,6 +43,12 @@ export default function NewsCard() {
   // The story the reader is on, read in a sheet over the dashboard rather than
   // in a tab that takes the dashboard's place. See ui/PageModal.
   const [reading, setReading] = useState(null);
+  // The rows this reader has just found out cannot be read here. The server
+  // remembers a failed reading too and marks the row on its next answer, which
+  // is the answer everyone else gets; this is the reader who did the finding
+  // out, for whom the next answer is half an hour away and the row is on screen
+  // now. Both are the same fact and the row does not care which said it.
+  const [unreadable, setUnreadable] = useState(() => new Set());
   const requestRef = useRef(0);
 
   const key = coordKey(coords);
@@ -84,26 +90,45 @@ export default function NewsCard() {
   } else {
     body = (
       <ul className={styles.list}>
-        {items.map((item) => (
-          <li key={item.url}>
-            {/* A story opens into its own words; a place opens Wikipedia. The
-                fallback rows are not news and lo keeps no reading for them —
-                and unlike a newspaper, Wikipedia is a page worth arriving at. */}
-            <a
-              {...(item.kind === "place"
-                ? { href: item.url, target: "_blank", rel: "noreferrer noopener" }
-                : sheetLink(item.url, () => setReading(item)))}
-              className={styles.item}
-            >
-              <span className={styles.itemTitle}>{item.title}</span>
-              <span className={styles.itemMeta}>
-                <span className={styles.source}>{item.source}</span>
-                {item.time && <time dateTime={item.time}>{relativeTime(item.time, language, t)}</time>}
-                {Number.isFinite(item.distance) && <span>{formatDistance(item.distance)}</span>}
-              </span>
-            </a>
-          </li>
-        ))}
+        {items.map((item) => {
+          // Where this row goes when it is pressed, which is the one thing about
+          // a row a reader cannot see and used to have to find out by pressing
+          // it. Three ways to be a row that leaves lo: a place, which is a
+          // Wikipedia page and always was; a story the server has already tried
+          // and could not read; and one this reader tried a moment ago. All
+          // three get the mark, because from the thumb's point of view they are
+          // the same row — the next tap is a trip to somebody else's site.
+          const away = item.kind === "place" || item.readable === false || unreadable.has(item.url);
+          return (
+            <li key={item.url}>
+              {/* A story opens into its own words; anything marked above opens
+                  the page it came off. The fallback rows are not news and lo
+                  keeps no reading for them — and unlike a newspaper, Wikipedia
+                  is a page worth arriving at. */}
+              <a
+                {...(away
+                  ? { href: item.url, target: "_blank", rel: "noreferrer noopener" }
+                  : sheetLink(item.url, () => setReading(item)))}
+                className={away ? `${styles.item} ${styles.away}` : styles.item}
+              >
+                {away && (
+                  <span className={styles.mark}>
+                    <span aria-hidden="true">↗</span>
+                    {/* Said in words for a reader who is being read to, since
+                        the arrow is the whole of what it says on screen. */}
+                    <span className="sr-only">{t("reader.away")}</span>
+                  </span>
+                )}
+                <span className={styles.itemTitle}>{item.title}</span>
+                <span className={styles.itemMeta}>
+                  <span className={styles.source}>{item.source}</span>
+                  {item.time && <time dateTime={item.time}>{relativeTime(item.time, language, t)}</time>}
+                  {Number.isFinite(item.distance) && <span>{formatDistance(item.distance)}</span>}
+                </span>
+              </a>
+            </li>
+          );
+        })}
       </ul>
     );
   }
@@ -140,6 +165,7 @@ export default function NewsCard() {
         source={reading?.source}
         time={reading?.time}
         kind="news"
+        onUnreadable={(url) => setUnreadable((known) => new Set(known).add(url))}
         onClose={() => setReading(null)}
       />
     </Card>

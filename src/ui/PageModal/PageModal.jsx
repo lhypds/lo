@@ -24,11 +24,17 @@ import styles from "./page.module.css";
 // The way through to the original stays in the top bar, and is the whole answer
 // for the rows this cannot do: a paywalled story arrives as its opening
 // paragraph and says so.
-export default function PageModal({ url, title, source, time, kind, onClose }) {
+export default function PageModal({ url, title, source, time, kind, onClose, onUnreadable }) {
   const { t, i18n } = useTranslation();
   const [article, setArticle] = useState(null);
   const [failed, setFailed] = useState(false);
   const request = useRef(0);
+  // The caller's callback, held in a ref so it can stay out of the effect's
+  // dependencies below: a list hands over a fresh arrow function on every render,
+  // and in the dependencies that would re-ask for the story the sheet is already
+  // showing every time the card behind it re-rendered.
+  const report = useRef(onUnreadable);
+  report.current = onUnreadable;
 
   useEffect(() => {
     if (!url) return;
@@ -40,11 +46,24 @@ export default function PageModal({ url, title, source, time, kind, onClose }) {
       .then((data) => {
         if (ticket === request.current) setArticle(data);
       })
-      .catch(() => {
+      .catch((error) => {
         // Nothing was got — a publisher that will not answer a server, a story
         // whose address would not resolve. Not an error to apologise for, just
         // a sheet whose only content is the way out to the page itself.
-        if (ticket === request.current) setFailed(true);
+        if (ticket !== request.current) return;
+        setFailed(true);
+        // And the list is told, so that the row behind this sheet can say from
+        // now on that it goes out to the publisher rather than opening here.
+        //
+        // Only on the server's own "there is no reading for this one", which is
+        // the 404: a timeout or a server that could not be reached is this
+        // moment's news about lo, not a lasting fact about the story, and a row
+        // marked on the strength of one would be telling the reader something
+        // untrue about where it goes. The server writes the same thing down when
+        // it is the story that is at fault and says so on its next answer; this
+        // is for the reader who found it out first (see withReadings in
+        // server/index.js).
+        if (error?.status === 404) report.current?.(url);
       });
   }, [url, title, source, kind]);
 

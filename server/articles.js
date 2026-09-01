@@ -289,45 +289,6 @@ function previewOf(lines) {
   return `${opening.slice(0, PREVIEW_CHARS).trimEnd()}…`;
 }
 
-/* -------------------------------------------------------- no reading at all -- */
-
-// How long a "there is nothing to read here" is worth keeping, by what went
-// wrong. A page that would not load may load tomorrow — a publisher's block is
-// often a rate limit, and Google's translation of an address is fragile by
-// nature — so that answer is held for an afternoon and no longer. A page that
-// loaded and had no prose in it is the publisher's own doing: the words are
-// behind a script, or the story is a video with a caption. That does not change
-// until the site is rebuilt, so it is held for a week rather than re-asked every
-// afternoon on the chance.
-const RETRY_AFTER_MS = {
-  resolve: 6 * 60 * 60 * 1000,
-  fetch: 6 * 60 * 60 * 1000,
-  empty: 7 * 24 * 60 * 60 * 1000,
-};
-
-// Whether lo already knows there is no reading behind this row and it is not yet
-// worth going to find out again. Two callers, for two different reasons: the
-// harvest below, so a second reader is not made to wait for the same nothing,
-// and the feed routes, so a row that opens the publisher's page instead of a
-// sheet can be drawn as one from the start (see /api/nearby).
-export function unreadable(link) {
-  const row = findUnreadable(articleId(link));
-  if (!row) return false;
-  const age = Date.now() - Date.parse(row.tried_at);
-  // An unparseable stamp is not a reason to keep saying no.
-  if (!Number.isFinite(age)) return false;
-  return age < (RETRY_AFTER_MS[row.reason] ?? RETRY_AFTER_MS.fetch);
-}
-
-// The whole of what a failed step does: write down which step it was, and answer
-// null, which is what every caller of harvest already understands.
-function noReading(link, reason) {
-  rememberUnreadable({ id: articleId(link), link, reason });
-  return null;
-}
-
-/* ----------------------------------------------------------------- storage -- */
-
 export async function readStoredArticle(id) {
   if (!isArticleId(id)) return null;
   try {
@@ -378,6 +339,45 @@ export async function storeArticle(article, { kind, link, headline, source, time
   return document;
 }
 
+/* -------------------------------------------------------- no reading at all -- */
+
+// How long "there is nothing to read behind this row" is worth keeping, by what
+// went wrong. A page that would not load may load tomorrow — a publisher's block
+// is as often a rate limit as a policy, and Google's translation of an address is
+// fragile by nature — so that answer is held for an afternoon and no longer. A
+// page that loaded with no prose in it is the publisher's own build: the words
+// are assembled by a script, or the story is a video with a caption under it.
+// That does not change until the site is rebuilt, so it is held for a week
+// instead of being re-asked every afternoon on the chance.
+const RETRY_AFTER_MS = {
+  resolve: 6 * 60 * 60 * 1000,
+  fetch: 6 * 60 * 60 * 1000,
+  empty: 7 * 24 * 60 * 60 * 1000,
+};
+
+// Whether lo already knows there is no reading behind a row, and it is not yet
+// worth going to find out again. Two callers with two different uses for the
+// answer: the harvest below, so the second reader to press the row is not made
+// to wait out the same two round trips for the same nothing, and the feed routes,
+// so a row that will open the publisher's own page can be drawn as one from the
+// start rather than looking like every other row until it apologises (see
+// /api/nearby and NewsCard).
+export function unreadable(link) {
+  const row = findUnreadable(articleId(link));
+  if (!row) return false;
+  const age = Date.now() - Date.parse(row.tried_at);
+  // An unparseable stamp is not a reason to go on saying no.
+  if (!Number.isFinite(age)) return false;
+  return age < (RETRY_AFTER_MS[row.reason] ?? RETRY_AFTER_MS.fetch);
+}
+
+// The whole of what a failed step does: write down which step it was, and answer
+// null, which is what every caller of harvest already understands.
+function noReading(link, reason) {
+  rememberUnreadable({ id: articleId(link), link, reason });
+  return null;
+}
+
 /* ------------------------------------------------------------------ harvest -- */
 
 // A feed row to a stored article: resolve Google's address to the publisher's,
@@ -397,10 +397,14 @@ export async function harvest({ url, title, source, time, kind = "news" }) {
 
   const known = findArticle(articleId(url));
   if (known) return known;
+  // Already been and found nothing, recently enough that the answer stands. The
+  // reader gets it in a millisecond instead of in the five seconds it took to
+  // learn the first time.
+  if (unreadable(url)) return null;
 
   try {
     const target = await resolveGoogleNews(url);
-    if (!target || !/^https?:$/.test(new URL(target).protocol)) return null;
+    if (!target || !/^https?:$/.test(new URL(target).protocol)) return noReading(url, "resolve");
 
     // Google appends its own campaign tags to the address it hands back, and
     // they are not part of the article. The gaa_ pair is deliberately left on:
@@ -414,10 +418,19 @@ export async function harvest({ url, title, source, time, kind = "news" }) {
 
     const html = await getPage(clean.href);
     const article = extractArticle(html, clean.href);
-    if (article.paragraphs.length === 0) return null;
+    // The page answered and there is no story in it — a gallery, a video with a
+    // caption, a shell that assembles itself in a browser. Nothing to read here
+    // and nothing a second attempt would change.
+    if (article.paragraphs.length === 0) return noReading(url, "empty");
     await storeArticle(article, { kind, link: url, headline: title, source, time });
+    // Whatever was written down about this row last time it was tried is no
+    // longer true: there is a reading now, and the row is a row that opens one.
+    forgetUnreadable(articleId(url));
     return findArticle(articleId(url));
   } catch {
-    return null;
+    // Google's translation refused, or the publisher's page did. Which of the
+    // two is not worth telling apart: both are the network saying no, and both
+    // get the same afternoon before lo asks again.
+    return noReading(url, "fetch");
   }
 }

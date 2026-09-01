@@ -203,6 +203,7 @@
   "reader": {
     "title": "Article",
     "open": "Open",
+    "away": "Opens the publisher's own page",
     "loading": "Reading the story",
     "unavailable": "This one could not be read here — the page itself is a tap away",
     "paywalled": "The rest of this story is behind the publisher's paywall.",

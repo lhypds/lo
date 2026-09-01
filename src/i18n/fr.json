@@ -203,6 +203,7 @@
   "reader": {
     "title": "Article",
     "open": "Ouvrir",
+    "away": "Ouvre la page de l’éditeur",
     "loading": "Lecture de l’article",
     "unavailable": "Cet article ne peut pas être lu ici — sa page est accessible d’un geste",
     "paywalled": "La suite de cet article se trouve derrière le péage de l’éditeur.",

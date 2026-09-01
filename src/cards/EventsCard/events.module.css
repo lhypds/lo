@@ -24,12 +24,41 @@
   border-bottom: 1px solid var(--line);
 }
 
+/* A grid rather than a column of flex, so a row that leaves lo can grow a second
+   column for the mark that says so — one column otherwise, which is the row this
+   panel always had. The news panel does this the same way and says why at more
+   length (see news.module.css). */
 .item {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 1fr;
+  align-content: start;
   gap: 4px;
   padding: 8px 10px;
   text-decoration: none;
+}
+
+/* A listing whose page lo cannot read here: the arrow down the left, where the
+   marks line up under each other and answer in one glance down the column which
+   of these rows opens here and which is a trip out to somebody else's site. */
+.away {
+  grid-template-columns: auto 1fr;
+  column-gap: 6px;
+}
+
+.away .itemTitle,
+.away .itemMeta {
+  grid-column: 2;
+}
+
+/* The headline's size and line box, so the arrow sits on its first line, in the
+   grey the line under it is drawn in (see news.module.css). */
+.mark {
+  grid-column: 1;
+  grid-row: 1;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .itemTitle {
@@ -81,6 +110,12 @@
   padding: 6px 8px;
 }
 
+/* The arrow stays on a cube and the space around it does not — one glyph against
+   about ninety pixels of headline. */
+.square .away {
+  column-gap: 4px;
+}
+
 .square .source {
   display: none;
 }
@@ -128,7 +163,8 @@
     color: var(--paper);
   }
 
-  .item:hover .itemMeta {
+  .item:hover .itemMeta,
+  .item:hover .mark {
     color: var(--paper);
   }
 }
