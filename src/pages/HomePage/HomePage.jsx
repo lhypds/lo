@@ -500,16 +500,33 @@ export default function HomePage() {
     // weather, map, mark, people and warnings, in that order.
     shown("people") && sized("people", <PeopleCard />),
     shown("warnings") && sized("warnings", <Warnings />),
-    // And the two defaults that arrive behind that page — what is on the air
-    // here, and what the people who stood here wrote down. Written after the
-    // warnings rather than among them because the warnings are Japan's card and
-    // nobody else's (see server/countries.js): where they are not drawn the
-    // wireless takes the square they left and the opening page is full either
-    // way, which is the whole reason these are the two that arrive on (see
-    // utils/cards.js). Optional cards are appended below rather than being
-    // allowed to insert themselves into this block.
+    // And the second page of defaults, which arrives behind that one: what is on
+    // the air here, what the people who stood here wrote down, where lunch is,
+    // where the coffee is, what has been written about this ground, and what is
+    // being reported near it. Six more squares — a phone's screenful again — dealt
+    // out in pairs, which is what the two-column grid makes of them: the wireless
+    // beside the posts, the two places to sit beside each other, and what is
+    // written about here beside what is happening here.
+    //
+    // Written after the warnings rather than among them because the warnings are
+    // Japan's card and nobody else's (see server/countries.js): where they are not
+    // drawn the wireless takes the square they left and the opening page is full
+    // either way, which is the whole reason these are the defaults they are (see
+    // utils/cards.js). Optional cards are appended below rather than being allowed
+    // to insert themselves into this block.
     shown("radio") && sized("radio", <RadioCard />),
     shown("posts") && sized("posts", <PostsCard />),
+    // The same sheet the pins on the map open, because it is the same
+    // conversation about the same place: a card and a bubble are two views of
+    // one list, and what is added from either goes back into the venue store
+    // and is on both (see the second CommentsModal at the foot of the page).
+    shown("food") && sized("food", <FoodCard onOpenComments={setVenueCommenting} />),
+    shown("cafe") && sized("cafe", <CafeCard onOpenComments={setVenueCommenting} />),
+    // The same remarks sheet the pins on the map open, because it is the same
+    // landmark either way (see the third CommentsModal at the foot of the page).
+    shown("wikipedia") &&
+      sized("wikipedia", <WikipediaCard onOpenComments={setWikiCommenting} onOpenPhoto={setViewing} />),
+    shown("nearby") && sized("nearby", <NewsCard />),
   ].filter(Boolean);
 
   // Every card the reader explicitly adds follows the defaults, ordered by the
@@ -517,23 +534,8 @@ export default function HomePage() {
   // card takes the next available grid position or starts the next page.
   const addedTiles = inAdditionOrder(
     [
-      shown("nearby") && sized("nearby", <NewsCard />),
       shown("events") && sized("events", <EventsCard />),
       shown("trends") && sized("trends", <TrendsCard />),
-      // The same sheet the pins on the map open, because it is the same
-      // conversation about the same place: a card and a bubble are two views of
-      // one list, and what is added from either goes back into the venue store
-      // and is on both (see the second CommentsModal at the foot of the page).
-      shown("food") && sized("food", <FoodCard onOpenComments={setVenueCommenting} />),
-      shown("cafe") && sized("cafe", <CafeCard onOpenComments={setVenueCommenting} />),
-      // The same remarks sheet the pins on the map open, because it is the
-      // same landmark either way (see the third CommentsModal at the foot of
-      // the page).
-      shown("wikipedia") &&
-        sized(
-          "wikipedia",
-          <WikipediaCard onOpenComments={setWikiCommenting} onOpenPhoto={setViewing} />,
-        ),
       // The same remarks sheet and the same Lightbox as the landmarks above,
       // because an old photograph of the street is the same two kinds of thing:
       // somewhere to leave a word, and a picture to look at properly.

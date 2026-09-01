@@ -39,29 +39,37 @@ const SIZES = [TINY, SMALL, LARGE, TALL];
 // width of the panel column they would have been two more rows to scroll past on
 // a phone, and at a square each they are one row that answers both.
 //
-// Two more arrive behind that block: what the place sounds like, and what the
-// people who stood here wrote down. The wireless asks nothing of the reader — a
-// country has stations or it has none — and the posts are the other half of the
-// mark button, which is already on the page: a dashboard that offers to keep
-// where you are standing and never shows what anybody else kept is half of that
-// trade.
+// A second block arrives behind that one, and it is a page rather than a
+// leftover: what the place sounds like, what the people who stood here wrote
+// down, where lunch is, where the coffee is, what has been written about this
+// ground, and what is being reported near it. Six squares, which is a phone's
+// screenful — the block above answers where you are, and this one answers what
+// is here, in the order a person walks into it. None of the six asks anything of
+// the reader to be worth drawing: a country has stations or it has none, the
+// posts are the other half of the mark button already on the page — a dashboard
+// that offers to keep where you are standing and never shows what anybody else
+// kept is half of that trade — and the other four are the street itself, read off
+// OpenStreetMap, Wikipedia and the local newswire (see server/countries.js).
 //
 // Behind rather than in, because a phone holds six squares at a time and the six
-// above are the ones worth the screen it opens on. Which page each of the two
-// falls on is the country's answer rather than this list's: what is in force is
-// Japan's card and nowhere else's (see server/countries.js), so where it is not
-// drawn the wireless comes up into the square it left and the opening page is
-// full either way — the posts alone behind it there, the pair of them behind it
-// in Japan. Which is also why these two are the ones turned on: a default that
-// only ever lands on a page the thumb has to go looking for is a card turned on
-// for nobody.
+// above are the ones worth the screen it opens on. Which page each of these
+// falls on is partly the country's answer rather than this list's: what is in
+// force is Japan's card and nowhere else's, so where the warnings are not drawn
+// the wireless comes up into the square they left and the opening page is full
+// either way — the second page a square short there, and both pages exactly full
+// in Japan. Which is also why these are the six turned on: a default that only
+// ever lands on a page the thumb has to go looking for is a card turned on for
+// nobody, and two pages the thumb can reach is one flick.
 //
-// Everything still off the page is a reading of a wider place than the one you
-// are in, and which of those readings are worth the room is not a question lo can
-// answer for a reader it has not met: the plus in the top bar is where they
-// answer it, and a dashboard that starts as a block of squares — eight of them
-// where the country can feed the warnings, seven where it cannot — is a page that
-// asks rather than one that has to be cleared.
+// What is still off the page is either a reading of a wider place than the one
+// you are standing in — what is on across the city this week, what the country is
+// searching for — or a second pass over ground the block above already covers:
+// the same street a hundred years ago, and the needle. Which of those is worth
+// the room is not a question lo can answer for a reader it has not met: the plus
+// in the top bar is where they answer it, and a dashboard that starts as two
+// blocks of squares — twelve of them where the country can feed the warnings,
+// eleven where it cannot — is a page that asks rather than one that has to be
+// cleared.
 //
 // `min` is the smallest a panel can be cut to, and also the size it arrives at: a
 // panel is offered at its smallest and grows if the reader wants it to. Every
@@ -141,8 +149,8 @@ const SIZES = [TINY, SMALL, LARGE, TALL];
 // changes places with who is around inside the opening block: that puts the
 // people card at the block's edge, where the other three can stand beside it
 // rather than across a gap from it. Then the readings of the wider place, and the
-// handset's own needle last. Somebody who has just put the food card on the page
-// finds the café card on the next row down.
+// handset's own needle last. Somebody who has just taken the food card off the
+// page finds the café card on the next row down.
 export const CARDS = [
   { id: "clock", label: "clock.title", min: TINY, max: TINY },
   { id: "weather", label: "weather.title", min: TINY, max: TINY },
@@ -151,11 +159,11 @@ export const CARDS = [
   { id: "warnings", label: "warnings.title", min: TINY, max: TINY },
   { id: "people", label: "people.nearby", own: true, min: TINY, max: TINY },
   { id: "posts", label: "posts.nearby", own: true, min: TINY },
-  { id: "food", label: "food.title", off: true, min: TINY },
-  { id: "cafe", label: "cafe.title", off: true, min: TINY },
-  { id: "wikipedia", label: "wikipedia.title", off: true, min: TINY },
+  { id: "food", label: "food.title", min: TINY },
+  { id: "cafe", label: "cafe.title", min: TINY },
+  { id: "wikipedia", label: "wikipedia.title", min: TINY },
   { id: "history", label: "history.title", off: true, min: TINY },
-  { id: "nearby", label: "news.title", off: true, min: TINY },
+  { id: "nearby", label: "news.title", min: TINY },
   { id: "events", label: "events.title", off: true, min: TINY },
   { id: "trends", label: "trends.title", off: true, min: TINY },
   { id: "radio", label: "radio.title", min: TINY, max: TINY },
