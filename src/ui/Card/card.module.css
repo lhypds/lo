@@ -137,9 +137,19 @@
    between the place and the mark a reader sees is already inside the button and
    the gap only adds to it. Four puts nine pixels between the two, which is what
    the line at the top of the page puts around its own dot — the measure every
-   small gap in lo is set against. */
+   small gap in lo is set against.
+
+   No min-width here, and that is the whole of what keeps the pair on the card.
+   Left alone, a flex item will not shrink below its own smallest content, and
+   this one's smallest content is the buttons: the meta beside them collapses to
+   nothing and they do not (the two rules below), so the tail has a floor at
+   their width and the shrinking a wide heading calls for has nowhere to go but
+   the title, which is where it belongs. Told min-width: 0, the tail went on
+   shrinking past that floor — a name no tile can hold, "Publications à
+   proximité" on a French phone, came out cut short *and* with the pair hanging
+   through the card's right border, because a flex box squeezed under its
+   contents does not clip them, it lets them out. */
 .tail {
-  min-width: 0;
   margin-left: auto;
   display: flex;
   align-items: center;

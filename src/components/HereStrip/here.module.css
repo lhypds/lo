@@ -3,9 +3,15 @@
    phone knows it. Stacked, the readout stopped being a footnote to the name and
    became a second line of the heading, which is not what it is.
 
-   Aligned on the bottom, so a name that wraps to two lines pushes the readout
-   down with it and the last line of the name and the last line of the readout
-   still sit on the same rule. */
+   Aligned on the bottom, so the last line of the name and the last line of the
+   readout sit on the same rule.
+
+   The strip is exactly as tall in every language, because the carousel below it
+   gets what is left of the window and is cut into pages on how many rows of
+   cards that leaves room for (see HomePage). A French subtitle wrapping where an
+   English one did not would deal the same dashboard onto a different number of
+   pages, so neither line here is allowed a second one: both are held to one and
+   cut off at the ellipsis instead. */
 .strip {
   display: flex;
   align-items: flex-end;
@@ -25,25 +31,31 @@
   font-weight: 700;
   line-height: 1.1;
   letter-spacing: -0.02em;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Held to one line's height even while it is empty — see the note in the strip
-   itself. Flex so the bar that stands in for the words sits on the line rather
-   than at the top of the space kept for them. */
+   itself — and to one line's worth of words once it has some. */
 .detail {
-  display: flex;
-  align-items: center;
   min-height: 14px;
   margin: 3px 0 0;
   color: var(--muted);
   font-size: 11px;
   line-height: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* About as wide as a locality and a region come out at, so the line settles
-   into the name instead of growing into it. */
+   into the name instead of growing into it. Inline-block rather than a flex
+   child because the line it stands on is a line of text now — it has to be able
+   to end in an ellipsis — so the bar is set on that line like a word. */
 .pending {
+  display: inline-block;
+  vertical-align: middle;
   width: 96px;
   height: 8px;
   background: var(--line);
@@ -106,9 +118,9 @@
 }
 
 /* The readout is nowrap and never gives ground, so on a narrow screen the width
-   it takes comes out of the name — which wraps, and can afford to. All the phone
-   needs is a smaller gutter between the two, so the name gets those pixels back
-   rather than spending them on air. */
+   it takes comes out of the name, which is where the ellipsis lands. All the
+   phone needs is a smaller gutter between the two, so the name gets those pixels
+   back rather than spending them on air. */
 @media (max-width: 420px) {
   .strip {
     gap: 8px;

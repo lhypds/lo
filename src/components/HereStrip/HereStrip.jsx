@@ -5,6 +5,13 @@ import { formatAccuracy, formatCoords, relativeTime } from "../../utils/format.j
 import { useHere } from "../LocationProvider/index.js";
 import styles from "./here.module.css";
 
+// Folded on both sides before they are compared, the same way search folds a
+// query: the two names come from the same geocoder but not always in the same
+// case or width.
+function fold(text) {
+  return text.normalize("NFKC").toLowerCase();
+}
+
 // The answer to the question the whole app is built around, stated once at the
 // top so no card has to repeat it.
 export default function HereStrip() {
@@ -13,7 +20,14 @@ export default function HereStrip() {
   if (!coords) return null;
 
   const name = place?.name || t("location.title");
-  const detail = [place?.locality && place.locality !== place?.name ? place.locality : null, place?.region]
+  // The region is on the line to say where the place is, so it comes off the
+  // line when the place has already said it. The server drops a region that is
+  // the name exactly; this drops the ones that only contain it — Kyoto under
+  // "préfecture de Kyoto", which is the same word read twice and, in French,
+  // long enough to want a second line the strip has not got (see the
+  // stylesheet).
+  const region = place?.region && !fold(place.region).includes(fold(name)) ? place.region : null;
+  const detail = [place?.locality && place.locality !== place?.name ? place.locality : null, region]
     .filter(Boolean)
     .join(" · ");
   const coordinateText = formatCoords(coords.latitude, coords.longitude);
