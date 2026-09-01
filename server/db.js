@@ -154,6 +154,14 @@ db.exec(`
     -- beside its name. Held back from readers exactly as the address above is.
     last_latitude REAL,
     last_longitude REAL,
+    -- How well the device knew, in metres, and null where it declined to say
+    -- rather than zero. Kept beside the pair because without it the pair reads
+    -- better than it is: six decimals are printed the same whether the phone had
+    -- a satellite or the name of a wifi network to go on, and a doorway and a
+    -- city block come out looking like the same claim. This is the column that
+    -- tells them apart, and the reason a reading of one account can say how much
+    -- of that line to believe (see lo.js).
+    last_accuracy REAL,
     last_position_at TEXT,
     created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
   );
@@ -418,10 +426,31 @@ for (const column of [
   if (!userColumns.has(column)) db.exec(`ALTER TABLE users ADD COLUMN ${column} TEXT`);
 }
 
-// The two halves of that fix, which are numbers rather than text and so are
-// added apart from the loop, the same way discoverable is below.
-for (const column of ["last_latitude", "last_longitude"]) {
+// The fix's own figures, which are numbers rather than text and so are added
+// apart from the loop, the same way discoverable is below.
+const addedAccuracy = !userColumns.has("last_accuracy");
+for (const column of ["last_latitude", "last_longitude", "last_accuracy"]) {
   if (!userColumns.has(column)) db.exec(`ALTER TABLE users ADD COLUMN ${column} REAL`);
+}
+
+// And the spread of the fixes that were filed before the column existed, off
+// the positions table — which took the same fix at the same moment and has kept
+// the figure all along, so this is a copy rather than a guess. That is what the
+// stamps are for: where the two agree, the row over there is this same fix, and
+// where they do not it is a later one whose spread would be a number about
+// somewhere else. Those keep the blank, which is the honest answer.
+//
+// Once, on the start that adds the column. After it savePosition writes both
+// copies from the one set of values and there is nothing left to catch up.
+if (addedAccuracy) {
+  db.exec(`
+    UPDATE users
+    SET last_accuracy = (
+      SELECT p.accuracy FROM positions p
+      WHERE p.user_id = users.id AND p.updated_at = users.last_position_at
+    )
+    WHERE last_position_at IS NOT NULL
+  `);
 }
 
 // Being findable arrived after the first accounts were opened, and it is the one
@@ -562,6 +591,7 @@ const selectUserDetail = db.prepare(`
     u.last_ip AS lastIp,
     u.last_latitude AS lastLatitude,
     u.last_longitude AS lastLongitude,
+    u.last_accuracy AS lastAccuracy,
     u.last_position_at AS lastPositionAt,
     u.password,
     -- Whether there is a standing link, never the key itself. A password is read
@@ -1160,10 +1190,13 @@ const upsertPosition = db.prepare(`
 // And the same fix written onto the account, which is where it can be read
 // without joining anything: one line of an account's story rather than a row of
 // the map. Its own timestamp rather than the one in positions, so that a column
-// beside the coordinates says how old they are.
+// beside the coordinates says how old they are — and its own accuracy beside
+// that, so the same line says how far the coordinates can be trusted as well as
+// how long ago they were true. A fix is those four figures together; a copy of
+// it that kept three of them would be a tidier row and a weaker claim.
 const updateLastPosition = db.prepare(`
   UPDATE users
-  SET last_latitude = ?, last_longitude = ?, last_position_at = ?
+  SET last_latitude = ?, last_longitude = ?, last_accuracy = ?, last_position_at = ?
   WHERE id = ?
 `);
 
@@ -1563,12 +1596,19 @@ export function deleteConversation(userId, otherUserId) {
 
 // One fix, filed twice: in positions, which is the presence the map is drawn
 // from, and on the account, which is the copy a person reading the users table
-// has in front of them. The same stamp on both, so the two never disagree about
-// when it was taken.
+// has in front of them. Both are written from the one set of values — the same
+// stamp and the same spread — so the two can never come to disagree about when
+// the fix was taken or how well the device knew.
+//
+// A missing accuracy is written null both times rather than left out of one of
+// them: the device saying nothing is a thing the row has to be able to say, and
+// it has to say it the same way in both places (see readMark in users.js, which
+// keeps the same distinction for the spots a reader saves).
 export function savePosition(userId, { latitude, longitude, accuracy }) {
   const now = new Date().toISOString();
-  upsertPosition.run(userId, latitude, longitude, accuracy ?? null, now);
-  updateLastPosition.run(latitude, longitude, now, userId);
+  const spread = accuracy ?? null;
+  upsertPosition.run(userId, latitude, longitude, spread, now);
+  updateLastPosition.run(latitude, longitude, spread, now, userId);
 }
 
 // `since` is an ISO timestamp: same format the column is written in, so the

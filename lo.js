@@ -85,6 +85,20 @@ function place(latitude, longitude) {
   return `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
 }
 
+// And how well the device knew, which is the half of a fix the coordinates
+// cannot say: ten metres and ten kilometres are printed alike above, and only
+// this tells whether the line means a doorway or the district it is in. The
+// browser's own words for it (see formatAccuracy in src/utils/format.js) — the
+// same figure is on screen beside the reader's own dot, and a person holding the
+// two against each other should not have to convert between them.
+//
+// Nothing at all where the fix arrived without one, which is a device declining
+// to say rather than a fix good to zero metres: the blank is the answer.
+function spread(meters) {
+  if (!Number.isFinite(meters)) return "";
+  return meters < 1000 ? ` ±${Math.round(meters)} m` : ` ±${(meters / 1000).toFixed(1)} km`;
+}
+
 function count(number, one, many) {
   return `${number} ${number === 1 ? one : many}`;
 }
@@ -144,7 +158,8 @@ function show(detail) {
   // one number and not the other is a row half-written, and half a position is
   // not somewhere.
   const fix = detail.lastLatitude != null && detail.lastLongitude != null;
-  line("last fix", fix ? `${minute(detail.lastPositionAt)} at ${place(detail.lastLatitude, detail.lastLongitude)}` : "never");
+  const at = fix ? `${place(detail.lastLatitude, detail.lastLongitude)}${spread(detail.lastAccuracy)}` : null;
+  line("last fix", at ? `${minute(detail.lastPositionAt)} at ${at}` : "never");
   // The password as it stands, which is what whoever runs this was almost
   // certainly asked for (see the note on the column in db.js). Null is an account
   // whose password is still to be chosen — by its owner, at the next sign-in —
