@@ -57,15 +57,10 @@
   color: var(--paper);
 }
 
-/* The half under the pointer goes black too, which is exactly what it would look
-   like if it were pressed — the preview is the answer. Pointers only: on a phone
-   the choice is made by touching one, and there is nothing to preview. */
-@media (hover: hover) {
-  .kind:not(:disabled):hover {
-    background: var(--ink);
-    color: var(--paper);
-  }
-}
+/* And nothing at all under the pointer. Black is what this control uses to say
+   which half is chosen, so a hover that blacked the other one would be the
+   switch appearing to have been thrown by a pointer merely crossing it. Every
+   other button in lo inverts on hover; this one is a state and not a press. */
 
 /* Who will see it, under the switch that decides it. The quiet type the rest of
    the small print on this sheet is set in, because it is an answer to a question
@@ -218,9 +213,13 @@
   line-height: 1.4;
 }
 
+/* The count at one end and the submit at the other — and the count held to the
+   top of the line rather than to the middle of it. It is a reading of the box
+   above, so it belongs against the box; centred on a slab half again its height
+   it floated in the white between the two, attached to neither. */
 .footer {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
   margin-top: 2px;

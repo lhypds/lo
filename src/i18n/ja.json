@@ -310,7 +310,7 @@
     "saved": "mark しました",
     "undo": "取り消す",
     "edit": "編集",
-    "hint": "長押しで書く",
+    "hint": "長押しで mark か post を書く",
     "or": "または",
     "removed": "削除しました",
     "needsLocation": "先に位置情報をオンにしてください",

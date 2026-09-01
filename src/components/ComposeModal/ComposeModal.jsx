@@ -13,6 +13,14 @@ const BODY_MAX = 500;
 // /api/marks), said here so the box stops before the request has to.
 const NAME_MAX = 48;
 
+// How deep the box opens, whichever of the two is being written in it. One
+// number rather than one per kind: the field is the tallest thing on the sheet,
+// and a field that resized itself when the switch was thrown moved everything
+// under it out from under the thumb that threw it. Between the two lengths it
+// serves — deeper than a name needs so the box does not read as a slot, shallower
+// than a post's paragraphs, which the handle in the corner is there to open out.
+const FIELD_HEIGHT = 110;
+
 // The same pair the mark button holds to: long enough not to fire on a slow tap,
 // short enough that holding it feels answered rather than stuck, and a press that
 // wanders this far was the start of a scroll rather than a hold.
@@ -458,13 +466,17 @@ export default function ComposeModal({ isOpen, coords, place, mark = null, post 
 
             Missing on an edit, where the question has an answer already: a spot
             somebody kept is not something a second thought can turn into a post
-            for everyone to read. */}
+            for everyone to read.
+
+            A group of two pressed buttons rather than a radio group: a radio
+            group promises the arrow keys move between its options, and these are
+            two buttons a Tab reaches one at a time. What is said instead is
+            which of them is down, which is what the black half means. */}
         {!editing && (
-          <div className={styles.kinds} role="radiogroup" aria-label={t("compose.kind")}>
+          <div className={styles.kinds} role="group" aria-label={t("compose.kind")}>
             <button
               type="button"
-              role="radio"
-              aria-checked={naming}
+              aria-pressed={naming}
               className={naming ? `${styles.kind} ${styles.kindOn}` : styles.kind}
               onClick={() => choose("mark")}
               disabled={busy}
@@ -473,8 +485,7 @@ export default function ComposeModal({ isOpen, coords, place, mark = null, post 
             </button>
             <button
               type="button"
-              role="radio"
-              aria-checked={!naming}
+              aria-pressed={!naming}
               className={naming ? styles.kind : `${styles.kind} ${styles.kindOn}`}
               onClick={() => choose("post")}
               disabled={busy}
@@ -564,10 +575,12 @@ export default function ComposeModal({ isOpen, coords, place, mark = null, post 
           </button>
         )}
 
-        {/* One box, opening at the length of what is being written in it: a
-            name is a line and a post is a paragraph or several, and the sheet
-            should not hand a spot's name a field deep enough to lose it in. The
-            handle in the corner opens either of them out. */}
+        {/* One box, and one height for both. Sizing it to whichever half the
+            switch was on made the sheet jump under the reader's thumb every time
+            they threw it — the field is the biggest thing on the sheet, and
+            everything below it moved. So it opens at a height between the two: a
+            name has room to breathe and a post has room to start, and the handle
+            in the corner opens it out for whoever wants more. */}
         <TextArea
           ref={textRef}
           className={styles.text}
@@ -588,10 +601,10 @@ export default function ComposeModal({ isOpen, coords, place, mark = null, post 
           }}
           placeholder={naming ? t("mark.namePlaceholder") : t("post.placeholder")}
           maxLength={naming ? NAME_MAX : BODY_MAX}
-          rows={naming ? 2 : 4}
+          rows={3}
           // The floor the handle stops at, kept level with the field's own
           // opening height so dragging cannot shrink it under that.
-          minHeight={naming ? 60 : 160}
+          minHeight={FIELD_HEIGHT}
           enterKeyHint={naming ? "done" : undefined}
         />
 
