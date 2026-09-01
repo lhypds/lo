@@ -173,10 +173,12 @@
 }
 
 /* The count at one end and the submit at the other, which is the post composer's
-   own foot: how much room is left, and the one thing to do about it. */
+   own foot: how much room is left, and the one thing to do about it. The count
+   held to the top of the line rather than to the middle, as the mark sheet
+   holds it: it is a reading of the box above, so it sits against the box. */
 .footer {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
 }
