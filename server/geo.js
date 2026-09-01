@@ -9,7 +9,6 @@
 // - Google News    — local news (RSS)        https://news.google.com/rss
 // - Google Trends  — trending searches (RSS) https://trends.google.com/trending
 // - Wikipedia      — nearby places, articles https://www.mediawiki.org/wiki/API
-// - Wikidata       — the same article's other languages https://www.wikidata.org
 // - Wikimedia Commons — old photographs of here https://commons.wikimedia.org
 // - Overpass       — food and cafés (OSM)    https://overpass-api.de
 // - radio-browser  — local radio stations    https://www.radio-browser.info
@@ -67,21 +66,42 @@ function gridCentre(latitude, longitude, digits) {
   return { latitude: Number(latitude.toFixed(digits)), longitude: Number(longitude.toFixed(digits)) };
 }
 
+// How long a stale answer that has just been served stands before the upstream
+// is asked again. Without this, a reader polling a dead upstream would wait out
+// every mirror on every turn only to be handed the same old list at the end of
+// it: the answer is already known, and the waiting buys nothing.
+const STALE_RETRY_MS = 5 * 60 * 1000;
+
 // One flight per key: ten cards asking at once produce a single upstream call,
 // and a failure is never cached, so the next attempt tries again for real.
 // ttl may be a function of the value, for answers whose worth varies.
-function cached(key, ttl, load) {
+//
+// `staleMs` is how long past its expiry a value may still be handed to a reader
+// whose reload failed — asked for by the callers whose answer keeps well and
+// whose upstream does not (see lookupVenues). It is counted from when the value
+// was fetched and not from the last attempt, so a permanently dead upstream runs
+// the grace out and starts failing honestly rather than renewing itself into
+// serving last week's list forever.
+function cached(key, ttl, load, { staleMs = 0 } = {}) {
   const hit = cache.get(key);
   if (hit?.pending) return hit.pending;
   if (hit && hit.expiresAt > Date.now()) return Promise.resolve(hit.value);
 
+  const stale = staleMs > 0 && hit?.loadedAt + staleMs > Date.now() ? hit : null;
+
   const pending = load()
     .then((value) => {
       const ttlMs = typeof ttl === "function" ? ttl(value) : ttl;
-      cache.set(key, { expiresAt: Date.now() + ttlMs, value });
+      const now = Date.now();
+      cache.set(key, { expiresAt: now + ttlMs, loadedAt: now, value });
       return value;
     })
     .catch((error) => {
+      if (stale) {
+        console.warn(`upstream: ${key} answered from a stale entry (${error.message})`);
+        cache.set(key, { ...stale, expiresAt: Date.now() + STALE_RETRY_MS });
+        return stale.value;
+      }
       cache.delete(key);
       throw error;
     });
@@ -629,7 +649,30 @@ export function lookupEvents(latitude, longitude, lang = "en") {
 // These are also the only two cards answered the same way everywhere: OSM stops
 // at no border, so unlike the three Google feeds there is nothing to write down
 // in countries.js about where they work.
-const OVERPASS_URL = "https://overpass-api.de/api/interpreter";
+
+// The instances lo will put that question to, in the order it tries them.
+//
+// One address was the whole story here for a while, and it was the wrong number
+// of addresses. Overpass is donated hardware answering the whole world for
+// nothing, and the main instance is the one everybody points at: it spends
+// stretches refusing connections outright, and a card whose only upstream is
+// having that kind of afternoon is a card that says "Could not reach
+// OpenStreetMap" all afternoon. These are separate machines in separate places
+// run by separate people, and they are down at separate times — which is the
+// entire point of listing them.
+//
+// They all answer the same query language over the same planet, so the order is
+// only about who to trouble first: the canonical instance leads because its copy
+// of the map is the freshest, and the rest are asked in turn when it will not
+// answer. Regional instances are deliberately absent, however reliable — an
+// extract of one country answers a query about another with a cheerful empty
+// list, and a wrong answer given quickly is worse here than no answer at all.
+const OVERPASS_URLS = [
+  "https://overpass-api.de/api/interpreter",
+  "https://overpass.kumi.systems/api/interpreter",
+  "https://overpass.private.coffee/api/interpreter",
+  "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
+];
 
 // Overpass will not talk to the User-Agent the rest of this file uses: anything
 // opening `Mozilla/5.0 (compatible;` is turned away with a 406 before the query
@@ -638,11 +681,70 @@ const OVERPASS_URL = "https://overpass-api.de/api/interpreter";
 const OVERPASS_AGENT = "lo/0.1 (location dashboard)";
 // Longer than the eight seconds a feed gets: a city centre is a few hundred rows
 // and several seconds of somebody else's CPU, and a busy instance queues the
-// query before it starts on it. The first figure is the budget Overpass is asked
-// to hold itself to, and the second is set above it so that work lo has already
-// asked for is never abandoned a moment before it lands.
-const OVERPASS_QUERY_TIMEOUT_S = 20;
-const OVERPASS_TIMEOUT_MS = 22000;
+// query before it starts on it. Measured on the ring that is actually asked for
+// — the 1500 m one, which is the only one a town ever gets past — an instance
+// that is going to answer answers in six to twelve seconds. Fifteen is that with
+// room, and the second figure is set above it so that work lo has already asked
+// for is never abandoned a moment before it lands.
+//
+// Shorter than they once were, and deliberately: with one address to try, the
+// only thing patience cost was the reader's time. With four, every second spent
+// on an instance that will not answer is a second taken off one that would.
+const OVERPASS_QUERY_TIMEOUT_S = 15;
+const OVERPASS_TIMEOUT_MS = 17000;
+
+// And how long the whole walk down the list may take, however many are left.
+//
+// Four addresses are four chances, not four times the wait. Most instances that
+// are having a bad day refuse the connection in a second or two and cost almost
+// nothing to skip, but one that accepts the connection and then thinks about it
+// spends the full timeout above, and a few of those in a row is longer than the
+// browser will hold the request open (see VENUE_REQUEST_TIMEOUT_MS in api.js) —
+// and far longer than a reader will sit in front of a spinner. So the walk is
+// given a wall clock of its own: each instance is asked with whatever is left of
+// it, and when it runs out lo stops and says so. Forty seconds, because the two
+// cards queue through here one after the other and both must fit inside the
+// browser's minute and a half.
+const OVERPASS_WALK_MS = 40000;
+
+// How long an instance that answered goes on being the one lo asks first.
+//
+// A walk that ends on the fourth address has spent half a minute finding out
+// something it now knows, and the next query is a minute later at most. So the
+// one that answered leads the list until this runs out — which turns the usual
+// case, a reader on a dashboard where the main instance is having a bad week,
+// from half a minute of waiting into the six seconds the query really takes.
+//
+// It runs out rather than standing, because the order in OVERPASS_URLS is not
+// arbitrary: the canonical instance is first because its copy of the map is the
+// freshest, and a preference that never expired would mean an afternoon's outage
+// quietly moving lo onto a mirror for the rest of the month. An hour costs one
+// refused connection to find out the outage is over.
+const OVERPASS_PREFER_MS = 60 * 60 * 1000;
+
+// And how long one that made the walk wait goes to the back of the list.
+//
+// What matters here is not that an instance failed but what its failure cost.
+// One that refuses the connection is answered in a second and a half and has
+// barely touched the budget; one that accepts the connection and then says
+// nothing spends the whole of its timeout, and is the same instance saying
+// nothing again a minute later. Two of those standing ahead of a working
+// instance is most of the walk gone before the working one is asked at all —
+// which is how a dashboard ends up with no cafés on it while a machine that
+// would have answered sits fourth in a list nobody got to the end of.
+//
+// So a failure is counted against an instance only when it was a slow one, and
+// what it earns is a place at the back rather than a place off the list: an
+// instance is passed over only in favour of one lo has better reason to try, and
+// when they have all had a bad ten minutes the walk is the plain list again.
+// Nothing here can make lo ask fewer instances than it would have — only ask
+// them in a better order.
+const OVERPASS_SHUN_MS = 10 * 60 * 1000;
+
+// Where slow starts: half of whatever the attempt was allowed. Well past a
+// refused connection and well short of a stall, and expressed as a fraction
+// because the allowance shrinks as the walk's budget runs down.
+const OVERPASS_SLOW_SHARE = 0.5;
 
 // Overpass hands each caller two query slots and answers a request that arrives
 // without one with a 429. Two cards on the dashboard asking at once is that
@@ -656,23 +758,106 @@ const OVERPASS_RETRY_MS = 3000;
 
 let overpassTurn = Promise.resolve();
 let overpassLastAt = 0;
+let overpassPreferred = null; // { url, until }
+const overpassShunned = new Map(); // url -> when it may take its listed place again
 
+// The list to walk: the instance that last answered first, the ones that lately
+// would not last, and everything else in between in the order it is written in.
+// The sort is stable, so within each of those three the listed order stands —
+// which is what keeps the canonical instance ahead of the mirrors whenever
+// nothing has been learned to put it anywhere else.
+function overpassOrder() {
+  const now = Date.now();
+  const preferred = overpassPreferred && overpassPreferred.until > now ? overpassPreferred.url : null;
+  const rank = (url) => (url === preferred ? -1 : overpassShunned.get(url) > now ? 1 : 0);
+  return [...OVERPASS_URLS].sort((a, b) => rank(a) - rank(b));
+}
+
+// An instance under load does not always fail like a machine that is down. It
+// takes the query, answers 200, and puts the reason it has nothing in a `remark`
+// beside an empty element list — a runtime error, a query that ran out of its
+// own timeout, a slot it could not spare. That body has to be read as the
+// failure it is: taken at face value it becomes "nothing within six kilometres",
+// which the widening below would then confirm, and which the cache would then
+// keep — a card confidently reporting that a reader standing on a street of
+// restaurants is nowhere near one.
+function overpassRemark(data) {
+  const remark = typeof data?.remark === "string" ? data.remark : "";
+  return /error|timed? ?out|timeout/i.test(remark) ? remark : "";
+}
+
+// One instance, one question. The 429 retry stays with the instance that said
+// it: a full slot is a "come back in a moment" from a machine that is otherwise
+// working, and walking away from it to trouble somebody else's machine is the
+// wrong reading of a queue lo was asked to wait in.
+async function askOverpassAt(url, query, timeout) {
+  const target = `${url}?data=${encodeURIComponent(query)}`;
+  const options = { agent: OVERPASS_AGENT, timeout };
+  let data;
+  try {
+    data = await getJson(target, options);
+  } catch (error) {
+    if (error.status !== 429) throw error;
+    await sleep(OVERPASS_RETRY_MS);
+    data = await getJson(target, options);
+  }
+  const remark = overpassRemark(data);
+  if (remark) throw new Error(`${new URL(url).host} could not run the query (${remark})`);
+  return data;
+}
+
+// The mirrors in turn, until one of them answers.
+//
+// Still one query at a time and still a breath between them, because that queue
+// was never about a single instance's slots — it is lo declining to be several
+// callers at once on hardware somebody else pays for, and moving down a list of
+// hosts is no reason to stop being polite. The seconds do add up in the bad
+// case, which is what the stale cache above is for: a reader who has been here
+// before is answered from it and never waits out this walk at all.
 function askOverpass(query) {
-  const url = `${OVERPASS_URL}?data=${encodeURIComponent(query)}`;
-  const options = { agent: OVERPASS_AGENT, timeout: OVERPASS_TIMEOUT_MS };
-
   const turn = overpassTurn.then(async () => {
-    const wait = overpassLastAt + OVERPASS_GAP_MS - Date.now();
-    if (wait > 0) await sleep(wait);
-    try {
-      return await getJson(url, options);
-    } catch (error) {
-      if (error.status !== 429) throw error;
-      await sleep(OVERPASS_RETRY_MS);
-      return getJson(url, options);
-    } finally {
-      overpassLastAt = Date.now();
+    let last;
+    // Started once the turn comes round and not when the query was written, so
+    // a card that spent a while waiting behind the other one still gets a whole
+    // walk of its own rather than the remains of somebody else's.
+    const until = Date.now() + OVERPASS_WALK_MS;
+    for (const url of overpassOrder()) {
+      const wait = overpassLastAt + OVERPASS_GAP_MS - Date.now();
+      if (wait > 0) await sleep(wait);
+      const left = until - Date.now();
+      // Too little left to be worth an instance's time or the reader's: a query
+      // cut off part-way through is somebody else's CPU spent for nothing.
+      if (left < OVERPASS_GAP_MS) break;
+      const allowed = Math.min(OVERPASS_TIMEOUT_MS, left);
+      const startedAt = Date.now();
+      try {
+        const data = await askOverpassAt(url, query, allowed);
+        overpassPreferred = { url, until: startedAt + OVERPASS_PREFER_MS };
+        overpassShunned.delete(url);
+        return data;
+      } catch (error) {
+        // An instance lo could not reach has already said so on its way out of
+        // getText. One that took the query and then answered 500, or took it and
+        // could not run it, has not, and is a line the log would otherwise be
+        // missing when somebody asks why a card came up empty.
+        if (!isUpstreamDown(error)) console.warn(`upstream: overpass ${new URL(url).host} — ${error.message}`);
+        if (Date.now() - startedAt >= allowed * OVERPASS_SLOW_SHARE) {
+          overpassShunned.set(url, Date.now() + OVERPASS_SHUN_MS);
+        }
+        last = error;
+      } finally {
+        overpassLastAt = Date.now();
+      }
     }
+    // Every one of them down at once is the network being unreachable as far as
+    // the reader is concerned, whatever the last of them said on its way out.
+    // Nothing to prefer either, now that the one lo was preferring has been
+    // asked along with the rest and had nothing to say.
+    overpassPreferred = null;
+    console.warn(`upstream: no Overpass instance answered (${last?.message ?? "out of time"})`);
+    last ??= new Error("no Overpass instance answered in time");
+    last.upstreamDown = true;
+    throw last;
   });
 
   // The queue is a line of turns and not a chain of results: whatever this one
@@ -715,6 +900,20 @@ const MAX_VENUES = 24;
 const VENUE_TTL_MS = 60 * 60 * 1000;
 const VENUE_EMPTY_TTL_MS = 10 * 60 * 1000;
 const VENUE_GRID = 2;
+
+// And how long after that an answer is still worth having when the hour is up
+// and no instance will say anything new.
+//
+// A week, which sounds careless and is not: the list is where the restaurants
+// are, and restaurants are where they were last Tuesday. Weigh what the reader
+// is actually choosing between — a list a few days old with the nearest café on
+// top of it, or the sentence "Could not reach OpenStreetMap" — and the old list
+// wins every time, on a card whose whole job is to answer "what is around here".
+// It is the same reasoning as the hour's cache, carried to the case the hour
+// does not cover; the hour is how often lo would like to be right about a new
+// opening, and this is how long being right about that stops mattering more than
+// answering at all.
+const VENUE_STALE_MS = 7 * 24 * 60 * 60 * 1000;
 
 const EARTH_RADIUS_M = 6_371_008.8;
 
@@ -793,7 +992,7 @@ export function lookupVenues(kind, latitude, longitude, lang = "en") {
   const key = `venues:${kind}:${language}:${gridKey(latitude, longitude, VENUE_GRID)}`;
   const ttl = (value) => (value.items.length === 0 ? VENUE_EMPTY_TTL_MS : VENUE_TTL_MS);
 
-  return cached(key, ttl, async () => {
+  const load = async () => {
     const centre = gridCentre(latitude, longitude, VENUE_GRID);
     const place = await lookupPlace(latitude, longitude, language).catch(() => null);
     for (const radius of VENUE_RADII_M) {
@@ -803,7 +1002,9 @@ export function lookupVenues(kind, latitude, longitude, lang = "en") {
     // Nothing in either ring, and the card should say so about the wider one:
     // "nothing within six kilometres" is the claim that was actually checked.
     return { place, radius: VENUE_RADII_M.at(-1), items: [] };
-  }).then(({ place, radius, items }) => ({
+  };
+
+  return cached(key, ttl, load, { staleMs: VENUE_STALE_MS }).then(({ place, radius, items }) => ({
     place,
     radius,
     items: items
@@ -839,6 +1040,12 @@ const WIKI_EXTRACT_CHARS = 280;
 // An article does not move and its lead paragraph does not change by the hour,
 // so this keeps the same shape the venue answers do: a square of ground, kept
 // for as long as a walk across it stays the same list.
+//
+// The short one is for the answers not worth an hour of anybody's dashboard:
+// nothing found, and — see fetchWikipediaPlaces — anything short of the whole
+// question answered, whether an edition never replied or the rows never made it
+// into the reader's language. Those are Wikimedia having a bad minute, and an
+// hour is a long time to keep somebody else's bad minute on a reader's screen.
 const WIKI_TTL_MS = 60 * 60 * 1000;
 const WIKI_EMPTY_TTL_MS = 10 * 60 * 1000;
 const WIKI_GRID = 2;
@@ -911,6 +1118,21 @@ function wikiLanguages(lang, countryCode) {
   return wanted.filter((value, index) => value && wanted.indexOf(value) === index);
 }
 
+// One edition, two scripts. zh.wikipedia keeps a single article per subject and
+// converts it as it is read — 淺草寺 and 浅草寺 are one page and not two — so
+// which script a reader sees is a parameter on the question rather than another
+// encyclopaedia to search. Asked nothing, the API hands back the wikitext as its
+// author typed it, which is how a dashboard written in simplified Chinese ends
+// up with a traditional lead paragraph under it and a traditional name on the
+// pin. lo's Chinese is simplified, so simplified is what it asks for, and where
+// the converter has no simplified form for a word it hands back what it has —
+// so a traditional name inside an otherwise simplified sentence is the converter
+// saying that is the only spelling there is, not lo failing to ask.
+//
+// Chinese is the only language lo speaks that has variants at all. Every other
+// edition is absent from here and asks for nothing.
+const WIKI_VARIANT = { zh: "zh-cn" };
+
 // The same question put to several editions at once, answered as one list — and
 // then that list put back into the reader's language wherever it can be (see
 // inReadersLanguage below). As many landmarks as there are, each in as near the
@@ -930,7 +1152,7 @@ function wikiLanguages(lang, countryCode) {
 // WIKI_EMPTY_TTL_MS). So all of them failing is a failure, and it is thrown.
 async function fetchWikipediaPlaces(latitude, longitude, radius, languages) {
   const answers = await Promise.allSettled(
-    languages.map((lang) => fetchWikipediaEdition(latitude, longitude, radius, lang)),
+    languages.map((lang) => fetchWikipediaEdition(latitude, longitude, radius, lang, languages[0])),
   );
   for (const answer of answers) {
     // A refusal from one edition is worth a line even though the request
@@ -952,12 +1174,24 @@ async function fetchWikipediaPlaces(latitude, longitude, radius, languages) {
       if (!found.has(item.subject)) found.set(item.subject, item);
     }
   }
-  return inReadersLanguage([...found.values()], languages[0]);
+  const { items, whole } = await inReadersLanguage([...found.values()], languages[0]);
+  // Whether the caller is holding the answer it asked for or the remains of one.
+  // An edition that never replied is a landmark that may be missing from this
+  // list altogether; a translation that never happened is a row standing in a
+  // language the reader did not ask for. Both are worth showing and neither is
+  // worth an hour of the cache (see WIKI_EMPTY_TTL_MS): a reader who switches
+  // the interface to Chinese and is handed a Japanese list because Wikimedia
+  // said 429 for a second should get Chinese on their next look, not after
+  // lunch.
+  return { items, whole: whole && editions.length === languages.length };
 }
 
-// The two limits are the same number and it is the API's: fifty subjects to a
-// question of Wikidata, fifty titles to a question of Wikipedia.
-const WIKI_BATCH = 50;
+// Fifty titles to a question of Wikipedia — but only twenty extracts to an
+// answer. TextExtracts stops there and says nothing about having stopped, so the
+// twenty-first title comes back as a title with no lead paragraph under it. The
+// batch is therefore the smaller of the two limits, which is the one that
+// decides whether the rows arrive whole.
+const WIKI_BATCH = 20;
 
 function batches(values, size) {
   const groups = [];
@@ -965,35 +1199,18 @@ function batches(values, size) {
   return groups;
 }
 
-// Which article the reader's own edition has for each of these subjects, where
-// it has one at all. Asked of Wikidata rather than of the editions the rows came
-// out of: a Q number's sitelinks are the whole list of encyclopaedias that have
-// written about that subject, so one question covers rows from any number of
-// them, and `sitefilter` cuts the answer down to the single edition being asked
-// about instead of the three hundred that exist.
-async function wikiTitlesIn(lang, subjects) {
-  const titles = new Map();
-  for (const group of batches(subjects, WIKI_BATCH)) {
-    const url = new URL("https://www.wikidata.org/w/api.php");
-    url.searchParams.set("action", "wbgetentities");
-    url.searchParams.set("ids", group.join("|"));
-    url.searchParams.set("props", "sitelinks");
-    url.searchParams.set("sitefilter", `${lang}wiki`);
-    url.searchParams.set("format", "json");
-    const data = await getJson(url.href);
-    for (const [subject, entity] of Object.entries(data.entities ?? {})) {
-      const title = firstString(entity.sitelinks?.[`${lang}wiki`]?.title);
-      if (title) titles.set(subject, title);
-    }
-  }
-  return titles;
-}
-
-// And those articles themselves, read out of the reader's edition. Keyed by
-// subject on the way back rather than by the title they were asked for, which
-// saves following the API's own trail of normalisations and redirects from what
-// was asked to what answered: every page carries its own Q number, and that is
-// the thing being matched anyway.
+// The articles themselves, read out of the reader's edition, by the names the
+// search above already came back holding (see `readerTitle` in
+// fetchWikipediaEdition).
+//
+// Keyed on the way back by the Wikidata number the page carries and by the name
+// it was asked for, because neither alone reaches every row: a landmark with no
+// item on Wikidata has nothing but its name to be matched on, and a name is not
+// always what answers to it — the API normalises what it is given and follows a
+// redirect where it finds one. Both trails come back with the answer, so the
+// last thing here is to file each article under the names that led to it as
+// well. Redirects before normalisations, which is the order they are applied
+// in, so that following the second finds what the first left behind.
 async function wikiArticlesIn(lang, titles) {
   const articles = new Map();
   for (const group of batches(titles, WIKI_BATCH)) {
@@ -1001,12 +1218,18 @@ async function wikiArticlesIn(lang, titles) {
     url.searchParams.set("action", "query");
     url.searchParams.set("titles", group.join("|"));
     url.searchParams.set("redirects", "1");
-    wikiContentParams(url.searchParams);
+    wikiContentParams(url.searchParams, lang);
     const data = await getJson(url.href);
     for (const page of Object.values(data.query?.pages ?? {})) {
       if (page.missing !== undefined || !page.pageid) continue;
+      const article = writtenBy(page, lang);
       const subject = firstString(page.pageprops?.wikibase_item);
-      if (subject) articles.set(subject, writtenBy(page, lang));
+      if (subject) articles.set(subject, article);
+      articles.set(page.title, article);
+    }
+    for (const step of [...(data.query?.redirects ?? []), ...(data.query?.normalized ?? [])]) {
+      const article = articles.get(step.to);
+      if (article) articles.set(step.from, article);
     }
   }
   return articles;
@@ -1024,10 +1247,17 @@ async function wikiArticlesIn(lang, titles) {
 // their own language all along — which is the first thing they will notice and
 // the last thing lo should be defending.
 //
-// So: the ground is searched in every edition, and then every row that came back
-// in a foreign one is asked for again by name in the reader's. Two more round
-// trips behind an hour's cache, and only where there is something to fix — a
-// reader whose language is the only edition asked never gets here at all.
+// So: the ground is searched in every edition, and every row that came back in a
+// foreign one is asked for again by name in the reader's. One more round trip
+// behind an hour's cache, and only where there is something to fix — a reader
+// whose language is the only edition asked never gets here at all.
+//
+// The name to ask for arrives with the row rather than being looked up: an
+// article's interlanguage links are its Wikidata sitelinks read from the other
+// end, and the search that found the row can hand them over in the same breath
+// (see `readerTitle` in fetchWikipediaEdition). That was two more requests to
+// wikidata.org until it wasn't, and every request in this chain is a request
+// that can come back 429 and leave a whole card standing in the wrong language.
 //
 // Whole rows, not just their titles. A native title over a foreign lead
 // paragraph would be worse than either done properly, and the page in the
@@ -1036,27 +1266,26 @@ async function wikiArticlesIn(lang, titles) {
 // for and does not know: which subject this is, and where on the ground it
 // stands.
 //
-// Failure at either step leaves the list exactly as the merge made it, and is
-// swallowed rather than thrown for exactly the reason the merge's own failures
-// are not: a card in three languages is a smaller wrong than no card, where an
-// empty one would have been a claim about the neighbourhood.
+// Failure leaves the list exactly as the merge made it, and is swallowed rather
+// than thrown for exactly the reason the merge's own failures are not: a card in
+// three languages is a smaller wrong than no card, where an empty one would have
+// been a claim about the neighbourhood. It is reported all the same — `whole`
+// says whether this list is the one that was asked for, and the answer to that
+// is what decides how long it is kept (see fetchWikipediaPlaces).
 async function inReadersLanguage(items, lang) {
-  const foreign = items.filter((item) => item.lang !== lang && /^Q\d+$/.test(item.subject));
-  if (foreign.length === 0) return items;
+  const foreign = items.filter((item) => item.lang !== lang && item.readerTitle);
+  if (foreign.length === 0) return { items, whole: true };
 
-  const shrug = (error) => {
-    console.warn(`upstream: ${error.message}`);
-    return new Map();
-  };
-  const titles = await wikiTitlesIn(
-    lang,
-    foreign.map((item) => item.subject),
-  ).catch(shrug);
-  if (titles.size === 0) return items;
-
-  const articles = await wikiArticlesIn(lang, [...titles.values()]).catch(shrug);
-  return items.map((item) => {
-    const article = articles.get(item.subject);
+  let whole = true;
+  const articles = await wikiArticlesIn(lang, [...new Set(foreign.map((item) => item.readerTitle))]).catch(
+    (error) => {
+      console.warn(`upstream: ${error.message}`);
+      whole = false;
+      return new Map();
+    },
+  );
+  const written = items.map((item) => {
+    const article = articles.get(item.subject) ?? articles.get(item.readerTitle);
     if (!article) return item;
     // The reader's article laid over the row that found the place — except for
     // the picture, where their edition has none and the row does. A photograph
@@ -1075,6 +1304,19 @@ async function inReadersLanguage(items, lang) {
       thumbnailHeight: picture.thumbnailHeight,
     };
   });
+  // One row per article at the end of it. The merge upstream keeps two rows
+  // apart when nothing says they are one place, and the reader's edition can
+  // then answer both with the same page — a subject Wikidata has never been told
+  // is a single thing, an edition that wrote one article where another wrote
+  // two. Two pins on one building sharing an id between them is a worse list
+  // than the one the merge handed over, so the second of the pair goes.
+  const seen = new Set();
+  const one = written.filter((item) => {
+    if (seen.has(item.id)) return false;
+    seen.add(item.id);
+    return true;
+  });
+  return { items: one, whole };
 }
 
 // Where an article is read, from the two things that say which one it is.
@@ -1109,8 +1351,21 @@ function pictureFields(thumbnail) {
 //
 // pageprops is here for that one field. Asked for by name rather than
 // wholesale: a page's properties are a long list and this wants one of them.
-function wikiContentParams(params) {
-  params.set("prop", "extracts|pageimages|coordinates|pageprops");
+//
+// And, in an edition that converts scripts, the words in the one the reader
+// reads (see WIKI_VARIANT). `variant` does the lead paragraph; a title it does
+// not touch, and `varianttitles` — which is prop=info's, and the only place in
+// the API a converted title can be had at all — is what says what this page is
+// called in the reader's script.
+function wikiContentParams(params, lang) {
+  const props = ["extracts", "pageimages", "coordinates", "pageprops"];
+  const variant = WIKI_VARIANT[lang];
+  if (variant) {
+    props.push("info");
+    params.set("inprop", "varianttitles");
+    params.set("variant", variant);
+  }
+  params.set("prop", props.join("|"));
   params.set("ppprop", "wikibase_item");
   params.set("exintro", "1");
   params.set("explaintext", "1");
@@ -1126,7 +1381,7 @@ function wikiContentParams(params) {
   params.set("format", "json");
 }
 
-async function fetchWikipediaEdition(latitude, longitude, radius, lang) {
+async function fetchWikipediaEdition(latitude, longitude, radius, lang, reader) {
   const url = new URL(`https://${lang}.wikipedia.org/w/api.php`);
   url.searchParams.set("action", "query");
   // Geosearch as a generator rather than a list (contrast fetchWikipediaNearby
@@ -1137,7 +1392,19 @@ async function fetchWikipediaEdition(latitude, longitude, radius, lang) {
   url.searchParams.set("ggscoord", `${latitude}|${longitude}`);
   url.searchParams.set("ggsradius", String(radius));
   url.searchParams.set("ggslimit", "20");
-  wikiContentParams(url.searchParams);
+  wikiContentParams(url.searchParams, lang);
+  // And, where this is not the reader's own edition, what each article is called
+  // in theirs — the one thing needed to go and fetch the row again in a language
+  // they read (see inReadersLanguage). A page's interlanguage links are its
+  // Wikidata sitelinks seen from the article's end, so this is the same answer
+  // wikidata.org would give, arriving inside a request lo is making anyway.
+  if (reader && reader !== lang) {
+    url.searchParams.set("prop", `${url.searchParams.get("prop")}|langlinks`);
+    url.searchParams.set("lllang", reader);
+    // The limit is on the answer rather than on each page, and one edition is at
+    // most one link a page, so this is only saying "all twenty of them".
+    url.searchParams.set("lllimit", "500");
+  }
   const data = await getJson(url.href);
   // Answered as an object keyed by page id rather than as a list — geosearch's
   // own ordering is not carried over, which is why the caller sorts by the
@@ -1157,6 +1424,10 @@ async function fetchWikipediaEdition(latitude, longitude, radius, lang) {
         subject: firstString(page.pageprops?.wikibase_item) || `${lang}/${page.pageid}`,
         latitude: at.lat,
         longitude: at.lon,
+        // What the reader's own edition files this under, where it has it at
+        // all and where this is not already that edition. Empty otherwise, and
+        // an empty one is a row that stays in the language it was found in.
+        readerTitle: firstString(page.langlinks?.[0]?.["*"]),
         ...writtenBy(page, lang),
       };
     })
@@ -1173,7 +1444,9 @@ function writtenBy(page, lang) {
     // the map's shared store cannot collide with one keyed by a plain page id
     // that happens to match a node's.
     id: `wikipedia/${page.pageid}`,
-    title: String(page.title),
+    // The name in the reader's own script where the edition keeps more than one
+    // (see WIKI_VARIANT), and the name the page is filed under everywhere else.
+    title: firstString(WIKI_VARIANT[lang] && page.varianttitles?.[WIKI_VARIANT[lang]], page.title),
     description: firstString(page.extract),
     // Which encyclopaedia this row came out of. Worth carrying now that a list
     // can hold three of them: it is what the way through to the article is
@@ -1181,6 +1454,9 @@ function writtenBy(page, lang) {
     // in a language the reader did not ask for.
     lang,
     source: `${lang}.wikipedia.org`,
+    // The address is the title the page is *filed* under and not the one above
+    // it: a converted title is a rendering of a name and this is a key in
+    // somebody's database.
     url: articleUrl(lang, page.title),
     ...pictureFields(page.thumbnail ?? null),
   };
@@ -1193,7 +1469,7 @@ function writtenBy(page, lang) {
 export function lookupWikipedia(latitude, longitude, lang = "en") {
   const language = PLACE_LANGUAGE[lang] ?? "en";
   const key = `wikipedia:${language}:${gridKey(latitude, longitude, WIKI_GRID)}`;
-  const ttl = (value) => (value.items.length === 0 ? WIKI_EMPTY_TTL_MS : WIKI_TTL_MS);
+  const ttl = (value) => (value.items.length === 0 || !value.whole ? WIKI_EMPTY_TTL_MS : WIKI_TTL_MS);
 
   return cached(key, ttl, async () => {
     const centre = gridCentre(latitude, longitude, WIKI_GRID);
@@ -1204,15 +1480,21 @@ export function lookupWikipedia(latitude, longitude, lang = "en") {
     // for it. The same key, the same three editions, the same answer.
     const languages = wikiLanguages(language, place?.countryCode);
     for (const radius of WIKI_RADII_M) {
-      const items = await fetchWikipediaPlaces(centre.latitude, centre.longitude, radius, languages);
-      if (items.length > 0) return { place, radius, items };
+      const { items, whole } = await fetchWikipediaPlaces(centre.latitude, centre.longitude, radius, languages);
+      if (items.length > 0) return { place, radius, items, whole };
     }
-    return { place, radius: WIKI_RADII_M.at(-1), items: [] };
+    return { place, radius: WIKI_RADII_M.at(-1), items: [], whole: true };
   }).then(({ place, radius, items }) => ({
     place,
     radius,
     items: items
-      .map((item) => ({ ...item, distance: Math.round(metresBetween({ latitude, longitude }, item)) }))
+      // `readerTitle` was the working note that got the row into the reader's
+      // language and is nobody's business past this line, least of all a
+      // browser's (see fetchWikipediaEdition).
+      .map(({ readerTitle, ...item }) => ({
+        ...item,
+        distance: Math.round(metresBetween({ latitude, longitude }, item)),
+      }))
       .sort((a, b) => a.distance - b.distance)
       .slice(0, MAX_WIKI_PLACES),
   }));
