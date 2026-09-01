@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Card, Link, Skeleton } from "../../ui/index.js";
-import { distanceMeters, formatCountry, formatDistance, formatUsername, relativeTime } from "../../utils/format.js";
+import { distanceMeters, formatDistance, formatUsername, relativeTime } from "../../utils/format.js";
 import { useAuth } from "../../components/AuthProvider/index.js";
 import { useHere } from "../../components/LocationProvider/index.js";
 import CardSize from "../../components/CardSize/index.js";
@@ -27,61 +27,34 @@ import styles from "./people.module.css";
 // all of it — which is what a middle click or a held modifier was already
 // reaching for, and is a thing that can be kept, shared or opened in a tab.
 
-// Past this the number has stopped being an answer. Under it a distance places
-// somebody — the next street, the far side of town, an hour on a train — and
-// over it every figure says the same thing, which is "not here": 1,160 km and
-// 8,140 km are one fact read twice, and neither of them is the fact worth having
-// about somebody that far off. Whereabouts they are is.
+// What a row says about where somebody is: how far, and only that.
 //
-// Five hundred kilometres because that is about where the two readings change
-// places. A person 300 km away is somewhere you could be tonight; a person 900
-// km away is somewhere else, and the name of the somewhere else is the whole of
-// what the row can usefully say.
-const FAR_M = 500_000;
-
-// What a row says about where somebody is: how far, or whereabouts — never both,
-// since the tile has one slot for it and a place beside a number would be the row
-// answering twice.
+// It used to swap to a place — "Kyōto-fu · Japan" — past five hundred kilometres,
+// on the reasoning that 1,160 km and 8,140 km are one fact read twice and neither
+// is worth having about somebody that far off. The reasoning still holds; the
+// room does not. A row is a name, a reading and a time on one line of a square
+// tile, and of those three the place is the only one with no ceiling on its
+// length: the list is set in the monospace face, the meta is one unbroken run,
+// and a reading
+// too wide for its line does not shorten at the tile's edge — it wraps to a
+// second line the row has no height for and is clipped away whole. So the row
+// that most needed the place was the row most likely to lose it, and the ways
+// out were all worse than the figure: cutting the name off mid-prefecture,
+// dropping to the country alone, or a threshold measured for one width of tile
+// and one length of username.
 //
-// Whereabouts is the region and the country: "Kyōto-fu · Japan", which says the
-// thing a reader wants off a name they have found halfway around the world. Both
-// in the reader's own language — the country because the browser can name a code
-// in any of them, the region because the server annotates the list in the
-// language it was asked in.
-//
-// The country drops out of it when it is the reader's own, which is what keeps
-// the swap from making the row worse: somebody 3,000 km from Shanghai is in
-// Xinjiang, and saying so is worth more than "China" and more than 3,000 km,
-// where saying so about somebody in Japan would leave off the half that matters.
-// The region drops out when the geocoder has not named it yet — a country on its
-// own is still an answer — and where neither is known the distance stands,
-// because a figure that says little is better than a row that says nothing.
-// Handed back as its parts rather than as a line, because the dot between a
-// region and its country is drawn rather than typed: this row is set in the
-// monospace face, where a space is a whole character cell and " · " comes out
-// nearly twice as wide as the same three marks in the strip at the top of the
-// page. The parts are put back together in the markup, with a separator set to
-// the width that line has (see .where in the stylesheet).
-function whereabouts(away, person, home, locale) {
-  if (!Number.isFinite(away)) return [];
-  if (away >= FAR_M) {
-    const abroad = person.country && person.country.toUpperCase() !== home;
-    const parts = [person.region, abroad ? formatCountry(person.country, locale) : ""].filter(Boolean);
-    if (parts.length > 0) return parts;
-  }
-  return [formatDistance(away)];
+// A distance is none of that. It is four characters wide at any distance on
+// earth, in any language, and it is never wrong — only coarse, which is the one
+// failing a reader can see and correct for.
+function whereabouts(away) {
+  if (!Number.isFinite(away)) return "";
+  return formatDistance(away);
 }
 
 export default function PeopleCard() {
   const { t, i18n } = useTranslation();
-  const { coords, place, people, loadingPeople } = useHere();
+  const { coords, people, loadingPeople } = useHere();
   const { user } = useAuth();
-
-  // Which country the reader is standing in, off the same lookup the place name
-  // in the top bar comes from. Unknown until it lands, and unknown reads as "not
-  // the same country" — a row would rather name a country it turns out the
-  // reader is also in than show a figure that says nothing.
-  const home = (place?.countryCode ?? "").toUpperCase();
 
   // Nearest first, and with the reading each row shows in hand. Without a fix
   // of our own there is no distance to sort on, and the order the server sent —
@@ -89,7 +62,7 @@ export default function PeopleCard() {
   const rows = people
     .map((person) => {
       const away = coords ? distanceMeters(coords, person) : Infinity;
-      return { person, where: whereabouts(away, person, home, i18n.language), away };
+      return { person, where: whereabouts(away), away };
     })
     .sort((a, b) => a.away - b.away);
 
@@ -153,13 +126,7 @@ export default function PeopleCard() {
                 <span className={styles.dot} aria-hidden="true" />
                 <span className={styles.who}>{formatUsername(person.username)}</span>
                 <span className={styles.itemMeta}>
-                  {where.length > 0 && (
-                    <span className={styles.where}>
-                      {where.map((part) => (
-                        <span key={part}>{part}</span>
-                      ))}
-                    </span>
-                  )}
+                  {where && <span>{where}</span>}
                   {/* A position is only worth as much as its age — a dot ten
                       minutes old is somebody who has already walked off. */}
                   <time dateTime={person.time}>{relativeTime(person.time, i18n.language, t)}</time>

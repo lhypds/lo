@@ -97,18 +97,6 @@
   margin-right: 8px;
 }
 
-/* A region and the country it is in — one answer, so the dot inside it is set
-   tighter than the one between meta items above, which separates two answers.
-   Tight enough to read as the strip at the top of the page reads (see HereStrip),
-   which is where anyone reading this row has just read the same kind of line:
-   that one is set in the page's own face, where a space is a third of a cell,
-   and this one is monospace, where it is a whole one. Two pixels either side of
-   a six-pixel cell comes out at the ten the proportional line takes. */
-.where > * + *::before {
-  content: "·";
-  margin: 0 2px;
-}
-
 /* The bars that stand where everyone else will, under your own row — ruled
    underneath like the rows they are standing in for, which makes this a
    continuation of the list rather than a block after it. The line above them is
