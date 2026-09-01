@@ -209,6 +209,17 @@ async function getJson(url, options) {
 
 const PLACE_LANGUAGE = { en: "en", zh: "zh", ja: "ja", fr: "fr", es: "es", de: "de" };
 
+// The same question Wikipedia is asked further down (see WIKI_VARIANT), put to
+// the geocoder: which of the two scripts Chinese is written in. Asked for "zh"
+// BigDataCloud answers in traditional — 中京區, 關西地方 — and so does "zh-cn",
+// which reads like the answer and is not. Only the script named outright is,
+// and lo's Chinese is simplified, so 中京区 is what the heading gets. The other
+// five languages have one script between them and go through as they are, which
+// is why this is a lookup beside PLACE_LANGUAGE rather than a column in it: the
+// value there is lo's own name for a language and is spent on cache keys,
+// Wikipedia editions and news locales, none of which know what zh-Hans is.
+const PLACE_SCRIPT = { zh: "zh-Hans" };
+
 function firstString(...values) {
   for (const value of values) {
     if (typeof value === "string" && value.trim()) return value.trim();
@@ -222,7 +233,7 @@ export function lookupPlace(latitude, longitude, lang = "en") {
     const url = new URL("https://api.bigdatacloud.net/data/reverse-geocode-client");
     url.searchParams.set("latitude", String(latitude));
     url.searchParams.set("longitude", String(longitude));
-    url.searchParams.set("localityLanguage", language);
+    url.searchParams.set("localityLanguage", PLACE_SCRIPT[language] ?? language);
     const data = await getJson(url.href);
 
     // city is empty out in the countryside, where locality is the village and
