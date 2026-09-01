@@ -313,13 +313,14 @@
     "saved": "Repéré",
     "undo": "Annuler",
     "edit": "Modifier",
+    "hint": "Maintenir pour écrire",
     "or": "ou",
-    "discard": "Abandonner",
-    "nameTitle": "Nommer cet endroit",
     "removed": "Supprimé",
     "needsLocation": "Activez d’abord la localisation",
     "title": "Repérer cet endroit",
-    "submit": "Repérer"
+    "submit": "Repérer",
+    "namePlaceholder": "Nommer cet endroit (facultatif)",
+    "editTitle": "Modifier le repère"
   },
   "marks": {
     "title": "Repères",
@@ -329,13 +330,18 @@
     "deleting": "Suppression",
     "deleteTitle": "Supprimer le repère",
     "deleteConfirm": "Supprimer « {{name}} » ? Cette action est irréversible.",
-    "renameTitle": "Renommer le repère",
     "distance": "à {{distance}}",
     "showOnMap": "Afficher sur la carte",
     "navigate": "Itinéraire"
   },
+  "compose": {
+    "kind": "Ce que c’est",
+    "mark": "Repère",
+    "post": "Publication",
+    "markWho": "Vous seul pouvez le voir",
+    "postWho": "Toute personne qui passe peut le voir"
+  },
   "post": {
-    "hint": "Maintenir pour publier",
     "title": "Nouvelle publication",
     "placeholder": "Qu’y a-t-il ici ?",
     "photoTap": "Touchez pour prendre une photo",

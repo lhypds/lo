@@ -404,9 +404,48 @@ function popupDeleteElement(subject, label, name, remove) {
 // thing twice. The title wears the numbers' own type in that case, which is the
 // type they were wearing on the line they came up from — and the search goes
 // with the name, for the reason given where the line is built.
-function markPopupElement(mark, named, coords, iso, when, labels, edit, remove) {
+// `photo` is postPopupElement's own: a spot can carry a picture exactly as a
+// post can — the reader was standing there either way — and pressed, it puts
+// that picture up large in the one Lightbox the page already has. Where a page
+// hands over none, the band across the top is a picture and not a control.
+//
+// And, like a post's, what comes back is the bubble and the way to fill its
+// picture in, which the caller hangs on the bubble being opened.
+function markPopupElement(mark, named, coords, iso, when, photo, labels, edit, remove) {
   const wrapper = document.createElement("div");
   wrapper.className = styles.markPopup;
+  let showPicture = null;
+  // The post bubble's own frame, borrowed whole: a mark with a photograph on it
+  // is the same box of things — a picture, a line to read it by, and what can be
+  // done about it — and two stylesheets for one shape would be two to keep
+  // looking alike (see postPopupElement, whose picture is fetched the same way
+  // and for the same reason).
+  if (mark.image) {
+    const image = document.createElement("img");
+    image.className = styles.postPopupImage;
+    image.alt = "";
+    showPicture = () =>
+      authImageUrl(postThumb(mark)).then(
+        (url) => {
+          image.src = url;
+        },
+        () => {},
+      );
+    const frame = document.createElement(photo ? "button" : "span");
+    frame.className = styles.postPopupPhoto;
+    if (photo) {
+      frame.type = "button";
+      frame.setAttribute("aria-label", labels.photo);
+      frame.addEventListener("click", (event) => {
+        // Short of the map, which reads a click as "put the chosen bubble away"
+        // — the reader is opening the picture, not dismissing the pin.
+        event.stopPropagation();
+        photo(mark);
+      });
+    }
+    frame.append(image);
+    wrapper.append(frame);
+  }
   const name = named || coords;
   const label = document.createElement("strong");
   if (!named) label.className = styles.markPopupNumbers;
@@ -441,7 +480,7 @@ function markPopupElement(mark, named, coords, iso, when, labels, edit, remove) 
     wrapper.append(position);
   }
   wrapper.append(time, actions);
-  return wrapper;
+  return { element: wrapper, showPicture };
 }
 
 // A place's bubble says what its row in the card says, in the same order: the
@@ -903,10 +942,10 @@ export default function MapCard({
   onEditPost,
   onDeletePost,
   // Both asked for from a mark's bubble and both answered by the page: the map
-  // says which spot, and the page is where the name sheet and the confirmation
+  // says which spot, and the page is where the sheet and the confirmation
   // stand, and where the list they change lives. Nothing passed is no such
   // control at all, which leaves marks readable but not mutable.
-  onRenameMark,
+  onEditMark,
   onDeleteMark,
 }) {
   const { t, i18n } = useTranslation();
@@ -941,8 +980,8 @@ export default function MapCard({
   // And the same for the two sheets a mark's bubble asks for, for the same
   // reason: the listeners are on nodes mapbox owns, and they outlive the render
   // that built them.
-  const renameMarkRef = useRef(onRenameMark);
-  renameMarkRef.current = onRenameMark;
+  const editMarkRef = useRef(onEditMark);
+  editMarkRef.current = onEditMark;
   const deleteMarkRef = useRef(onDeleteMark);
   deleteMarkRef.current = onDeleteMark;
   const containerRef = useRef(null);
@@ -1310,9 +1349,13 @@ export default function MapCard({
       nav: t("map.nav"),
       edit: t("map.edit"),
       remove: t("map.delete"),
+      photo: t("post.photoOpen"),
     };
-    const edit = onRenameMark ? (mark) => renameMarkRef.current?.(mark) : null;
+    const edit = onEditMark ? (mark) => editMarkRef.current?.(mark) : null;
     const remove = onDeleteMark ? (mark) => deleteMarkRef.current?.(mark) : null;
+    // The same viewer a post's bubble opens: a photograph is a photograph, and
+    // whose it is decides where it is filed rather than how it is looked at.
+    const photo = onOpenPhoto ? (mark) => photoRef.current?.(mark) : null;
     // Kept with the id it was drawn for, so a row hovered in the list can be
     // answered by the one pin that belongs to it.
     markMarkersRef.current = marks.map((mark) => {
@@ -1321,27 +1364,39 @@ export default function MapCard({
       // printed twice (see markPopupElement).
       const named = labelName(mark, i18n.language);
       const coords = formatCoords(mark.latitude, mark.longitude);
+      const bubble = markPopupElement(
+        mark,
+        named,
+        coords,
+        mark.time,
+        formatDateTime(mark.time, i18n.language),
+        photo,
+        labels,
+        edit,
+        remove,
+      );
+      const popup = previewPopup().setDOMContent(bubble.element);
+      // Fetched the first time the bubble is opened rather than when the pin is
+      // drawn, for the reason a post's is: a list of spots is drawn whole and
+      // opened one bubble at a time (see the call in the posts effect below).
+      if (bubble.showPicture) popup.once("open", bubble.showPicture);
       const marker = preview(
         // The name, not the title: the pin wears only what somebody wrote on it,
         // and wears nothing at all where nobody wrote anything.
         new mapboxgl.Marker({ element: markElement(named), anchor: "bottom" })
           .setLngLat([mark.longitude, mark.latitude])
-          .setPopup(
-            previewPopup().setDOMContent(
-              markPopupElement(mark, named, coords, mark.time, formatDateTime(mark.time, i18n.language), labels, edit, remove),
-            ),
-          )
+          .setPopup(popup)
           .addTo(map),
         mark.id,
       );
       return { id: mark.id, marker };
     });
-    // The two handlers only for whether there is a control at all — which page
+    // The three handlers only for whether there is a control at all — which page
     // this is does not change while it is on screen — and they are themselves
     // read off their refs, so a new one on every render of the page above does
     // not tear every pin on the map down and build it again.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [marks, t, i18n.language, preview, Boolean(onRenameMark), Boolean(onDeleteMark)]);
+  }, [marks, t, i18n.language, preview, Boolean(onEditMark), Boolean(onDeleteMark), Boolean(onOpenPhoto)]);
 
   useEffect(() => {
     hoverPinRef.current = onHoverPin;

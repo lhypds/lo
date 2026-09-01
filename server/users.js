@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { isStoredName } from "./images.js";
 
 // What an account keeps that is nobody else's business, kept as files rather
 // than as rows: data/users/<username>/, one folder per account, with marks.json
@@ -180,6 +181,28 @@ function readLabel(value, places) {
   return label;
 }
 
+const IMAGE_PATH = "/api/images/";
+
+// Where a mark's photograph is read from, which is where every picture in lo is
+// read from: the stored file, named after its own bytes (see images.js). A spot
+// can carry one for the reason a post can — the reader was standing there and
+// the picture is what they would have written down if a picture were words.
+//
+// Written into the file as the address rather than as the bare name the posts
+// table keeps. A table's column is joined against and prefixed on the way out; a
+// marks.json is a thing somebody opens and reads, and a line saying
+// `/api/images/3f…webp` is one they can follow. A file that says the bare name —
+// hand-written, or exported by another tool — is read as the same thing.
+//
+// Anything that is not a name this server wrote is dropped rather than kept: the
+// endpoints check what they are handed, and this is the same check standing
+// between an imported file and every list that draws from it.
+function readPhotoName(value) {
+  if (typeof value !== "string" || !value) return null;
+  const name = value.startsWith(IMAGE_PATH) ? value.slice(IMAGE_PATH.length) : value;
+  return isStoredName(name) ? `${IMAGE_PATH}${name}` : null;
+}
+
 // Newest first, which is the order the list page reads them in and the order the
 // table handed them over in. The file is kept that way as well as answered that
 // way: the export is meant to be opened and read, and the spot somebody kept
@@ -205,7 +228,12 @@ function readMark(value) {
   // rewrites these files (see migrateMarks), is the difference between a missing
   // figure and a made-up one spreading through every list lo keeps.
   const accuracy = value.accuracy == null ? NaN : Number(value.accuracy);
-  return {
+  const image = readPhotoName(value.image);
+  const size = (dimension) => {
+    const number = Number(dimension);
+    return Number.isFinite(number) && number > 0 ? Math.round(number) : null;
+  };
+  const mark = {
     id,
     time: typeof value.time === "string" ? value.time : new Date(0).toISOString(),
     latitude,
@@ -218,6 +246,24 @@ function readMark(value) {
     // name somebody chose, and the file loses it the next time one is written.
     label: readLabel(value.label, value.places),
   };
+  // The picture and the small copy of it every list draws in its place, written
+  // down only on the spots that have one. Most of them do not — a tap keeps a
+  // spot and asks nothing — and four `null` lines on every one of those is four
+  // lines saying nothing in a file meant to be opened and read, the same reason
+  // a language with no name in it is left out of the label rather than written
+  // in empty (see readLabel).
+  //
+  // The three that describe the picture go only where there is a picture for
+  // them to be about: a spot that has just had its photograph taken off it must
+  // not keep the reduction of it or the shape of the box it filled, which is the
+  // rule a post's photo is read by too (see readPhoto in index.js).
+  if (image) {
+    mark.image = image;
+    mark.imageThumb = readPhotoName(value.imageThumb);
+    mark.imageWidth = size(value.imageWidth);
+    mark.imageHeight = size(value.imageHeight);
+  }
+  return mark;
 }
 
 // The whole file, as the pair the rest of this section works on: the list, and
@@ -263,7 +309,7 @@ export function countMarks(username) {
 // language they were reading in when they typed it. A spot kept in one tap and
 // not named — which is most of them — goes into the file with an empty label,
 // which is a spot no language has a word for yet rather than a spot missing two.
-export function createMark(username, { time, latitude, longitude, accuracy, label, lang }) {
+export function createMark(username, { time, latitude, longitude, accuracy, label, lang, photo }) {
   const file = readMarkFile(username);
   const mark = readMark({
     id: file.nextId,
@@ -272,6 +318,11 @@ export function createMark(username, { time, latitude, longitude, accuracy, labe
     longitude,
     accuracy: accuracy ?? null,
     label: label ? { [lang]: label } : null,
+    // Nothing at all on a spot kept in one tap, which is most of them: the tap
+    // writes where the reader is standing and asks them nothing. A photograph
+    // comes from the sheet the hold opens, which is where there is room to take
+    // one (see ComposeModal).
+    ...(photo ?? {}),
   });
   // The endpoint checks the coordinates before it gets here, so nothing should
   // ever be turned down at this line. Thrown rather than written: a mark that
@@ -285,21 +336,38 @@ export function createMark(username, { time, latitude, longitude, accuracy, labe
 // Null when there is no such mark, which is how the endpoint tells a stale id
 // from a saved one — the same answer the UPDATE ... changes === 0 gave.
 //
+// What a spot can be given a second thought about is what it was written with:
+// the name and the picture. Where it is and when it was kept are what the mark
+// *is*, and an edit that could move it would let a spot claim ground nobody
+// stood on — the same line a post's own edit draws (see PATCH /api/posts).
+//
 // One language of the name and not the name: what was typed goes under the
 // language it was typed in, and the others are left holding whatever they
 // were. A reader renaming in Japanese a spot an import named in Chinese has
 // added a Japanese name to it, not replaced a name they cannot read; and an empty
 // box takes the Japanese name off again without touching the Chinese one.
-export function renameMark(username, markId, label, lang) {
+//
+// The picture is the other way round, because it has no languages to be one of:
+// what the sheet sends is what the spot carries, and a sheet whose frame is
+// empty is a photograph taken off.
+export function updateMark(username, markId, { label, lang, photo }) {
   const file = readMarkFile(username);
   const mark = file.marks.find((item) => item.id === markId);
   if (!mark) return null;
-  const renamed = { ...mark, label: readLabel({ ...mark.label, [lang]: label ?? "" }) };
+  const edited = readMark({
+    ...mark,
+    ...(photo ?? {}),
+    label: readLabel({ ...mark.label, [lang]: label ?? "" }),
+  });
+  // Unreachable on a mark that is in the file — it was read to get in there —
+  // and the same refusal as a stale id if it ever is: better one edit that did
+  // not happen than a null written over a spot somebody kept.
+  if (!edited) return null;
   writeMarkFile(username, {
     ...file,
-    marks: file.marks.map((item) => (item.id === markId ? renamed : item)),
+    marks: file.marks.map((item) => (item.id === markId ? edited : item)),
   });
-  return renamed;
+  return edited;
 }
 
 export function deleteMark(username, markId) {

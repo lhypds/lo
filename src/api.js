@@ -437,15 +437,20 @@ export async function downloadMarks() {
   const file = await request("/api/marks/export.json");
   startDownload(new Blob([`${JSON.stringify(file, null, 2)}\n`], { type: "application/json" }), "marks.json");
 }
+// The name and the photograph, which is the whole of what a spot can be given a
+// second thought about — where it is and when it was kept are what it is (see
+// PATCH /api/marks). The same sheet writes both, whether it was opened from a
+// row in the list, from a pin's bubble, or from the button that just saved one.
+//
 // The language goes up with the name for the reason it goes up with a new mark:
 // a spot is named in the language its namer was reading in, and that is the one
 // the name is written under. Read off i18n here rather than asked of the caller,
 // so that a sheet opened from a row and a sheet opened from the save button
 // cannot disagree about it.
-export const renameMark = (markId, label) =>
+export const updateMark = (markId, content) =>
   request(`/api/marks/${markId}?lang=${i18n.language || "en"}`, {
     method: "PATCH",
-    body: JSON.stringify({ label }),
+    body: JSON.stringify(content),
   });
 export const deleteMark = (markId) => request(`/api/marks/${markId}`, { method: "DELETE" });
 // The list itself rather than a mark in it, which is what the bare path says:

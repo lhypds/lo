@@ -17,8 +17,12 @@
   list-style: none;
 }
 
-.list li + li {
-  border-top: 1px solid var(--line);
+/* Under every row rather than between them, as on the posts panel this list is
+   the shape of (see posts.module.css): the last headline ended on nothing, and
+   on a wire short enough to leave space under it that read as a list still
+   arriving. The heading's border is the line it starts on. */
+.list li {
+  border-bottom: 1px solid var(--line);
 }
 
 .item {

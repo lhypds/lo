@@ -1,14 +1,15 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
-import { Modal } from "../../ui/index.js";
+import { Lightbox, Modal } from "../../ui/index.js";
 import { formatCoords } from "../../utils/format.js";
+import { postPhoto } from "../../utils/image.js";
 import { labelName, labelNames } from "../../utils/label.js";
 import { filterBy } from "../../utils/search.js";
 import { DEFAULT_SORT, sortRows } from "../../utils/sort.js";
+import ComposeModal from "../../components/ComposeModal/index.js";
 import Header from "../../components/Header/index.js";
 import MarkItem from "../../components/MarkItem/index.js";
-import MarkModal from "../../components/MarkModal/index.js";
 import SearchField from "../../components/SearchField/index.js";
 import SortField from "../../components/SortField/index.js";
 import { useHere } from "../../components/LocationProvider/index.js";
@@ -40,7 +41,11 @@ export default function MarksPage() {
   // map holds the choice — it is the half that has a bubble open because of it —
   // and tells the page, whose only use for it is to show which row that was.
   const [chosen, setChosen] = useState(null);
-  const [renaming, setRenaming] = useState(null);
+  const [editing, setEditing] = useState(null);
+  // The photograph on a spot, being looked at. Opened from the picture in a
+  // pin's bubble, which is a thumbnail cropped to a band — enough to know the
+  // spot by, not enough to look at.
+  const [viewing, setViewing] = useState(null);
   const [deleting, setDeleting] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -56,10 +61,9 @@ export default function MarksPage() {
   // another device since this page was opened.
   useEffect(load, [load, reloadToken]);
 
-  async function rename(label) {
-    const { mark } = await api.renameMark(renaming.id, label);
+  function edited(mark) {
     setMarks((current) => current.map((item) => (item.id === mark.id ? mark : item)));
-    setRenaming(null);
+    setEditing(null);
   }
 
   async function confirmDelete() {
@@ -82,14 +86,6 @@ export default function MarksPage() {
   const deletingName = deleting
     ? labelName(deleting, i18n.language) || formatCoords(deleting.latitude, deleting.longitude)
     : "";
-
-  // What the name box opens on: the name in the language it is about to write
-  // one in, and not the name the row is showing. A box that opened on the Chinese
-  // name a Japanese reading is standing in for would have them save that Chinese
-  // name into Japanese by pressing the button they came to press. An empty box on
-  // a row reading 我家 is the truth about the spot — it has no Japanese name yet,
-  // and this is where one is written.
-  const renamingName = renaming?.label?.[i18n.language] ?? "";
 
   // Searched by name, and by name alone. The coordinates are what a row wears
   // until somebody names it, but they are not something anyone types: a query is
@@ -134,10 +130,10 @@ export default function MarksPage() {
               and a row pressed in the list pans to its own pin, which is how a
               spot far off is meant to be reached. */}
           {/* The edit and the delete in a pin's bubble open the very sheets the
-              row's own two buttons open: one name box, one confirmation, one
-              place each is done, whichever half of the page it was asked for
-              from. */}
-          <MapCard marks={shown} focus={focus} hovered={hovered} onHoverPin={setHovered} onSelectPin={setChosen} onRenameMark={setRenaming} onDeleteMark={setDeleting} />
+              row's own two buttons open: one sheet to write the spot in, one
+              confirmation, one place each is done, whichever half of the page it
+              was asked for from. */}
+          <MapCard marks={shown} focus={focus} hovered={hovered} onHoverPin={setHovered} onSelectPin={setChosen} onOpenPhoto={setViewing} onEditMark={setEditing} onDeleteMark={setDeleting} />
         </Suspense>
       </div>
       <main className="marks-list">
@@ -180,7 +176,7 @@ export default function MarksPage() {
                   hovered={mark.id === hovered}
                   chosen={mark.id === chosen}
                   onHover={setHovered}
-                  onRename={setRenaming}
+                  onEdit={setEditing}
                   onDelete={setDeleting}
                   // A fresh object every time rather than the mark itself: the map
                   // pans on a new `focus`, and asking twice for the same spot —
@@ -194,14 +190,16 @@ export default function MarksPage() {
         </div>
       </main>
 
-      <MarkModal
-        isOpen={Boolean(renaming)}
-        title={t("marks.renameTitle")}
-        submitLabel={t("common.save")}
-        initialValue={renamingName}
-        onClose={() => setRenaming(null)}
-        onSubmit={rename}
-      />
+      {/* The sheet a spot is written in, opened on one that already exists: its
+          name, in the language this list is being read in, and the photograph on
+          it. Where it is and when it was kept are what the spot is and are not
+          up for revision (see ComposeModal). */}
+      <ComposeModal isOpen={Boolean(editing)} mark={editing} onClose={() => setEditing(null)} onSaved={edited} />
+
+      {/* Over everything, and out here with the sheet above for its reason: it
+          covers the window, and the map is inside a tile that would be the
+          containing block of any fixed box mounted in it. */}
+      <Lightbox photo={postPhoto(viewing)} onClose={() => setViewing(null)} />
 
       <Modal isOpen={Boolean(deleting)} title={t("marks.deleteTitle")} onClose={() => setDeleting(null)} closeOnOverlay>
         <p className="modal-text">{t("marks.deleteConfirm", { name: deletingName })}</p>

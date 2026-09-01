@@ -313,13 +313,14 @@
     "saved": "Gemerkt",
     "undo": "Rückgängig",
     "edit": "Bearbeiten",
+    "hint": "Halten zum Schreiben",
     "or": "oder",
-    "discard": "Verwerfen",
-    "nameTitle": "Diesen Ort benennen",
     "removed": "Entfernt",
     "needsLocation": "Aktiviere zuerst den Standort",
     "title": "Diesen Ort merken",
-    "submit": "Merken"
+    "submit": "Merken",
+    "namePlaceholder": "Diesen Ort benennen (optional)",
+    "editTitle": "Ort bearbeiten"
   },
   "marks": {
     "title": "Orte",
@@ -329,13 +330,18 @@
     "deleting": "Wird gelöscht",
     "deleteTitle": "Ort löschen",
     "deleteConfirm": "„{{name}}“ löschen? Dies kann nicht rückgängig gemacht werden.",
-    "renameTitle": "Ort umbenennen",
     "distance": "{{distance}} entfernt",
     "showOnMap": "Auf der Karte anzeigen",
     "navigate": "Route"
   },
+  "compose": {
+    "kind": "Was das ist",
+    "mark": "Ort",
+    "post": "Beitrag",
+    "markWho": "Nur du siehst das",
+    "postWho": "Alle, die vorbeikommen, sehen das"
+  },
   "post": {
-    "hint": "Gedrückt halten, um zu posten",
     "title": "Neuer Beitrag",
     "placeholder": "Was ist hier?",
     "photoTap": "Tippen, um ein Foto aufzunehmen",

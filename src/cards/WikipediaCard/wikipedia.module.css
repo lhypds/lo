@@ -11,8 +11,13 @@
   list-style: none;
 }
 
-.list li + li {
-  border-top: 1px solid var(--line);
+/* Under every row rather than between them, the way the venues panel and the
+   events list beside it draw theirs: the last article and the space under it
+   were parted by nothing, and a tile holding one article carried no rule at
+   all. The heading's border is the line the list starts on, so nothing is added
+   at the top. */
+.list li {
+  border-bottom: 1px solid var(--line);
 }
 
 /* One line, name and distance at either end — there is no middle line to a

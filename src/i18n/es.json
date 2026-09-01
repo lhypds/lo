@@ -313,13 +313,14 @@
     "saved": "Marcado",
     "undo": "Deshacer",
     "edit": "Editar",
+    "hint": "Mantén para escribir",
     "or": "o",
-    "discard": "Descartar",
-    "nameTitle": "Dar nombre a este lugar",
     "removed": "Eliminado",
     "needsLocation": "Activa primero la ubicación",
     "title": "Marcar este lugar",
-    "submit": "Marcar"
+    "submit": "Marcar",
+    "namePlaceholder": "Dar nombre a este lugar (opcional)",
+    "editTitle": "Editar marca"
   },
   "marks": {
     "title": "Marcas",
@@ -329,13 +330,18 @@
     "deleting": "Eliminando",
     "deleteTitle": "Eliminar marca",
     "deleteConfirm": "¿Eliminar «{{name}}»? Esta acción no se puede deshacer.",
-    "renameTitle": "Cambiar el nombre de la marca",
     "distance": "a {{distance}}",
     "showOnMap": "Mostrar en el mapa",
     "navigate": "Cómo llegar"
   },
+  "compose": {
+    "kind": "Qué es esto",
+    "mark": "Marca",
+    "post": "Publicación",
+    "markWho": "Solo tú puedes verlo",
+    "postWho": "Cualquiera que pase puede verlo"
+  },
   "post": {
-    "hint": "Mantén pulsado para publicar",
     "title": "Nueva publicación",
     "placeholder": "¿Qué hay aquí?",
     "photoTap": "Toca para hacer una foto",

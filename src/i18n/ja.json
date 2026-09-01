@@ -310,13 +310,14 @@
     "saved": "mark しました",
     "undo": "取り消す",
     "edit": "編集",
+    "hint": "長押しで書く",
     "or": "または",
-    "discard": "破棄",
-    "nameTitle": "この場所に名前をつける",
     "removed": "削除しました",
     "needsLocation": "先に位置情報をオンにしてください",
     "title": "現在地を mark",
-    "submit": "mark"
+    "submit": "mark",
+    "namePlaceholder": "この場所の名前（任意）",
+    "editTitle": "mark を編集"
   },
   "marks": {
     "title": "marks",
@@ -326,13 +327,18 @@
     "deleting": "削除中",
     "deleteTitle": "mark を削除",
     "deleteConfirm": "「{{name}}」を削除しますか？この操作は取り消せません。",
-    "renameTitle": "mark の名前を変更",
     "distance": "{{distance}} 先",
     "showOnMap": "地図で表示",
     "navigate": "経路案内"
   },
+  "compose": {
+    "kind": "種類",
+    "mark": "mark",
+    "post": "post",
+    "markWho": "自分だけが見られます",
+    "postWho": "通りかかった人が見られます"
+  },
   "post": {
-    "hint": "長押しで post",
     "title": "新しい post",
     "placeholder": "ここで何が起きていますか？",
     "photoTap": "タップして撮影",

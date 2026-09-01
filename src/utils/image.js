@@ -185,9 +185,13 @@ export async function compressPhoto(file) {
   }
 }
 
-// Which of a post's two pictures a small box should draw, and the fallback that
+// Which of a row's two pictures a small box should draw, and the fallback that
 // makes every one of them safe to call: a post left before the thumbnail existed
 // has only the one file, and it is better drawn large than not at all.
+//
+// A post or a mark, since a spot carries its photograph under the same four
+// names a post does — the two are one picture taken standing somewhere, filed
+// under who it is for (see users.js).
 export function postThumb(post) {
   return post?.imageThumb || post?.image || null;
 }
@@ -195,8 +199,9 @@ export function postThumb(post) {
 // And the other way round, for the one place the photograph itself is looked at:
 // what the viewer is handed is the picture, the thumbnail to fill the box with
 // while it comes, and the shape to hold that box in (see ui/Lightbox). Null for
-// a post with no photo, which is what makes it the whole of a page's answer to
-// "is the viewer open".
+// a row with no photo, which is what makes it the whole of a page's answer to
+// "is the viewer open". A mark is read by it as well as a post, for the reason
+// given above.
 //
 // The thumbnail is the one field that is not filled in when it is missing. A
 // post with only the one file has nothing to show early, and saying otherwise —
@@ -278,8 +283,9 @@ export async function preload(url) {
 // and what writing one takes is the bare name — the file is content-addressed, so
 // the last segment is it. Undone here rather than carried as a second field on
 // every row: the shape of that URL is one line of SQL away, and the two things
-// that write a picture — the post sheet, and the profile on its way into the form
-// (see profileFields) — are the only ones that ever have to undo it.
+// that write a picture — the compose sheet, which writes marks and posts alike,
+// and the profile on its way into the form (see profileFields) — are the only
+// ones that ever have to undo it.
 export function storedName(url) {
   return url ? String(url).split("/").pop() : null;
 }

@@ -83,8 +83,8 @@ import {
   hasUserDir,
   mergeMarks,
   migrateMarks,
-  renameMark as relabelMark,
   saveSettings as writeSettings,
+  updateMark as editMark,
   userDir,
 } from "./users.js";
 
@@ -1081,6 +1081,39 @@ app.get("/api/warnings", async (req, res, next) => {
   }
 });
 
+// The picture on a mark or on a post, read the same way for both because it is
+// the same picture: the reader was standing somewhere and took one. What differs
+// between the two is who it is for — a mark is the reader's own and a post is
+// left out on the ground for whoever comes past — and that is a question about
+// where the row is filed rather than about the photograph in it.
+//
+// It arrives as a name /api/images already wrote, never as bytes: anything else
+// would let these endpoints name a file of their own choosing. Both names are
+// read the same way — a thumbnail is an image stored the same way the picture
+// is, and the only thing that makes it one is what it is written into.
+function readPhoto(payload) {
+  const image = payload?.image ? String(payload.image) : null;
+  if (image && !isStoredName(image)) return { error: "Invalid image" };
+  const imageThumb = payload?.imageThumb ? String(payload.imageThumb) : null;
+  if (imageThumb && !isStoredName(imageThumb)) return { error: "Invalid image" };
+
+  const dimension = (value) => {
+    const number = Number(value);
+    return Number.isFinite(number) && number > 0 ? Math.round(number) : null;
+  };
+  return {
+    photo: {
+      image,
+      // A thumbnail is a thumbnail *of* something, so it goes only where there
+      // is a picture for it to stand in for — a row that has just had its photo
+      // taken off it must not keep the small copy of it.
+      imageThumb: image ? imageThumb : null,
+      imageWidth: dimension(payload?.imageWidth),
+      imageHeight: dimension(payload?.imageHeight),
+    },
+  };
+}
+
 /* ------------------------------------------------------------------- marks */
 
 // Every one of these four is about one account's own list and nobody else's,
@@ -1131,12 +1164,18 @@ app.post("/api/marks", requireSession, (req, res) => {
   if (label.length > 48) return res.status(400).json({ error: "A name is at most 48 characters" });
   const suppliedTime = req.body?.time ? new Date(req.body.time) : new Date();
   if (Number.isNaN(suppliedTime.getTime())) return res.status(400).json({ error: "Invalid time" });
+  // And a photograph, where the reader took one. Nothing is required of a mark
+  // beyond where it is: a tap on the button writes the spot and asks nothing,
+  // which is the whole of what a tap is for.
+  const { photo, error } = readPhoto(req.body);
+  if (error) return res.status(400).json({ error });
 
   const mark = saveMark(req.user.username, {
     ...location,
     time: suppliedTime.toISOString(),
     label,
     lang: requestedLang(req),
+    photo,
   });
   res.status(201).json({ mark });
 });
@@ -1170,16 +1209,24 @@ app.post(
   },
 );
 
-// Naming a spot, or renaming it, or taking its name off — in one language of it,
-// the one the sheet was typed in. The rest of the name is left alone (see
-// renameMark), which is why an empty box here is a language cleared rather than a
-// spot made nameless.
+// A second thought about a spot: its name, and the photograph on it. Naming it,
+// renaming it, or taking its name off happens in one language of it, the one the
+// sheet was typed in — the rest of the name is left alone (see updateMark),
+// which is why an empty box here is a language cleared rather than a spot made
+// nameless. The picture has no languages to be one of: what the sheet sends is
+// what the spot keeps, and an empty frame is a photograph taken off.
+//
+// Where and when are not up for revision, here or on a post: they are what the
+// mark is, and the file is answered on that pair alone when a list is read back
+// into it (see markKey).
 app.patch("/api/marks/:markId", requireSession, (req, res) => {
   const markId = Number(req.params.markId);
   if (!Number.isInteger(markId) || markId < 1) return res.status(400).json({ error: "Invalid mark ID" });
   const label = String(req.body?.label ?? "").trim().normalize("NFKC");
   if (label.length > 48) return res.status(400).json({ error: "A name is at most 48 characters" });
-  const mark = relabelMark(req.user.username, markId, label, requestedLang(req));
+  const { photo, error } = readPhoto(req.body);
+  if (error) return res.status(400).json({ error });
+  const mark = editMark(req.user.username, markId, { label, lang: requestedLang(req), photo });
   if (!mark) return res.status(404).json({ error: "No such mark", code: "MARK_NOT_FOUND" });
   res.json({ mark });
 });
@@ -1233,32 +1280,13 @@ function readPostContent(payload) {
   const body = String(payload?.body ?? "").trim().normalize("NFKC");
   if (body.length > POST_BODY_MAX) return { error: `A post is at most ${POST_BODY_MAX} characters` };
 
-  // The photo arrives as a name /api/images already wrote, never as bytes —
-  // anything else would let this endpoint name a file of its own choosing. Both
-  // names are read the same way: a thumbnail is an image stored the same way the
-  // picture is, and the only thing that makes it one is what it is written into.
-  const image = payload?.image ? String(payload.image) : null;
-  if (image && !isStoredName(image)) return { error: "Invalid image" };
-  const imageThumb = payload?.imageThumb ? String(payload.imageThumb) : null;
-  if (imageThumb && !isStoredName(imageThumb)) return { error: "Invalid image" };
-  if (!body && !image) return { error: "Write something, or add a picture" };
+  const { photo, error } = readPhoto(payload);
+  if (error) return { error };
+  // Where a mark may be nothing but a spot — that is what one tap makes — a post
+  // has to be something somebody left: words, a picture, or both.
+  if (!body && !photo.image) return { error: "Write something, or add a picture" };
 
-  const dimension = (value) => {
-    const number = Number(value);
-    return Number.isFinite(number) && number > 0 ? Math.round(number) : null;
-  };
-  return {
-    content: {
-      body,
-      image,
-      // A thumbnail is a thumbnail *of* something, so it goes only where there
-      // is a picture for it to stand in for — a post that has just had its photo
-      // taken off it must not keep the small copy of it.
-      imageThumb: image ? imageThumb : null,
-      imageWidth: dimension(payload?.imageWidth),
-      imageHeight: dimension(payload?.imageHeight),
-    },
-  };
+  return { content: { body, ...photo } };
 }
 
 app.post("/api/posts", requireSession, async (req, res, next) => {

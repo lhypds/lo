@@ -13,8 +13,13 @@
   list-style: none;
 }
 
-.list li + li {
-  border-top: 1px solid var(--line);
+/* Under every row rather than between them, so the run ends on a line instead
+   of fading into the paper — and a panel holding a single place carries a rule
+   at all, which between-only never gave it. Nothing at the top: the heading's
+   own border is the line this list starts on. See events.module.css, where the
+   same reasoning is spelled out at length. */
+.list li {
+  border-bottom: 1px solid var(--line);
 }
 
 /* Two columns rather than the events row's one, because this list has a sort

@@ -4,9 +4,14 @@ import * as api from "../../api.js";
 import { AuthImage, Modal, TextArea } from "../../ui/index.js";
 import { formatCoords } from "../../utils/format.js";
 import { compressPhoto, preload, storedName, uploadImage } from "../../utils/image.js";
-import styles from "./post.module.css";
+import styles from "./compose.module.css";
 
 const BODY_MAX = 500;
+// A name is read back on a row in a list and on a pin over a map. It is a handle
+// for a spot rather than anything anybody reads, which is why it gets a fortieth
+// of the room a post does — and it is the server's own limit (see POST
+// /api/marks), said here so the box stops before the request has to.
+const NAME_MAX = 48;
 
 // The same pair the mark button holds to: long enough not to fire on a slow tap,
 // short enough that holding it feels answered rather than stuck, and a press that
@@ -14,22 +19,43 @@ const BODY_MAX = 500;
 const LONG_PRESS_MS = 500;
 const LONG_PRESS_SLOP = 10;
 
-// Writing a post about the spot underfoot. The fix was taken when the press
-// that opened this landed, not when Post is pressed — whoever is writing may
-// take a minute over it, and the post belongs to the spot they were standing on
-// when they decided to leave one.
+// Writing something about the spot underfoot — a mark or a post, which are the
+// two things there are to write and one sheet away from each other. The fix was
+// taken when the press that opened this landed, not when the button at the foot
+// is pressed: whoever is writing may take a minute over it, and what they write
+// belongs to the spot they were standing on when they decided to write it.
+//
+// The two differ in who they are for and in nothing else the sheet does. A mark
+// is the reader's own — it is kept in their folder, it is drawn on their map,
+// and nobody else ever sees it — so what it asks for is a name, the handle they
+// will find the spot by later. A post is left out on the ground for whoever
+// comes past, so what it asks for is what there is to say. Both take a
+// photograph, because standing somewhere worth keeping and standing somewhere
+// worth saying something about look the same through a camera.
+//
+// A mark is where the toggle opens, because a mark is what the button under it
+// makes when it is merely tapped: the hold is the same gesture gone longer, and
+// it should land on the same thing gone further rather than on something else.
 //
 // The photo is compressed and uploaded as soon as it is chosen rather than on
 // submit: it is by far the slowest part, and doing it while the words are still
 // being typed is time the writer was spending anyway.
 //
-// A `post` makes the same sheet an edit of that one, and the difference is only
-// what it opens with and where it sends it. What can be changed is the words and
-// the photo; the spot and the moment are what the post is filed under, so the
-// line at the top goes on saying where it was left rather than where its author
-// happens to be standing now.
-export default function PostModal({ isOpen, coords, place, post = null, onClose, onCreated, onSaved }) {
-  const { t } = useTranslation();
+// A `mark` or a `post` makes the same sheet an edit of that one, and the
+// difference is only what it opens with and where it sends it. What can be
+// changed is the words and the photo; where and when are what the row is filed
+// under, so the line at the top goes on saying where it was left rather than
+// where its author happens to be standing now — and the toggle is gone, since a
+// spot somebody kept is not something an edit can turn into a post.
+export default function ComposeModal({ isOpen, coords, place, mark = null, post = null, onClose, onCreated, onSaved }) {
+  const { t, i18n } = useTranslation();
+  // Which of the two is being written. Only ever asked on the way in: an edit is
+  // told which by which of the two rows it was handed.
+  const [kind, setKind] = useState("mark");
+  // One box for both, because it is one question at two lengths — what is this
+  // spot called, and what is there to say about it — and a reader who has typed
+  // a line and then changed their mind about who it is for should find the line
+  // still there.
   const [body, setBody] = useState("");
   const [image, setImage] = useState(null);
   const [stage, setStage] = useState("");
@@ -58,25 +84,39 @@ export default function PostModal({ isOpen, coords, place, post = null, onClose,
   const dragDepthRef = useRef(0);
 
   const busy = stage !== "" || submitting;
-  const editing = Boolean(post);
+  // The row this sheet was opened on, where it was opened on one — a mark and a
+  // post carry their picture under the same four names, so everything below the
+  // first few lines can be written once and asked no further questions.
+  const written = mark ?? post;
+  const editing = Boolean(written);
+  const naming = kind === "mark";
 
   useEffect(() => {
     if (!isOpen) return undefined;
-    // An edit opens on what is already there; a new post opens on nothing. The
-    // photo is rebuilt into the shape the picker leaves behind, so everything
-    // below — the frame, Remove, the submit — cannot tell the two apart.
-    setBody(post?.body ?? "");
+    // Which of the two, and it is only ever a question on a new one: an edit is
+    // whichever row it was handed, and a mark cannot be edited into a post.
+    setKind(post ? "post" : "mark");
+    // An edit opens on what is already there; a new one opens on nothing. A
+    // spot opens on its name in the language this sheet is about to write one in
+    // rather than on the name the row is showing: a box that opened on the
+    // Chinese name a Japanese reading is standing in for would have the reader
+    // save that Chinese name into Japanese by pressing the button they came to
+    // press (see labelName, and readLabel on the server).
+    setBody(post ? (post.body ?? "") : (mark?.label?.[i18n.language] ?? ""));
+    // The photo is rebuilt into the shape the picker leaves behind, so
+    // everything below — the frame, Remove, the submit — cannot tell the two
+    // apart, any more than it can tell a mark's photo from a post's.
     setImage(
-      post?.image
+      written?.image
         ? {
-            name: storedName(post.image),
-            url: post.image,
+            name: storedName(written.image),
+            url: written.image,
             // Undone alongside it, so an edit that leaves the photo alone writes
             // the same pair of names back rather than dropping the small one and
             // leaving every list to fetch the picture again.
-            thumbName: storedName(post.imageThumb),
-            width: post.imageWidth ?? null,
-            height: post.imageHeight ?? null,
+            thumbName: storedName(written.imageThumb),
+            width: written.imageWidth ?? null,
+            height: written.imageHeight ?? null,
           }
         : null,
     );
@@ -89,7 +129,10 @@ export default function PostModal({ isOpen, coords, place, post = null, onClose,
     // The keyboard should already be up on a phone by the time the sheet lands.
     const timer = window.setTimeout(() => textRef.current?.focus(), 30);
     return () => window.clearTimeout(timer);
-  }, [isOpen, post]);
+    // The language is in for the line above: switching it while a spot's sheet
+    // is open is asking for the box to be about that language now, and the name
+    // it holds belongs to the one that was showing.
+  }, [isOpen, mark, post, written, i18n.language]);
 
   // A photo let go a little wide of the sheet must not cost the draft: left to
   // itself the browser opens the file over the page, and the half-written post
@@ -286,43 +329,69 @@ export default function PostModal({ isOpen, coords, place, post = null, onClose,
     accept(event.dataTransfer.files?.[0]);
   }
 
+  // Which of the two this is going to be. What has been typed stays typed —
+  // changing your mind about who a line is for is not a reason to lose it — but
+  // a post's length is not a name's, so anything past what a name may be is cut
+  // here rather than refused at the foot of the sheet. The count under the box
+  // says so as it happens.
+  function choose(next) {
+    if (busy || next === kind) return;
+    setKind(next);
+    if (next === "mark") setBody((typed) => typed.slice(0, NAME_MAX));
+    setError("");
+  }
+
   async function submit(event) {
     event.preventDefault();
     if (busy) return;
-    const text = body.trim().normalize("NFKC");
-    if (!text && !image) {
+    // A name is folded onto one line on the way out: the box can be dragged to
+    // two or ten, but a name is read back on a row in a list and on a pin over a
+    // map, where a return is not a line break so much as a hole in the word.
+    // Normalised first, so that the wide space CJK keyboards type is a space by
+    // the time the fold looks for one.
+    const text = naming ? body.normalize("NFKC").replace(/\s+/g, " ").trim() : body.trim().normalize("NFKC");
+    // A post has to be something somebody left. A mark does not: an empty one is
+    // exactly what a tap on the button makes, and a spot may simply not need a
+    // name.
+    if (!naming && !text && !image) {
       setError(t("post.needsContent"));
       return;
     }
-    // Only a new post needs a fix; an edit already has the one it was written on
+    // Only a new one needs a fix; an edit already has the one it was written on
     if (!editing && !coords) {
       setError(t("mark.needsLocation"));
       return;
     }
     setSubmitting(true);
     setError("");
-    // The words and the photo, which is all an edit may change and all a new post
-    // adds to the spot and the moment underneath it.
-    const content = {
-      body: text,
+    // The photo, which is all either kind carries besides its words — and all an
+    // edit may change about it, along with the words themselves.
+    const photo = {
       image: image?.name ?? null,
       imageThumb: image?.thumbName ?? null,
       imageWidth: image?.width ?? null,
       imageHeight: image?.height ?? null,
     };
+    // Where and when, which a new row is filed under and an edit never touches.
+    const ground = {
+      latitude: coords?.latitude,
+      longitude: coords?.longitude,
+      accuracy: coords?.accuracy,
+      time: new Date().toISOString(),
+    };
     try {
-      if (editing) {
-        const saved = await api.updatePost(post.id, content);
-        onSaved(saved.post);
+      if (mark) {
+        const saved = await api.updateMark(mark.id, { label: text, ...photo });
+        onSaved(saved.mark, "mark");
+      } else if (post) {
+        const saved = await api.updatePost(post.id, { body: text, ...photo });
+        onSaved(saved.post, "post");
+      } else if (naming) {
+        const kept = await api.createMark({ ...ground, label: text, ...photo });
+        onCreated(kept.mark, "mark");
       } else {
-        const written = await api.createPost({
-          latitude: coords.latitude,
-          longitude: coords.longitude,
-          accuracy: coords.accuracy,
-          time: new Date().toISOString(),
-          ...content,
-        });
-        onCreated(written.post);
+        const left = await api.createPost({ ...ground, body: text, ...photo });
+        onCreated(left.post, "post");
       }
     } catch (requestError) {
       setError(requestError.message);
@@ -331,14 +400,44 @@ export default function PostModal({ isOpen, coords, place, post = null, onClose,
     }
   }
 
-  // An edit says where the post is, not where its author is: the spot is the one
-  // thing about it that cannot be rewritten.
+  // An edit says where the row is, not where its author is: the ground is the one
+  // thing about it that cannot be rewritten. A mark has no place name to say it
+  // by — a geocoder's line is where the phone was rather than what the spot is,
+  // and lo stopped writing one down (see POST /api/marks) — so it is read by its
+  // coordinates, which are the truth about it and the one thing every mark has.
   const where = editing
-    ? post.place || formatCoords(post.latitude, post.longitude)
+    ? (post?.place ?? "") || formatCoords(written.latitude, written.longitude)
     : place || (coords ? formatCoords(coords.latitude, coords.longitude) : "");
 
+  // The sheet says which of the four things it is doing, and the toggle below
+  // the title is how the reader changes their mind about the half of that the
+  // toggle owns.
+  const title = editing
+    ? naming
+      ? t("mark.editTitle")
+      : t("post.editTitle")
+    : naming
+      ? t("mark.title")
+      : t("post.title");
+
+  // And so does the button at the foot of it: what it says is what pressing it
+  // does — a spot kept, a post left, or either of them saved again — rather than
+  // one word standing for all three. While the request is out it says so, which
+  // is the only word the sheet gives on a save that has not landed yet.
+  const submitLabel = submitting
+    ? naming
+      ? t("mark.saving")
+      : editing
+        ? t("post.saving")
+        : t("post.posting")
+    : editing
+      ? t("common.save")
+      : naming
+        ? t("mark.submit")
+        : t("post.submit");
+
   return (
-    <Modal isOpen={isOpen} title={editing ? t("post.editTitle") : t("post.title")} onClose={busy ? undefined : onClose} wide>
+    <Modal isOpen={isOpen} title={title} onClose={busy ? undefined : onClose} wide>
       <form
         className={styles.form}
         onSubmit={submit}
@@ -351,6 +450,46 @@ export default function PostModal({ isOpen, coords, place, post = null, onClose,
         onDragLeave={dragLeave}
         onDrop={drop}
       >
+        {/* Who this is for, which is the whole difference between the two and
+            the first thing the sheet asks. Two halves of one control rather than
+            two buttons: what is being chosen is which of them this is, and one
+            of them always is — so the pair reads as a switch that is thrown and
+            not as a pair of things that could both be pressed.
+
+            Missing on an edit, where the question has an answer already: a spot
+            somebody kept is not something a second thought can turn into a post
+            for everyone to read. */}
+        {!editing && (
+          <div className={styles.kinds} role="radiogroup" aria-label={t("compose.kind")}>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={naming}
+              className={naming ? `${styles.kind} ${styles.kindOn}` : styles.kind}
+              onClick={() => choose("mark")}
+              disabled={busy}
+            >
+              {t("compose.mark")}
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={!naming}
+              className={naming ? styles.kind : `${styles.kind} ${styles.kindOn}`}
+              onClick={() => choose("post")}
+              disabled={busy}
+            >
+              {t("compose.post")}
+            </button>
+          </div>
+        )}
+
+        {/* Who will see it and where it is, on the two lines under the switch —
+            the first is what the switch just decided and the second is the
+            ground both kinds are filed under. The audience is said in words
+            rather than left to be inferred from a label: a reader deciding
+            between the two is deciding exactly this. */}
+        {!editing && <p className={styles.who}>{naming ? t("compose.markWho") : t("compose.postWho")}</p>}
         {where && <p className={styles.where}>{where}</p>}
 
         {/* The photo above the words, which is the order a post is made in as
@@ -425,6 +564,10 @@ export default function PostModal({ isOpen, coords, place, post = null, onClose,
           </button>
         )}
 
+        {/* One box, opening at the length of what is being written in it: a
+            name is a line and a post is a paragraph or several, and the sheet
+            should not hand a spot's name a field deep enough to lose it in. The
+            handle in the corner opens either of them out. */}
         <TextArea
           ref={textRef}
           className={styles.text}
@@ -433,27 +576,31 @@ export default function PostModal({ isOpen, coords, place, post = null, onClose,
             setBody(event.target.value);
             setError("");
           }}
-          // Cmd/Ctrl+Enter posts; a plain Enter is a newline, since a post is
-          // written in paragraphs where a message is a line.
+          // On a post, Cmd/Ctrl+Enter posts and a plain Enter is a newline,
+          // since a post is written in paragraphs where a message is a line. On
+          // a name it is the other way about: the box holds one line, so Enter
+          // answers the sheet and Shift+Enter opens a line the fold on the way
+          // out closes again. A return that only picks a candidate out of an
+          // IME's list (CJK input) is left to the IME either way.
           onKeyDown={(event) => {
-            if (event.key === "Enter" && (event.metaKey || event.ctrlKey) && !event.nativeEvent.isComposing) {
-              submit(event);
-            }
+            if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
+            if (naming ? !event.shiftKey : event.metaKey || event.ctrlKey) submit(event);
           }}
-          placeholder={t("post.placeholder")}
-          maxLength={BODY_MAX}
-          rows={4}
+          placeholder={naming ? t("mark.namePlaceholder") : t("post.placeholder")}
+          maxLength={naming ? NAME_MAX : BODY_MAX}
+          rows={naming ? 2 : 4}
           // The floor the handle stops at, kept level with the field's own
           // opening height so dragging cannot shrink it under that.
-          minHeight={160}
+          minHeight={naming ? 60 : 160}
+          enterKeyHint={naming ? "done" : undefined}
         />
 
         <div className={styles.footer}>
           <span className={styles.count}>
-            {body.length}/{BODY_MAX}
+            {body.length}/{naming ? NAME_MAX : BODY_MAX}
           </span>
           <button type="submit" className="primary-button" disabled={busy}>
-            {editing ? (submitting ? t("post.saving") : t("common.save")) : submitting ? t("post.posting") : t("post.submit")}
+            {submitLabel}
           </button>
         </div>
 

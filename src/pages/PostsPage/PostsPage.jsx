@@ -8,9 +8,9 @@ import { filterBy } from "../../utils/search.js";
 import { DEFAULT_SORT, sortRows } from "../../utils/sort.js";
 import { useAuth } from "../../components/AuthProvider/index.js";
 import CommentsModal from "../../components/CommentsModal/index.js";
+import ComposeModal from "../../components/ComposeModal/index.js";
 import Header from "../../components/Header/index.js";
 import PostItem from "../../components/PostItem/index.js";
-import PostModal from "../../components/PostModal/index.js";
 import SearchField from "../../components/SearchField/index.js";
 import SortField from "../../components/SortField/index.js";
 import { useNearbyPosts } from "../../components/LocationProvider/index.js";
@@ -236,7 +236,7 @@ export default function PostsPage() {
           is the same act as writing it — the same words, the same photo, the same
           sheet — and the spot and the moment it was left at are not up for
           revision, so nothing here asks for a fix. */}
-      <PostModal
+      <ComposeModal
         isOpen={Boolean(editing)}
         post={editing}
         onClose={() => setEditing(null)}

@@ -1,7 +1,8 @@
 import { useTranslation } from "react-i18next";
-import { ActionButton } from "../../ui/index.js";
+import { ActionButton, AuthImage } from "../../ui/index.js";
 import { distanceMeters, formatCoords, formatDateTime, formatDistance } from "../../utils/format.js";
 import { hoverProps, rowClass } from "../../utils/hover.js";
+import { postThumb } from "../../utils/image.js";
 import { directionsLink, searchLink } from "../../utils/maps.js";
 import { labelName } from "../../utils/label.js";
 
@@ -27,7 +28,7 @@ import { labelName } from "../../utils/label.js";
 // until it is pressed again. It wears the same wash — the preview it belongs to
 // is showing, which is what the wash has always meant — and a rule down its left
 // edge to say that this one is being held rather than merely pointed at.
-export default function MarkItem({ mark, from, hovered = false, chosen = false, onHover, onRename, onDelete, onShowOnMap }) {
+export default function MarkItem({ mark, from, hovered = false, chosen = false, onHover, onEdit, onDelete, onShowOnMap }) {
   const { t, i18n } = useTranslation();
 
   // A spot nobody named is read by where it is. The coordinates move up onto the
@@ -52,9 +53,17 @@ export default function MarkItem({ mark, from, hovered = false, chosen = false, 
           aria-label={`${t("marks.showOnMap")} ${name}`}
           onClick={() => onShowOnMap(mark)}
         >
-          <strong className={named ? undefined : "mark-numbers"}>{name}</strong>
-          {named && <span className="mark-coords">{coords}</span>}
-          <time dateTime={mark.time}>{formatDateTime(mark.time, i18n.language)}</time>
+          {/* The small copy where the spot has a photograph on it, which is the
+              whole point of there being one: a list of forty spots is forty of
+              these, wanted at once. The post row's own thumbnail, because a
+              picture taken standing somewhere is the same thing whichever list
+              it ends up in (see PostItem). */}
+          {mark.image && <AuthImage className="post-thumb" src={postThumb(mark)} alt="" width="40" height="40" />}
+          <span className="mark-copy-lines">
+            <strong className={named ? undefined : "mark-numbers"}>{name}</strong>
+            {named && <span className="mark-coords">{coords}</span>}
+            <time dateTime={mark.time}>{formatDateTime(mark.time, i18n.language)}</time>
+          </span>
         </button>
         <div className="mark-side">
           {away && <span className="mark-distance">{t("marks.distance", { distance: away })}</span>}
@@ -90,7 +99,7 @@ export default function MarkItem({ mark, from, hovered = false, chosen = false, 
               tooltip={t("map.edit")}
               tooltipRight
               aria-label={`${t("map.edit")} ${name}`}
-              onClick={() => onRename(mark)}
+              onClick={() => onEdit(mark)}
             >
               <svg viewBox="0 0 24 24">
                 <path d="M12 20h9" />

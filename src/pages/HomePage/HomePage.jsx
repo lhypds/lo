@@ -15,6 +15,7 @@ import CafeCard from "../../cards/CafeCard/index.js";
 import CardSize from "../../components/CardSize/index.js";
 import ClockCard from "../../cards/ClockCard/index.js";
 import CommentsModal from "../../components/CommentsModal/index.js";
+import ComposeModal from "../../components/ComposeModal/index.js";
 import DirectionCard from "../../cards/DirectionCard/index.js";
 import EventsCard from "../../cards/EventsCard/index.js";
 import FoodCard from "../../cards/FoodCard/index.js";
@@ -23,10 +24,8 @@ import HereStrip from "../../components/HereStrip/index.js";
 import HistoryCard from "../../cards/HistoryCard/index.js";
 import LocationGate from "../../components/LocationGate/index.js";
 import MarkButton from "../../cards/MarkButton/index.js";
-import MarkModal from "../../components/MarkModal/index.js";
 import NewsCard from "../../cards/NewsCard/index.js";
 import PeopleCard from "../../cards/PeopleCard/index.js";
-import PostModal from "../../components/PostModal/index.js";
 import PostsCard from "../../cards/PostsCard/index.js";
 import RadioCard from "../../cards/RadioCard/index.js";
 import TrendsCard from "../../cards/TrendsCard/index.js";
@@ -152,7 +151,7 @@ export default function HomePage() {
   // The two sheets a saved mark's map preview can ask for. They live at page
   // level because the map is a container-sized tile, while either sheet belongs
   // to the window; the same arrangement is used on the marks page.
-  const [renamingMark, setRenamingMark] = useState(null);
+  const [editingMark, setEditingMark] = useState(null);
   const [deletingMark, setDeletingMark] = useState(null);
   const [deletingMarkBusy, setDeletingMarkBusy] = useState(false);
   const [deletingMarkError, setDeletingMarkError] = useState("");
@@ -210,8 +209,9 @@ export default function HomePage() {
   // to turn.
   const edgeRef = useRef(null);
   // The fix the hold was made on, which is also what says the sheet is open —
-  // a post belongs to the spot its writer was standing on when they started it,
-  // not to wherever they have drifted by the time they press Post.
+  // what is written belongs to the spot its writer was standing on when they
+  // started it, not to wherever they have drifted by the time they press the
+  // button at the foot of the sheet.
   const [composing, setComposing] = useState(null);
   // The post whose remarks are open over the page, from the count in the corner
   // of its bubble on the map. Held here rather than in the card: a tile is a
@@ -348,18 +348,23 @@ export default function HomePage() {
     if (fresh) setComposing((open) => (open ? fresh : open));
   }
 
-  function created(post) {
+  // What the hold's sheet made, which is a post or a spot depending on which way
+  // its switch was thrown. Either way it goes straight onto the map rather than
+  // through a refetch: the writer is looking at the ground they just wrote about.
+  function created(written, kind) {
     setComposing(null);
-    // Straight onto the map rather than through a refetch: the writer is
-    // looking at the spot they just posted about.
-    addPost(post);
-    showToast(t("post.posted"), 1800);
+    if (kind === "post") {
+      addPost(written);
+      showToast(t("post.posted"), 1800);
+      return;
+    }
+    setMarks((current) => [written, ...current]);
+    showToast(t("mark.saved"), 1800);
   }
 
-  async function renameSavedMark(label) {
-    const { mark } = await api.renameMark(renamingMark.id, label);
+  function markEdited(mark) {
     setMarks((current) => current.map((item) => (item.id === mark.id ? mark : item)));
-    setRenamingMark(null);
+    setEditingMark(null);
   }
 
   function askToDeleteMark(mark) {
@@ -391,7 +396,6 @@ export default function HomePage() {
   const deletingMarkName = deletingMark
     ? labelName(deletingMark, i18n.language) || formatCoords(deletingMark.latitude, deletingMark.longitude)
     : "";
-  const renamingMarkName = renamingMark?.label?.[i18n.language] ?? "";
 
   // Nothing below answers a question without a position, so the gate stands in
   // for the whole dashboard rather than appearing inside it.
@@ -450,7 +454,7 @@ export default function HomePage() {
             onOpenVenueComments={setVenueCommenting}
             onOpenWikiComments={setWikiCommenting}
             onOpenPhoto={setViewing}
-            onRenameMark={setRenamingMark}
+            onEditMark={setEditingMark}
             onDeleteMark={askToDeleteMark}
           />
         </Suspense>,
@@ -467,7 +471,7 @@ export default function HomePage() {
         onLongPress={compose}
         onMarked={(mark) => setMarks((current) => [mark, ...current])}
         onUnmarked={(mark) => setMarks((current) => current.filter((item) => item.id !== mark.id))}
-        onRenamed={(mark) => setMarks((current) => current.map((item) => (item.id === mark.id ? mark : item)))}
+        onUpdated={(mark) => setMarks((current) => current.map((item) => (item.id === mark.id ? mark : item)))}
       />,
     ),
     // The last two defaults complete the six-square opening page on mobile:
@@ -953,7 +957,7 @@ export default function HomePage() {
           Reading a post needs nothing out here — the bubble on its own square
           says the whole of it — and rewriting or taking one down is done from the
           list on the posts page, where every post of yours is in one place. */}
-      <PostModal
+      <ComposeModal
         isOpen={Boolean(composing)}
         coords={composing}
         place={place ? [place.locality, place.name, place.region].filter(Boolean).join(" · ") : ""}
@@ -963,14 +967,17 @@ export default function HomePage() {
 
       {/* The map preview asks for these, but the page owns them: fixed sheets
           mounted inside the map tile would be sized against that tile instead
-          of the window. Both mutations update the same list the pins use. */}
-      <MarkModal
-        isOpen={Boolean(renamingMark)}
-        title={t("marks.renameTitle")}
-        submitLabel={t("common.save")}
-        initialValue={renamingMarkName}
-        onClose={() => setRenamingMark(null)}
-        onSubmit={renameSavedMark}
+          of the window. Both mutations update the same list the pins use.
+
+          The same sheet the hold opens, on a spot that already exists: a second
+          thought about one is the same act as keeping it — the same name, the
+          same photograph — and where it is is not up for revision, so this one
+          asks for no fix and offers no switch. */}
+      <ComposeModal
+        isOpen={Boolean(editingMark)}
+        mark={editingMark}
+        onClose={() => setEditingMark(null)}
+        onSaved={markEdited}
       />
 
       <Modal

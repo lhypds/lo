@@ -1076,29 +1076,41 @@ html:has(.home-main:not(.home-main-map) .card-pager) {
   gap: 16px;
 }
 
-/* The name and its numbers are the button that sends the map here — stripped
-   back to the text, so the one press the top line answers is the obvious one */
+/* The name, its numbers and the photograph if the spot has one are the button
+   that sends the map here — stripped back to what is in it, so the one press the
+   top line answers is the obvious one. The picture sits beside the lines rather
+   than above them, which is the shape the post rows beside this list are: the
+   two pages are one page asking two questions, and a spot with a photo on it and
+   a post with one should not be two different rows. */
 .mark-copy {
   flex: 1;
   min-width: 0;
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
+  align-items: center;
+  gap: 10px;
   padding: 0;
   border: 0;
   background: none;
   text-align: left;
 }
 
+.mark-copy-lines {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
 .mark-copy strong {
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 14px;
 }
 
-.mark-copy strong + *,
+.mark-copy-lines strong + *,
 .post-copy-lines strong + * {
   margin-top: 2px;
 }

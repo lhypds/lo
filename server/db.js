@@ -1399,7 +1399,7 @@ export function getPostsByUser(username, limit = 20) {
 }
 
 // Nothing back rather than a row when the id is somebody else's or nobody's,
-// which is how renameMark in users.js answers the same question about a mark.
+// which is how updateMark in users.js answers the same question about a mark.
 export function updatePost(userId, postId, post) {
   const changed = updatePostContent.run(
     post.body ?? "",

@@ -20,6 +20,63 @@
   pointer-events: none;
 }
 
+/* Which of the two is being written, drawn as one control in two halves rather
+   than as two buttons: one of them is always the answer, so the pair should read
+   as a switch that is thrown and not as things that could both be pressed. The
+   chosen half is the black one, which is what a pressed thing looks like
+   everywhere else in lo — the mark tile, the shutter below, the pin on the map.
+
+   Full width, and the two halves equal: neither is the important one. Which is
+   why the switch opens on the left half rather than on the one lo would rather
+   you pressed. */
+.kinds {
+  display: flex;
+  border: 1px solid var(--ink);
+}
+
+.kind {
+  flex: 1;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--display);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+/* The one rule between them, drawn by the half on the right so the outer border
+   stays the control's own */
+.kind + .kind {
+  border-left: 1px solid var(--ink);
+}
+
+.kindOn {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+/* The half under the pointer goes black too, which is exactly what it would look
+   like if it were pressed — the preview is the answer. Pointers only: on a phone
+   the choice is made by touching one, and there is nothing to preview. */
+@media (hover: hover) {
+  .kind:not(:disabled):hover {
+    background: var(--ink);
+    color: var(--paper);
+  }
+}
+
+/* Who will see it, under the switch that decides it. The quiet type the rest of
+   the small print on this sheet is set in, because it is an answer to a question
+   the reader has just been asked rather than a warning. */
+.who {
+  margin: 0;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
 /* Where the post is being left, above what it says — a post is about a spot,
    and the writer should be able to see the app agrees which spot that is */
 .where {
@@ -32,8 +89,11 @@
 }
 
 /* Only what the sheet asks of the house textarea that the house textarea does
-   not already say: it opens taller, because this one is for writing in, and it
-   sets its type down to the size of the label on the shutter above it. The
+   not already say. How tall it opens is not here but on the field itself, since
+   it is the one thing about the box that changes with what is being written in
+   it — a name is a line and a post is paragraphs — and the floor the handle
+   stops at has to be the same number. What is here is the type, set down to the
+   size of the label on the shutter above it. The
    sheet is a note being scribbled, not a document — and at 12px the whole of a
    500-character post is on screen at once, which is the length it is being
    written against. It is read back larger than it is written; the preview is
@@ -44,7 +104,6 @@
    edge of the field. Written under .form so it outranks the house rule whatever
    order the two sheets land in. */
 .form .text {
-  min-height: 160px;
   padding: 6px 8px;
   font-size: 12px;
 }

@@ -313,13 +313,14 @@
     "saved": "Marked",
     "undo": "Undo",
     "edit": "Edit",
+    "hint": "Hold to write",
     "or": "or",
-    "discard": "Discard",
-    "nameTitle": "Name this spot",
     "removed": "Removed",
     "needsLocation": "Turn on location first",
     "title": "Mark this spot",
-    "submit": "Mark"
+    "submit": "Mark",
+    "namePlaceholder": "Name this spot (optional)",
+    "editTitle": "Edit mark"
   },
   "marks": {
     "title": "Marks",
@@ -329,13 +330,18 @@
     "deleting": "Deleting",
     "deleteTitle": "Delete mark",
     "deleteConfirm": "Delete “{{name}}”? This cannot be undone.",
-    "renameTitle": "Rename mark",
     "distance": "{{distance}} away",
     "showOnMap": "Show on map",
     "navigate": "Directions"
   },
+  "compose": {
+    "kind": "What this is",
+    "mark": "Mark",
+    "post": "Post",
+    "markWho": "Only you can see this",
+    "postWho": "Anyone who comes past can see this"
+  },
   "post": {
-    "hint": "Hold to post",
     "title": "New post",
     "placeholder": "What is here?",
     "photoTap": "Tap to take a photo",
