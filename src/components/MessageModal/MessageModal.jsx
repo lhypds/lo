@@ -295,35 +295,33 @@ export default function MessageModal({ username, back = null, onClose }) {
                         the two. The side it hangs on says it as well, and saying
                         it twice is the point: a sheet read at a glance is read by
                         the side, and one read closely has the name to read. */}
-                    {who &&
-                      (message.mine ? (
-                        <span className={styles.who}>{formatUsername(who)}</span>
-                      ) : (
-                        // Through to the person, which is the one thing to do with
-                        // somebody else's name here — the same hand-off the byline
-                        // in a comment column makes, and to the same page. The sheet
-                        // goes with the press: a thread left standing over the
-                        // profile it just opened is an exchange about somebody who
-                        // is no longer underneath it. A held modifier is asking for
-                        // a tab, and leaves the conversation where it was.
-                        //
-                        // And the way back with it: the sheet writes itself down on
-                        // the entry it is standing on, so the ← on the profile comes
-                        // back to this exchange rather than to the dashboard — the
-                        // reader stepped out of a conversation to see who they were
-                        // talking to, not to leave it (see utils/back.js).
-                        //
-                        // Only their side. Your own name over your own lines is not
-                        // a way anywhere — it is there to say which half of the
-                        // exchange is yours.
-                        <Link
-                          to={`/${encodeURIComponent(who)}`}
-                          className={styles.who}
-                          {...nameLink(back, onClose)}
-                        >
-                          {formatUsername(who)}
-                        </Link>
-                      ))}
+                    {who && (
+                      // Through to the person, which is the one thing to do with
+                      // a name here — the same hand-off the byline in a comment
+                      // column makes, and to the same page. The sheet goes with
+                      // the press: a thread left standing over the profile it
+                      // just opened is an exchange about somebody who is no
+                      // longer underneath it. A held modifier is asking for a
+                      // tab, and leaves the conversation where it was.
+                      //
+                      // And the way back with it: the sheet writes itself down on
+                      // the entry it is standing on, so the ← on the profile comes
+                      // back to this exchange rather than to the dashboard — the
+                      // reader stepped out of a conversation to see who they were
+                      // talking to, not to leave it (see utils/back.js).
+                      //
+                      // Your own side as well: a name in lo is a way through to
+                      // the person wherever it is pressed, and your own over your
+                      // own lines leads to your own page — the same press it is
+                      // in a comment column.
+                      <Link
+                        to={`/${encodeURIComponent(who)}`}
+                        className={styles.who}
+                        {...nameLink(back, onClose)}
+                      >
+                        {formatUsername(who)}
+                      </Link>
+                    )}
                     <span className={styles.bubble}>{message.body}</span>
                     {/* When it was said, and on the last line the far side has had
                         in front of them, that it has been. One small grey line

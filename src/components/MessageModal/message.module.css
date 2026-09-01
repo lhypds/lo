@@ -73,9 +73,9 @@
   color: var(--muted);
   font-family: var(--mono);
   font-size: 10px;
-  /* The other side's name is the way through to their page, and a name in lo
-     wears no line for it: grey mono over the words either way, whether it is
-     one to press or your own. */
+  /* A name is the way through to a page — the other side's to theirs, your own
+     to yours — and a name in lo wears no line for it: grey mono over the words
+     on either side. */
   text-decoration: none;
 }
 
