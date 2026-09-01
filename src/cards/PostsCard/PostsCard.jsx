@@ -3,8 +3,8 @@ import { AuthImage, Card, Link, Skeleton } from "../../ui/index.js";
 import { LARGE, SMALL, TALL, TINY, useCardSize } from "../../utils/cards.js";
 import { distanceMeters, formatCoords, formatDistance, formatUsername, relativeTime } from "../../utils/format.js";
 import { postThumb } from "../../utils/image.js";
-import CardSize from "../CardSize/index.js";
-import { useNearbyPosts } from "../LocationProvider/index.js";
+import CardSize from "../../components/CardSize/index.js";
+import { useNearbyPosts } from "../../components/LocationProvider/index.js";
 import styles from "./posts.module.css";
 
 // What people have left around here, as a list — the same answer the map beside

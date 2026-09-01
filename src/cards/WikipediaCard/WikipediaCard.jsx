@@ -7,8 +7,8 @@ import { LARGE, SMALL, TALL, TINY, useCardSize } from "../../utils/cards.js";
 import { distanceMeters, formatDistance } from "../../utils/format.js";
 import { directionsLink, placeSearchLink } from "../../utils/maps.js";
 import { publishWikiPlaces, useWikiPlaces } from "../../utils/wikiPlaces.js";
-import CardSize from "../CardSize/index.js";
-import { useHere } from "../LocationProvider/index.js";
+import CardSize from "../../components/CardSize/index.js";
+import { useHere } from "../../components/LocationProvider/index.js";
 import styles from "./wikipedia.module.css";
 
 const NONE = [];

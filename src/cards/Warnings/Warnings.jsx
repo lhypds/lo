@@ -4,8 +4,8 @@ import * as api from "../../api.js";
 import { Card, Modal, Skeleton } from "../../ui/index.js";
 import { relativeTime } from "../../utils/format.js";
 import { formatWarningWindow, warningKindKey, warningLevel } from "../../utils/warnings.js";
-import { useHere } from "../LocationProvider/index.js";
-import CardSize from "../CardSize/index.js";
+import { useHere } from "../../components/LocationProvider/index.js";
+import CardSize from "../../components/CardSize/index.js";
 import styles from "./warnings.module.css";
 
 // What Yahoo! 防災速報 would have pushed to a phone standing here: the 特別警報,

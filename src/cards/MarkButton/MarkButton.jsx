@@ -5,8 +5,8 @@ import * as api from "../../api.js";
 import { TileId, showToast } from "../../ui/index.js";
 import { MARK_PIN_EYE, MARK_PIN_PATH } from "../../utils/icons.js";
 import { getLocationState, refreshLocation } from "../../utils/location.js";
-import { useHere } from "../LocationProvider/index.js";
-import MarkModal from "../MarkModal/index.js";
+import { useHere } from "../../components/LocationProvider/index.js";
+import MarkModal from "../../components/MarkModal/index.js";
 import styles from "./mark.module.css";
 
 const MESSAGE_MS = 6000;

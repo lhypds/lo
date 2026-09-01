@@ -7,8 +7,8 @@ import { SMALL, LARGE, TALL, TINY, useCardSize } from "../../utils/cards.js";
 import { distanceMeters, formatDistance } from "../../utils/format.js";
 import { directionsLink, searchLink } from "../../utils/maps.js";
 import { publishHistoryPlaces, updateHistoryComments, useHistoryPlaces } from "../../utils/historyPlaces.js";
-import CardSize from "../CardSize/index.js";
-import { useHere } from "../LocationProvider/index.js";
+import CardSize from "../../components/CardSize/index.js";
+import { useHere } from "../../components/LocationProvider/index.js";
 import styles from "./history.module.css";
 
 const NONE = [];

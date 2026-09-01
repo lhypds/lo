@@ -3,8 +3,8 @@ import { useTranslation } from "react-i18next";
 import { Card } from "../../ui/index.js";
 import { cardTurned, turnCard } from "../../utils/cards.js";
 import { toggleHour12, useHour12 } from "../../utils/units.js";
-import { useHere } from "../LocationProvider/index.js";
-import CardSize from "../CardSize/index.js";
+import { useHere } from "../../components/LocationProvider/index.js";
+import CardSize from "../../components/CardSize/index.js";
 import ClockDial from "./ClockDial.jsx";
 import styles from "./clock.module.css";
 

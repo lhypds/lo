@@ -11,9 +11,9 @@ import { pickedLang } from "../../utils/lang.js";
 import { cycleMapStyle, mapStyleId, mapStyleUrl, useMapStyle } from "../../utils/mapstyle.js";
 import { labelName } from "../../utils/label.js";
 import { venueParts } from "../../utils/venues.js";
-import { useAuth } from "../AuthProvider/index.js";
-import { useHere } from "../LocationProvider/index.js";
-import CardSize from "../CardSize/index.js";
+import { useAuth } from "../../components/AuthProvider/index.js";
+import { useHere } from "../../components/LocationProvider/index.js";
+import CardSize from "../../components/CardSize/index.js";
 import styles from "./map.module.css";
 
 const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;

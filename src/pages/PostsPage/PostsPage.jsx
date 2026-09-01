@@ -17,7 +17,7 @@ import { useNearbyPosts } from "../../components/LocationProvider/index.js";
 
 // For the same reason the other two pages load it lazily: mapbox-gl is by far
 // the heaviest thing lo ships.
-const MapCard = lazy(() => import("../../components/MapCard/MapCard.jsx"));
+const MapCard = lazy(() => import("../../cards/MapCard/MapCard.jsx"));
 
 // The marks page, asking the other question. Marks are yours and are a history,
 // so that page is a map of where you have been; posts are everyone's and are a

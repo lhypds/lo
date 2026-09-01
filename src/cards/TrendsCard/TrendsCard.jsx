@@ -3,8 +3,8 @@ import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
 import { Card, Skeleton } from "../../ui/index.js";
 import { LARGE, SMALL, TALL, TINY, useCardSize } from "../../utils/cards.js";
-import CardSize from "../CardSize/index.js";
-import { useHere } from "../LocationProvider/index.js";
+import CardSize from "../../components/CardSize/index.js";
+import { useHere } from "../../components/LocationProvider/index.js";
 import styles from "./trends.module.css";
 
 // Google answers per subregion at best, and the server rounds the fix onto that

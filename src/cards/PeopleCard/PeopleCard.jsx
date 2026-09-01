@@ -1,9 +1,9 @@
 import { useTranslation } from "react-i18next";
 import { Card, Link, Skeleton } from "../../ui/index.js";
 import { distanceMeters, formatDistance, formatUsername, relativeTime } from "../../utils/format.js";
-import { useAuth } from "../AuthProvider/index.js";
-import { useHere } from "../LocationProvider/index.js";
-import CardSize from "../CardSize/index.js";
+import { useAuth } from "../../components/AuthProvider/index.js";
+import { useHere } from "../../components/LocationProvider/index.js";
+import CardSize from "../../components/CardSize/index.js";
 import styles from "./people.module.css";
 
 // Who else has a tab open around here, as a list — and the only place they are

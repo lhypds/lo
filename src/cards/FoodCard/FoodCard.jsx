@@ -1,4 +1,4 @@
-import VenuesCard from "../VenuesCard/index.js";
+import VenuesCard from "../../components/VenuesCard/index.js";
 
 // Where to eat within a walk of here, nearest first — restaurants, the counters
 // you eat at standing up, and the food halls that are a dozen of both.

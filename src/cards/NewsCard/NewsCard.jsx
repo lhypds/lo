@@ -4,8 +4,8 @@ import * as api from "../../api.js";
 import { Card, PageModal, Skeleton, sheetLink } from "../../ui/index.js";
 import { LARGE, SMALL, TALL, TINY, useCardSize } from "../../utils/cards.js";
 import { formatDistance, relativeTime } from "../../utils/format.js";
-import CardSize from "../CardSize/index.js";
-import { useHere } from "../LocationProvider/index.js";
+import CardSize from "../../components/CardSize/index.js";
+import { useHere } from "../../components/LocationProvider/index.js";
 import styles from "./news.module.css";
 
 // Local news is a city-wide question, so the request is keyed a decimal place

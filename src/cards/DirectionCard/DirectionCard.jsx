@@ -2,8 +2,8 @@ import { useTranslation } from "react-i18next";
 import { Card } from "../../ui/index.js";
 import { cardTurned, turnCard } from "../../utils/cards.js";
 import { startSensors, useSensors } from "../../utils/sensors.js";
-import { useHere } from "../LocationProvider/index.js";
-import CardSize from "../CardSize/index.js";
+import { useHere } from "../../components/LocationProvider/index.js";
+import CardSize from "../../components/CardSize/index.js";
 import DirectionDial from "./DirectionDial.jsx";
 import styles from "./direction.module.css";
 

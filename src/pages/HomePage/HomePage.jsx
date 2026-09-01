@@ -11,34 +11,34 @@ import { updateVenueComments, useVenues } from "../../utils/venues.js";
 import { updateHistoryComments, useHistoryPlaces } from "../../utils/historyPlaces.js";
 import { updateWikiComments, useWikiPlaces, wikiPhoto } from "../../utils/wikiPlaces.js";
 import { getLocationState, refreshLocation } from "../../utils/location.js";
-import CafeCard from "../../components/CafeCard/index.js";
+import CafeCard from "../../cards/CafeCard/index.js";
 import CardSize from "../../components/CardSize/index.js";
-import ClockCard from "../../components/ClockCard/index.js";
+import ClockCard from "../../cards/ClockCard/index.js";
 import CommentsModal from "../../components/CommentsModal/index.js";
-import DirectionCard from "../../components/DirectionCard/index.js";
-import EventsCard from "../../components/EventsCard/index.js";
-import FoodCard from "../../components/FoodCard/index.js";
+import DirectionCard from "../../cards/DirectionCard/index.js";
+import EventsCard from "../../cards/EventsCard/index.js";
+import FoodCard from "../../cards/FoodCard/index.js";
 import Header from "../../components/Header/index.js";
 import HereStrip from "../../components/HereStrip/index.js";
-import HistoryCard from "../../components/HistoryCard/index.js";
+import HistoryCard from "../../cards/HistoryCard/index.js";
 import LocationGate from "../../components/LocationGate/index.js";
-import MarkButton from "../../components/MarkButton/index.js";
+import MarkButton from "../../cards/MarkButton/index.js";
 import MarkModal from "../../components/MarkModal/index.js";
-import NewsCard from "../../components/NewsCard/index.js";
-import PeopleCard from "../../components/PeopleCard/index.js";
+import NewsCard from "../../cards/NewsCard/index.js";
+import PeopleCard from "../../cards/PeopleCard/index.js";
 import PostModal from "../../components/PostModal/index.js";
-import PostsCard from "../../components/PostsCard/index.js";
-import RadioCard from "../../components/RadioCard/index.js";
-import TrendsCard from "../../components/TrendsCard/index.js";
-import Warnings from "../../components/Warnings/index.js";
-import WeatherCard from "../../components/WeatherCard/index.js";
-import WikipediaCard from "../../components/WikipediaCard/index.js";
+import PostsCard from "../../cards/PostsCard/index.js";
+import RadioCard from "../../cards/RadioCard/index.js";
+import TrendsCard from "../../cards/TrendsCard/index.js";
+import Warnings from "../../cards/Warnings/index.js";
+import WeatherCard from "../../cards/WeatherCard/index.js";
+import WikipediaCard from "../../cards/WikipediaCard/index.js";
 import { useHere } from "../../components/LocationProvider/index.js";
 
 // mapbox-gl is by far the heaviest thing lo loads, and the login and gate
 // screens both come before any map — so it is fetched only once there is a
 // position worth drawing.
-const MapCard = lazy(() => import("../../components/MapCard/MapCard.jsx"));
+const MapCard = lazy(() => import("../../cards/MapCard/MapCard.jsx"));
 
 // How far a finger has to travel before the page commits to turning, and how far
 // before the drag is read as sideways at all rather than as a list being

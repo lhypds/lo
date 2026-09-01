@@ -12,8 +12,8 @@ import {
   tuneRadio,
   useRadio,
 } from "../../utils/radio.js";
-import { useHere } from "../LocationProvider/index.js";
-import CardSize from "../CardSize/index.js";
+import { useHere } from "../../components/LocationProvider/index.js";
+import CardSize from "../../components/CardSize/index.js";
 import RadioWave from "./RadioWave.jsx";
 import styles from "./radio.module.css";
 
