@@ -47,6 +47,13 @@ const MapCard = lazy(() => import("../../cards/MapCard/MapCard.jsx"));
 const TURN = 48;
 const AXIS = 8;
 
+// How long a run of wheel events has to fall silent before the swipe behind it
+// is over. A two-finger swipe across a trackpad reaches the page as wheel events
+// and nothing else — no press, no release — and the trackpad goes on sending
+// them after the fingers have lifted, for as long as the swipe's momentum lasts.
+// So the run ends when the events do, and this is the gap that says they have.
+const QUIET = 150;
+
 // A press on a card's heading that stays put for this long is the reader picking
 // the card up rather than turning the page, and one that wanders further than
 // SLOP before then was a page turn from the start. The length is the mark
@@ -196,6 +203,12 @@ export default function HomePage() {
   const swipeRef = useRef(null);
   const draggedRef = useRef(false);
   const frozenRef = useRef(false);
+  // The run of wheel events a trackpad swipe is made of, while one is under way,
+  // and the render's own reading of it: the wheel is listened to once, outside
+  // React (see below), and the listener has to reach whichever copy of the
+  // handler knows which page is under the window now.
+  const wheelRef = useRef(null);
+  const onWheelRef = useRef(null);
   // The card the reader has picked up by its heading, if any: which one it is,
   // the order the dashboard stands in while it is up, and the order it stood in
   // when it was lifted. Nothing is written down until it is set back down, so the
@@ -325,6 +338,28 @@ export default function HomePage() {
     },
     [],
   );
+
+  // The wheel is read outside React rather than through onWheel: React attaches
+  // that one passive, and a passive listener cannot keep the browser from
+  // answering the gesture itself — which on a Mac is Safari swiping back through
+  // history on the same two fingers. The listener is attached once per dashboard
+  // and calls the current render's copy of the handler through the ref, since
+  // which page is under the window is a thing each render knows afresh (see
+  // wheelSwipe). A run still going when the dashboard goes is dropped with it.
+  useLayoutEffect(() => {
+    onWheelRef.current = wheelSwipe;
+  });
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!located || !view) return undefined;
+    const listen = (event) => onWheelRef.current?.(event);
+    view.addEventListener("wheel", listen, { passive: false });
+    return () => {
+      view.removeEventListener("wheel", listen);
+      window.clearTimeout(wheelRef.current?.timer);
+      wheelRef.current = null;
+    };
+  }, [located]);
 
   // The tile in hand, marked as such for as long as it is. Written onto the
   // element rather than passed into the card, for the reason the strip's own drag
@@ -611,8 +646,7 @@ export default function HomePage() {
   // pixels is let go of at the same moment.
   function moveSwipe(x, y) {
     const start = swipeRef.current;
-    const track = trackRef.current;
-    if (!start || !track) return;
+    if (!start) return;
     const deltaX = x - start.x;
     const deltaY = y - start.y;
     if (!start.axis) {
@@ -624,43 +658,162 @@ export default function HomePage() {
       }
     }
     if (start.axis !== "x") return;
-    // Past either end the page still gives, at a third of the distance: enough
-    // to say the drag was felt and that there is nothing on that side, without
-    // a hard stop under the hand.
-    const atEdge = (current === 0 && deltaX > 0) || (current === pages.length - 1 && deltaX < 0);
-    const offset = atEdge ? deltaX / 3 : deltaX;
-    track.style.transition = "none";
-    track.style.transform = `translateX(calc(${-current * 100}% + ${offset}px))`;
+    pullTrack(deltaX);
   }
 
   function endSwipe(x, y) {
     const start = swipeRef.current;
     swipeRef.current = null;
-    const track = trackRef.current;
     viewRef.current?.classList.remove("dragging");
-    if (!start || !track) return;
+    if (!start) return;
     const deltaX = x - start.x;
-    let next = current;
-    if (start.axis === "x" && Math.abs(deltaX) >= TURN) {
-      next = deltaX < 0 ? Math.min(current + 1, pages.length - 1) : Math.max(current - 1, 0);
-    }
+    const next = start.axis === "x" && Math.abs(deltaX) >= TURN ? pageAfter(deltaX) : current;
     // A drag that ends on a link or a button is a drag, not a press: the click
     // the pointer is about to raise on whatever it came to rest over is swallowed
     // (see below). Only a real sideways drag counts — a still hand that wandered
     // a pixel is still pressing the thing under it.
     draggedRef.current = start.axis === "x" && Math.abs(deltaX) > AXIS;
-    track.style.transition = "";
-    track.style.transform = `translateX(${-next * 100}%)`;
+    settleTrack(next);
     if (next !== current) turnTo(next);
   }
 
   function cancelSwipe() {
-    const track = trackRef.current;
     viewRef.current?.classList.remove("dragging");
-    if (!swipeRef.current || !track) return;
+    if (!swipeRef.current) return;
     swipeRef.current = null;
+    settleTrack(current);
+  }
+
+  // Where the strip stands while a gesture has hold of it: `offset` is how far
+  // the gesture has pulled it from the page it started on, in pixels, the way the
+  // page goes. Past either end the page still gives, at a third of the distance:
+  // enough to say the drag was felt and that there is nothing on that side,
+  // without a hard stop under the hand. Moved by hand rather than by state, for
+  // the reason the dragging class is: a page being dragged is not a page being
+  // re-rendered once per pixel on the way.
+  function pullTrack(offset) {
+    const track = trackRef.current;
+    if (!track) return;
+    const atEdge = (current === 0 && offset > 0) || (current === pages.length - 1 && offset < 0);
+    track.style.transition = "none";
+    track.style.transform = `translateX(calc(${-current * 100}% + ${atEdge ? offset / 3 : offset}px))`;
+  }
+
+  // And where it comes to rest once the gesture has let go: on a page, and
+  // sliding there, since the transition is handed back to the stylesheet.
+  function settleTrack(index) {
+    const track = trackRef.current;
+    if (!track) return;
     track.style.transition = "";
-    track.style.transform = `translateX(${-current * 100}%)`;
+    track.style.transform = `translateX(${-index * 100}%)`;
+  }
+
+  // The page a gesture that has gone far enough is turning to: the next one the
+  // way it went, or this one again from either end of the row.
+  function pageAfter(offset) {
+    return offset < 0 ? Math.min(current + 1, pages.length - 1) : Math.max(current - 1, 0);
+  }
+
+  // A two-finger swipe across a trackpad — or a mouse wheel tilted, or rolled
+  // with shift held — reaches the page as a run of wheel events and nothing
+  // else: no press, no release, and no word of where the fingers are. The run is
+  // read as the drag it stands for. Its deltas are summed into how far the strip
+  // has been pulled and the strip follows them the way it follows a finger, and
+  // once they add up to as far as a drag has to go, the page turns. One page per
+  // swipe, as with a thumb: the trackpad goes on sending events after the fingers
+  // have lifted, for as long as the swipe's momentum lasts, and those belong to
+  // the swipe that has already turned the page, so the rest of the run is let go
+  // by. It is over once it has been quiet for a moment (see QUIET) — or, sooner,
+  // when the deltas come back the other way, which is the fingers again:
+  // momentum only ever dies down.
+  //
+  // The axis is settled the way the drag settles it, on the first few pixels, and
+  // a run that is a list being scrolled is the browser's for as long as it lasts
+  // — except that a scroll turning plainly sideways part way through is a swipe
+  // beginning inside the last one's momentum, and is read as one rather than
+  // waited out. Either way it takes two events in a row to say so: one delta
+  // against the run is a finger lifting, and two is a finger going somewhere.
+  // Preventing the default is what keeps the browser out of a sideways run:
+  // there is nothing on the page for it to scroll that way, and what Safari
+  // makes of a sideways swipe left to it is a page of history.
+  //
+  // Not from the map, where the wheel is the reader zooming it — but only a run
+  // beginning there is the map's. One already under way goes on whatever has
+  // come under the pointer since, because the fingers have not moved: the page
+  // has, sliding the map beneath them on its way in, and a swipe that let go of
+  // its own momentum for the width of a tile would find it starting a second
+  // swipe on the far side.
+  function wheelSwipe(event) {
+    if (!trackRef.current || expanded || carry) return;
+    let run = wheelRef.current;
+    if (!run && event.target?.closest?.(".mapboxgl-map")) return;
+    // In pixels, whatever the device counts in: a mouse wheel counts lines in
+    // Firefox, and a line is about the height of one.
+    const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? (viewRef.current?.clientWidth ?? 0) : 1;
+    const dx = event.deltaX * unit;
+    const dy = event.deltaY * unit;
+    const sideways = Math.abs(dx) > Math.abs(dy);
+    if (run) {
+      window.clearTimeout(run.timer);
+      // Against the run: for one that has turned the page, a delta back the
+      // other way; for a list being scrolled, one that is plainly sideways.
+      const against = run.done
+        ? dx * run.dx < 0
+        : run.axis === "y" && Math.abs(dx) >= AXIS && Math.abs(dx) > 2 * Math.abs(dy);
+      run.against = against ? run.against + 1 : 0;
+      if (run.against >= 2) run = null;
+    }
+    if (!run) {
+      run = { dx: 0, dy: 0, axis: null, done: false, against: 0, timer: 0 };
+      wheelRef.current = run;
+    }
+    run.timer = window.setTimeout(() => endWheel(run), QUIET);
+    if (run.axis === "y") return;
+    if (run.done) {
+      event.preventDefault();
+      return;
+    }
+    run.dx += dx;
+    run.dy += dy;
+    if (!run.axis) {
+      if (Math.abs(run.dx) < AXIS && Math.abs(run.dy) < AXIS) {
+        // Safari decides on the first event of a swipe whether the swipe is its
+        // own, so a sideways one is claimed before its axis is settled.
+        if (sideways) event.preventDefault();
+        return;
+      }
+      run.axis = Math.abs(run.dx) > Math.abs(run.dy) ? "x" : "y";
+      if (run.axis === "y") return;
+      // The strip has to slide by the time this run settles it, which for a
+      // flick is this same event — before the render setTurned asks for has
+      // taken the class off (see .card-track.placing in styles.css).
+      setTurned(true);
+      trackRef.current?.classList.remove("placing");
+    }
+    event.preventDefault();
+    // The strip goes where the fingers go. A swipe to the left arrives as a
+    // positive delta — that is what scrolling to the right is — and a strip moved
+    // to the left is a drag to the left, so the sign turns over. Whichever way
+    // the trackpad is set to scroll, its wheel deltas already say so, and the page
+    // turns the way the rest of the Mac turns on the same swipe.
+    const offset = -run.dx;
+    if (Math.abs(offset) < TURN) {
+      pullTrack(offset);
+      return;
+    }
+    run.done = true;
+    const next = pageAfter(offset);
+    settleTrack(next);
+    if (next !== current) turnTo(next);
+  }
+
+  // The run has fallen silent. A pull that never went far enough is put back; a
+  // run that turned the page left the strip where it settled, and one that came
+  // in while the map had the window has nothing to put back.
+  function endWheel(run) {
+    if (wheelRef.current !== run) return;
+    wheelRef.current = null;
+    if (run.axis === "x" && !run.done && !frozenRef.current) settleTrack(current);
   }
 
   // Picking a card up is the other thing a press on the dashboard can be, and it
@@ -821,6 +974,9 @@ export default function HomePage() {
           // Both hands on the same four. A pointer that is not a finger is the
           // mouse and the trackpad — a touch raises pointer events of its own on
           // top of the touch ones, and reading a drag twice would turn two pages.
+          // The trackpad's other gesture, two fingers swept across it, is the
+          // wheel rather than a pointer at all, and is listened for on this
+          // same element from an effect above (see wheelSwipe).
           onPointerDown={(event) => {
             if (event.pointerType === "touch") return;
             // A card still in hand as a new press begins is one whose release was
