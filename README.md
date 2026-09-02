@@ -32,7 +32,9 @@ And you can say something to them. A post is left on the ground for anyone; a me
 addressed to one person wherever they are. The envelope in the top bar opens them over
 whatever you were looking at, and wears a small mark when one is waiting — a row there is a
 person, and pressing one opens the exchange with a box at the foot of it to answer in. The
-button beside Follow on somebody's page opens the same thing from the other end.
+button beside Follow on somebody's page opens the same thing from the other end. Somebody
+pressing Follow itself turns up in the same list: a row saying they started following you,
+which opens their page, and the mark on the envelope counts it until you have looked.
 
 What is yours alone is kept as files rather than as rows: `data/users/<name>/marks.json` is
 the spots you have marked, and `settings.json` beside it is how lo is shown to you — the

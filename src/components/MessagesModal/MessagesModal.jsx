@@ -1,17 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
-import { AuthImage, Modal, Skeleton } from "../../ui/index.js";
+import { AuthImage, Link, Modal, Skeleton } from "../../ui/index.js";
+import { nameLink } from "../../utils/back.js";
 import { formatUsername, relativeTime } from "../../utils/format.js";
 import CommentsModal from "../CommentsModal/index.js";
 import { useHere } from "../LocationProvider/index.js";
 import MessageModal from "../MessageModal/index.js";
 import styles from "./messages.module.css";
 
-// Which row a row is. Two kinds share this list and neither's name is unique
-// against the other's, so what identifies a row is its kind and the thing it is
-// about — a person by name, a post by number.
-const rowKey = (row) => (row.kind === "post" ? `post:${row.postId}` : `person:${row.username}`);
+// Which row a row is. Three kinds share this list and no kind's name is unique
+// against another's — the person you trade letters with may be the person who
+// followed you — so what identifies a row is its kind and the thing it is about:
+// a person by name, a post by number, a follower by name again under its own
+// prefix.
+const rowKey = (row) => `${row.kind}:${row.kind === "post" ? row.postId : row.username}`;
 
 // The inbox, over whatever page the reader was on. A sheet rather than a page of
 // its own, on the same terms as the account: what somebody said to you is
@@ -23,13 +26,17 @@ const rowKey = (row) => (row.kind === "post" ? `post:${row.postId}` : `person:${
 // "out" would cut one conversation in half and put the halves in different
 // boxes.
 //
-// Two kinds of conversation, because there are two ways somebody says something
-// to you here: a letter, which is addressed, and a remark under a post, which is
-// left in the open for whoever comes past. Both are somebody writing and both
-// want answering, so both are read down one column, newest first — what differs
-// is what a row is about and where the press goes. A person opens the exchange
-// (see MessageModal); a post opens its comment column (see CommentsModal), and
-// is in the list because the post is yours or because you have written under it.
+// Three kinds of row, because there are three ways somebody says something to
+// you here: a letter, which is addressed; a remark under a post, which is left
+// in the open for whoever comes past; and a follow, which says nothing in words
+// but is said to you all the same — "I am reading you". All three are somebody
+// turning to you, so all three are read down one column, newest first — what
+// differs is what a row is about and where the press goes. A person opens the
+// exchange (see MessageModal); a post opens its comment column (see
+// CommentsModal), and is in the list because the post is yours or because you
+// have written under it; a follower opens their page, which is the whole of
+// what there is to do about one, and having it in front of you is what marks
+// the row read (see GET /api/users/:username).
 //
 // `open` is a thread to stand on rather than a list to look at: the sheet is
 // being put back up for a reader who left one of its conversations by pressing a
@@ -98,6 +105,12 @@ export default function MessagesModal({ isOpen, open = null, onClose }) {
   // Which row has its delete revealed, and nothing when none has. One at a time:
   // a swipe on one row is also the gesture that puts any other row back.
   const [revealed, setRevealed] = useState(null);
+
+  // What a follower's row does on the way out: the inbox written down as the
+  // sheet to come back to — the list itself rather than any thread in it, since
+  // the row was the whole of the news — and the sheet closed, because what the
+  // press leads to is a page (see nameLink in utils/back.js).
+  const leave = nameLink({ kind: "inbox" }, onClose);
   // The swipe in progress, and the flag that keeps the click a horizontal drag
   // raises from being read as a tap that opens the thread.
   const swipe = useRef(null);
@@ -208,21 +221,64 @@ export default function MessagesModal({ isOpen, open = null, onClose }) {
               {conversations.map((conversation) => {
                 const key = rowKey(conversation);
                 const onPost = conversation.kind === "post";
+                const onFollow = conversation.kind === "follow";
+                // A letter is the one kind with something behind it (see remove),
+                // so it is the one kind that slides and the one with a delete.
+                const letter = conversation.kind === "person";
                 // What the row is headed by. A letter is headed by whoever wrote
                 // it, because that is the whole of what the exchange is about; a
                 // column is headed by the post it hangs under, said as a remark
                 // about it — the words themselves, or where they were left, or
-                // the plainest thing there is to call a post with neither.
+                // the plainest thing there is to call a post with neither; a
+                // follow is headed by the follower, the way a letter is.
                 const about = onPost
                   ? t("messages.onPost", {
                       post: conversation.post || conversation.place || t("comments.aboutPost"),
                     })
                   : formatUsername(conversation.username);
                 // Whichever picture the thread has: the correspondent's face on a
-                // letter, and on a column the photo that was posted — which is
-                // what a reader recognises the post by, the way they recognise a
-                // person by theirs.
+                // letter or a follow, and on a column the photo that was posted —
+                // which is what a reader recognises the post by, the way they
+                // recognise a person by theirs.
                 const picture = onPost ? conversation.image : conversation.avatar;
+                // The face of the row — picture, name, last line — made once and
+                // put in whichever control the kind calls for below.
+                const face = (
+                  <>
+                    {picture && (
+                      <AuthImage className={styles.avatar} src={picture} alt="" width="28" height="28" />
+                    )}
+                    <span className={styles.lines}>
+                      <span className={styles.who}>{about}</span>
+                      {/* The last thing said, whoever said it, marked when it was
+                          the reader's own: without that a row reads as something
+                          waiting to be answered when it is the answer. Under a
+                          post the name comes with it, because a column has as
+                          many voices in it as came past and the head of the row
+                          names the post rather than any of them. A follow said
+                          nothing in words, so the row says it in lo's. When it
+                          was said leads the line — the time is read first, then
+                          the words it dates. */}
+                      <span className={styles.preview}>
+                        <time className={styles.when} dateTime={conversation.time}>
+                          {relativeTime(conversation.time, i18n.language, t)}
+                        </time>
+                        <span className={styles.previewText}>
+                          {onFollow
+                            ? t("messages.followed")
+                            : conversation.mine
+                              ? t("messages.said", { body: conversation.body })
+                              : onPost
+                                ? t("messages.saidBy", {
+                                    name: formatUsername(conversation.username),
+                                    body: conversation.body,
+                                  })
+                                : conversation.body}
+                        </span>
+                      </span>
+                    </span>
+                  </>
+                );
                 return (
                   <li key={key} className={styles.row}>
                     {/* The row slides left under a swipe to uncover the delete
@@ -230,9 +286,9 @@ export default function MessagesModal({ isOpen, open = null, onClose }) {
                         the whole exchange taken down. A row with something unread on
                         it wears the warning wash rather than a mark of its own.
 
-                        A post row does neither: there is nothing behind it to
-                        uncover, so it is not given a gesture that would carry it
-                        left onto bare paper. */}
+                        A post row and a follower's row do neither: there is nothing
+                        behind either to uncover, so neither is given a gesture that
+                        would carry it left onto bare paper. */}
                     <div
                       className={[
                         styles.slider,
@@ -241,52 +297,50 @@ export default function MessagesModal({ isOpen, open = null, onClose }) {
                       ]
                         .filter(Boolean)
                         .join(" ")}
-                      onPointerDown={onPost ? undefined : (event) => onSwipeStart(event, key)}
-                      onPointerUp={onPost ? undefined : onSwipeEnd}
+                      onPointerDown={letter ? (event) => onSwipeStart(event, key) : undefined}
+                      onPointerUp={letter ? onSwipeEnd : undefined}
                       onPointerCancel={
-                        onPost
-                          ? undefined
-                          : () => {
+                        letter
+                          ? () => {
                               swipe.current = null;
                             }
+                          : undefined
                       }
                     >
-                      <button type="button" className={styles.item} onClick={() => openThread(conversation)}>
-                        {picture && (
-                          <AuthImage className={styles.avatar} src={picture} alt="" width="28" height="28" />
-                        )}
-                        <span className={styles.lines}>
-                          <span className={styles.who}>{about}</span>
-                          {/* The last thing said, whoever said it, marked when it was
-                              the reader's own: without that a row reads as something
-                              waiting to be answered when it is the answer. Under a
-                              post the name comes with it, because a column has as
-                              many voices in it as came past and the head of the row
-                              names the post rather than any of them. When it was said
-                              leads the line — the time is read first, then the words
-                              it dates. */}
-                          <span className={styles.preview}>
-                            <time className={styles.when} dateTime={conversation.time}>
-                              {relativeTime(conversation.time, i18n.language, t)}
-                            </time>
-                            <span className={styles.previewText}>
-                              {conversation.mine
-                                ? t("messages.said", { body: conversation.body })
-                                : onPost
-                                  ? t("messages.saidBy", {
-                                      name: formatUsername(conversation.username),
-                                      body: conversation.body,
-                                    })
-                                  : conversation.body}
-                            </span>
-                          </span>
-                        </span>
-                      </button>
+                      {/* A follower's row is a link and the other two are buttons,
+                          for what is on the far side of the press: their page has
+                          an address, and a sheet over this one does not. The sheet
+                          goes with the press and writes itself down on the way out,
+                          so the ← on that page comes back to the inbox (see
+                          utils/back.js) — bar a delete standing open on some other
+                          row, which the press puts away instead, the same as a
+                          press on any row here does. */}
+                      {onFollow ? (
+                        <Link
+                          to={`/${encodeURIComponent(conversation.username)}`}
+                          className={styles.item}
+                          state={leave.state}
+                          onClick={(event) => {
+                            if (revealed) {
+                              event.preventDefault();
+                              setRevealed(null);
+                              return;
+                            }
+                            leave.onClick(event);
+                          }}
+                        >
+                          {face}
+                        </Link>
+                      ) : (
+                        <button type="button" className={styles.item} onClick={() => openThread(conversation)}>
+                          {face}
+                        </button>
+                      )}
                     </div>
                     {/* Behind the row until a swipe uncovers it: a sibling of the
                         slider rather than inside it, since one control cannot sit
                         within another. */}
-                    {!onPost && (
+                    {letter && (
                       <button
                         type="button"
                         className={styles.delete}
@@ -315,10 +369,11 @@ export default function MessagesModal({ isOpen, open = null, onClose }) {
           would be a fixed box inside a scrolling column — out here it is the
           page's child, like every other sheet in lo.
 
-          One for each kind of row, and the same sheet the rest of lo opens on
-          either: the exchange a name on a profile writes into, and the comment
-          column a bubble on the map opens. A row here is a way back to a
-          conversation, not a second place to have it. */}
+          One for each kind of row that opens a sheet, and the same sheet the
+          rest of lo opens on either: the exchange a name on a profile writes
+          into, and the comment column a bubble on the map opens. A row here is
+          a way back to a conversation, not a second place to have it. A
+          follower's row has no sheet — it leaves for their page. */}
       {/* And the way back out of either of them, for a reader who presses one of
           the names inside: the inbox standing on this thread is what the ← on
           that person's profile comes back to, which is two sheets rather than

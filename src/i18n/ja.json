@@ -444,6 +444,7 @@
     "said": "自分：{{body}}",
     "saidBy": "{{name}}：{{body}}",
     "onPost": "「{{post}}」について",
+    "followed": "あなたをフォローしました",
     "emptyThread": "{{name}} とのやり取りはまだありません",
     "placeholder": "返信を書く",
     "send": "送信",

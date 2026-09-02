@@ -40,6 +40,7 @@ import {
   getVenueComments,
   readComments,
   readConversation,
+  readFollow,
   recordLogin,
   savePlace,
   savePosition,
@@ -768,14 +769,25 @@ app.get("/api/users/:username", requireSession, (req, res) => {
   if (!USERNAME_RE.test(username)) return res.status(400).json({ error: USERNAME_HINT });
   const user = getProfile(username);
   if (!user) return res.status(404).json({ error: "No such user", code: "USER_NOT_FOUND" });
+  // If this person follows the reader, the reader has now been told: the row in
+  // the inbox saying so is a way through to this page, and a page somebody has
+  // just been shown is one they have seen — the same rule that reads a
+  // conversation by asking for it. Nearly always a no-op, since most pages are
+  // about people who do not follow you, and nothing on the way in asks first.
+  readFollow(req.user.id, username);
   // Who reads them, who they read, and whether the reader asking is one of the
   // first — part of the same answer as the bio and the posts, because it is
   // drawn as one page and a second request for it would let the row of figures
   // arrive after the page it belongs to.
+  //
+  // The unread figure comes with it, already counted down by the reading above,
+  // so the dot in the bar goes out as the page lands rather than on the presence
+  // loop's next beat — the same reason a conversation carries it.
   res.json({
     user,
     follows: getFollowStats(req.user.id, username),
     posts: getPostsByUser(username, PROFILE_POSTS),
+    unread: countUnread(req.user.id),
   });
 });
 

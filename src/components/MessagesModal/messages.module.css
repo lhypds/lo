@@ -85,9 +85,12 @@
 
 /* The picture, two lines of who and what, and when at the far end — the row a
    list of people has in lo, with the second line being the one thing this list
-   adds. A button rather than a link, because what is on the other side of the
-   press is a sheet over this one rather than an address: an exchange between two
-   accounts is nobody else's to open, so there is nothing here to link to.
+   adds. A button rather than a link on a letter or a column, because what is on
+   the other side of the press is a sheet over this one rather than an address:
+   an exchange between two accounts is nobody else's to open, so there is
+   nothing there to link to. A follower's row is the one that is a link — what
+   it leads to is their page, which has an address — and it wears the same
+   clothes, underline off, so the three kinds read as one list.
 
    Set on the top rather than the middle: the name starts where the picture
    starts, so a row whose last line runs long reads against the same edge as one
@@ -104,6 +107,7 @@
   color: inherit;
   font: inherit;
   text-align: left;
+  text-decoration: none;
   cursor: pointer;
 }
 

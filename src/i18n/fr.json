@@ -448,6 +448,7 @@
     "said": "Vous : {{body}}",
     "saidBy": "{{name}} : {{body}}",
     "onPost": "Sur « {{post}} »",
+    "followed": "Vous suit désormais",
     "emptyThread": "Aucun échange avec {{name}} pour le moment",
     "placeholder": "Écrire une réponse",
     "send": "Envoyer",

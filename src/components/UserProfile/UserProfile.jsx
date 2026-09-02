@@ -10,6 +10,7 @@ import { postThumb } from "../../utils/image.js";
 import { profileLinks } from "../../utils/links.js";
 import { workName } from "../../utils/work.js";
 import { useAuth } from "../AuthProvider/index.js";
+import { useHere } from "../LocationProvider/index.js";
 import AccountModal from "../AccountModal/index.js";
 import FollowsModal from "../FollowsModal/index.js";
 import MessageModal from "../MessageModal/index.js";
@@ -36,6 +37,11 @@ import styles from "./user.module.css";
 export default function UserProfile({ username }) {
   const { t, i18n } = useTranslation();
   const { user } = useAuth();
+  // Opening this page is what reads the news that its owner follows you (see
+  // GET /api/users/:username), and the figure the dot in the bar wears comes
+  // back with the page already counted down — handed to the bar here so it goes
+  // out as the page lands rather than on the presence loop's next beat.
+  const { noteUnread } = useHere();
   const [profile, setProfile] = useState(null);
   const [posts, setPosts] = useState([]);
   const [error, setError] = useState("");
@@ -88,6 +94,7 @@ export default function UserProfile({ username }) {
         setProfile(data.user);
         setPosts(data.posts ?? []);
         setFollows(data.follows ?? null);
+        if (typeof data.unread === "number") noteUnread?.(data.unread);
       })
       .catch((requestError) => {
         if (!cancelled) setError(requestError.message);
@@ -95,7 +102,7 @@ export default function UserProfile({ username }) {
     return () => {
       cancelled = true;
     };
-  }, [username]);
+  }, [username, noteUnread]);
 
   // Coming back from a profile one of this page's own sheets led to: a name in
   // the followers or following list, or the name over the far side of the

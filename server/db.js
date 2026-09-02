@@ -304,10 +304,18 @@ db.exec(`
   -- The CHECK is the one shape a row must not take. Following yourself would put
   -- a name in its own list and add one to both figures on its own page, and the
   -- endpoint refuses it too — this is the copy that holds whatever asks.
+  --
+  -- seen_at is the one thing here the person being followed is told: that it
+  -- happened. A follow is a word said to somebody as much as a letter is — "I
+  -- am reading you" — so it goes down the inbox with the letters (see
+  -- selectFollowThreads), and this is the counterpart of messages.read_at on it.
+  -- Null until the followed account has had the follower's page in front of
+  -- them, which is what puts the row among what is waiting.
   CREATE TABLE IF NOT EXISTS follows (
     follower_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     followee_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    seen_at TEXT,
     PRIMARY KEY (follower_id, followee_id),
     CHECK (follower_id <> followee_id)
   ) WITHOUT ROWID;
@@ -585,6 +593,13 @@ if (!userColumns.has("discoverable")) {
 // is already there and this does nothing.
 const messageColumns = new Set(db.prepare(`PRAGMA table_info(messages)`).all().map((column) => column.name));
 if (!messageColumns.has("deleted_at")) db.exec(`ALTER TABLE messages ADD COLUMN deleted_at TEXT`);
+
+// Being told about a follower arrived after the first follows were made. Every
+// row already there is left null, which reads as unseen: an account that has
+// been followed for a month and never told is one the inbox owes the news to
+// once, and nothing else in lo knows whether they found out some other way.
+const followColumns = new Set(db.prepare(`PRAGMA table_info(follows)`).all().map((column) => column.name));
+if (!followColumns.has("seen_at")) db.exec(`ALTER TABLE follows ADD COLUMN seen_at TEXT`);
 
 // And the thumbnail arrived after the first photos were posted. The posts that
 // predate it keep an empty column rather than being given anything made up:
@@ -1065,6 +1080,49 @@ const selectFollowing = db.prepare(`
   WHERE f.follower_id = ?
   ORDER BY f.created_at DESC, u.id DESC
   LIMIT ?
+`);
+
+// The third half of an inbox: who has started reading this account. The same
+// rows the followers sheet draws, read as news rather than as a list — a row is
+// the follower, when they turned up, and whether the followed account has been
+// told yet. There is no body: the whole of what was said is that it happened,
+// and the row says it in its own words (see MessagesModal).
+//
+// `unread` is a yes or no rather than a count, in the count's clothes, so the
+// row reads the same way a letter's does and the figure the dot adds up is the
+// same figure whichever table it came from.
+const selectFollowThreads = db.prepare(`
+  SELECT ${FOLLOW_COLUMNS},
+    f.seen_at IS NULL AS unread
+  FROM follows f
+  JOIN users u ON u.id = f.follower_id
+  WHERE f.followee_id = ?
+  ORDER BY f.created_at DESC, u.id DESC
+  LIMIT ?
+`);
+
+// How many followers this account has not been told about, for the dot in the
+// top bar. Same rule as the two counts it is added to: a row nobody has read.
+const countUnseenFollows = db.prepare(`
+  SELECT COUNT(*) AS count
+  FROM follows
+  WHERE followee_id = ? AND seen_at IS NULL
+`);
+
+// Having the follower's page in front of you is what reads the news that they
+// follow you (see GET /api/users/:username): the row the inbox led to is that
+// page, and there is no button for it, for the reason there is none on a
+// conversation. Only the unmarked row is touched, so the stamp is when the
+// account first found out rather than when they last looked.
+//
+// The follower by name, because that is what the page was asked for — the same
+// turn selectFollowStats takes — and a page about somebody who follows nobody
+// matches no row, which is the right amount of nothing.
+const markFollowSeen = db.prepare(`
+  UPDATE follows
+  SET seen_at = ?
+  WHERE follower_id = (SELECT id FROM users WHERE username = ?)
+    AND followee_id = ? AND seen_at IS NULL
 `);
 
 /* ----------------------------------------------------------------- comments */
@@ -1764,13 +1822,15 @@ function withRead(row) {
   return line ? { ...line, read: row.read === 1 } : null;
 }
 
-// The inbox: two tables and one list. A word addressed to you and a word left
-// under something you wrote are the same thing to whoever is reading them —
-// somebody said something, and here is where to answer — so they are read down
-// one column. What tells them apart is `kind`, and what that decides is where a
-// press goes: a person opens the exchange, a post opens its comment column.
+// The inbox: three tables and one list. A word addressed to you, a word left
+// under something you wrote, and somebody starting to read you are the same
+// thing to whoever is reading them — somebody did something that was about you,
+// and here is where it leads — so they are read down one column. What tells
+// them apart is `kind`, and what that decides is where a press goes: a person
+// opens the exchange, a post opens its comment column, a follower opens their
+// page.
 //
-// Merged here rather than by whoever draws it. Both halves are asked for whole
+// Merged here rather than by whoever draws it. Every part is asked for whole
 // and the list is cut to length afterwards, so a busy month of comments cannot
 // crowd out a letter that was said more recently than any of them.
 export function getThreads(userId, limit = 100) {
@@ -1780,9 +1840,17 @@ export function getThreads(userId, limit = 100) {
   const posts = selectPostThreads
     .all(userId, userId, userId, userId, userId, limit)
     .map((row) => ({ ...withSide(row), kind: "post" }));
-  return [...people, ...posts]
+  const followers = selectFollowThreads.all(userId, limit).map((row) => ({ ...row, kind: "follow" }));
+  return [...people, ...posts, ...followers]
     .sort((a, b) => (a.time < b.time ? 1 : a.time > b.time ? -1 : 0))
     .slice(0, limit);
+}
+
+// Reading somebody's page reads the news that they follow you. Nothing to hand
+// back: the page it is called from answers with the profile, and the figure the
+// dot wears is counted again after this has run (see countUnread).
+export function readFollow(viewerId, followerUsername) {
+  markFollowSeen.run(new Date().toISOString(), followerUsername, viewerId);
 }
 
 // Opening a comment column is what reads it, exactly as asking for a
@@ -1801,15 +1869,17 @@ export function getConversation(userId, otherUserId, limit = 200) {
     .map(withRead);
 }
 
-// What the dot on the letter in the top bar is counting, both kinds at once: the
+// What the dot on the letter in the top bar is counting, every kind at once: the
 // bar has one letter on it and what it is saying is "somebody wrote", which is
-// as true of a remark under your photo as of a line addressed to you. Two
-// readings and one figure, because the dot is one dot — which of the two it came
-// from is the inbox's answer to give, not the bar's.
+// as true of a remark under your photo, or of a name arriving on your followers
+// list, as of a line addressed to you. Three readings and one figure, because
+// the dot is one dot — which of them it came from is the inbox's answer to give,
+// not the bar's.
 export function countUnread(userId) {
   const letters = countUnreadMessages.get(userId)?.count ?? 0;
   const remarks = countUnreadComments.get(userId, userId, userId, userId)?.count ?? 0;
-  return letters + remarks;
+  const followers = countUnseenFollows.get(userId)?.count ?? 0;
+  return letters + remarks + followers;
 }
 
 export function readConversation(userId, otherUserId) {

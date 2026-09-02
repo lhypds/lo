@@ -448,6 +448,7 @@
     "said": "Tú: {{body}}",
     "saidBy": "{{name}}: {{body}}",
     "onPost": "En «{{post}}»",
+    "followed": "Empezó a seguirte",
     "emptyThread": "Aún no has hablado con {{name}}",
     "placeholder": "Escribe una respuesta",
     "send": "Enviar",

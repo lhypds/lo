@@ -448,6 +448,7 @@
     "said": "You: {{body}}",
     "saidBy": "{{name}}: {{body}}",
     "onPost": "On “{{post}}”",
+    "followed": "Started following you",
     "emptyThread": "Nothing said to {{name}} yet",
     "placeholder": "Write a reply",
     "send": "Send",
