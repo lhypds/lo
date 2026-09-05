@@ -41,6 +41,7 @@ import {
   readComments,
   readConversation,
   readFollow,
+  readNotice,
   recordLogin,
   savePlace,
   savePosition,
@@ -1414,6 +1415,8 @@ app.post("/api/posts", requireSession, async (req, res, next) => {
     // mark's is: the place name is what the post is filed under, and it should
     // read the same however the post was made.
     const place = await lookupPlace(location.latitude, location.longitude, requestedLang(req)).catch(() => null);
+    // The row, and a word to everybody who follows the author that it is there
+    // — the inbox row that says so is the same act (see createPost in db.js).
     const post = createPost(req.user.id, {
       ...location,
       ...content,
@@ -1504,13 +1507,17 @@ function commentTarget(req, res) {
 //
 // And asking for it is what marks it read, exactly as asking for a conversation
 // is (see /api/messages/:username below): a column somebody has just been shown
-// is one they have seen, and lo has no button anywhere for saying so. The unread
-// figure comes back already counted down by this reading, so the dot in the bar
-// goes out as the words arrive rather than on the bar's next beat.
+// is one they have seen, and lo has no button anywhere for saying so. Both of
+// the things the column can be in the inbox for are read by the one asking —
+// the remarks under it, and the news that somebody the reader follows left the
+// post at all (see readNotice) — since the column is where either row leads.
+// The unread figure comes back already counted down by this reading, so the dot
+// in the bar goes out as the words arrive rather than on the bar's next beat.
 app.get("/api/posts/:postId/comments", requireSession, (req, res) => {
   const post = commentTarget(req, res);
   if (!post) return;
   readComments(req.user.id, post.id);
+  readNotice(req.user.id, post.id);
   res.json({ comments: getComments(post.id, COMMENTS_MAX), unread: countUnread(req.user.id) });
 });
 

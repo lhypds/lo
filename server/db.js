@@ -404,6 +404,36 @@ db.exec(`
     PRIMARY KEY (user_id, post_id)
   ) WITHOUT ROWID;
 
+  -- Word to everybody reading an account that it has left a post. Following
+  -- somebody is asking to be told when they do — that is the whole of what the
+  -- button asks for — so leaving a post writes a row here for every follower
+  -- the author has at that moment (see createPost), one each, the way a letter
+  -- is one row per person it is addressed to.
+  --
+  -- Sent rather than worked out: a reading of follows against posts would say
+  -- who follows the author *now*, and the news went to whoever followed them
+  -- *then*. Somebody who followed afterwards was not told and is owed nothing;
+  -- somebody who has since unfollowed was told, and a falling-out does not
+  -- unsay it. It also means a post left before this table existed told nobody,
+  -- which is true — there is nothing to migrate.
+  --
+  -- seen_at is the counterpart of follows.seen_at: null until the follower has
+  -- had the post's column in front of them (see readNotice), which is what puts
+  -- the row among what is waiting. The row goes with the post, so a post its
+  -- author took back down is news nobody is still owed.
+  CREATE TABLE IF NOT EXISTS post_notices (
+    post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    seen_at TEXT,
+    PRIMARY KEY (post_id, user_id)
+  ) WITHOUT ROWID;
+
+  -- The inbox reads these by whoever was told, newest first. The key above
+  -- answers the other question, which is whether one account has been told
+  -- about one post — the one the reading stamps (see markNoticeSeen).
+  CREATE INDEX IF NOT EXISTS post_notices_user_idx ON post_notices(user_id, created_at DESC);
+
   -- What people have said about a restaurant or café from OpenStreetMap. Kept
   -- beside post comments rather than forced into them: a venue has OSM's stable
   -- type/id pair but no row in lo for a foreign key to point at, while a post is
@@ -1125,6 +1155,69 @@ const markFollowSeen = db.prepare(`
     AND followee_id = ? AND seen_at IS NULL
 `);
 
+/* ------------------------------------------------------------------ notices */
+
+// Everybody reading the author, told at once: one statement, however many
+// there are, and none where there are none. The author is never among them —
+// following yourself is a shape the follows table refuses — so nobody is told
+// about their own post.
+const insertPostNotices = db.prepare(`
+  INSERT INTO post_notices (post_id, user_id)
+  SELECT ?, follower_id
+  FROM follows
+  WHERE followee_id = ?
+`);
+
+// The fourth part of an inbox: what the people this account reads have been
+// leaving. A row is headed by the author, the way a follow's is by the
+// follower, since the reader knows the news by who it is from — and it carries
+// enough of the post to say what was left and to open its column on the way
+// through (the same three things a post row hands the sheet, see
+// selectPostThreads). Its time is when the word was sent rather than the post's
+// own, which the author's device supplied and may be well in the past.
+//
+// `unread` is a yes or no in the count's clothes, for the reason a follow's is.
+const selectNoticeThreads = db.prepare(`
+  SELECT
+    p.id AS postId,
+    p.body AS post,
+    p.place,
+    CASE
+      WHEN p.image IS NULL THEN NULL
+      ELSE '/api/images/' || COALESCE(p.image_thumb, p.image)
+    END AS image,
+    u.username,
+    CASE WHEN u.avatar IS NULL THEN NULL ELSE '/api/images/' || u.avatar END AS avatar,
+    n.created_at AS time,
+    n.seen_at IS NULL AS unread
+  FROM post_notices n
+  JOIN posts p ON p.id = n.post_id
+  JOIN users u ON u.id = p.user_id
+  WHERE n.user_id = ?
+  ORDER BY n.created_at DESC, p.id DESC
+  LIMIT ?
+`);
+
+// How many posts this account has been told about and not looked at, for the
+// dot in the top bar. Same rule as the three counts it is added to.
+const countUnseenNotices = db.prepare(`
+  SELECT COUNT(*) AS count
+  FROM post_notices
+  WHERE user_id = ? AND seen_at IS NULL
+`);
+
+// Having the post's column in front of you is what reads the news that it was
+// left (see GET /api/posts/:postId/comments): that column is where the row in
+// the inbox leads, and a post somebody has just been shown is one they have
+// seen. Only the unmarked row is touched, so the stamp is when they first saw
+// it; a post nobody told this reader about matches no row, which is the right
+// amount of nothing.
+const markNoticeSeen = db.prepare(`
+  UPDATE post_notices
+  SET seen_at = ?
+  WHERE user_id = ? AND post_id = ? AND seen_at IS NULL
+`);
+
 /* ----------------------------------------------------------------- comments */
 
 const insertComment = db.prepare(`
@@ -1628,6 +1721,10 @@ export function setDiscoverable(userId, on) {
   return on;
 }
 
+// Leaving a post is also telling everybody who reads the author that it is
+// there: the row, and then a word to each follower about it (see post_notices).
+// Done here rather than by the endpoint because they are one act — there is no
+// way of leaving a post that its followers are not owed the news of.
 export function createPost(userId, post) {
   const result = insertPost.run(
     userId,
@@ -1642,7 +1739,9 @@ export function createPost(userId, post) {
     post.imageHeight ?? null,
     post.place ?? null,
   );
-  return selectPostById.get(Number(result.lastInsertRowid));
+  const postId = Number(result.lastInsertRowid);
+  insertPostNotices.run(postId, userId);
+  return selectPostById.get(postId);
 }
 
 // Posts are everyone's, so they are asked for by ground rather than by author:
@@ -1822,13 +1921,14 @@ function withRead(row) {
   return line ? { ...line, read: row.read === 1 } : null;
 }
 
-// The inbox: three tables and one list. A word addressed to you, a word left
-// under something you wrote, and somebody starting to read you are the same
-// thing to whoever is reading them — somebody did something that was about you,
-// and here is where it leads — so they are read down one column. What tells
-// them apart is `kind`, and what that decides is where a press goes: a person
-// opens the exchange, a post opens its comment column, a follower opens their
-// page.
+// The inbox: four tables and one list. A word addressed to you, a word left
+// under something you wrote, somebody starting to read you, and somebody you
+// read leaving a post are the same thing to whoever is reading them — somebody
+// did something that was about you, and here is where it leads — so they are
+// read down one column. What tells them apart is `kind`, and what that decides
+// is where a press goes: a person opens the exchange, a post opens its comment
+// column, a follower opens their page, and a post somebody you follow left
+// opens its column the way your own would.
 //
 // Merged here rather than by whoever draws it. Every part is asked for whole
 // and the list is cut to length afterwards, so a busy month of comments cannot
@@ -1841,7 +1941,8 @@ export function getThreads(userId, limit = 100) {
     .all(userId, userId, userId, userId, userId, limit)
     .map((row) => ({ ...withSide(row), kind: "post" }));
   const followers = selectFollowThreads.all(userId, limit).map((row) => ({ ...row, kind: "follow" }));
-  return [...people, ...posts, ...followers]
+  const notices = selectNoticeThreads.all(userId, limit).map((row) => ({ ...row, kind: "posted" }));
+  return [...people, ...posts, ...followers, ...notices]
     .sort((a, b) => (a.time < b.time ? 1 : a.time > b.time ? -1 : 0))
     .slice(0, limit);
 }
@@ -1851,6 +1952,12 @@ export function getThreads(userId, limit = 100) {
 // dot wears is counted again after this has run (see countUnread).
 export function readFollow(viewerId, followerUsername) {
   markFollowSeen.run(new Date().toISOString(), followerUsername, viewerId);
+}
+
+// Opening a post's column reads the news that somebody you follow left it, on
+// the same terms: the column is where the row led, and nothing hands back.
+export function readNotice(userId, postId) {
+  markNoticeSeen.run(new Date().toISOString(), userId, postId);
 }
 
 // Opening a comment column is what reads it, exactly as asking for a
@@ -1871,15 +1978,16 @@ export function getConversation(userId, otherUserId, limit = 200) {
 
 // What the dot on the letter in the top bar is counting, every kind at once: the
 // bar has one letter on it and what it is saying is "somebody wrote", which is
-// as true of a remark under your photo, or of a name arriving on your followers
-// list, as of a line addressed to you. Three readings and one figure, because
-// the dot is one dot — which of them it came from is the inbox's answer to give,
-// not the bar's.
+// as true of a remark under your photo, of a name arriving on your followers
+// list, or of a post left by somebody you read, as of a line addressed to you.
+// Four readings and one figure, because the dot is one dot — which of them it
+// came from is the inbox's answer to give, not the bar's.
 export function countUnread(userId) {
   const letters = countUnreadMessages.get(userId)?.count ?? 0;
   const remarks = countUnreadComments.get(userId, userId, userId, userId)?.count ?? 0;
   const followers = countUnseenFollows.get(userId)?.count ?? 0;
-  return letters + remarks + followers;
+  const notices = countUnseenNotices.get(userId)?.count ?? 0;
+  return letters + remarks + followers + notices;
 }
 
 export function readConversation(userId, otherUserId) {

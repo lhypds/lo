@@ -34,7 +34,9 @@ whatever you were looking at, and wears a small mark when one is waiting — a r
 person, and pressing one opens the exchange with a box at the foot of it to answer in. The
 button beside Follow on somebody's page opens the same thing from the other end. Somebody
 pressing Follow itself turns up in the same list: a row saying they started following you,
-which opens their page, and the mark on the envelope counts it until you have looked.
+which opens their page, and the mark on the envelope counts it until you have looked. And
+following is what asks to be told: when somebody you follow leaves a post, everyone
+following them gets a row saying so, which opens the post and what has been said under it.
 
 What is yours alone is kept as files rather than as rows: `data/users/<name>/marks.json` is
 the spots you have marked, and `settings.json` beside it is how lo is shown to you — the

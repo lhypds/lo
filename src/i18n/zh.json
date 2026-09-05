@@ -445,6 +445,8 @@
     "saidBy": "{{name}}：{{body}}",
     "onPost": "关于“{{post}}”",
     "followed": "关注了你",
+    "posted": "发了一条 post：{{post}}",
+    "postedPhoto": "发了一张照片",
     "emptyThread": "还没有和 {{name}} 说过话",
     "placeholder": "写下回复",
     "send": "发送",

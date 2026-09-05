@@ -445,6 +445,8 @@
     "saidBy": "{{name}}：{{body}}",
     "onPost": "「{{post}}」について",
     "followed": "あなたをフォローしました",
+    "posted": "「{{post}}」を post しました",
+    "postedPhoto": "写真を post しました",
     "emptyThread": "{{name}} とのやり取りはまだありません",
     "placeholder": "返信を書く",
     "send": "送信",
