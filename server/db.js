@@ -904,6 +904,15 @@ const deleteSessionByHash = db.prepare(`
   WHERE token_hash = ?
 `);
 
+// The expiry pushed forward on a session that is being used — presenting the
+// token is what proves the device is still in somebody's hands, and it is the
+// whole of what this row exists to record (see currentSession in index.js).
+const touchSessionByHash = db.prepare(`
+  UPDATE sessions
+  SET expires_at = ?
+  WHERE token_hash = ?
+`);
+
 const deleteExpiredSessionRows = db.prepare(`
   DELETE FROM sessions
   WHERE expires_at <= ?
@@ -1706,6 +1715,10 @@ export function getSession(tokenHash) {
 
 export function deleteSession(tokenHash) {
   deleteSessionByHash.run(tokenHash);
+}
+
+export function touchSession(tokenHash, expiresAt) {
+  touchSessionByHash.run(expiresAt, tokenHash);
 }
 
 export function deleteExpiredSessions(now) {

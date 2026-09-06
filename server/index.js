@@ -49,6 +49,7 @@ import {
   setDiscoverable,
   setLinkKey,
   setPassword,
+  touchSession,
   unfollowUser,
   updatePost,
   updateProfile,
@@ -194,7 +195,17 @@ const PASSWORD_HINT = `A password is ${PASSWORD_MIN}–${PASSWORD_MAX} character
 // account called "posts" would be one the router sends to the posts page and
 // nothing could ever link to. Kept in step with RESERVED in src/App.jsx.
 const RESERVED_NAMES = new Set(["login", "marks", "posts", "account"]);
+// How long a session lasts *unused*, not how long it lasts. Presenting the
+// token pushes the expiry this far out again (see currentSession), so a device
+// in anybody's hands stays signed in for as long as they keep it — the glasses
+// are the reader this is for, a screen with no keyboard where every sign-out is
+// a password typed on a phone — and what actually ages out is a device that has
+// sat in a drawer for a month, which is the one kind stolen tokens are.
 const sessionAgeMs = 30 * 24 * 60 * 60 * 1000;
+// And how much of that has to have passed before the renewal is worth a write:
+// once a day per session rather than once a request, because the expiry moving
+// from "30 days out" to "30 days out" is not a fact worth putting on disk.
+const sessionRenewMs = 24 * 60 * 60 * 1000;
 
 // Expired sessions are normally removed when they are presented or when a new
 // one is opened. Sweep once at boot as well, so abandoned credentials do not
@@ -283,9 +294,18 @@ function currentSession(req) {
   const tokenHash = token ? sessionHash(token) : null;
   const session = tokenHash ? getSession(tokenHash) : null;
   if (!session) return null;
-  if (session.expiresAt <= Date.now()) {
+  const now = Date.now();
+  if (session.expiresAt <= now) {
     deleteSession(tokenHash);
     return null;
+  }
+  // The session spent is the session renewed. Every request that presents the
+  // token lands here, so this is the one place the renewal can live and cover
+  // all of them — sign-in is not repeated and does not need to be, because a
+  // reader using lo today is a reader who has not left (see sessionAgeMs).
+  if (session.expiresAt - now <= sessionAgeMs - sessionRenewMs) {
+    session.expiresAt = now + sessionAgeMs;
+    touchSession(tokenHash, session.expiresAt);
   }
   return { tokenHash, ...session };
 }
