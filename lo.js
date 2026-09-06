@@ -7,6 +7,10 @@
 //   npx lo user <username>
 //   npx lo user add <username> <password>
 //   npx lo user delete <username>
+//
+// npx finds this bin by installing the package into its own cache, and an
+// install phones the registry unless .npmrc says not to — which is what keeps a
+// table read off the local database from waiting on registry.npmjs.org.
 
 import { createUser, deleteUser, getUser, getUserDetail, listUsers } from "./server/db.js";
 import { countMarks, getSettings, isSafeName } from "./server/users.js";
