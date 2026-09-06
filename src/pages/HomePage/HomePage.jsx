@@ -54,6 +54,15 @@ const AXIS = 8;
 // So the run ends when the events do, and this is the gap that says they have.
 const QUIET = 150;
 
+// How much bigger than the one before it a wheel delta has to be, in a run that
+// has turned the page and died down, to be the fingers back on the trackpad
+// rather than the trackpad coasting: momentum only ever dies down, and a swipe
+// begins small and grows. Not evenly, though — a frame dropped under a coast
+// doubles the one delta and the next is back where it was — so it takes two
+// growing deltas in a row, and each has to have grown by a whole pixel as well,
+// since the tail of a coast is fractions of one jittering (see wheelSwipe).
+const RISE = 1.25;
+
 // A press on a card's heading that stays put for this long is the reader picking
 // the card up rather than turning the page, and one that wanders further than
 // SLOP before then was a page turn from the start. The length is the mark
@@ -724,15 +733,21 @@ export default function HomePage() {
   // have lifted, for as long as the swipe's momentum lasts, and those belong to
   // the swipe that has already turned the page, so the rest of the run is let go
   // by. It is over once it has been quiet for a moment (see QUIET) — or, sooner,
-  // when the deltas come back the other way, which is the fingers again:
-  // momentum only ever dies down.
+  // when the deltas say the fingers are back: momentum only ever dies down, so
+  // deltas coming back the other way are a swipe the other way, and deltas
+  // growing again once they had died down are a second swipe the same way, begun
+  // before the first one's momentum had run out (see RISE). Without the second
+  // of those, a reader swiping page after page the same way — which is how a
+  // dashboard of three pages is read — got one turn, and the swipes after it
+  // went by as the first one's coasting.
   //
   // The axis is settled the way the drag settles it, on the first few pixels, and
   // a run that is a list being scrolled is the browser's for as long as it lasts
   // — except that a scroll turning plainly sideways part way through is a swipe
   // beginning inside the last one's momentum, and is read as one rather than
-  // waited out. Either way it takes two events in a row to say so: one delta
-  // against the run is a finger lifting, and two is a finger going somewhere.
+  // waited out. Every one of these takes two events in a row to say so: one
+  // delta against the run is a finger lifting, and two is a finger going
+  // somewhere.
   // Preventing the default is what keeps the browser out of a sideways run:
   // there is nothing on the page for it to scroll that way, and what Safari
   // makes of a sideways swipe left to it is a page of history.
@@ -752,22 +767,29 @@ export default function HomePage() {
     const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? (viewRef.current?.clientWidth ?? 0) : 1;
     const dx = event.deltaX * unit;
     const dy = event.deltaY * unit;
-    const sideways = Math.abs(dx) > Math.abs(dy);
+    const size = Math.abs(dx);
+    const sideways = size > Math.abs(dy);
     if (run) {
       window.clearTimeout(run.timer);
       // Against the run: for one that has turned the page, a delta back the
-      // other way; for a list being scrolled, one that is plainly sideways.
+      // other way, or one growing again after they had fallen to half of what
+      // they were; for a list being scrolled, one that is plainly sideways.
+      if (run.done && size < run.peak / 2) run.ebbed = true;
       const against = run.done
-        ? dx * run.dx < 0
-        : run.axis === "y" && Math.abs(dx) >= AXIS && Math.abs(dx) > 2 * Math.abs(dy);
+        ? dx * run.dx < 0 || (run.ebbed && size > run.last * RISE && size >= run.last + 1)
+        : run.axis === "y" && size >= AXIS && size > 2 * Math.abs(dy);
       run.against = against ? run.against + 1 : 0;
       if (run.against >= 2) run = null;
     }
     if (!run) {
-      run = { dx: 0, dy: 0, axis: null, done: false, against: 0, timer: 0 };
+      run = { dx: 0, dy: 0, axis: null, done: false, against: 0, timer: 0, peak: 0, last: 0, ebbed: false };
       wheelRef.current = run;
     }
     run.timer = window.setTimeout(() => endWheel(run), QUIET);
+    // How hard the fingers were pushing, kept for the reading above: the biggest
+    // sideways delta the run has seen and the one it has just seen.
+    run.peak = Math.max(run.peak, size);
+    run.last = size;
     if (run.axis === "y") return;
     if (run.done) {
       event.preventDefault();

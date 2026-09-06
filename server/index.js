@@ -81,7 +81,7 @@ import {
   sweepUserImages,
 } from "./images.js";
 import { isStoredName } from "./paths.js";
-import { articleId, harvest, readStoredArticle, unreadable } from "./articles.js";
+import { articleId, harvest, readStoredArticle, sweepGarbledArticles, unreadable } from "./articles.js";
 // The account's own folder: what only that account ever reads back, kept as
 // files rather than as rows (see users.js). Named on the way in, because half of
 // these words are already taken by something in db.js — `createMark` was a row
@@ -142,6 +142,10 @@ migrateMarks();
 // account that has not touched a mark since the file was orphaned would carry it
 // in its export forever.
 sweepAllUserImages();
+// And the readings that were stored before the server could read a page in
+// anything but UTF-8 go, so that the next reader to press one of those rows
+// gets the story rather than a page of � (see sweepGarbledArticles).
+sweepGarbledArticles();
 
 const port = Number(process.env.PORT) || 3014;
 const isProduction = process.env.NODE_ENV === "production";

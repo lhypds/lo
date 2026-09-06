@@ -24,12 +24,15 @@
 // carries a preview and the file name; nothing ever selects a body out of SQLite.
 
 import crypto from "node:crypto";
+import { rmSync } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   findArticle,
+  findGarbledArticles,
   findUnreadable,
+  forgetArticle,
   forgetUnreadable,
   rememberArticle,
   rememberUnreadable,
@@ -52,6 +55,31 @@ const FETCH_TIMEOUT_MS = 12000;
 const THIN_CHARS = 600;
 const PREVIEW_CHARS = 280;
 
+// What the bytes are in, read the way a browser reads it: a byte-order mark
+// outranks everything, the Content-Type header outranks the page, and the
+// page's own <meta charset> is what is left. On a good part of the Chinese and
+// Japanese web that last one is the only one of the three there is — cnr.cn
+// sends a bare text/html and says gb2312 in the markup — and response.text()
+// asks none of them: it reads every page as UTF-8, and one that is not comes
+// out with a � where every character was. Nothing declared is UTF-8, which is
+// what the rest of the web is.
+function charsetOf(response, bytes) {
+  if (bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) return "utf-8";
+  if (bytes[0] === 0xfe && bytes[1] === 0xff) return "utf-16be";
+  if (bytes[0] === 0xff && bytes[1] === 0xfe) return "utf-16le";
+  const header = /charset=["']?([\w.:-]+)/i.exec(response.headers.get("content-type") ?? "");
+  if (header) return header[1];
+  // Both spellings — <meta charset> and the http-equiv content that carries the
+  // same pair — read off the bytes as Latin-1, since what they are in is the
+  // question. The window is far wider than the kilobyte the standard asks the
+  // declaration to sit in, because the web puts it where it likes.
+  const meta = /<meta[^>]+charset=["']?\s*([\w.:-]+)/i.exec(bytes.toString("latin1", 0, 65536));
+  // A declaration that could be read one byte at a time is not in a two-byte
+  // encoding, whatever it says of itself.
+  if (meta) return /^utf-16/i.test(meta[1]) ? "utf-8" : meta[1];
+  return "utf-8";
+}
+
 async function getPage(url) {
   const response = await fetch(url, {
     headers: {
@@ -63,7 +91,16 @@ async function getPage(url) {
     signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
   if (!response.ok) throw new Error(`${new URL(url).host} returned HTTP ${response.status}`);
-  return response.text();
+  const bytes = Buffer.from(await response.arrayBuffer());
+  let decoder;
+  try {
+    decoder = new TextDecoder(charsetOf(response, bytes));
+  } catch {
+    // A label Node has no table for. There are a few, and a page in one of
+    // them is read as the web mostly is rather than not at all.
+    decoder = new TextDecoder();
+  }
+  return decoder.decode(bytes);
 }
 
 /* ------------------------------------------------- resolving a Google link -- */
@@ -337,6 +374,30 @@ export async function storeArticle(article, { kind, link, headline, source, time
   });
 
   return document;
+}
+
+// The readings that were stored garbled, taken back out so they are fetched
+// again. Until getPage read a page's own declaration every page was read as
+// UTF-8, and one that was not — cnr.cn, and much of the older Chinese and
+// Japanese web with it — was kept with a � for every character that was not
+// ASCII: the row's headline and preview, and the file behind them. A stored
+// reading is never fetched twice (see /api/articles), so those would have stayed
+// garbled for as long as the files lasted. Run once at boot from index.js; now
+// that the decode is right it finds nothing, and costs one query to find out.
+//
+// The row is the test and the file goes with it: they were written from the
+// one decode, so a garbled row is a garbled file. The file first, because the
+// two can only be taken away one at a time and this is the order that comes
+// right on its own — a row left behind is found again at the next boot, and a
+// file left behind would be served (the endpoint reads the file, not the row).
+// A � in a genuine story is rare enough that fetching one again is a fair price.
+export function sweepGarbledArticles() {
+  const ids = findGarbledArticles();
+  for (const id of ids) {
+    rmSync(articleFile(id), { force: true });
+    forgetArticle(id);
+  }
+  if (ids.length > 0) console.log(`forgot ${ids.length} garbled article${ids.length === 1 ? "" : "s"}`);
 }
 
 /* -------------------------------------------------------- no reading at all -- */

@@ -2114,6 +2114,28 @@ export function findArticle(id) {
   return selectArticle.get(id) ?? null;
 }
 
+// The rows whose reading was stored garbled: a headline or a preview with the
+// replacement character in it, which is what decoding a GB2312 or Shift_JIS
+// page as UTF-8 leaves in place of every character (see getPage in
+// articles.js). The row stands for the file, because the two were written from
+// the one decode.
+const selectGarbledArticles = db.prepare(`
+  SELECT id FROM articles
+  WHERE instr(title, char(65533)) > 0 OR instr(preview, char(65533)) > 0
+`);
+
+const deleteArticle = db.prepare(`DELETE FROM articles WHERE id = ?`);
+
+export function findGarbledArticles() {
+  return selectGarbledArticles.all().map((row) => row.id);
+}
+
+// The row only, as findArticle is. The file is articles.js's to take away, and
+// it goes before the row does (see sweepGarbledArticles).
+export function forgetArticle(id) {
+  deleteArticle.run(id);
+}
+
 // The failed reading, kept under the same key as a successful one. Newest
 // attempt wins: the reason and the clock are the whole row, and both are about
 // the last time lo asked rather than the first.
