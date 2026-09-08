@@ -1007,6 +1007,17 @@ const selectRecentPosts = db.prepare(`
   LIMIT ?
 `);
 
+// Every post there is, in the order the one above reads them and with no number
+// on the end. A reading the website never asks for and the command line only
+// asks for: a screen is a window on the ground and a window has edges, and
+// whoever runs lo is asking what has been left here rather than what is nearby.
+const selectAllPosts = db.prepare(`
+  SELECT ${POST_COLUMNS}
+  FROM posts p
+  JOIN users u ON u.id = p.user_id
+  ORDER BY p.time DESC, p.id DESC
+`);
+
 // One person's, newest first and without a box around them: this is the answer
 // to "who is this", not to "what is around here", so where they were standing is
 // the row's own business rather than the question being asked.
@@ -1482,6 +1493,30 @@ const selectThreads = db.prepare(`
   LIMIT ?
 `);
 
+// Every line anybody has said to anybody, newest first: the same whole-shelf
+// reading of the letters that selectAllPosts is of the posts, and asked for from
+// the same one place. Both ends spelled out by name, since nothing above this
+// file knows an id and a letter without its two accounts is not one.
+//
+// The taken-down lines among the rest, and marked. Everywhere else a soft delete
+// is a row that has stopped existing and the thread is drawn without it — but a
+// line said and withdrawn is a thing that happened, and the reading meant for
+// whoever runs lo is the one where nothing is quietly absent from it.
+//
+// By id rather than by the clock, for the reason the conversation above is: ids
+// are handed out in order, so this is the true sequence of everything said.
+const selectAllMessages = db.prepare(`
+  SELECT m.id, m.body, m.created_at AS time,
+    m.read_at IS NOT NULL AS read,
+    m.deleted_at IS NOT NULL AS deleted,
+    sender.username AS sender,
+    recipient.username AS recipient
+  FROM messages m
+  JOIN users sender ON sender.id = m.from_user
+  JOIN users recipient ON recipient.id = m.to_user
+  ORDER BY m.id DESC
+`);
+
 // The figure behind the dot on the letter in the top bar, and the whole of what
 // that dot knows: how many lines are sitting in the inbox unopened. Counted
 // across everybody rather than per conversation — the bar has one letter on it,
@@ -1789,6 +1824,11 @@ export function getRecentPosts(limit = 200) {
   return selectRecentPosts.all(limit);
 }
 
+// The whole shelf, for the reading of it done at a shell (see lo.js).
+export function listPosts() {
+  return selectAllPosts.all();
+}
+
 // One post, whoever left it: the two comment endpoints below start by asking
 // whether there is anything here to be talking about, and a post that is not
 // there is not one anybody may write under.
@@ -1987,6 +2027,14 @@ export function getConversation(userId, otherUserId, limit = 200) {
     .all(userId, userId, otherUserId, otherUserId, userId, limit)
     .reverse()
     .map(withRead);
+}
+
+// Every letter, in one list rather than sorted into conversations: whoever runs
+// lo is reading the table and not a thread, and which pair a line belongs to is
+// the two names on the row. Both switches turned into yes and no, the same turn
+// withRead above takes on a line of a conversation.
+export function listMessages() {
+  return selectAllMessages.all().map((row) => ({ ...row, read: row.read === 1, deleted: row.deleted === 1 }));
 }
 
 // What the dot on the letter in the top bar is counting, every kind at once: the
