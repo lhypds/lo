@@ -1,0 +1,94 @@
+/* The field on a row of its own, the width of the sheet, with the buttons under
+   it in the row every sheet ends on (see .modal-actions in styles.css). Set at
+   the scale a sheet speaks in: type at 12px, and as tall as those buttons. */
+.field {
+  width: 100%;
+  height: 30px;
+  box-sizing: border-box;
+  padding: 0 10px;
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  background: var(--paper);
+  font-size: 12px;
+}
+
+/* The places the name could be, hung off the field the way every list in lo
+   hangs off what opened it (see lang.module.css): no gap, and the field's own
+   border is the seam. Laid over the sheet rather than into it, so the sheet
+   keeps its size while the list is out — and fixed rather than absolute, because
+   the sheet scrolls its own content and would clip a list that ran past its foot,
+   or grow a scrollbar to reach it. Where it stands, how wide it is and how tall
+   it may grow are set from the field as it opens (see TravelModal); past that
+   height it scrolls, without handing the scroll on to the page underneath. */
+.places {
+  position: fixed;
+  z-index: 1;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--ink);
+  border-top: none;
+  background: var(--paper);
+}
+
+/* Opened upwards, where there was more room above: the seam moves with it. */
+.places[data-up="true"] {
+  border-top: 1px solid var(--ink);
+  border-bottom: none;
+}
+
+/* One line each: the name, then where it is in the muted grey, both giving up
+   their tails rather than wrapping. The name keeps the larger share, since it is
+   what was being typed. */
+.place {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.name {
+  flex-shrink: 0;
+  max-width: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.where {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The row the arrow keys or the pointer are on, turned over the way a pressed
+   button is — and its grey with it, which would not read on the ink. */
+.active {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.active .where {
+  color: var(--paper);
+}
+
+/* iOS zooms the page into any field typed under 16px (see .mark-field), and a
+   row under a thumb wants more room than one under a pointer. */
+@media (pointer: coarse) {
+  .field {
+    font-size: 16px;
+  }
+
+  .place {
+    padding-block: 10px;
+    font-size: 14px;
+  }
+}

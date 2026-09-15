@@ -11,6 +11,7 @@
 //   "error"       the device tried and failed (no signal, timeout)
 
 import { tellHost } from "./host.js";
+import { travelIn } from "./travel.js";
 
 const ENABLED_KEY = "lo:locationEnabled";
 const LAST_FIX_KEY = "lo:lastFix";
@@ -65,9 +66,46 @@ let state = {
   error: null,
 };
 
+// Somewhere else, while the reader has asked to stand there — the spot out of a
+// /@lat,lon address or the travel sheet (see utils/travel.js) — which every card
+// reads in place of the fix for as long as it is set. Only what the store hands
+// out changes: the sensor goes on being read underneath, because who else is
+// about is still told where the reader really is (see LocationProvider), and
+// coming home should land on a fix that is current rather than one from before
+// the trip.
+//
+// Read off the address as the module loads, so a page opened on one is standing
+// there from its first frame rather than asking about home first.
+let travel = arrival(travelIn(window.location.pathname));
+
+// A spot dressed as a fix. Nothing about it was measured — no accuracy, no
+// height, no speed — and its moment is the moment of arriving.
+function arrival(spot) {
+  if (!spot) return null;
+  return { ...spot, accuracy: null, altitude: null, speed: null, at: Date.now() };
+}
+
+// What the store hands out: the sensor's own state, with the spot laid over it
+// when there is one. `fix` is always the sensor's reading, and `traveling` says
+// whether `coords` is it. Worked out once per change rather than per read, since
+// a store read during render has to give back the same object until something
+// has actually moved.
+function look() {
+  const own = { ...state, fix: state.coords, traveling: false };
+  if (!travel) return own;
+  return { ...own, status: "ready", coords: travel, at: travel.at, stale: false, error: null, traveling: true };
+}
+
+let snapshot = look();
+
+function publish() {
+  snapshot = look();
+  listeners.forEach((listener) => listener());
+}
+
 function emit(next) {
   state = { ...state, ...next };
-  listeners.forEach((listener) => listener());
+  publish();
 }
 
 export function subscribeLocation(listener) {
@@ -76,7 +114,19 @@ export function subscribeLocation(listener) {
 }
 
 export function getLocationState() {
-  return state;
+  return snapshot;
+}
+
+export function travelTo(spot) {
+  if (travel?.latitude === spot.latitude && travel?.longitude === spot.longitude) return;
+  travel = arrival(spot);
+  publish();
+}
+
+export function travelHome() {
+  if (!travel) return;
+  travel = null;
+  publish();
 }
 
 export function isLocationEnabled() {

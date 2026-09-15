@@ -112,6 +112,15 @@
     "coordinatesCopyFailed": "无法复制坐标",
     "page": "第 {{number}} 页，共 {{total}} 页"
   },
+  "travel": {
+    "title": "前往",
+    "placeholder": "城市或坐标",
+    "go": "前往",
+    "finding": "查找中",
+    "notFound": "找不到“{{query}}”",
+    "failed": "暂时无法查找",
+    "home": "回到我的位置"
+  },
   "clock": {
     "title": "时间",
     "turn": "双击可翻转卡片",

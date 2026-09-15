@@ -1,6 +1,7 @@
 import { Loading, PrivateRoute, useAuth } from "./components/index.js";
 import { AuthPage, HomePage, MarksPage, PostsPage, UserPage } from "./pages/index.js";
 import { Navigate, useLocation } from "./ui/index.js";
+import { travelIn } from "./utils/travel.js";
 
 // The paths lo keeps for itself, which is the price of the arrangement below:
 // each one is matched before a name is read out of the path, and none of them can
@@ -35,6 +36,13 @@ export default function App() {
 
   if (pathname === "/login") return <AuthPage />;
   if (pathname === "/") return <PrivateRoute><HomePage /></PrivateRoute>;
+  // The dashboard again, standing somewhere else: /@<latitude>,<longitude>, the
+  // way a map's own address writes a spot (see utils/travel.js). Read before the
+  // names below, which it would otherwise be taken for — no name can hold an @,
+  // so nobody is shadowed by it — and an @ with no spot after it goes home.
+  if (pathname.startsWith("/@")) {
+    return travelIn(pathname) ? <PrivateRoute><HomePage /></PrivateRoute> : <Navigate to="/" replace />;
+  }
   if (pathname === "/marks") return <PrivateRoute><MarksPage /></PrivateRoute>;
   if (pathname === "/posts") return <PrivateRoute><PostsPage /></PrivateRoute>;
   // Your own account has no route of its own: it is a sheet the top bar opens

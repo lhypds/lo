@@ -115,6 +115,15 @@
     "coordinatesCopyFailed": "Koordinaten konnten nicht kopiert werden",
     "page": "Seite {{number}} von {{total}}"
   },
+  "travel": {
+    "title": "Gehe zu",
+    "placeholder": "Stadt oder Koordinaten",
+    "go": "Los",
+    "finding": "Suche",
+    "notFound": "Kein Ort namens „{{query}}“",
+    "failed": "Suche gerade nicht möglich",
+    "home": "Zurück zu meinem Standort"
+  },
   "clock": {
     "title": "Uhrzeit",
     "turn": "Doppelklicken, um die Karte umzudrehen",

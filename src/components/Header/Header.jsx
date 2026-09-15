@@ -10,6 +10,7 @@ import AddCard from "../AddCard/index.js";
 import ExportButton from "../ExportButton/index.js";
 import LanguageSwitcher from "../LanguageSwitcher/index.js";
 import MessagesModal from "../MessagesModal/index.js";
+import TravelModal from "../TravelModal/index.js";
 
 // `cards` puts the dashboard's own contents page in the bar. On every page there
 // is a dashboard to go back to, because what the dashboard carries is a setting
@@ -35,10 +36,11 @@ export default function Header({ back = false, backTo = "/", cards = false }) {
   const { unread } = useHere();
   const navigate = useNavigate();
   const location = useLocation();
-  // The two sheets opened from here and nowhere else, so the bar holds them open
+  // The sheets opened from here and nowhere else, so the bar holds them open
   // itself rather than through a module anything could call.
   const [accountOpen, setAccountOpen] = useState(false);
   const [messagesOpen, setMessagesOpen] = useState(false);
+  const [travelOpen, setTravelOpen] = useState(false);
   // Which thread the inbox is to open on, when it is being put back up rather
   // than opened: a reader who left a conversation by pressing a name in it comes
   // back to the conversation, not to the list with it somewhere in it. Nothing
@@ -99,6 +101,20 @@ export default function Header({ back = false, backTo = "/", cards = false }) {
               list pages is the page you came from and will go back to. Its list
               opens rightwards over its own row (see add.module.css). */}
           {cards && <AddCard />}
+          {/* Somewhere else to stand: a city or a pair of coordinates, and the
+              whole dashboard reads as if it were there (see TravelModal). Beside
+              the plus, since both decide which dashboard this is. The drawing is
+              liveboard's flight entry (its Trip module) — a plane leaving the
+              ground, filled rather than outlined (see .topbar-travel). */}
+          {user && (
+            <span className="topbar-travel">
+              <ActionButton tooltip={t("travel.title")} onClick={() => setTravelOpen(true)}>
+                <svg viewBox="0 0 24 24">
+                  <path d="M2.5 19h19v2h-19v-2Zm19.57-9.36a1.5 1.5 0 0 0-1.84-1.06l-5.59 1.5-7.25-6.76-1.93.52 4.35 7.53-5.23 1.4-2.07-1.62-1.45.39 2.55 4.41 16.89-4.52a1.5 1.5 0 0 0 1.06-1.86l-.49-1.93Z" />
+                </svg>
+              </ActionButton>
+            </span>
+          )}
           {user && (
             <ActionButton tooltip={t("header.marks")} onClick={() => navigate("/marks")}>
               <svg viewBox="0 0 24 24">
@@ -167,7 +183,7 @@ export default function Header({ back = false, backTo = "/", cards = false }) {
         </span>
       </header>
 
-      {/* Both sheets mounted beside the bar rather than inside it: the bar is
+      {/* The sheets mounted beside the bar rather than inside it: the bar is
           sticky and carries a stacking context of its own, and a sheet opened in
           there would be pinned under it. Out here they are children of the page,
           like every other sheet in lo — and because the bar is on every page, so
@@ -186,6 +202,7 @@ export default function Header({ back = false, backTo = "/", cards = false }) {
         />
       )}
       {user && <AccountModal isOpen={accountOpen} onClose={() => setAccountOpen(false)} />}
+      {user && <TravelModal isOpen={travelOpen} onClose={() => setTravelOpen(false)} />}
     </>
   );
 }

@@ -299,6 +299,14 @@ export const getLocal = (coords) => shared("local", coords, request(`/api/local?
 // about the ground the reader is standing on, and this is a question asked about
 // a mark that may be a country away from it.
 export const getPlace = (coords) => request(`/api/place?${geoQuery(coords)}`);
+// And the other way round: the places a name could be, best guess first — the
+// list under the travel sheet's field as a name is typed into it, and where its
+// Go to goes (see findPlaces in server/geo.js). Asked through utils/places.js,
+// which sends a name in Chinese or Japanese to Mapbox first. Takes a signal,
+// because every letter asks again and the question before it is nobody's any
+// more. Not handed to the host either, for the same reason.
+export const findPlaces = (query, options) =>
+  request(`/api/geocode?${new URLSearchParams({ q: query, lang: i18n.language || "en" })}`, options);
 export const getNearby = (coords) => shared("nearby", coords, request(`/api/nearby?${geoQuery(coords)}`));
 export const getEvents = (coords) => shared("events", coords, request(`/api/events?${geoQuery(coords)}`));
 export const getTrends = (coords) => shared("trends", coords, request(`/api/trends?${geoQuery(coords)}`));

@@ -389,6 +389,14 @@ a {
   vector-effect: non-scaling-stroke;
 }
 
+/* The plane is the one filled drawing in the bar — liveboard's flight icon, a
+   silhouette rather than a line — so it takes the module's ink as its fill, and
+   no stroke to thicken its edges past the lines beside it. */
+.topbar-travel svg path {
+  fill: currentColor;
+  stroke: none;
+}
+
 .topbar-dot {
   position: absolute;
   top: -2px;

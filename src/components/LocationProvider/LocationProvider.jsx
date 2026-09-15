@@ -1,6 +1,16 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
+import { useLocation } from "../../ui/index.js";
 import { useAuth } from "../AuthProvider/index.js";
 import {
   coordKey,
@@ -10,7 +20,10 @@ import {
   refreshLocation,
   resumeLocation,
   subscribeLocation,
+  travelHome,
+  travelTo,
 } from "../../utils/location.js";
+import { travelIn } from "../../utils/travel.js";
 
 const LocationContext = createContext(null);
 
@@ -135,6 +148,21 @@ export function LocationProvider({ children }) {
     resumeLocation();
   }, []);
 
+  // Where the dashboard stands follows the address: /@lat,lon is somewhere else
+  // and the bare root is home. Every other page keeps whatever the reader was
+  // last standing on, so the posts and the marks opened from a dashboard in
+  // Kyoto are Kyoto's posts and distances from Kyoto. The travel sheet sets the
+  // spot in the same breath as it moves the address (see TravelModal); this is
+  // for everything that moves the address without it — back and forward, the
+  // wordmark, a link. Before paint, so no page is shown standing on the place it
+  // has just left.
+  const { pathname } = useLocation();
+  useLayoutEffect(() => {
+    const spot = travelIn(pathname);
+    if (spot) travelTo(spot);
+    else if (pathname === "/") travelHome();
+  }, [pathname]);
+
   const key = coordKey(position.coords);
   const language = i18n.language;
   // The timers below start once there is a fix and run until there is not; the
@@ -245,6 +273,10 @@ export function LocationProvider({ children }) {
   // Hand the current fix to the server and take back everyone else's. With no
   // fix of our own there is nothing to trade, but the others are still worth
   // drawing — so that case asks rather than publishes.
+  //
+  // The fix is always the sensor's — `fix`, not `coords`, at every call below. A
+  // reader who has flown somewhere on the travel sheet is looking at it, not
+  // standing in it, and everybody else is told where they are standing.
   const syncPeople = useCallback(async (coords) => {
     if (peopleRequestRef.current) return peopleRequestRef.current;
 
@@ -344,7 +376,7 @@ export function LocationProvider({ children }) {
   // fresh one to send while the loop above is paused.
   const syncPresence = useCallback(async () => {
     if (document.hidden) return;
-    await syncPeople(getLocationState().coords);
+    await syncPeople(getLocationState().fix);
   }, [syncPeople]);
 
   // First contact — on sign-in, and again on every move worth a new place name.
@@ -357,7 +389,7 @@ export function LocationProvider({ children }) {
       setLoadingPeople(false);
       return;
     }
-    syncPeople(getLocationState().coords);
+    syncPeople(getLocationState().fix);
   }, [key, username, syncPeople]);
 
   useEffect(() => {
@@ -410,9 +442,9 @@ export function LocationProvider({ children }) {
   // again for what is on screen, and a dashboard with no posts panel on it has
   // not been shown any.
   const refresh = useCallback(async () => {
-    const coords = getLocationState().coords;
+    const { coords, fix } = getLocationState();
     setReloadToken((token) => token + 1);
-    await Promise.all([load(coords), syncPeople(coords), wantsPosts && loadPosts(coords)]);
+    await Promise.all([load(coords), syncPeople(fix), wantsPosts && loadPosts(coords)]);
   }, [load, syncPeople, loadPosts, wantsPosts]);
 
   // A post the reader just wrote, rewrote or deleted, into the list without a

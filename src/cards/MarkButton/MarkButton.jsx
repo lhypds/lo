@@ -150,8 +150,9 @@ export default function MarkButton({ onMarked, onUnmarked, onUpdated, onLongPres
     // the freshest fix the device can give, not the one the loop happened to
     // read twenty seconds ago. That fix has to be read back from the store —
     // `coords` here is the one this render closed over, which is exactly the
-    // position just superseded.
-    await refreshLocation().catch(() => {});
+    // position just superseded. Standing somewhere flown to, there is no fresher
+    // fix to wait for: the spot is the spot (see utils/location.js).
+    if (!getLocationState().traveling) await refreshLocation().catch(() => {});
     // A press taken back while the device was being waited on leaves nothing
     // behind, because nothing has been sent yet. The press that took it back
     // cleared `saving` when it did.

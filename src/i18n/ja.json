@@ -112,6 +112,15 @@
     "coordinatesCopyFailed": "座標をコピーできませんでした",
     "page": "{{total}} ページ中 {{number}} ページ目"
   },
+  "travel": {
+    "title": "移動",
+    "placeholder": "都市名または座標",
+    "go": "移動",
+    "finding": "検索中",
+    "notFound": "「{{query}}」が見つかりません",
+    "failed": "今は検索できません",
+    "home": "現在地に戻る"
+  },
   "clock": {
     "title": "時刻",
     "turn": "ダブルクリックでカードを裏返す",

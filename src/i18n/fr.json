@@ -115,6 +115,15 @@
     "coordinatesCopyFailed": "Impossible de copier les coordonnées",
     "page": "Page {{number}} sur {{total}}"
   },
+  "travel": {
+    "title": "Aller à",
+    "placeholder": "Ville ou coordonnées",
+    "go": "Aller",
+    "finding": "Recherche",
+    "notFound": "Aucun lieu nommé « {{query}} »",
+    "failed": "Recherche impossible pour le moment",
+    "home": "Revenir à ma position"
+  },
   "clock": {
     "title": "Heure",
     "turn": "Double-cliquez pour retourner la carte",

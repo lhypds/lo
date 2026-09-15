@@ -5,13 +5,15 @@
 // Every upstream here is a key-free public API — the server holds no
 // credentials at all, and Mapbox is the browser's business:
 // - BigDataCloud   — reverse geocoding       https://www.bigdatacloud.com
-// - Open-Meteo     — weather and timezone    https://open-meteo.com
+// - Open-Meteo     — weather, timezone, and places by name
+//                                            https://open-meteo.com
 // - Google News    — local news (RSS)        https://news.google.com/rss
 // - Google Trends  — trending searches (RSS) https://trends.google.com/trending
 // - Wikipedia      — nearby places, articles https://www.mediawiki.org/wiki/API
 // - Wikimedia Commons — old photographs of here https://commons.wikimedia.org
 // - Overpass       — food and cafés (OSM)    https://overpass-api.de
-// - Photon         — the same, when no Overpass instance will answer
+// - Photon         — the same, when no Overpass instance will answer; and
+//                    places by the names Open-Meteo cannot find
 //                                            https://photon.komoot.io
 // - radio-browser  — local radio stations    https://www.radio-browser.info
 // - Yahoo! 天気・災害 — Japanese weather warnings https://typhoon.yahoo.co.jp
@@ -303,6 +305,214 @@ export function knownPlace(latitude, longitude, lang = "en") {
 // is part of reading it.
 export function placeLine(place) {
   return (place ? [place.locality, place.name, place.region].filter(Boolean).join(" · ") : "") || null;
+}
+
+/* ------------------------------------------------------------------- find -- */
+
+// Where a place is, from its name: lookupPlace the other way round, for the
+// travel sheet, which drops the places a name could be down under its field as
+// the name is typed ("Kyo", 京) and goes to the one picked — or to the first,
+// where Go to is pressed without picking. So the answer is a short list, best
+// guess first. The name can be typed in any of lo's six languages, whichever one
+// the reader happens to be reading in: Londres, Múnich and Moskau all go
+// somewhere.
+//
+// Two geocoders, because neither reads every name. Open-Meteo's (GeoNames
+// underneath) ranks by population, so "Kyoto" is Japan's and "Portland" is
+// Oregon's, and it matches a Latin prefix from three letters — but a name only in
+// the language it is asked in (see searchLanguages), and a name in Chinese only
+// where GeoNames holds that exact spelling, which is mostly the traditional one:
+// 倫敦 is found and 伦敦 is not. Photon (OpenStreetMap) is built for
+// search-as-you-type and reads short Chinese and Japanese names down to a single
+// character — 京 is 京都市 first, 北 is 北京市 — but ranks by the importance of
+// anything by that name, so a whole "Kyoto" comes back a neighbourhood in Java
+// ahead of the city. It is asked second, for places only, and only where the
+// first came back with nothing.
+//
+// Names in Chinese and Japanese are answered far better by Mapbox, which reads
+// 伦敦, 纽约 and 首尔 in either script and from their first character. The
+// browser asks it directly wherever lo has a map token (see utils/places.js) —
+// the token is the browser's, and this server holds no credentials — so what
+// arrives here in those scripts is from an install without one, or from a moment
+// Mapbox would not answer.
+const FIND_URL = "https://geocoding-api.open-meteo.com/v1/search";
+const FIND_BY_ID_URL = "https://geocoding-api.open-meteo.com/v1/get";
+const PHOTON_SEARCH_URL = "https://photon.komoot.io/api/";
+// As many rows as the sheet's list shows.
+const FIND_LIMIT = 5;
+// A name nothing answered to is kept only briefly: it may be half of a word still
+// being typed, or a name one geocoder was having a bad minute about.
+const FIND_MISS_TTL_MS = 5 * 60 * 1000;
+
+// A row of the list: the name, and what tells it from other places of the same
+// name — its region and its country — with a region that only repeats the name
+// left off.
+function foundPlace(name, region, country, latitude, longitude) {
+  if (!name || !Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+  return { name, region: region === name ? "" : region, country, latitude, longitude };
+}
+
+// Two rows that read the same are one row to the reader, whatever the geocoder
+// holds behind them: GeoNames files two villages called Kyo in the same Nigerian
+// state, and OpenStreetMap maps an airport as a point and again as its outline.
+function distinct(places) {
+  const seen = new Set();
+  return places.filter((place) => {
+    if (!place) return false;
+    const key = `${place.name}|${place.region}|${place.country}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+// One language's answer, carrying what the merge below needs to know of each row:
+// which place it is however it is named, how high this answer put it, and how
+// many people live there.
+async function findOnOpenMeteo(query, language) {
+  const url = new URL(FIND_URL);
+  url.searchParams.set("name", query);
+  url.searchParams.set("count", String(FIND_LIMIT));
+  url.searchParams.set("language", language);
+  url.searchParams.set("format", "json");
+  const data = await getJson(url.href);
+  return (data.results ?? [])
+    .map((hit, rank) => {
+      const place = foundPlace(
+        firstString(hit.name),
+        firstString(hit.admin1),
+        firstString(hit.country),
+        hit.latitude,
+        hit.longitude,
+      );
+      const id = hit.id ?? `${hit.latitude},${hit.longitude}`;
+      return place && { place, id, rank, population: Number(hit.population) || 0 };
+    })
+    .filter(Boolean);
+}
+
+const KANA = /[\p{Script=Hiragana}\p{Script=Katakana}]/u;
+const HAN = /\p{Script=Han}/u;
+
+// The languages a name is asked in. Open-Meteo matches a name only in the
+// language it is asked in — Londres is London asked in French or Spanish, and a
+// town in Argentina asked in English — so a name is asked in every one of lo's
+// languages it could be written in, which the script it is typed in narrows:
+// kana is only ever Japanese, a name in Chinese characters alone is Chinese or
+// Japanese (GeoNames files 京都 under the one and 京都市 under the other), and
+// anything else is one of the four written in Latin letters. The reader's own
+// language is always asked as well, being the one the rows are named in.
+function searchLanguages(query, language) {
+  const written = KANA.test(query) ? ["ja"] : HAN.test(query) ? ["zh", "ja"] : ["en", "fr", "es", "de"];
+  return [...new Set([language, ...written])];
+}
+
+// Several languages' answers as one list. A place more than one of them holds is
+// one row, named in the reader's language wherever that answer held it. Rows go
+// by the highest any answer put them, and between rows put equally high, the
+// bigger place first: Londres tops the French answer (London) and the English
+// one (a town in Argentina) alike, and it is London that is meant.
+function mergeAnswers(answers, language) {
+  const rows = new Map();
+  for (const { asked, hits } of answers) {
+    for (const hit of hits) {
+      const row = rows.get(hit.id);
+      if (!row) {
+        rows.set(hit.id, { ...hit, named: asked === language });
+        continue;
+      }
+      row.rank = Math.min(row.rank, hit.rank);
+      if (asked === language && !row.named) Object.assign(row, { place: hit.place, named: true });
+    }
+  }
+  return [...rows.values()].sort((a, b) => a.rank - b.rank || b.population - a.population);
+}
+
+// A row the reader's own language did not find, named in that language all the
+// same: Pekín found by the Spanish answer is Beijing to a reader in English, and
+// Moskau found by the German one is 莫斯科 to a reader in Chinese. Asked by the
+// place's id, and kept for as long as a place name is (see PLACE_TTL_MS), since
+// the same few cities are most of what anybody types. A row that cannot be
+// renamed keeps the name it was found under rather than going missing.
+function inLanguage(row, language) {
+  if (row.named || !Number.isInteger(row.id)) return Promise.resolve(row.place);
+  return cached(`find:id:${language}:${row.id}`, PLACE_TTL_MS, async () => {
+    const url = new URL(FIND_BY_ID_URL);
+    url.searchParams.set("id", String(row.id));
+    url.searchParams.set("language", language);
+    url.searchParams.set("format", "json");
+    const hit = await getJson(url.href);
+    return foundPlace(
+      firstString(hit.name),
+      firstString(hit.admin1),
+      firstString(hit.country),
+      hit.latitude,
+      hit.longitude,
+    );
+  })
+    .then((place) => place ?? row.place)
+    .catch(() => row.place);
+}
+
+async function findOnPhoton(query, language) {
+  const url = new URL(PHOTON_SEARCH_URL);
+  url.searchParams.set("q", query);
+  url.searchParams.set("limit", String(FIND_LIMIT));
+  url.searchParams.set("osm_tag", "place");
+  // The three languages it translates names into; for the rest a name comes back
+  // as it is written where it is — Київ, 京都市 (see PHOTON_LANGUAGES).
+  if (PHOTON_LANGUAGES.has(language)) url.searchParams.set("lang", language);
+  const data = await getJson(url.href);
+  const rows = (data.features ?? []).map((feature) => {
+    const tags = feature.properties ?? {};
+    const [longitude, latitude] = feature.geometry?.coordinates ?? [];
+    // A ward of Tokyo has no state, only the city it is a ward of.
+    const region = firstString(tags.state, tags.city, tags.county);
+    return {
+      place: foundPlace(firstString(tags.name), region, firstString(tags.country), latitude, longitude),
+      rank: PLACE_RANK[tags.osm_value] ?? 2,
+    };
+  });
+  // Stable, so each kind keeps Photon's own order within it.
+  rows.sort((a, b) => a.rank - b.rank);
+  return distinct(rows.map((row) => row.place));
+}
+
+// How likely a kind of place is to be the one meant, likeliest first. Photon
+// ranks by how well a name matches, and asked for English names a query in kanji
+// matches badly: 京 is Kyoto Prefecture before Kyoto, and 東京 a neighbourhood in
+// Nagano before Tokyo. The first row is where Go to goes, so cities and towns come
+// first, then the areas big enough to be somewhere in their own right — Tokyo is
+// filed as a prefecture — and neighbourhoods, villages and islands after them.
+const PLACE_RANK = { city: 0, town: 0, province: 1, state: 1, region: 1, county: 1, country: 1 };
+
+export function findPlaces(query, lang = "en") {
+  const language = PLACE_LANGUAGE[lang] ?? "en";
+  const key = `find:${language}:${query.normalize("NFKC").toLowerCase().replace(/\s+/g, " ")}`;
+  return cached(key, (places) => (places.length > 0 ? PLACE_TTL_MS : FIND_MISS_TTL_MS), async () => {
+    // An answer that failed is a reason to go on with the others rather than to
+    // give up, and nothing found counts as an answer only once all have said so.
+    let failure = null;
+    const missed = (error) => {
+      failure ??= error;
+      return [];
+    };
+    const answers = await Promise.all(
+      searchLanguages(query, language).map(async (asked) => ({
+        asked,
+        hits: await findOnOpenMeteo(query, asked).catch(missed),
+      })),
+    );
+    // Renamed before the rows that read the same are folded together, since two
+    // rows named in two languages only read the same once both are in one.
+    const rows = mergeAnswers(answers, language).slice(0, FIND_LIMIT);
+    const first = distinct(await Promise.all(rows.map((row) => inLanguage(row, language))));
+    if (first.length > 0) return first;
+    const second = await findOnPhoton(query, language).catch(missed);
+    if (second.length > 0) return second;
+    if (failure) throw failure;
+    return [];
+  });
 }
 
 /* ---------------------------------------------------------------- weather -- */

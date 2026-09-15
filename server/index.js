@@ -56,6 +56,7 @@ import {
 } from "./db.js";
 import { COMPONENTS, componentsFor, countryList } from "./countries.js";
 import {
+  findPlaces,
   isUpstreamDown,
   knownPlace,
   lookupEvents,
@@ -937,6 +938,21 @@ app.get("/api/place", async (req, res, next) => {
     res.json({ place, line: placeLine(place) });
   } catch (error) {
     if (isUpstreamDown(error)) return res.status(504).json({ error: "Timed out looking up where that is" });
+    next(error);
+  }
+});
+
+// The other way round: a name typed into the travel sheet, or the start of one,
+// and the places it could be, best guess first (see findPlaces). An empty list is
+// nothing by that name turning up, which is an answer rather than a failure — the
+// sheet says so under the field.
+app.get("/api/geocode", async (req, res, next) => {
+  const query = String(req.query.q ?? "").trim();
+  if (!query || query.length > 200) return res.status(400).json({ error: "Invalid place name" });
+  try {
+    res.json({ places: await findPlaces(query, requestedLang(req)) });
+  } catch (error) {
+    if (isUpstreamDown(error)) return res.status(504).json({ error: "Timed out looking up that place" });
     next(error);
   }
 });

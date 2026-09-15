@@ -115,6 +115,15 @@
     "coordinatesCopyFailed": "Could not copy coordinates",
     "page": "Page {{number}} of {{total}}"
   },
+  "travel": {
+    "title": "Go to",
+    "placeholder": "City or coordinates",
+    "go": "Go to",
+    "finding": "Finding",
+    "notFound": "No place called “{{query}}”",
+    "failed": "Could not look that up just now",
+    "home": "Back to my location"
+  },
   "clock": {
     "title": "Time",
     "turn": "Double-click to turn the card over",
