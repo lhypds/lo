@@ -91,31 +91,60 @@
   border-top: 1px solid var(--line);
 }
 
-/* The sun row is a label and a pair of times, which in Japanese outrun a
-   phone-width tile between them: the value folds onto its own line rather than
-   losing its second half to the ellipsis. */
+/* A label and its reading on one line, and never on two. When the pair outruns
+   the tile — America/Argentina/Buenos_Aires beside "Time zone", or the sun row
+   in Japanese on a phone — the label is what goes and the reading keeps the row
+   to itself: the reading is the answer, and a row folded in two is a row taller
+   than the ones on the weather tile beside it.
+
+   Done with the wrap rather than measured. The row is laid out right to left
+   with the reading first — by order and not in the source, where a dt still
+   comes before its dd for anyone hearing the list rather than looking at it —
+   so the label is the one that wraps. Its bottom margin takes back more than it
+   is tall, which leaves the second line no height, and the row clips what hangs
+   below it. Too long even alone, the reading is cut to an ellipsis as before.
+
+   Top-aligned and not baseline-aligned, because Safari gives a line whose only
+   item is baseline-aligned the height of that item's ascent, negative margin or
+   no, and the row would keep a band of nothing where the label was. The
+   baselines meet anyway: each side carries a zero-width character in the other
+   side's face (below), so both line boxes are built from the same two fonts'
+   metrics and come out the same height with the baseline in the same place.
+
+   The padding is on the two sides and not on the row, since the row clips at
+   its padding edge — padding there would leave room under the reading for the
+   top of the wrapped label to show through. */
 .rows div {
   display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 5px 0;
+  flex-flow: row-reverse wrap;
+  align-items: flex-start;
+  column-gap: 10px;
+  overflow: hidden;
   border-bottom: 1px solid var(--line);
 }
 
 .rows div:last-child {
   border-bottom: 0;
+}
+
+.rows dt,
+.rows dd {
+  padding: 5px 0;
+}
+
+.rows div:last-child > * {
   padding-bottom: 0;
 }
 
 .rows dt {
+  margin-bottom: -40px;
   color: var(--muted);
   font-size: 10px;
   white-space: nowrap;
 }
 
 .rows dd {
+  order: -1;
   min-width: 0;
   margin: 0 0 0 auto;
   overflow: hidden;
@@ -123,6 +152,16 @@
   white-space: nowrap;
   font-family: var(--mono);
   font-size: 10px;
+}
+
+.rows dt::after {
+  content: "\200B";
+  font-family: var(--mono);
+}
+
+.rows dd::before {
+  content: "\200B";
+  font-family: var(--sans);
 }
 
 /* Only on a genuinely tiny tile — a narrow phone in portrait — is there no room
