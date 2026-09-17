@@ -1675,6 +1675,11 @@ export default function MapCard({
   // from then on the row is holding it the way any hovered row does; if the press
   // came from somewhere else — an address bar carrying a post id — there is
   // nobody holding it and it goes out.
+  //
+  // Unless the focus asks to `keep` it: a page sent to a post is being told
+  // where to go, not having a choice pressed again, and a bubble that went out
+  // because the post it was sent to happened to be the one already chosen would
+  // be the trip landing on nothing.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !focus) return;
@@ -1682,7 +1687,7 @@ export default function MapCard({
 
     const marker = [...markMarkersRef.current, ...postMarkersRef.current].find((pin) => pin.id === focus.id)?.marker;
     if (marker) {
-      if (keptRef.current === marker) {
+      if (keptRef.current === marker && !focus.keep) {
         const held = hoveredPropRef.current === focus.id;
         release(!held);
         // Handed back to the hover that is holding it, which is what closes it

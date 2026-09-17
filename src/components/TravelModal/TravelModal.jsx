@@ -155,8 +155,13 @@ export default function TravelModal({ isOpen, onClose }) {
     }
   }, [active, shown]);
 
+  // Every way out comes through here — the cross, the overlay, Escape, and
+  // arriving — and the sheet opens next time on an empty field: the sheet stays
+  // mounted in the bar while it is shut, so what was typed would otherwise still
+  // be sitting there.
   function close() {
     runRef.current += 1;
+    setQuery("");
     setFinding(false);
     setMessage("");
     setListing(false);

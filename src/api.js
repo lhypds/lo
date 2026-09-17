@@ -386,6 +386,10 @@ export const getPeople = () => shared("people", null, request(`/api/people?lang=
 // feed is always keyed to the ground under it.
 export const getPosts = (coords) =>
   coords ? shared("posts", coords, request(`/api/posts?${geoQuery(coords)}`)) : request("/api/posts");
+// One post by its number, for a page sent to a post that may be far off the
+// ground the list above is about — and the reading that marks the inbox's news
+// of it read, so the unread figure comes back with it.
+export const getPost = (postId) => request(`/api/posts/${encodeURIComponent(postId)}`);
 export const createPost = (post) =>
   request(`/api/posts?lang=${i18n.language || "en"}`, { method: "POST", body: JSON.stringify(post) });
 // The words and the photo only — a post stays where and when it was left, so

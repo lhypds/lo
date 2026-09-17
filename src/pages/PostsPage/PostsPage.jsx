@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../api.js";
 import { Lightbox, Modal, showToast, useLocation, useSearchParams } from "../../ui/index.js";
@@ -32,7 +32,7 @@ export default function PostsPage() {
   // what gets it fetched at all — a page that is nothing but posts is one of the
   // two things in lo that draws them, and nothing is fetched on behalf of a
   // reader who is not looking at either (see LocationProvider).
-  const { coords, posts, postsError, dropPost, replacePost } = useNearbyPosts();
+  const { coords, posts: nearby, loadingPosts, postsError, dropPost, replacePost, noteUnread } = useNearbyPosts();
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
   // Arriving with one person in mind: the name comes over on the URL and the
@@ -90,6 +90,70 @@ export default function PostsPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
+  // Arriving with one post in mind: the dashboard's panel, a profile and the
+  // inbox all press through with ?post= to say which. The post is asked for by
+  // its number as well as looked for in the list, because the list is the
+  // ground around the reader and the post may not be on it — somebody you follow
+  // posting from another city is the ordinary case, not the odd one. Asking is
+  // also what reads the inbox's news that it was left (see GET /api/posts/:postId).
+  //
+  // Every trip to the address is an arrival, not only the first: the inbox is a
+  // sheet over this page as much as over any other, and a post pressed there
+  // while this page is underneath — the same post again, even, after the reader
+  // has wandered off it — is the map being asked to go to it. So this answers to
+  // the entry rather than to the words in the address, which a second press on
+  // the same row does not change, and the page stays up while it does: the map
+  // moves to the post rather than being built again around it.
+  const location = useLocation();
+  const wanted = searchParams.get("post");
+  const [sent, setSent] = useState(null);
+  // The arrival being answered, and nothing once it has been: which post, and
+  // whether the answer about it is in yet.
+  const [arriving, setArriving] = useState(null);
+  useEffect(() => {
+    if (!wanted) return undefined;
+    // On a page that is already up the field is whatever the reader last left in
+    // it, and a post it would filter out has no pin to go to.
+    if (author) setQuery(formatUsername(author));
+    setArriving({ id: wanted, answered: false });
+    let cancelled = false;
+    api
+      .getPost(wanted)
+      .then((data) => {
+        if (cancelled) return;
+        setSent(data.post);
+        noteUnread?.(data.unread ?? 0);
+      })
+      .catch((requestError) => {
+        if (!cancelled) setError(requestError.message);
+      })
+      .finally(() => {
+        if (!cancelled) setArriving((current) => (current?.id === wanted ? { ...current, answered: true } : current));
+      });
+    return () => {
+      cancelled = true;
+    };
+    // `wanted` and `author` are read off the entry, so the entry is what says when
+    // they are to be read again.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location, noteUnread]);
+
+  // What the map and the list draw: the ground around the reader, and the post
+  // they were sent to where it is not already among it. Once the ground's own
+  // answer has it, that copy is the one kept — it is the one the provider keeps
+  // current.
+  const posts = useMemo(
+    () => (sent && !nearby.some((post) => post.id === sent.id) ? [sent, ...nearby] : nearby),
+    [sent, nearby],
+  );
+
+  // The provider's list takes every change to a post, and the one sent for takes
+  // it too, since it may be the only copy on the page.
+  function replaceShown(post) {
+    replacePost(post);
+    setSent((current) => (current?.id === post.id ? { ...current, ...post } : current));
+  }
+
   async function confirmDelete() {
     if (busy) return;
     setBusy(true);
@@ -97,6 +161,7 @@ export default function PostsPage() {
     try {
       await api.deletePost(deleting.id);
       dropPost(deleting.id);
+      setSent((current) => (current?.id === deleting.id ? null : current));
       setDeleting(null);
     } catch (requestError) {
       setError(requestError.message);
@@ -105,26 +170,28 @@ export default function PostsPage() {
     }
   }
 
-  // Arriving from the dashboard's panel with one post in mind: the row there
-  // presses through to here, and the map opens on the post it was. Once only —
-  // the list is asked for again whenever the ground moves, and a page that
-  // re-panned on every answer would keep taking the view back off the reader.
-  const wanted = searchParams.get("post");
-  const arrivedRef = useRef(false);
+  // And the map goes to the post it was, bubble up, once per arrival — the list
+  // is asked for again whenever the ground moves, and a page that re-panned on
+  // every answer would keep taking the view back off the reader.
+  //
+  // Not before both answers are in, even with the post already in hand: either
+  // one redraws every pin, and the bubble opened on the old pin would go with it.
+  // `keep` because this is somewhere to go and not a choice being toggled — a
+  // post already chosen stays open rather than being let go (see MapCard). A
+  // post with nowhere to be — taken down since the inbox said so — ends the
+  // arrival with the map where it is.
   useEffect(() => {
-    if (arrivedRef.current || !wanted) return;
-    const target = posts.find((post) => String(post.id) === wanted);
-    if (!target) return;
-    arrivedRef.current = true;
-    setFocus({ ...target });
-  }, [wanted, posts]);
+    if (!arriving?.answered || loadingPosts) return;
+    const target = posts.find((post) => String(post.id) === arriving.id);
+    setArriving(null);
+    if (target) setFocus({ ...target, keep: true });
+  }, [arriving, posts, loadingPosts]);
 
   // Coming back from a profile a byline in the comment column led to: the column
   // goes back up over the post it was under, on the post the note carries rather
   // than on one found again in a list that has moved on since (see
   // utils/back.js). Not the map — where the reader was standing is the entry's
   // own, and the browser puts that back itself.
-  const location = useLocation();
   useEffect(() => {
     const sheet = reopening(["post"]);
     if (sheet) setCommenting(sheet.subject);
@@ -256,7 +323,7 @@ export default function PostsPage() {
           setEditing(null);
           // Into the provider's list, which the map and the rows both read: the
           // author is looking at the post they have just rewritten.
-          replacePost(post);
+          replaceShown(post);
           // The row it lands in may be well down a long list, and the sheet
           // closing is not by itself an answer about whether the save went
           // through — the same reason writing one says so.
@@ -273,7 +340,7 @@ export default function PostsPage() {
         post={commenting}
         back={commenting ? { kind: "post", subject: commenting } : null}
         onClose={() => setCommenting(null)}
-        onAdded={(post, comments) => replacePost({ ...post, comments })}
+        onAdded={(post, comments) => replaceShown({ ...post, comments })}
       />
 
       {/* The photograph, over everything. The picture in a bubble is a thumbnail

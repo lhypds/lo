@@ -40,9 +40,11 @@ const rowKey = (row) => `${row.kind}:${aboutPost(row) ? row.postId : row.usernam
 // because the post is yours or because you have written under it; a follower
 // opens their page, which is the whole of what there is to do about one, and
 // having it in front of you is what marks the row read (see GET
-// /api/users/:username); a post you were told about opens the same column a
-// post of your own does, and opening it is what reads the news (see GET
-// /api/posts/:postId/comments).
+// /api/users/:username); a post you were told about opens the post itself, on
+// the posts map where every post is read, and being sent there is what reads
+// the news (see GET /api/posts/:postId). The news is that something was left,
+// not that anything was said under it, so the column is not where it leads —
+// that is one press further, in the post's own bubble.
 //
 // `open` is a thread to stand on rather than a list to look at: the sheet is
 // being put back up for a reader who left one of its conversations by pressing a
@@ -112,10 +114,10 @@ export default function MessagesModal({ isOpen, open = null, onClose }) {
   // a swipe on one row is also the gesture that puts any other row back.
   const [revealed, setRevealed] = useState(null);
 
-  // What a follower's row does on the way out: the inbox written down as the
-  // sheet to come back to — the list itself rather than any thread in it, since
-  // the row was the whole of the news — and the sheet closed, because what the
-  // press leads to is a page (see nameLink in utils/back.js).
+  // What a follower's row and a posted row do on the way out: the inbox written
+  // down as the sheet to come back to — the list itself rather than any thread
+  // in it, since the row was the whole of the news — and the sheet closed,
+  // because what the press leads to is a page (see nameLink in utils/back.js).
   const leave = nameLink({ kind: "inbox" }, onClose);
   // The swipe in progress, and the flag that keeps the click a horizontal drag
   // raises from being read as a tap that opens the thread.
@@ -143,9 +145,8 @@ export default function MessagesModal({ isOpen, open = null, onClose }) {
   // drag being finished or a delete standing open — either of which the press is
   // putting away rather than opening.
   //
-  // What a post row hands on — and a row about a post somebody you follow left,
-  // which carries the same three things — is the little of the post the sheet
-  // needs to name what the column is under: its words, or where it was left,
+  // What a post row hands on is the little of the post the sheet needs to name
+  // what the column is under: its words, or where it was left,
   // and the picture it was left with. The rest of the post is on the map, which
   // is not what the reader is looking at.
   //
@@ -166,7 +167,7 @@ export default function MessagesModal({ isOpen, open = null, onClose }) {
       setRevealed(null);
       return;
     }
-    if (aboutPost(conversation)) {
+    if (conversation.kind === "post") {
       setReadingPost({
         id: conversation.postId,
         body: conversation.post,
@@ -332,17 +333,24 @@ export default function MessagesModal({ isOpen, open = null, onClose }) {
                           : undefined
                       }
                     >
-                      {/* A follower's row is a link and the other three are
-                          buttons, for what is on the far side of the press: their
-                          page has an address, and a sheet over this one does not.
-                          The sheet goes with the press and writes itself down on
-                          the way out, so the ← on that page comes back to the inbox
-                          (see utils/back.js) — bar a delete standing open on some
-                          other row, which the press puts away instead, the same as
-                          a press on any row here does. */}
-                      {onFollow ? (
+                      {/* A follower's row and a posted row are links and the other
+                          two are buttons, for what is on the far side of the
+                          press: a page and a post on the map have an address, and
+                          a sheet over this one does not. The post goes with its
+                          author's name, the way a profile sends it, so the map
+                          lands on it among the rest of what they left. The sheet
+                          goes with the press and writes itself down on the way
+                          out, so the ← on that page comes back to the inbox (see
+                          utils/back.js) — bar a delete standing open on some other
+                          row, which the press puts away instead, the same as a
+                          press on any row here does. */}
+                      {onFollow || onPosted ? (
                         <Link
-                          to={`/${encodeURIComponent(conversation.username)}`}
+                          to={
+                            onPosted
+                              ? `/posts?post=${conversation.postId}&author=${encodeURIComponent(conversation.username)}`
+                              : `/${encodeURIComponent(conversation.username)}`
+                          }
                           className={styles.item}
                           state={leave.state}
                           onClick={(event) => {
@@ -396,10 +404,9 @@ export default function MessagesModal({ isOpen, open = null, onClose }) {
 
           One for each sheet a row here opens, and the same sheet the rest of
           lo opens on either: the exchange a name on a profile writes into, and
-          the comment column a bubble on the map opens — which is where both a
-          post of your own and a post somebody you follow left are read. A row
-          here is a way back to a conversation, not a second place to have it.
-          A follower's row has no sheet — it leaves for their page. */}
+          the comment column a bubble on the map opens. A row here is a way back
+          to a conversation, not a second place to have it. A follower's row and
+          a posted row have no sheet — they leave for a page. */}
       {/* And the way back out of either of them, for a reader who presses one of
           the names inside: the inbox standing on this thread is what the ← on
           that person's profile comes back to, which is two sheets rather than

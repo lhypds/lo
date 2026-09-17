@@ -1191,8 +1191,8 @@ const insertPostNotices = db.prepare(`
 // The fourth part of an inbox: what the people this account reads have been
 // leaving. A row is headed by the author, the way a follow's is by the
 // follower, since the reader knows the news by who it is from — and it carries
-// enough of the post to say what was left and to open its column on the way
-// through (the same three things a post row hands the sheet, see
+// enough of the post to say what was left and to send the reader to it on the
+// posts map (the same three things a post row hands the sheet, see
 // selectPostThreads). Its time is when the word was sent rather than the post's
 // own, which the author's device supplied and may be well in the past.
 //
@@ -1226,10 +1226,10 @@ const countUnseenNotices = db.prepare(`
   WHERE user_id = ? AND seen_at IS NULL
 `);
 
-// Having the post's column in front of you is what reads the news that it was
-// left (see GET /api/posts/:postId/comments): that column is where the row in
-// the inbox leads, and a post somebody has just been shown is one they have
-// seen. Only the unmarked row is touched, so the stamp is when they first saw
+// Having the post in front of you is what reads the news that it was left (see
+// GET /api/posts/:postId, which is where the row in the inbox leads, and GET
+// /api/posts/:postId/comments, which is the column under it): a post somebody
+// has just been shown is one they have seen. Only the unmarked row is touched, so the stamp is when they first saw
 // it; a post nobody told this reader about matches no row, which is the right
 // amount of nothing.
 const markNoticeSeen = db.prepare(`
@@ -1981,7 +1981,7 @@ function withRead(row) {
 // read down one column. What tells them apart is `kind`, and what that decides
 // is where a press goes: a person opens the exchange, a post opens its comment
 // column, a follower opens their page, and a post somebody you follow left
-// opens its column the way your own would.
+// opens the post itself on the posts map.
 //
 // Merged here rather than by whoever draws it. Every part is asked for whole
 // and the list is cut to length afterwards, so a busy month of comments cannot
@@ -2007,8 +2007,8 @@ export function readFollow(viewerId, followerUsername) {
   markFollowSeen.run(new Date().toISOString(), followerUsername, viewerId);
 }
 
-// Opening a post's column reads the news that somebody you follow left it, on
-// the same terms: the column is where the row led, and nothing hands back.
+// Being shown a post — sent to it, or opening its column — reads the news that
+// somebody you follow left it, on the same terms, and nothing hands back.
 export function readNotice(userId, postId) {
   markNoticeSeen.run(new Date().toISOString(), userId, postId);
 }

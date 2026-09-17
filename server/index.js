@@ -1473,6 +1473,23 @@ app.post("/api/posts", requireSession, async (req, res, next) => {
   }
 });
 
+// One post by its number, wherever it was left. The list above is the ground
+// around the reader, and a post somebody has been sent to — from the inbox, from
+// a profile — may be in another city, off the edge of every list they could ask
+// for; the posts page asks for it by name so the map can still land on it.
+//
+// And being sent to it is what reads the news that it was left (see readNotice):
+// the post is where the inbox row leads. The figure comes back counted down, so
+// the dot in the bar goes out as the map arrives.
+app.get("/api/posts/:postId", requireSession, (req, res) => {
+  const postId = Number(req.params.postId);
+  if (!Number.isInteger(postId) || postId < 1) return res.status(400).json({ error: "Invalid post ID" });
+  const post = getPost(postId);
+  if (!post) return res.status(404).json({ error: "No such post", code: "POST_NOT_FOUND" });
+  readNotice(req.user.id, post.id);
+  res.json({ post, unread: countUnread(req.user.id) });
+});
+
 // Rewriting one of your own. Only the words and the photo: where and when the
 // post was left are what it is filed under, and an edit that could move the pin
 // would let a post claim ground its author never stood on. It is the same line a
@@ -1550,7 +1567,8 @@ function commentTarget(req, res) {
 // is one they have seen, and lo has no button anywhere for saying so. Both of
 // the things the column can be in the inbox for are read by the one asking —
 // the remarks under it, and the news that somebody the reader follows left the
-// post at all (see readNotice) — since the column is where either row leads.
+// post at all (see readNotice) — since a reader in the column has the post in
+// front of them, whichever way they came to it.
 // The unread figure comes back already counted down by this reading, so the dot
 // in the bar goes out as the words arrive rather than on the bar's next beat.
 app.get("/api/posts/:postId/comments", requireSession, (req, res) => {
