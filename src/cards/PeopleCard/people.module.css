@@ -71,7 +71,12 @@
   background: var(--ink);
 }
 
+/* From nothing, and growing into whatever the row has left. The row wraps (see
+   .item), and a wrapping row decides its lines on each item's whole width before
+   it shrinks any of them — so a name measured at its full length pushed the
+   reading down to a second line instead of giving way to it. */
 .who {
+  flex: 1 1 0;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
