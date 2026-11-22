@@ -28,7 +28,6 @@
     "failed": "Export konnte nicht erstellt werden"
   },
   "auth": {
-    "tagline": "Wo du bist, genau jetzt.",
     "username": "Benutzername",
     "usernameNoLetter": "Der Benutzername muss mindestens einen Buchstaben enthalten",
     "next": "Weiter",

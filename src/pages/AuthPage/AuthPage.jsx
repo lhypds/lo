@@ -164,11 +164,9 @@ export default function AuthPage() {
           <h1 id="login-title" className="auth-logo">
             lo
           </h1>
-          {/* The same line on both screens. The second one is a step of the first
-              rather than a place of its own — the wordmark and the line under it do
-              not move, and what changes between them is the field. */}
-          <p className="tagline">{t("auth.tagline")}</p>
-
+          {/* The same wordmark on both screens. The second one is a step of the first
+              rather than a place of its own — the wordmark does not move, and what
+              changes under it is the field. */}
           {naming ? (
             <form className="login-form" onSubmit={submitName} autoComplete="off">
               <label className="sr-only" htmlFor="lo-handle">

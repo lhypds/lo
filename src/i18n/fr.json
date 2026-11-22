@@ -28,7 +28,6 @@
     "failed": "Impossible de créer l’exportation"
   },
   "auth": {
-    "tagline": "Là où vous êtes, maintenant.",
     "username": "Nom d’utilisateur",
     "usernameNoLetter": "Le nom d’utilisateur doit contenir au moins une lettre",
     "next": "Suivant",

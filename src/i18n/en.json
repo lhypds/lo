@@ -28,7 +28,6 @@
     "failed": "Could not build the export"
   },
   "auth": {
-    "tagline": "Where you are, right now.",
     "username": "Username",
     "usernameNoLetter": "A username needs at least one letter",
     "next": "Next",

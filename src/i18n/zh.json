@@ -28,7 +28,6 @@
     "failed": "无法生成导出文件"
   },
   "auth": {
-    "tagline": "此刻，你在哪里。",
     "username": "用户名",
     "usernameNoLetter": "用户名需包含至少一个字母",
     "next": "下一步",

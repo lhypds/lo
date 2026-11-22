@@ -222,6 +222,12 @@ a {
   line-height: 1;
 }
 
+/* The sign-in card has no line under the wordmark, so the wordmark keeps the gap
+   to the field itself. */
+.auth-card .auth-logo {
+  margin-bottom: 28px;
+}
+
 .tagline {
   margin: 28px 0 28px;
   color: var(--muted);
