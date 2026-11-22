@@ -99,6 +99,7 @@
     "locating": "Standort wird ermittelt",
     "denied": "Standortzugriff ist blockiert",
     "deniedHint": "Erlaube den Standortzugriff für diese Website in den Browsereinstellungen und versuche es erneut.",
+    "insecureHint": "Browser geben den Standort nur über https oder auf localhost frei. Öffne die Seite so und versuche es erneut.",
     "unsupported": "Dieses Gerät unterstützt keine Standortbestimmung",
     "error": "Standort konnte nicht ermittelt werden",
     "errorHint": "Kein Signal oder das Gerät hat zu lange gebraucht. Versuche es erneut."

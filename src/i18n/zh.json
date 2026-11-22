@@ -96,6 +96,7 @@
     "locating": "定位中",
     "denied": "定位被拒绝",
     "deniedHint": "请在浏览器设置中允许本站访问位置，然后重试。",
+    "insecureHint": "浏览器只在 https 或 localhost 下提供位置。请换用这样的地址打开，然后重试。",
     "unsupported": "此设备不支持定位",
     "error": "无法获取位置",
     "errorHint": "信号不足或耗时过长，请重试。"

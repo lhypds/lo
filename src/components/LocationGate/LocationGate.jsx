@@ -13,8 +13,14 @@ export default function LocationGate() {
   const busy = asking || status === "locating";
   const blocked = status === "denied" || status === "unsupported";
 
+  // Over plain http on anything but localhost the browser refuses without ever
+  // showing a prompt, and no site setting will change its mind — so the hint
+  // names the address as the thing to fix rather than sending the reader off to
+  // look for a permission that is not there.
+  const insecure = typeof window !== "undefined" && window.isSecureContext === false;
+
   const message = {
-    denied: { title: t("gate.denied"), hint: t("gate.deniedHint") },
+    denied: { title: t("gate.denied"), hint: t(insecure ? "gate.insecureHint" : "gate.deniedHint") },
     unsupported: { title: t("gate.unsupported"), hint: "" },
     error: { title: t("gate.error"), hint: t("gate.errorHint") },
   }[status];

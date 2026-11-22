@@ -99,6 +99,7 @@
     "locating": "Locating",
     "denied": "Location is blocked",
     "deniedHint": "Allow location for this site in your browser settings, then try again.",
+    "insecureHint": "Browsers only share location over https or on localhost. Open this page that way, then try again.",
     "unsupported": "This device has no location support",
     "error": "Could not get a fix",
     "errorHint": "No signal, or the device took too long. Try again."

@@ -99,6 +99,7 @@
     "locating": "Localizando",
     "denied": "La ubicación está bloqueada",
     "deniedHint": "Permite la ubicación para este sitio en los ajustes del navegador y vuelve a intentarlo.",
+    "insecureHint": "Los navegadores solo comparten la ubicación por https o en localhost. Abre la página así y vuelve a intentarlo.",
     "unsupported": "Este dispositivo no admite la ubicación",
     "error": "No se pudo obtener la posición",
     "errorHint": "No hay señal o el dispositivo tardó demasiado. Vuelve a intentarlo."
